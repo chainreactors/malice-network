@@ -38,6 +38,9 @@ func PreludeCmd(cmd *cobra.Command, con *core.Console) error {
 	buildConfig.BuildType = consts.CommandBuildPrelude
 	target, _ := cmd.Flags().GetString("target")
 	buildConfig.Target = target
+	if err := parseLibFlag(cmd, buildConfig); err != nil {
+		return err
+	}
 
 	executeBuild(con, buildConfig)
 	return nil

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	errs "github.com/chainreactors/IoM-go/types"
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/implanttypes"
@@ -26,7 +27,39 @@ type Builder interface {
 	Collect() (string, string, error)
 }
 
+func validateBuildOptions(req *clientpb.BuildConfig) error {
+	target, ok := consts.GetBuildTarget(req.Target)
+	if !ok {
+		return errs.ErrInvalidateTarget
+	}
+
+	switch req.BuildType {
+	case consts.CommandBuildModules, consts.CommandBuild3rdModules:
+		if target.OS != consts.Windows {
+			return errors.New("modules build only supports Windows targets")
+		}
+		if !req.Lib {
+			return errors.New("modules build requires library output")
+		}
+	case consts.CommandBuildPrelude:
+		if req.Lib {
+			return errors.New("prelude build does not support --lib")
+		}
+	case consts.CommandBuildPulse:
+		if target.OS != consts.Windows {
+			return errors.New("pulse build only supports Windows targets")
+		}
+		if req.Lib {
+			return errors.New("pulse build does not support --lib")
+		}
+	}
+	return nil
+}
+
 func NewBuilder(req *clientpb.BuildConfig) (Builder, error) {
+	if err := validateBuildOptions(req); err != nil {
+		return nil, err
+	}
 	//malefic_config := types.LoadProfileFromContent(req.MaleficConfig)
 	//if req.BuildType == consts.CommandBuildPulse {
 	//	if malefic_config.Pulse.Flags.ArtifactID == 0 {

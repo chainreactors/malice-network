@@ -423,6 +423,7 @@ artifact upload /path/to/artifact --type DLL
 		f.StringP("type", "t", "", "Set type")
 		f.StringP("name", "n", "", "alias name")
 		f.StringP("target", "", "", "rust target")
+		f.StringP("comment", "c", "", "comment for artifact")
 	})
 
 	deleteCommand := &cobra.Command{

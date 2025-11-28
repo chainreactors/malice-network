@@ -24,7 +24,7 @@ import (
 var (
 	//NameSpace                   = "ghcr.io/chainreactors"
 	//Tag                         = "nightly-2023-09-18-latest"
-	Ver                         = "lasest"
+	Ver                          = "latest"
 	ContainerSourceCodePath      = "/root/src"
 	ContainerCargoRegistryCache  = "/root/cargo/registry"
 	ContainerCargoGitCache       = "/root/cargo/git"

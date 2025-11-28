@@ -209,15 +209,21 @@ func GenerateFlagSet(f *pflag.FlagSet) {
 	f.String("profile", "", "profile name")
 	f.String("target", "", "build target, specify the target arch and platform, such as  **x86_64-pc-windows-gnu**.")
 	f.String("source", "", "build source, docker, action, saas")
+	f.Bool("lib", false, "build shared library instead of executable")
+	f.String("comment", "", "comment for this build")
 	SetFlagSetGroup(f, "generate")
 }
 
 func ParseGenerateFlags(cmd *cobra.Command) *clientpb.BuildConfig {
 	name, _ := cmd.Flags().GetString("profile")
 	target, _ := cmd.Flags().GetString("target")
+	lib, _ := cmd.Flags().GetBool("lib")
+	comment, _ := cmd.Flags().GetString("comment")
 	buildConfig := &clientpb.BuildConfig{
 		ProfileName: name,
 		Target:      target,
+		Lib:         lib,
+		Comment:     comment,
 	}
 	return buildConfig
 }

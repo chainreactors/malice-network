@@ -40,6 +40,10 @@ func parseBasicConfig(cmd *cobra.Command, con *core.Console) (*clientpb.BuildCon
 func parseSourceConfig(cmd *cobra.Command, con *core.Console, buildConfig *clientpb.BuildConfig) (*clientpb.BuildConfig, error) {
 	source, _ := cmd.Flags().GetString("source")
 	buildConfig.Source = source
+	comment, _ := cmd.Flags().GetString("comment")
+	if comment != "" {
+		buildConfig.Comment = comment
+	}
 	// use github action
 	actionConfig := common.ParseGithubFlags(cmd)
 	if actionConfig != nil {
@@ -75,6 +79,43 @@ func BindCmd(cmd *cobra.Command, con *core.Console) error {
 	}
 
 	executeBuild(con, buildConfig)
+	return nil
+}
+
+// parseLibFlag sets buildConfig.Lib based on the --lib flag and validates compatibility with buildType/target.
+func parseLibFlag(cmd *cobra.Command, buildConfig *clientpb.BuildConfig) error {
+	libFlag, _ := cmd.Flags().GetBool("lib")
+	target, ok := consts.GetBuildTarget(buildConfig.Target)
+	if !ok {
+		return errors.New("invalid target: " + buildConfig.Target)
+	}
+
+	switch buildConfig.BuildType {
+	case consts.CommandBuildModules, consts.CommandBuild3rdModules:
+		if cmd.Flags().Changed("lib") && !libFlag {
+			return errors.New("modules build requires --lib")
+		}
+		if target.OS != consts.Windows {
+			return errors.New("modules build only supports Windows targets")
+		}
+		buildConfig.Lib = true
+	case consts.CommandBuildPrelude:
+		if libFlag {
+			return errors.New("prelude build does not support --lib")
+		}
+		buildConfig.Lib = false
+	case consts.CommandBuildPulse:
+		if libFlag {
+			return errors.New("pulse build does not support --lib")
+		}
+		if target.OS != consts.Windows {
+			return errors.New("pulse build only supports Windows targets")
+		}
+		buildConfig.Lib = false
+	default:
+		// beacon/bind allow both exe and lib
+		buildConfig.Lib = libFlag
+	}
 	return nil
 }
 

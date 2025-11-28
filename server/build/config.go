@@ -3,14 +3,14 @@ package build
 import (
 	"encoding/base64"
 	"fmt"
-	"github.com/chainreactors/IoM-go/consts"
-	types "github.com/chainreactors/IoM-go/types"
-	"github.com/chainreactors/malice-network/helper/implanttypes"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/chainreactors/IoM-go/consts"
+	types "github.com/chainreactors/IoM-go/types"
 	"github.com/chainreactors/malice-network/helper/encoders"
+	"github.com/chainreactors/malice-network/helper/implanttypes"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 )
@@ -69,34 +69,78 @@ var (
 //	return data, nil
 //}
 
-func MoveBuildOutput(target, buildType string, enable3RD bool) (string, string, error) {
-	var sourcePath string
-	name := encoders.UUID()
-	switch {
-	case strings.Contains(target, "windows"):
-		if buildType == consts.CommandBuildModules {
-			if enable3RD {
-				sourcePath = filepath.Join(configs.TargetPath, target, release, modules3rd+consts.DllFile)
-			} else {
-				sourcePath = filepath.Join(configs.TargetPath, target, release, modules+consts.DllFile)
-			}
-		} else if buildType == consts.CommandBuildPrelude {
-			sourcePath = filepath.Join(configs.TargetPath, target, release, prelude+consts.PEFile)
-		} else if buildType == consts.CommandBuildPulse {
-			sourcePath = filepath.Join(configs.TargetPath, target, release, pulse+consts.PEFile)
-		} else {
-			sourcePath = filepath.Join(configs.TargetPath, target, release, malefic+consts.PEFile)
-		}
-	case strings.Contains(target, "darwin"):
-		sourcePath = filepath.Join(configs.TargetPath, target, release, malefic)
-	case strings.Contains(target, "linux"):
-		if buildType == consts.CommandBuildPrelude {
-			sourcePath = filepath.Join(configs.TargetPath, target, release, prelude)
-		} else {
-			sourcePath = filepath.Join(configs.TargetPath, target, release, malefic)
-		}
+func MoveBuildOutput(target, buildType string, enable3RD, lib bool) (string, string, error) {
+	targetInfo, ok := consts.GetBuildTarget(target)
+	if !ok {
+		return "", "", types.ErrInvalidateTarget
 	}
-	dstPath := filepath.Join(configs.TempPath, name)
+
+	baseName := malefic
+	switch buildType {
+	case consts.CommandBuildPrelude:
+		baseName = prelude
+	case consts.CommandBuildPulse:
+		baseName = pulse
+	case consts.CommandBuildModules:
+		if targetInfo.OS != consts.Windows {
+			return "", "", fmt.Errorf("modules build only supports Windows targets")
+		}
+		if enable3RD {
+			baseName = modules3rd
+		} else {
+			baseName = modules
+		}
+	case consts.CommandBuild3rdModules:
+		if targetInfo.OS != consts.Windows {
+			return "", "", fmt.Errorf("modules build only supports Windows targets")
+		}
+		baseName = modules3rd
+	}
+
+	filename := baseName
+	switch targetInfo.OS {
+	case consts.Windows:
+		switch buildType {
+		case consts.CommandBuildModules, consts.CommandBuild3rdModules:
+			if !lib {
+				return "", "", fmt.Errorf("modules build requires library output")
+			}
+			filename += consts.DllFile
+		case consts.CommandBuildPulse:
+			if lib {
+				return "", "", fmt.Errorf("pulse build does not support library output")
+			}
+			filename += consts.PEFile
+		default:
+			if lib {
+				filename += consts.DllFile
+			} else {
+				filename += consts.PEFile
+			}
+		}
+	case consts.Linux:
+		if buildType == consts.CommandBuildPrelude {
+			if lib {
+				return "", "", fmt.Errorf("prelude build does not support library output")
+			}
+			// keep filename without extension
+		} else {
+			if lib {
+				filename += ".so"
+			}
+		}
+	case consts.Darwin:
+		if lib {
+			filename += ".dylib"
+		}
+	default:
+		return "", "", fmt.Errorf("unsupported target os %s", targetInfo.OS)
+	}
+
+	ext := filepath.Ext(filename)
+	sourcePath := filepath.Join(configs.TargetPath, target, release, filename)
+	dstPath := filepath.Join(configs.TempPath, encoders.UUID()+ext)
+
 	err := fileutils.MoveFile(sourcePath, dstPath)
 	if err != nil {
 		return "", "", err

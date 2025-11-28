@@ -1,6 +1,7 @@
 package core
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -92,6 +93,9 @@ func (con *Console) InitMCPServer() {
 		// 查找可用端口
 		finalPort, err := findAvailableMCPPort(host, port)
 		if err != nil {
+			if errors.Is(err, ErrMCPAlreadyRunning) {
+				return
+			}
 			logs.Log.Errorf("Failed to find available port for MCP server: %v\n", err)
 			return
 		}
@@ -168,6 +172,8 @@ func parseAddr(addr string) (string, int, error) {
 	return host, port, nil
 }
 
+var ErrMCPAlreadyRunning = errors.New("mcp already running")
+
 // findAvailableMCPPort 查找可用的 MCP 端口
 func findAvailableMCPPort(host string, startPort int) (int, error) {
 	const maxAttempts = 10
@@ -184,7 +190,7 @@ func findAvailableMCPPort(host string, startPort int) (int, error) {
 
 		if checkMCPHealth(host, port) {
 			logs.Log.Infof("MCP server already running at http://%s:%d/mcp, skipping startup\n", host, port)
-			return 0, fmt.Errorf("MCP server already running at port %d", port)
+			return port, ErrMCPAlreadyRunning
 		}
 
 		logs.Log.Debugf("Port %d is occupied but MCP service is not available, trying next port\n", port)

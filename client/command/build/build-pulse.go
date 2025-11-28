@@ -24,10 +24,6 @@ func PulseCmd(cmd *cobra.Command, con *core.Console) error {
 	if err != nil {
 		return err
 	}
-	if !strings.Contains(buildConfig.Target, "windows") {
-		con.Log.Warn("Pulse only supports Windows targets\n")
-		return nil
-	}
 	source, _ := cmd.Flags().GetString("source")
 	buildConfig.Source = source
 	buildConfig, err = parseSourceConfig(cmd, con, buildConfig)
@@ -35,6 +31,9 @@ func PulseCmd(cmd *cobra.Command, con *core.Console) error {
 		return fmt.Errorf("failed to parse build config: %w", err)
 	}
 	buildConfig.BuildType = consts.CommandBuildPulse
+	if err := parseLibFlag(cmd, buildConfig); err != nil {
+		return err
+	}
 	if err != nil {
 		return err
 	}

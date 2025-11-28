@@ -142,6 +142,11 @@ func (d *DockerBuilder) Execute() error {
 		return err
 	}
 
+	libFlag := ""
+	if d.config.Lib {
+		libFlag = " --lib"
+	}
+
 	// 资源合并前缀命令：先合并 builtin 和 custom resources 到目标目录
 	resourceMergePrefix := "mkdir -p /root/src/resources && " +
 		"[ -d /tmp/builtin/resources ] && cp -rf /tmp/builtin/resources/. /root/src/resources/ || true && " +
@@ -150,29 +155,33 @@ func (d *DockerBuilder) Execute() error {
 	switch d.config.BuildType {
 	case consts.CommandBuildBeacon:
 		buildCommand = fmt.Sprintf(
-			"%smalefic-mutant generate beacon && malefic-mutant build malefic -t %s",
+			"%smalefic-mutant generate beacon && malefic-mutant build%s malefic -t %s",
 			resourceMergePrefix,
+			libFlag,
 			d.config.Target,
 		)
 	case consts.CommandBuildBind:
 		buildCommand = fmt.Sprintf(
-			"%smalefic-mutant generate bind && malefic-mutant build malefic -t %s",
+			"%smalefic-mutant generate bind && malefic-mutant build%s malefic -t %s",
 			resourceMergePrefix,
+			libFlag,
 			d.config.Target,
 		)
 	case consts.CommandBuildModules:
 		buildCommand = fmt.Sprintf(
-			"%smalefic-mutant generate modules -m %s && malefic-mutant build modules -m %s -t %s",
+			"%smalefic-mutant generate modules -m %s && malefic-mutant build%s modules -m %s -t %s",
 			resourceMergePrefix,
 			strings.Join(profile.Implant.Modules, ","),
+			libFlag,
 			strings.Join(profile.Implant.Modules, ","),
 			d.config.Target,
 		)
 		d.enable3rd = false
 	case consts.CommandBuild3rdModules:
 		buildCommand = fmt.Sprintf(
-			"%smalefic-mutant generate modules && malefic-mutant build 3rd -m %s -t %s",
+			"%smalefic-mutant generate modules && malefic-mutant build%s 3rd -m %s -t %s",
 			resourceMergePrefix,
+			libFlag,
 			strings.Join(profile.Implant.ThirdModules, ","),
 			d.config.Target,
 		)
@@ -243,7 +252,7 @@ func (d *DockerBuilder) Execute() error {
 }
 
 func (d *DockerBuilder) Collect() (string, string, error) {
-	_, artifactPath, err := MoveBuildOutput(d.config.Target, d.config.BuildType, d.enable3rd)
+	_, artifactPath, err := MoveBuildOutput(d.config.Target, d.config.BuildType, d.enable3rd, d.config.Lib)
 	if err != nil {
 		logs.Log.Errorf("failed to move artifact %s output: %s", d.artifact.Name, err)
 		return "", consts.BuildStatusFailure, err

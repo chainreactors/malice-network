@@ -2,15 +2,16 @@ package build
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
+	"strconv"
+	"time"
+
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	output2 "github.com/chainreactors/malice-network/helper/utils/output"
-	"os"
-	"path/filepath"
-	"strconv"
-	"time"
 
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/tui"
@@ -46,7 +47,7 @@ func PrintArtifacts(artifacts *clientpb.Artifacts, con *core.Console) error {
 
 	defaultLengths := map[string]int{
 		"ID":       6,
-		"Name":     30,
+		"Name":     24,
 		"Pipeline": 16,
 		"Target":   22,
 		"Type":     8,
@@ -166,8 +167,9 @@ func printArtifact(artifact *clientpb.Artifact) {
 		"Profile":  artifact.Profile,
 		"Pipeline": artifact.Pipeline,
 		"Size":     fileutils.Bytes(uint64(len(artifact.Bin))),
+		"Comment":  artifact.Comment,
 	}
-	orderedKeys := []string{"ID", "Name", "Type", "Target", "Profile", "Pipeline", "Size"}
+	orderedKeys := []string{"ID", "Name", "Type", "Target", "Profile", "Pipeline", "Size", "Comment"}
 	tui.RenderKV(art, orderedKeys)
 }
 
@@ -197,14 +199,14 @@ func DownloadArtifactCmd(cmd *cobra.Command, con *core.Console) error {
 			con.Log.Infof("you can use this payload :\n--------\n%s\n--------\n", usage)
 		} else {
 			var fileExt string
-			if f, ok := output2.SupportedFormats[format]; ok {
+			if format == consts.FormatExecutable && artifact.Format != "" {
+				fileExt = artifact.Format
+			} else if f, ok := output2.SupportedFormats[format]; ok {
 				fileExt = f.Extension
+			} else if artifact.Format != "" {
+				fileExt = artifact.Format
 			} else {
 				fileExt, _ = fileutils.GetExtensionByBytes(artifact.Bin)
-			}
-
-			if artifact.Type == consts.CommandBuildModules {
-				fileExt = ".dll"
 			}
 			if output == "" {
 				output = filepath.Join(assets.GetTempDir(), artifact.Name+fileExt)
@@ -241,7 +243,10 @@ func WriteOriginArtifact(con *core.Console, name string) error {
 	if err != nil {
 		return err
 	}
-	fileExt, _ := fileutils.GetExtensionByBytes(artifact.Bin)
+	fileExt := artifact.Format
+	if fileExt == "" {
+		fileExt, _ = fileutils.GetExtensionByBytes(artifact.Bin)
+	}
 	con.Log.Infof("download artifact %s\n", filepath.Join(assets.GetTempDir(), artifact.Name+fileExt))
 	output := filepath.Join(assets.GetTempDir(), artifact.Name+fileExt)
 	err = os.WriteFile(output, artifact.Bin, 0644)
@@ -255,10 +260,11 @@ func UploadArtifactCmd(cmd *cobra.Command, con *core.Console) error {
 	path := cmd.Flags().Arg(0)
 	artifactType, _ := cmd.Flags().GetString("type")
 	name, _ := cmd.Flags().GetString("name")
+	comment, _ := cmd.Flags().GetString("comment")
 	if name == "" {
 		name = filepath.Base(path)
 	}
-	artifact, err := UploadArtifact(con, path, name, artifactType)
+	artifact, err := UploadArtifact(con, path, name, artifactType, comment)
 	if err != nil {
 		return err
 	}
@@ -277,15 +283,16 @@ func DeleteArtifactCmd(cmd *cobra.Command, con *core.Console) error {
 	return nil
 }
 
-func UploadArtifact(con *core.Console, path string, name, artifactType string) (*clientpb.Artifact, error) {
+func UploadArtifact(con *core.Console, path string, name, artifactType string, comment string) (*clientpb.Artifact, error) {
 	bin, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
 	return con.Rpc.UploadArtifact(con.Context(), &clientpb.Artifact{
-		Name: name,
-		Bin:  bin,
-		Type: artifactType,
+		Name:    name,
+		Bin:     bin,
+		Type:    artifactType,
+		Comment: comment,
 	})
 }
 

@@ -31,6 +31,9 @@ func ModulesCmd(cmd *cobra.Command, con *core.Console) error {
 	if err != nil {
 		return err
 	}
+	if err := parseLibFlag(cmd, buildConfig); err != nil {
+		return err
+	}
 	//
 	modules, _ := cmd.Flags().GetString("modules")
 	thirdModules, _ := cmd.Flags().GetString("3rd")

@@ -21,16 +21,17 @@ type Artifact struct {
 	//Type      string    // build type, pe, dll, shellcode
 	Source string // docker 、 saas 、github action、upload...
 	//CA            string // ca file , ca file content
-	Path    string
-	Profile Profile `gorm:"foreignKey:ProfileName;references:Name;"`
-	Os      string
-	//Format      string // pe, dll, shellcode
+	Path        string
+	Profile     Profile `gorm:"foreignKey:ProfileName;references:Name;"`
+	Os          string
+	Format      string // file extension like .exe/.dll/.so/.dylib or ""
 	Arch        string
 	Log         string
 	Status      string
 	ParamsData  string
 	Params      *implanttypes.ProfileParams `gorm:"-"`
 	ProfileByte []byte
+	Comment     string
 }
 
 func (a *Artifact) AfterFind(tx *gorm.DB) (err error) {
@@ -75,11 +76,13 @@ func (a *Artifact) ToProtobuf(bin []byte) *clientpb.Artifact {
 		Arch:         a.Arch,
 		Profile:      a.ProfileName,
 		Pipeline:     a.Profile.PipelineID,
+		Format:       a.Format,
 		CreatedAt:    a.CreatedAt.Unix(),
 		Status:       a.Status,
 		ProfileBytes: a.ProfileByte,
 		ParamsBytes:  []byte(a.ParamsData),
 		Source:       a.Source,
+		Comment:      a.Comment,
 	}
 }
 
@@ -99,10 +102,12 @@ func (a *Artifact) ToArtifact() (*clientpb.Artifact, error) {
 		Arch:         a.Arch,
 		Profile:      a.ProfileName,
 		Pipeline:     a.Profile.PipelineID,
+		Format:       a.Format,
 		CreatedAt:    a.CreatedAt.Unix(),
 		Status:       a.Status,
 		ProfileBytes: a.ProfileByte,
 		ParamsBytes:  []byte(a.ParamsData),
 		Source:       a.Source,
+		Comment:      a.Comment,
 	}, nil
 }
