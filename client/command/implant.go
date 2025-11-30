@@ -2,6 +2,7 @@ package command
 
 import (
 	"fmt"
+
 	"github.com/carapace-sh/carapace"
 	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
@@ -9,6 +10,8 @@ import (
 	"github.com/reeflective/console"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+
+	"os"
 
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/addon"
@@ -55,8 +58,38 @@ func ImplantCmd(con *core.Console) *cobra.Command {
 }
 
 func makeRunners(implantCmd *cobra.Command, con *core.Console) (pre, post func(cmd *cobra.Command, args []string) error) {
+	allowGroups := map[string]struct{}{
+		consts.GenericGroup:   {},
+		consts.ManageGroup:    {},
+		consts.ListenerGroup:  {},
+		consts.GeneratorGroup: {},
+	}
+	isCompletion := func() bool {
+		if os.Getenv("IOM_COMPLETING") == "1" {
+			return true
+		}
+		if _, ok := os.LookupEnv("CARAPACE_COMPLINE"); ok {
+			return true
+		}
+		if _, ok := os.LookupEnv("COMP_LINE"); ok {
+			return true
+		}
+		return false
+	}
+	getGroupID := func(cmd *cobra.Command) string {
+		for c := cmd; c != nil; c = c.Parent() {
+			if c.GroupID != "" {
+				return c.GroupID
+			}
+		}
+		return ""
+	}
+
 	// so we can have access to active sessions/beacons, and other stuff needed.
 	pre = func(cmd *cobra.Command, args []string) error {
+		if isCompletion() {
+			return nil
+		}
 		if cmd.Annotations["resource"] == "true" {
 			return nil
 		}
@@ -66,6 +99,9 @@ func makeRunners(implantCmd *cobra.Command, con *core.Console) (pre, post func(c
 			if err != nil {
 				return err
 			}
+		}
+		if _, ok := allowGroups[getGroupID(cmd)]; ok {
+			return nil
 		}
 		sid, _ := cmd.Flags().GetString("use")
 		if sid == "" && con.ActiveTarget.Session == nil {
@@ -78,8 +114,16 @@ func makeRunners(implantCmd *cobra.Command, con *core.Console) (pre, post func(c
 		var ok bool
 
 		if session, ok = con.GetLocalSession(sid); !ok {
-			return fmt.Errorf("session %s not found", sid)
+			if con.ActiveTarget != nil && con.ActiveTarget.Get() != nil && con.ActiveTarget.Get().SessionId == sid {
+				session = con.ActiveTarget.Get()
+			} else {
+				return fmt.Errorf("session %s not found", sid)
+			}
 		}
+
+		//if !session.IsAlive {
+		//	con.Log.Warnf("Session %s is marked dead, continuing anyway\n", sid)
+		//}
 
 		con.ActiveTarget.Set(session)
 		con.App.SwitchMenu(consts.ImplantMenu)
@@ -120,6 +164,8 @@ func makeCompleters(cmd *cobra.Command, con *core.Console) {
 	comps := carapace.Gen(cmd)
 
 	comps.PreRun(func(cmd *cobra.Command, args []string) {
+		_ = os.Setenv("IOM_COMPLETING", "1")
+		defer os.Unsetenv("IOM_COMPLETING")
 		cmd.PersistentPreRunE(cmd, args)
 	})
 

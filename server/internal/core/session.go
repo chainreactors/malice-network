@@ -4,6 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"path"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
@@ -13,13 +21,6 @@ import (
 	"github.com/gorhill/cronexpr"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
-	"os"
-	"path"
-	"path/filepath"
-	"strconv"
-	"strings"
-	"sync"
-	"time"
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/utils"
@@ -68,8 +69,8 @@ func NewSessions() *sessions {
 			sessModel := session.ToModel()
 			if !session.isAlived() {
 				sessModel.IsAlive = false
-				session.Publish(consts.CtrlSessionDead, fmt.Sprintf("session %s from %s at %s has leaved ", session.ID, session.Target, session.PipelineID), true, true)
-				//newSessions.Remove(session.ID)
+				session.Publish(consts.CtrlSessionDead, fmt.Sprintf("session %s from %s at %s may have left ", session.ID, session.Target, session.PipelineID), true, true)
+				newSessions.Remove(session.ID)
 			}
 			err := session.Save()
 			if err != nil {
@@ -339,7 +340,8 @@ func (s *Session) isAlived() bool {
 		nextTime := parsedExpr.Next(time.Now())
 		remainingSeconds := int64(nextTime.Sub(time.Now()).Seconds())
 		remainingSeconds = int64(float64(remainingSeconds) * (1 + s.Jitter))
-		return time.Now().Unix()-s.LastCheckin <= utils.Max(remainingSeconds+30, int64(time.Second*60))
+		allowedOffline := utils.Max(remainingSeconds+30, int64(90)) // values are in seconds
+		return time.Now().Unix()-s.LastCheckin <= allowedOffline
 	}
 }
 
