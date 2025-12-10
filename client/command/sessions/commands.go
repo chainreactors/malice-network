@@ -53,10 +53,9 @@ session -a --static
 		f.StringP("name", "n", "", "session name")
 		f.StringP("target", "t", "", "session target")
 		f.String("pipeline", "", "pipeline id")
-		bindSessNewCmd.MarkFlagRequired("target")
-		bindSessNewCmd.MarkFlagRequired("pipeline")
 	})
-
+	bindSessNewCmd.MarkFlagRequired("target")
+	bindSessNewCmd.MarkFlagRequired("pipeline")
 	common.BindFlagCompletions(bindSessNewCmd, func(comp carapace.ActionMap) {
 		comp["pipeline"] = common.AllPipelineCompleter(con)
 	})

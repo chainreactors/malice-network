@@ -9,12 +9,7 @@ import (
 	"net"
 
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/encoders"
-	"github.com/chainreactors/malice-network/helper/encoders/hash"
 	"github.com/chainreactors/malice-network/server/internal/core"
-	"github.com/chainreactors/malice-network/server/internal/parser"
-	"github.com/chainreactors/malice-network/server/internal/parser/malefic"
-	cryptostream "github.com/chainreactors/malice-network/server/internal/stream"
 )
 
 func NewBindPipeline(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline) (*BindPipeline, error) {
@@ -102,17 +97,32 @@ func (pipeline *BindPipeline) handlerReq(req *clientpb.SpiteRequest) error {
 	if err != nil {
 		return err
 	}
-	peekConn, err := pipeline.WrapConn(conn)
+
+	// Bind mode: Use WrapBindConn which doesn't pre-read
+	// Server needs to send data first, then receive response
+	peekConn, err := pipeline.WrapBindConn(conn)
+	if err != nil {
+		logs.Log.Errorf("wrap bind conn error: %v", err)
+		conn.Close()
+		return err
+	}
+	defer peekConn.Close()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
 	var connect *core.Connection
 	if req.Spite.Name == consts.ModuleInit {
-		connect, err = pipeline.initConnection(peekConn, req)
+		err := peekConn.Parser.WritePacket(peekConn, types.BuildOneSpites(req.Spite), req.Session.RawId)
 		if err != nil {
+			logs.Log.Errorf("failed to send init packet: %v", err)
 			return err
 		}
+		keyPair := core.GetKeyPairForSession(req.Session.RawId, pipeline.SecureConfig)
+		connect = core.NewConnection(peekConn.Parser, req.Session.RawId, pipeline.Name, keyPair)
+		core.Connections.Add(connect)
 	} else {
-		connect, err = pipeline.getConnection(req.Session.RawId)
+		connect, err = core.GetConnection(peekConn, pipeline.Name, pipeline.SecureConfig)
 		if err != nil {
 			return err
 		}
@@ -124,42 +134,4 @@ func (pipeline *BindPipeline) handlerReq(req *clientpb.SpiteRequest) error {
 		return err
 	}
 	return nil
-}
-
-func (pipeline *BindPipeline) initConnection(conn *cryptostream.Conn, req *clientpb.SpiteRequest) (*core.Connection, error) {
-	p := &parser.MessageParser{
-		Implant:      consts.ImplantMalefic,
-		PacketParser: &malefic.MaleficParser{},
-	}
-	go p.WritePacket(conn, types.BuildOneSpites(req.Spite), req.Session.RawId)
-
-	keyPair := core.GetKeyPairForSession(req.Session.RawId, pipeline.SecureConfig)
-
-	connect := core.NewConnection(p, req.Session.RawId, pipeline.ID(), keyPair)
-	core.Connections.Add(connect)
-	return connect, nil
-}
-
-// getConnection Bind pipeline 特殊的连接获取实现
-// Bind pipeline 不使用 SecureConfig 交换密钥对，只从 session 获取
-func (pipeline *BindPipeline) getConnection(sid uint32) (*core.Connection, error) {
-	sessionID := hash.Md5Hash(encoders.Uint32ToBytes(sid))
-
-	// 尝试从现有连接池获取连接
-	if existingConn := core.Connections.Get(sessionID); existingConn != nil {
-		return existingConn, nil
-	}
-
-	// 创建新的 parser
-	p, err := parser.NewParser(pipeline.Parser)
-	if err != nil {
-		return nil, err
-	}
-
-	keyPair := core.GetKeyPairForSession(sid, pipeline.SecureConfig)
-
-	// 创建新连接
-	newConn := core.NewConnection(p, sid, pipeline.ID(), keyPair)
-	core.Connections.Add(newConn)
-	return newConn, nil
 }

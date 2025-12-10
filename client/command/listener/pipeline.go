@@ -101,13 +101,10 @@ func ListPipelineCmd(cmd *cobra.Command, con *core.Console) error {
 func StartPipelineCmd(cmd *cobra.Command, con *core.Console) error {
 	name := cmd.Flags().Arg(0)
 
-	if _, ok := con.Pipelines[name]; ok {
-		_, err := con.Rpc.StopPipeline(con.Context(), &clientpb.CtrlPipeline{
+	if p, ok := con.Pipelines[name]; ok && p.Enable {
+		con.Rpc.StopPipeline(con.Context(), &clientpb.CtrlPipeline{
 			Name: name,
 		})
-		if err != nil {
-			return err
-		}
 	}
 	certName, _ := cmd.Flags().GetString("cert-name")
 	_, err := con.Rpc.StartPipeline(con.Context(), &clientpb.CtrlPipeline{

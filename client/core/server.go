@@ -182,6 +182,9 @@ func (s *Server) EventHandler() {
 		return
 	}
 	s.Update()
+	if s.GetInteractive() != nil {
+		s.UpdateSession(s.GetInteractive().SessionId)
+	}
 	s.EventStatus = true
 	client.Log.Info("starting event loop\n")
 	defer func() {

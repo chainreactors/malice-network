@@ -79,6 +79,9 @@ func GetConnection(conn *cryptostream.Conn, pipelineID string, secureConfig *imp
 // 优先从 ListenerSessions 获取，如果没有则从 secureConfig 获取交换密钥对
 func GetKeyPairForSession(sid uint32, secureConfig *implanttypes.SecureConfig) *clientpb.KeyPair {
 	// 优先从 session 中获取 KeyPair
+	if secureConfig == nil || !secureConfig.Enable {
+		return nil
+	}
 	if session := ListenerSessions.Get(sid); session != nil {
 		return session.KeyPair
 	}

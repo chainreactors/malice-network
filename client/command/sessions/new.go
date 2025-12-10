@@ -36,7 +36,8 @@ func NewBindSession(con *core.Console, PipelineID string, target string, name st
 		Target:     target,
 		Type:       consts.ImplantMaleficBind,
 		RegisterData: &implantpb.Register{
-			Name: name,
+			Name:  name,
+			Timer: &implantpb.Timer{},
 		},
 	})
 	if err != nil {
@@ -46,8 +47,8 @@ func NewBindSession(con *core.Console, PipelineID string, target string, name st
 	if err != nil {
 		return nil, err
 	}
-	_, err = con.Rpc.InitBindSession(sess.Context(), &implantpb.Request{
-		Name: consts.ModuleInit,
+	_, err = con.Rpc.InitBindSession(sess.Context(), &implantpb.Init{
+		Data: sess.Raw(),
 	})
 	if err != nil {
 		return nil, err

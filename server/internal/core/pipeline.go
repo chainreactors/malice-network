@@ -62,6 +62,16 @@ func (p *PipelineConfig) WrapConn(conn io.ReadWriteCloser) (*cryptostream.Conn, 
 	return cryptostream.WrapPeekConn(conn, crys, p.Parser)
 }
 
+// WrapBindConn wraps a connection for bind mode without pre-reading
+// Bind mode expects server to send data first, then receive response
+func (p *PipelineConfig) WrapBindConn(conn io.ReadWriteCloser) (*cryptostream.Conn, error) {
+	crys, err := configs.NewCrypto(p.Encryption.ToProtobuf())
+	if err != nil {
+		return nil, err
+	}
+	return cryptostream.WrapBindConn(conn, crys)
+}
+
 //
 //func (p *PipelineConfig) ToFile() *clientpb.Pipeline {
 //	return &clientpb.Pipeline{

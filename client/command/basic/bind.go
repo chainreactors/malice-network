@@ -2,7 +2,6 @@ package basic
 
 import (
 	"github.com/chainreactors/IoM-go/client"
-	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/client/core"
@@ -49,8 +48,8 @@ func InitCmd(cmd *cobra.Command, con *core.Console) error {
 }
 
 func Init(con *core.Console, sess *client.Session) (bool, error) {
-	_, err := con.Rpc.InitBindSession(sess.Context(), &implantpb.Request{
-		Name: consts.ModuleInit,
+	_, err := con.Rpc.InitBindSession(sess.Context(), &implantpb.Init{
+		Data: sess.Raw(),
 	})
 	if err != nil {
 		return false, err

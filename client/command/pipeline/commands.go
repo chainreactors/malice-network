@@ -20,13 +20,13 @@ func Commands(con *core.Console) []*cobra.Command {
 		Args: cobra.MaximumNArgs(1),
 		Example: `~~~
 // Register a TCP pipeline with the default settings
-tcp --listener tcp_default
+tcp --listener listener
 
 // Register a TCP pipeline with a custom name, host, and port
-tcp --name tcp_test --listener tcp_default --host 192.168.0.43 --port 5003
+tcp --name tcp_test --listener listener --host 192.168.0.43 --port 5003
 
 // Register a TCP pipeline with TLS enabled and specify certificate and key paths
-tcp --listener tcp_default --tls --cert_path /path/to/cert --key_path /path/to/key
+tcp --listener listener --tls --cert_path /path/to/cert --key_path /path/to/key
 ~~~`,
 	}
 	common.BindFlag(tcpCmd, common.PipelineFlagSet, common.TlsCertFlagSet, common.SecureFlagSet, common.EncryptionFlagSet)
@@ -53,13 +53,13 @@ tcp --listener tcp_default --tls --cert_path /path/to/cert --key_path /path/to/k
 		Args: cobra.MaximumNArgs(1),
 		Example: `~~~
 // Register an HTTP pipeline with the default settings
-http --listener http_default
+http --listener listener
 
 // Register an HTTP pipeline with custom headers and error page
-http --name http_test --listener http_default --host 192.168.0.43 --port 8080 --headers "Content-Type=text/html" --error-page /path/to/error.html
+http --name http_test --listener listener --host 192.168.0.43 --port 8080 --headers "Content-Type=text/html" --error-page /path/to/error.html
 
 // Register an HTTP pipeline with TLS enabled
-http --listener http_default --tls --cert_path /path/to/cert --key_path /path/to/key
+http --listener listener --tls --cert_path /path/to/cert --key_path /path/to/key
 ~~~`,
 	}
 
@@ -95,7 +95,7 @@ http --listener http_default --tls --cert_path /path/to/cert --key_path /path/to
 		Example: `
 new bind pipeline
 ~~~
-bind listener
+bind --listener listener
 ~~~
 `,
 	}

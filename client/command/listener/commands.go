@@ -57,7 +57,7 @@ job
 			return StartPipelineCmd(cmd, con)
 		},
 		Example: `~~~
-tcp start tcp_test
+pipeline start tcp_test
 ~~~`,
 	}
 

@@ -102,6 +102,36 @@ func WrapPeekConn(conn io.ReadWriteCloser, cryptos []Cryptor, parserName string)
 	}, nil
 }
 
+// WrapBindConn wraps a connection for bind mode without pre-reading
+// Bind mode: Server actively sends data first, then receives response from implant
+// Only supports malefic parser in bind mode
+func WrapBindConn(conn io.ReadWriteCloser, cryptos []Cryptor) (*Conn, error) {
+	if len(cryptos) == 0 {
+		return nil, net.ErrClosed
+	}
+
+	// Use the first cryptor for bind mode
+	c := cryptos[0]
+
+	// Bind mode only uses malefic parser
+	p, err := parser.NewParser("malefic")
+	if err != nil {
+		return nil, err
+	}
+
+	if _, ok := conn.(net.Conn); ok {
+		conn = NewCryptoConn(conn.(net.Conn), c)
+	} else {
+		conn = NewCryptoRWC(conn, c)
+	}
+
+	return &Conn{
+		ReadWriteCloser: conn,
+		Parser:          p,
+		buf:             nil, // No pre-read buffer for bind mode
+	}, nil
+}
+
 type Conn struct {
 	io.ReadWriteCloser
 	buf    []byte

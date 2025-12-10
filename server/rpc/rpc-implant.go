@@ -154,11 +154,7 @@ func (rpc *Server) Switch(ctx context.Context, req *implantpb.Switch) (*clientpb
 	return greq.Task.ToProtobuf(), nil
 }
 
-func (rpc *Server) InitBindSession(ctx context.Context, req *implantpb.Request) (*clientpb.Empty, error) {
-	err := types.AssertRequestName(req, consts.ModuleInit)
-	if err != nil {
-		return nil, err
-	}
+func (rpc *Server) InitBindSession(ctx context.Context, req *implantpb.Init) (*clientpb.Empty, error) {
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
