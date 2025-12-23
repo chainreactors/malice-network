@@ -2,16 +2,17 @@ package plugin
 
 import (
 	"fmt"
-	"github.com/kballard/go-shellquote"
-	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
-	lua "github.com/yuin/gopher-lua"
-	"golang.org/x/exp/slices"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/kballard/go-shellquote"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+	lua "github.com/yuin/gopher-lua"
+	"golang.org/x/exp/slices"
 
 	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
@@ -355,7 +356,7 @@ func (plug *LuaPlugin) RegisterLuaFunction() {
 					var outFunc intermediate.BuiltinCallback
 					if outFile, _ := cmd.Flags().GetString("output_file"); outFile == "" {
 						outFunc = func(content interface{}) (interface{}, error) {
-							logs.Log.Consolef("%v\n", content)
+							//logs.Log.Consolef("%v\n", content)
 							return true, nil
 						}
 					} else {

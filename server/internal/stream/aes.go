@@ -45,7 +45,6 @@ func (e *AesCtrEncryptor) Encrypt(reader io.Reader, writer io.Writer) error {
 
 	data := buffer.Bytes()
 
-	// 使用独立的加密 stream
 	e.encryptStream.XORKeyStream(data, data)
 
 	_, err = writer.Write(data)
