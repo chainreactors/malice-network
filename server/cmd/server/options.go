@@ -341,6 +341,12 @@ func RecoverWebsites() error {
 			logs.Log.Errorf("cannot find listener %s for website %s: %s", website.ListenerId, website.Name, err.Error())
 			continue
 		}
+		// If the pipeline already exists in memory (typically because it was started during listener boot),
+		// skip to avoid duplicate binds and unnecessary restarts.
+		if listener.GetPipeline(website.Name) != nil {
+			logs.Log.Debugf("skip recover website %s: already started", website.Name)
+			continue
+		}
 		webpb := website.ToProtobuf()
 		if webpb == nil {
 			logs.Log.Errorf("failed to convert website %s to protobuf", website.Name)
@@ -370,6 +376,74 @@ func RecoverWebsites() error {
 	return nil
 }
 
+// RecoverPipelines tries to start all enabled pipelines (non-website) for the given listener.
+// If a pipeline启动失败（例如端口占用），会把数据库里的 enable 置回 false，避免 UI 误显示 Running。
+func RecoverPipelines(listenerID string) error {
+	pipelines, err := db.NewPipelineQuery().
+		WhereListenerID(listenerID).
+		WhereNotType(consts.WebsitePipeline).
+		WhereEnabled(true).
+		Find()
+	if err != nil {
+		return err
+	}
+
+	if len(pipelines) == 0 {
+		return nil
+	}
+
+	lns, err := core.Listeners.Get(listenerID)
+	if err != nil {
+		return err
+	}
+
+	for _, pipeline := range pipelines {
+		// If the pipeline already exists in memory (typically because it was started during listener boot),
+		// skip to avoid duplicate binds and unnecessary restarts.
+		if lns.GetPipeline(pipeline.Name) != nil {
+			logs.Log.Debugf("skip recover pipeline %s: already started", pipeline.Name)
+			continue
+		}
+
+		pipePb := pipeline.ToProtobuf()
+		if pipePb == nil {
+			logs.Log.Errorf("cannot recover pipeline %s: protobuf nil", pipeline.Name)
+			continue
+		}
+
+		job := &core.Job{
+			ID:       core.NextJobID(),
+			Pipeline: pipePb,
+			Name:     pipeline.Name,
+		}
+
+		ctrlType := consts.CtrlPipelineStart
+		// REM pipelines are started via CtrlRemStart (not CtrlPipelineStart).
+		if pipeline.Type == consts.RemPipeline {
+			ctrlType = consts.CtrlRemStart
+		}
+
+		ctrlID := lns.PushCtrl(&clientpb.JobCtrl{
+			Ctrl: ctrlType,
+			Job:  job.ToProtobuf(),
+		})
+
+		status := lns.WaitCtrl(ctrlID)
+		if status == nil || status.Status != consts.CtrlStatusSuccess {
+			_ = db.DisablePipeline(pipeline.Name)
+			if status != nil && status.Error != "" {
+				logs.Log.Warnf("recover pipeline %s failed: %s", pipeline.Name, status.Error)
+			} else {
+				logs.Log.Warnf("recover pipeline %s failed: unknown error", pipeline.Name)
+			}
+			continue
+		}
+
+		logs.Log.Infof("recovered pipeline %s on %s:%d", pipeline.Name, pipeline.IP, pipeline.Port)
+	}
+	return nil
+}
+
 func StartListener(opt *configs.ListenerConfig, serverEnable bool) error {
 	if listenerConf, err := mtls.ReadConfig(opt.Auth); err != nil {
 		return err
@@ -385,6 +459,11 @@ func StartListener(opt *configs.ListenerConfig, serverEnable bool) error {
 	if err != nil {
 		logs.Log.Errorf("failed to recover websites: %s", err.Error())
 		// Don't return error, just log it - website recovery failure shouldn't prevent listener from starting
+	}
+
+	// Recover enabled pipelines from DB after listener is started
+	if err := RecoverPipelines(opt.Name); err != nil {
+		logs.Log.Errorf("failed to recover pipelines: %s", err.Error())
 	}
 
 	return nil

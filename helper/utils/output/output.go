@@ -142,3 +142,45 @@ func FormatKVResponse(ctx *clientpb.TaskContext) (string, error) {
 	tableModel.Title = ctx.Task.Type
 	return tableModel.View(), nil
 }
+
+// ParseCommonBody returns the CommonBody attached to the spite, if any.
+func ParseCommonBody(ctx *clientpb.TaskContext) (interface{}, error) {
+	common := ctx.Spite.GetCommon()
+	if common == nil {
+		return nil, fmt.Errorf("no common body")
+	}
+	return common, nil
+}
+
+// FormatCommonBody renders CommonBody content as a readable string.
+func FormatCommonBody(ctx *clientpb.TaskContext) (string, error) {
+	common := ctx.Spite.GetCommon()
+	if common == nil {
+		return "", fmt.Errorf("no common body")
+	}
+
+	var parts []string
+	if len(common.StringArray) > 0 {
+		parts = append(parts, strings.Join(common.StringArray, "\n"))
+	}
+	if len(common.U32Array) > 0 {
+		parts = append(parts, fmt.Sprintf("u32: %v", common.U32Array))
+	}
+	if len(common.U64Array) > 0 {
+		parts = append(parts, fmt.Sprintf("u64: %v", common.U64Array))
+	}
+	if len(common.BoolArray) > 0 {
+		parts = append(parts, fmt.Sprintf("bool: %v", common.BoolArray))
+	}
+	if len(common.BytesArray) > 0 {
+		sizes := make([]string, 0, len(common.BytesArray))
+		for _, b := range common.BytesArray {
+			sizes = append(sizes, fmt.Sprintf("%dB", len(b)))
+		}
+		parts = append(parts, fmt.Sprintf("bytes: %v", sizes))
+	}
+	if len(parts) == 0 {
+		return "common body empty", nil
+	}
+	return strings.Join(parts, "\n"), nil
+}

@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
@@ -83,6 +84,12 @@ func (rpc *Server) StartPipeline(ctx context.Context, req *clientpb.CtrlPipeline
 	if err != nil {
 		return nil, err
 	}
+
+	if existing := lns.GetPipeline(req.Name); existing != nil && existing.Enable {
+		_ = db.EnablePipeline(req.Name)
+		return &clientpb.Empty{}, nil
+	}
+
 	pipelineProto := pipelineDB.ToProtobuf()
 	job := &core.Job{
 		ID:       core.NextJobID(),
@@ -90,12 +97,21 @@ func (rpc *Server) StartPipeline(ctx context.Context, req *clientpb.CtrlPipeline
 		Name:     req.Name,
 	}
 
-	lns.PushCtrl(&clientpb.JobCtrl{
+	ctrlID := lns.PushCtrl(&clientpb.JobCtrl{
 		Ctrl: consts.CtrlPipelineStart,
 		Job:  job.ToProtobuf()})
+
+	status := lns.WaitCtrl(ctrlID)
+	if status == nil || status.Status != consts.CtrlStatusSuccess {
+		_ = db.DisablePipeline(pipelineDB.Name)
+		if status != nil && status.Error != "" {
+			return nil, fmt.Errorf("start pipeline %s failed: %s", req.Name, status.Error)
+		}
+		return nil, fmt.Errorf("start pipeline %s failed: unknown error", req.Name)
+	}
+
 	pipeline := pipelineDB.ToProtobuf()
-	err = db.EnablePipeline(pipeline.Name)
-	if err != nil {
+	if err := db.EnablePipeline(pipeline.Name); err != nil {
 		return nil, err
 	}
 	return &clientpb.Empty{}, nil

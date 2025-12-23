@@ -2,18 +2,16 @@ package sessions
 
 import (
 	"fmt"
-	"github.com/chainreactors/IoM-go/client"
-	"github.com/chainreactors/IoM-go/consts"
-	"github.com/chainreactors/IoM-go/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/tui"
-	"github.com/evertras/bubble-table/table"
-	"github.com/spf13/cobra"
 	"io"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/chainreactors/IoM-go/client"
+	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/tui"
+	"github.com/evertras/bubble-table/table"
+	"github.com/spf13/cobra"
 )
 
 // formatTimeDiff formats time difference in seconds to human readable format
@@ -133,25 +131,6 @@ func PrintSessions(sessions map[string]*client.Session, con *core.Console, isAll
 		return
 	}
 	tui.Reset()
-	if con.ActiveTarget.Session != nil {
-		// Load session history
-		sess := con.Session
-		profile, err := assets.GetProfile()
-		if err != nil {
-			client.Log.Errorf("Failed to get profile: %v", err)
-		} else {
-			contexts, err := con.Rpc.GetSessionHistory(sess.Context(), &clientpb.Int{
-				Limit: int32(profile.Settings.MaxServerLogSize),
-			})
-			if err != nil {
-				client.Log.Errorf("Failed to get session history: %v", err)
-			} else {
-				for _, context := range contexts.Contexts {
-					core.HandlerTask(sess, sess.Log, context, []byte{}, consts.CalleeCMD, true)
-				}
-			}
-		}
-	}
 }
 
 func SessionLogin(tableModel *tui.TableModel, writer io.Writer, con *core.Console) func() {

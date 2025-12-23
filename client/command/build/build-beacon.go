@@ -112,7 +112,7 @@ func prepareBuildConfig(cmd *cobra.Command, con *core.Console, buildType string)
 	buildConfig := &clientpb.BuildConfig{
 		ProfileName: profileName,
 		Target:      target,
-		BuildType:   consts.CommandBuildBeacon,
+		BuildType:   buildType,
 		ArtifactId:  artifactId,
 	}
 	buildConfig, err = parseSourceConfig(cmd, con, buildConfig)
@@ -141,6 +141,11 @@ func prepareBuildConfig(cmd *cobra.Command, con *core.Console, buildType string)
 	profile, err = parseBuildFlags(cmd, profile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse build flags: %w", err)
+	}
+
+	// align implant mode with requested build type
+	if profile.Implant != nil && (buildType == consts.CommandBuildBeacon || buildType == consts.CommandBuildBind) {
+		profile.Implant.Mod = buildType
 	}
 
 	// Handle artifact ID for pulse builds

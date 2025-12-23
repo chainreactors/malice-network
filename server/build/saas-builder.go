@@ -72,7 +72,7 @@ func (s *SaasBuilder) Generate() (*clientpb.Artifact, error) {
 	//paramsBase64Encoded := encode.Base64Encode(s.config.ParamsBytes)
 	//s.config.Inputs["build_params"] = paramsBase64Encoded
 	artifactId := s.config.ArtifactId
-	if artifactId != 0 && s.config.BuildType == consts.CommandBuildBeacon {
+	if artifactId != 0 && (s.config.BuildType == consts.CommandBuildBeacon || s.config.BuildType == consts.CommandBuildBind) {
 		artifact, err = db.SaveArtifactFromID(s.config, artifactId)
 	} else {
 		artifact, err = db.SaveArtifactFromConfig(s.config)

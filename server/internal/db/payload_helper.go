@@ -4,12 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/chainreactors/IoM-go/consts"
-	"github.com/chainreactors/IoM-go/proto/client/clientpb"
-	types "github.com/chainreactors/IoM-go/types"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	types "github.com/chainreactors/IoM-go/types"
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/encoders"
@@ -119,6 +120,11 @@ func NewProfile(profile *clientpb.Profile) error {
 		}
 
 		profile.Content = yamlContent
+	}
+
+	_, err := implanttypes.LoadProfile(profile.Content)
+	if err != nil {
+		return fmt.Errorf("profile validation failed: %w", err)
 	}
 
 	model := &models.Profile{
@@ -278,15 +284,17 @@ func DeleteProfileByName(profileName string) error {
 		return result.Error
 	}
 
+	//err := fileutils.ForceRemoveAll(filepath.Join(configs.ProfilePath, profileName))
+	//if err != nil {
+	//	return fmt.Errorf("could not remove profile '%s': %w", profileName, err)
+	//}
+
 	// Execute deletion
 	err := Session().Where("name = ?", profileName).Delete(&models.Profile{}).Error
 	if err != nil {
 		return fmt.Errorf("failed to delete profile '%s': %v", profileName, err)
 	}
-	err = fileutils.ForceRemoveAll(filepath.Join(configs.ProfilePath, profileName))
-	if err != nil {
-		return err
-	}
+
 	return nil
 }
 

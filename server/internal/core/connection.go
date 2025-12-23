@@ -3,11 +3,12 @@ package core
 import (
 	"context"
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	types "github.com/chainreactors/IoM-go/types"
 	"github.com/chainreactors/malice-network/helper/implanttypes"
-	"sync"
-	"time"
 
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/logs"
@@ -179,7 +180,6 @@ func (c *Connection) buildResponse(conn *cryptostream.Conn, length uint32) error
 	var msg *implantpb.Spites
 	if length >= 2 {
 		var err error
-		// Parser 内部会自动处理加解密逻辑
 		msg, err = c.Parser.ReadMessage(conn, length)
 		if err != nil {
 			return fmt.Errorf("error reading message:%s %w", conn.RemoteAddr(), err)

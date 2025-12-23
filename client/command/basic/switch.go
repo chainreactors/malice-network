@@ -1,6 +1,8 @@
 package basic
 
 import (
+	"fmt"
+
 	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
@@ -12,16 +14,27 @@ import (
 
 func SwitchCmd(cmd *cobra.Command, con *core.Console) error {
 	session := con.GetInteractive()
-	input := cmd.Flags().Args()
+	pipeline, _ := cmd.Flags().GetString("pipeline")
+	address, _ := cmd.Flags().GetString("address")
+
 	var urls []string
-	for _, u := range input {
-		if pipe, ok := con.Pipelines[u]; ok {
+	if pipeline != "" {
+		if pipe, ok := con.Pipelines[pipeline]; ok {
 			urls = append(urls, pipe.Address())
-		} else if addr := utils.NewAddr(u); addr != nil {
+		} else {
+			return fmt.Errorf("no such pipeline: %s", pipeline)
+		}
+	}
+	if address != "" {
+		if addr := utils.NewAddr(address); addr != nil {
 			urls = append(urls, addr.String())
 		} else {
-			session.Log.Warnf("no such pipeline or valid address: %s\n", u)
+			return fmt.Errorf("invalid address format: %s", address)
 		}
+	}
+
+	if len(urls) == 0 {
+		return fmt.Errorf("must specify --pipeline or --address")
 	}
 
 	task, err := Switch(con.Rpc, session, urls)

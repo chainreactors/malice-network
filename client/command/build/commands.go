@@ -190,7 +190,16 @@ build bind --target x86_64-pc-windows-gnu --profile tcp_default --source saas
 ~~~`,
 	}
 
-	common.BindFlag(bindCmd, common.GenerateFlagSet, common.GithubFlagSet, BeaconFlagSet)
+	common.BindFlag(bindCmd,
+		common.GenerateFlagSet,
+		common.GithubFlagSet,
+		BeaconFlagSet,
+		ProxyFlagSet,
+		ModuleFlagSet,
+		AntiFlagSet,
+		GuardrailFlagSet,
+		OllvmFlagSet,
+	)
 	bindCmd.MarkFlagRequired("target")
 	bindCmd.MarkFlagRequired("profile")
 	common.BindFlagCompletions(bindCmd, func(comp carapace.ActionMap) {
@@ -199,8 +208,6 @@ build bind --target x86_64-pc-windows-gnu --profile tcp_default --source saas
 		comp["target"] = common.BuildTargetCompleter(con)
 		comp["source"] = common.BuildResourceCompleter(con)
 	})
-
-	bindCmd.Hidden = true
 
 	preludeCmd := &cobra.Command{
 		Use:   consts.CommandBuildPrelude,

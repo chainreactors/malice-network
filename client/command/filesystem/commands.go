@@ -258,7 +258,7 @@ func Register(con *core.Console) {
 		Cat,
 		"bcat",
 		Cat,
-		output.ParseResponse,
+		output.ParseBinaryResponse,
 		nil)
 
 	con.AddCommandFuncHelper(

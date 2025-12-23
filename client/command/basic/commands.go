@@ -114,16 +114,22 @@ wait 59
 	}
 
 	switchCmd := &cobra.Command{
-		Use:   consts.ModuleSwitch + " [pipeline name]",
+		Use:   consts.ModuleSwitch,
 		Short: "switch session",
-		Args:  cobra.ExactArgs(1),
 		Long:  "Switch session to other pipeline connection",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return SwitchCmd(cmd, con)
 		},
 	}
 
-	common.BindArgCompletions(switchCmd, nil, common.AllPipelineCompleter(con))
+	common.BindFlag(switchCmd, func(f *pflag.FlagSet) {
+		f.StringP("pipeline", "p", "", "pipeline name")
+		f.StringP("address", "a", "", "target address (ip:port)")
+	})
+
+	common.BindFlagCompletions(switchCmd, func(comp carapace.ActionMap) {
+		comp["pipeline"] = common.AllPipelineCompleter(con)
+	})
 
 	return []*cobra.Command{sleepCmd, suicideCmd, getCmd, waitCmd, pollingCmd, initCmd, recoverCmd, infoCommand, switchCmd}
 }

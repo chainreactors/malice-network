@@ -36,7 +36,6 @@ func (sc *CryptoConn) Write(data []byte) (int, error) {
 	return sc.ReadWriteCloser.Write(encryptedData)
 }
 
-// Read 方法从底层连接读取数据并解密
 func (sc *CryptoConn) Read(data []byte) (int, error) {
 	encryptedData := make([]byte, 1024)
 	n, err := sc.ReadWriteCloser.Read(encryptedData)
@@ -44,7 +43,6 @@ func (sc *CryptoConn) Read(data []byte) (int, error) {
 		return 0, err
 	}
 
-	// 解密读取到的数据
 	decryptedData, err := sc.decrypt(encryptedData[:n])
 	if err != nil {
 		return 0, err
@@ -58,12 +56,10 @@ func (sc *CryptoConn) Close() error {
 	return sc.ReadWriteCloser.Close()
 }
 
-// 加密数据
 func (sc *CryptoConn) encrypt(data []byte) ([]byte, error) {
 	reader := bytes.NewReader(data)
 	writer := &bytes.Buffer{}
 
-	// 使用加密器加密数据
 	err := sc.Cryptor.Encrypt(reader, writer)
 	if err != nil {
 		return nil, err

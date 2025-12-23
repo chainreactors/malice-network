@@ -218,7 +218,10 @@ func AddTask(task *clientpb.Task) error {
 		Total:      int(task.Total),
 		ClientName: task.Callby,
 	}
-	return Session().Create(taskModel).Error
+	return Session().Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "id"}},
+		DoUpdates: clause.AssignmentColumns([]string{"seq", "type", "session_id", "cur", "total", "client_name"}),
+	}).Create(taskModel).Error
 }
 
 func UpdateTask(task *clientpb.Task) error {

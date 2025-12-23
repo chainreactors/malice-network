@@ -2,8 +2,10 @@ package listener
 
 import (
 	"fmt"
-	"github.com/chainreactors/malice-network/client/core"
 	"strconv"
+	"strings"
+
+	"github.com/chainreactors/malice-network/client/core"
 
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
@@ -33,7 +35,7 @@ func ListPipelineCmd(cmd *cobra.Command, con *core.Console) error {
 		table.NewColumn("ListenerID", "ListenerID", 11),
 		table.NewColumn("Address", "Address", 32),
 		table.NewColumn("Parser", "Parser", 7),
-		table.NewColumn("Encryption", "Encryption", 10),
+		table.NewColumn("Encryption", "Encryption", 20),
 		table.NewColumn("TLS", "TLS", 6),
 	}, true)
 	for _, pipeline := range pipelines.GetPipelines() {
@@ -54,8 +56,8 @@ func ListPipelineCmd(cmd *cobra.Command, con *core.Console) error {
 			for _, enc := range pipeline.Encryption {
 				encryption = append(encryption, fmt.Sprintf("%s/%s", enc.Type, enc.Key))
 			}
-			newRow["Encryption"] = fmt.Sprintf("%s", encryption)
-		} else if pipeline.Encryption != nil {
+			newRow["Encryption"] = strings.Join(encryption, ",")
+		} else {
 			newRow["Encryption"] = "raw"
 		}
 		switch body := pipeline.Body.(type) {

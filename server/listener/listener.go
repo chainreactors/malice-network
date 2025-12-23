@@ -422,7 +422,16 @@ func (lns *listener) syncPipeline(pipeline *clientpb.Job) error {
 
 func (lns *listener) startPipeline(pipelinepb *clientpb.Pipeline) (core.Pipeline, error) {
 	var err error
-	p := lns.pipelines.Get(pipelinepb.Name)
+	if pipelinepb == nil {
+		return nil, fmt.Errorf("pipeline is nil")
+	}
+
+	// Idempotency: if pipeline already exists locally, treat start as a no-op.
+	if existing := lns.pipelines.Get(pipelinepb.Name); existing != nil {
+		return existing, nil
+	}
+
+	var p core.Pipeline
 	switch pipelinepb.Body.(type) {
 	case *clientpb.Pipeline_Tcp:
 		p, err = NewTcpPipeline(lns.Rpc, pipelinepb)
@@ -460,6 +469,16 @@ func (lns *listener) handlerStop(job *clientpb.Job) error {
 
 func (lns *listener) handleStartWebsite(job *clientpb.Job) error {
 	pipe := job.GetPipeline()
+	if pipe == nil {
+		return errors.New("pipeline is nil")
+	}
+
+	// Idempotency: website already started in this listener process.
+	if existing := lns.websites[pipe.Name]; existing != nil && existing.Enable {
+		_, err := lns.Rpc.SyncPipeline(lns.Context(), existing.ToProtobuf())
+		return err
+	}
+
 	web := pipe.GetWeb()
 
 	website, err := StartWebsite(lns.Rpc, job.GetPipeline(), web.Contents)
@@ -562,7 +581,17 @@ func (lns *listener) handleWebContentRemove(job *clientpb.Job) error {
 
 func (lns *listener) handleStartRem(job *clientpb.Job) error {
 	pipe := job.GetPipeline()
+	if pipe == nil {
+		return errors.New("pipeline is nil")
+	}
 	pipe.Ip = lns.IP
+
+	// Idempotency: REM already started in this listener process.
+	if existing := lns.pipelines.Get(pipe.Name); existing != nil {
+		_, err := lns.Rpc.SyncPipeline(lns.Context(), existing.ToProtobuf())
+		return err
+	}
+
 	rem, err := NewRem(lns.Rpc, pipe)
 	if err != nil {
 		return err

@@ -67,7 +67,7 @@ func (d *DockerBuilder) Generate() (*clientpb.Artifact, error) {
 	// init artifact status
 	artifactId := d.config.ArtifactId
 	// save artifact and update status
-	if artifactId != 0 && d.config.BuildType == consts.CommandBuildBeacon {
+	if artifactId != 0 && (d.config.BuildType == consts.CommandBuildBeacon || d.config.BuildType == consts.CommandBuildBind) {
 		artifact, err = db.SaveArtifactFromID(d.config, artifactId)
 	} else {
 		artifact, err = db.SaveArtifactFromConfig(d.config)

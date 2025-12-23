@@ -2,6 +2,9 @@ package sys
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
+
 	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
@@ -11,8 +14,6 @@ import (
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
-	"strconv"
-	"strings"
 )
 
 func PsCmd(cmd *cobra.Command, con *core.Console) error {
@@ -66,10 +67,10 @@ func RegisterPsFunc(con *core.Console) {
 				table.NewColumn("Name", "Name", 15),
 				table.NewColumn("PID", "PID", 5),
 				table.NewColumn("PPID", "PPID", 5),
-				table.NewColumn("Arch", "Arch", 7),
-				table.NewColumn("Owner", "Owner", 25),
-				table.NewColumn("Path", "Path", 30),
-				table.NewColumn("Args", "Args", 50),
+				table.NewColumn("Arch", "Arch", 5),
+				table.NewColumn("Owner", "Owner", 20),
+				table.NewColumn("Path", "Path", 64),
+				table.NewColumn("Args", "Args", 100),
 			}, true)
 			for _, process := range resp.GetProcesses() {
 				row = table.NewRow(

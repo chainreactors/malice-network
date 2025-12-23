@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
@@ -113,7 +114,7 @@ func (rpc *Server) Cat(ctx context.Context, req *implantpb.Request) (*clientpb.T
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgResponse)
+	go greq.HandlerResponse(ch, types.MsgBinaryResponse)
 	return greq.Task.ToProtobuf(), nil
 }
 
