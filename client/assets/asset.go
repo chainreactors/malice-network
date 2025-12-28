@@ -159,13 +159,28 @@ func LoadConfig(filename string) (*mtls.ClientConfig, error) {
 func MvConfig(oldPath string) error {
 	fileName := filepath.Base(oldPath)
 	newPath := filepath.Join(GetConfigDir(), fileName)
+
+	// Check if source and destination are the same to avoid deleting the file
+	oldPathAbs, err := filepath.Abs(oldPath)
+	if err != nil {
+		return err
+	}
+	newPathAbs, err := filepath.Abs(newPath)
+	if err != nil {
+		return err
+	}
+	if oldPathAbs == newPathAbs {
+		// File is already in the correct location, no need to move
+		return nil
+	}
+
 	if fileutils.Exist(newPath) {
 		err := fileutils.RemoveFile(newPath)
 		if err != nil {
 			return err
 		}
 	}
-	err := fileutils.CopyFile(oldPath, newPath)
+	err = fileutils.CopyFile(oldPath, newPath)
 	if err != nil {
 		return err
 	}
