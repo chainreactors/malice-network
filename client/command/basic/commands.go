@@ -2,6 +2,7 @@ package basic
 
 import (
 	"errors"
+
 	"github.com/carapace-sh/carapace"
 	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
@@ -105,13 +106,24 @@ wait 59
 	}
 
 	infoCommand := &cobra.Command{
-		Use:   "info",
-		Short: "show session info",
-		Long:  "Displays the specified session info.",
+		Use:           "info [session]",
+		Short:         "show session info",
+		Long:          "Displays the specified session info. If no session ID is provided, shows info of the current active session.",
+		Args:          cobra.MaximumNArgs(1),
+		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return SessionInfoCmd(cmd, con)
 		},
+		Example: `~~~
+// Show current session info
+info
+
+// Show specific session info by ID prefix
+info b1ab9056
+~~~`,
 	}
+
+	common.BindArgCompletions(infoCommand, nil, common.SessionIDCompleter(con))
 
 	switchCmd := &cobra.Command{
 		Use:   consts.ModuleSwitch,

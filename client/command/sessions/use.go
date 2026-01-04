@@ -1,6 +1,9 @@
 package sessions
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/malice-network/client/command/addon"
@@ -9,14 +12,42 @@ import (
 )
 
 func UseSessionCmd(cmd *cobra.Command, con *core.Console) error {
-	var session *client.Session
 	sid := cmd.Flags().Arg(0)
-	session, err := con.GetOrUpdateSession(sid)
+
+	// Try exact match first
+	if session, err := con.GetOrUpdateSession(sid); err == nil {
+		return Use(con, session)
+	}
+
+	// Exact match failed, try prefix match
+	session, err := findSessionByPrefix(con, sid)
 	if err != nil {
 		return err
 	}
 
 	return Use(con, session)
+}
+
+// findSessionByPrefix finds session by prefix, returns error if multiple matches
+func findSessionByPrefix(con *core.Console, prefix string) (*client.Session, error) {
+	var matches []*client.Session
+	var matchIDs []string
+
+	for id, sess := range con.Sessions {
+		if strings.HasPrefix(id, prefix) {
+			matches = append(matches, sess)
+			matchIDs = append(matchIDs, id[:8]) // 只显示前 8 位
+		}
+	}
+
+	switch len(matches) {
+	case 0:
+		return nil, core.ErrNotFoundSession
+	case 1:
+		return matches[0], nil
+	default:
+		return nil, fmt.Errorf("ambiguous session prefix '%s', matches: %s", prefix, strings.Join(matchIDs, ", "))
+	}
 }
 
 func Use(con *core.Console, sess *client.Session) error {

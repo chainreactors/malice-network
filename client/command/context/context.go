@@ -17,10 +17,11 @@ func ListContexts(cmd *cobra.Command, con *core.Console) error {
 	var rowEntries []table.Row
 	for _, ctx := range contexts.Contexts {
 		row := table.NewRow(table.RowData{
-			"ID":      ctx.Id,
-			"Session": ctx.Session.SessionId,
-			"Task":    getTaskId(ctx.Task),
-			"Type":    ctx.Type,
+			"ID":        ctx.Id,
+			"Session":   ctx.Session.SessionId,
+			"Task":      getTaskId(ctx.Task),
+			"Type":      ctx.Type,
+			"CreatedAt": ctx.CreatedAt,
 		})
 		rowEntries = append(rowEntries, row)
 	}
@@ -29,7 +30,8 @@ func ListContexts(cmd *cobra.Command, con *core.Console) error {
 		table.NewColumn("ID", "ID", 36),
 		table.NewColumn("Session", "Session", 8),
 		table.NewColumn("Task", "Task", 8),
-		table.NewColumn("Type", "Type", 8),
+		table.NewColumn("Type", "Type", 12),
+		table.NewColumn("CreatedAt", "CreatedAt", 20),
 	}, true)
 
 	tableModel.SetRows(rowEntries)

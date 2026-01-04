@@ -3,13 +3,14 @@ package help
 import (
 	_ "embed"
 	"fmt"
+	"strconv"
+	"strings"
+	"text/template"
+
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/tui"
 	"github.com/muesli/termenv"
 	"github.com/spf13/cobra"
-	"strconv"
-	"strings"
-	"text/template"
 )
 
 func UsageFunc(cmd *cobra.Command) error {
@@ -46,8 +47,7 @@ func SetCustomUsageTemplate() (*template.Template, error) {
 {{RenderMarkdown "## Aliases:"}}
 {{RenderMarkdown .NameAndAliases}}{{end}}{{if .HasExample}}
 
-{{RenderMarkdown "## Examples:"}}
-{{RenderMarkdown .Example}}{{end}}{{if .HasAvailableSubCommands}}{{$cmds := .Commands}}{{if eq (len .Groups) 0}}
+{{RenderMarkdown "## Examples:"}}{{RenderMarkdown .Example}}{{end}}{{if .HasAvailableSubCommands}}{{$cmds := .Commands}}{{if eq (len .Groups) 0}}
 
 {{RenderMarkdown "## Available Commands:"}}{{range $cmds}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
     {{RenderHelp .}} {{.Short}}{{end}}{{end}}{{else}}{{range $group := .Groups}}
@@ -58,11 +58,9 @@ func SetCustomUsageTemplate() (*template.Template, error) {
 {{RenderMarkdown "## Additional Commands:"}}{{range $cmds}}{{if (and (eq .GroupID "") (or .IsAvailableCommand (eq .Name "help")))}}
     {{RenderHelp .}} {{.Short}}{{end}}{{end}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
 
-{{RenderMarkdown "## Flags:"}}
-{{RenderMarkdown (.LocalFlags | FlagUsages)}}{{end}}{{if .HasAvailableInheritedFlags}}
+{{RenderMarkdown "## Flags:"}}{{RenderMarkdown (.LocalFlags | FlagUsages)}}{{end}}{{if .HasAvailableInheritedFlags}}
 
-{{RenderMarkdown "## Global Flags:"}}
-{{RenderMarkdown (.InheritedFlags | FlagUsages)}}{{end}}{{if .HasHelpSubCommands}}
+{{RenderMarkdown "## Global Flags:"}}{{RenderMarkdown (.InheritedFlags | FlagUsages)}}{{end}}{{if .HasHelpSubCommands}}
 
 {{RenderMarkdown "## Additional help topics:"}}{{range .Commands}}{{if .IsAdditionalHelpTopicCommand}}
 {{RenderMarkdown (printf "%s %s" (rpad .CommandPath .CommandPathPadding) .Short)}}{{end}}{{end}}{{end}}{{if .HasAvailableSubCommands}}

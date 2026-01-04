@@ -15,16 +15,30 @@ import (
 )
 
 // formatTimeDiff formats time difference in seconds to human readable format
+// Uses compact format: <60s: "45s", <60m: "5m30s", <24h: "2h30m", >=24h: "15d6h"
 func formatTimeDiff(timestamp int64, isAlive bool) string {
 	now := time.Now().Unix()
 	diff := now - timestamp
 
 	var timeStr string
-	if diff > 0 {
-		duration := time.Duration(diff) * time.Second
-		timeStr = duration.String()
-	} else {
+	if diff <= 0 {
 		timeStr = "now"
+	} else {
+		seconds := diff % 60
+		minutes := (diff / 60) % 60
+		hours := (diff / 3600) % 24
+		days := diff / 86400
+
+		switch {
+		case diff < 60:
+			timeStr = fmt.Sprintf("%ds", seconds)
+		case diff < 3600:
+			timeStr = fmt.Sprintf("%dm%ds", minutes, seconds)
+		case diff < 86400:
+			timeStr = fmt.Sprintf("%dh%dm", hours, minutes)
+		default:
+			timeStr = fmt.Sprintf("%dd%dh", days, hours)
+		}
 	}
 
 	if isAlive {
@@ -108,7 +122,7 @@ func PrintSessions(sessions map[string]*client.Session, con *core.Console, isAll
 		rowEntries = append(rowEntries, row)
 	}
 
-	// 使用 tui.NewTable 的 isStatic 参数来控制是否使用静态模式
+	// Use tui.NewTable's isStatic parameter to control static mode
 	tableModel := tui.NewTable([]table.Column{
 		table.NewColumn("ID", "ID", maxLengths["ID"]),
 		table.NewColumn("Group/Note", "Group/Note", maxLengths["Group/Note"]),
@@ -123,6 +137,9 @@ func PrintSessions(sessions map[string]*client.Session, con *core.Console, isAll
 	tableModel.SetAscSort("Last")
 	tableModel.SetRows(rowEntries)
 	tableModel.SetMultiline()
+	if isStatic {
+		tableModel.SetWriter(client.Stdout)
+	}
 	tableModel.SetHandle(func() {
 		SessionLogin(tableModel, tableModel.Buffer, con)()
 	})

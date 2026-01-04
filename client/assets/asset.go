@@ -160,7 +160,7 @@ func MvConfig(oldPath string) error {
 	fileName := filepath.Base(oldPath)
 	newPath := filepath.Join(GetConfigDir(), fileName)
 
-	// Check if source and destination are the same to avoid deleting the file
+	// Check if source and destination are the same to avoid unnecessary operations
 	oldPathAbs, err := filepath.Abs(oldPath)
 	if err != nil {
 		return err
@@ -174,15 +174,17 @@ func MvConfig(oldPath string) error {
 		return nil
 	}
 
+	// Backup existing file if it exists
 	if fileutils.Exist(newPath) {
-		err := fileutils.RemoveFile(newPath)
+		backupPath := newPath + ".backup"
+		err := fileutils.CopyFile(newPath, backupPath)
 		if err != nil {
-			return err
+			logs.Log.Warnf("failed to backup config file %s: %s", newPath, err.Error())
+		} else {
+			logs.Log.Warnf("config file %s already exists, backed up to %s", newPath, backupPath)
 		}
 	}
-	err = fileutils.CopyFile(oldPath, newPath)
-	if err != nil {
-		return err
-	}
-	return nil
+
+	// Use MoveFile which handles overwriting automatically via os.Create
+	return fileutils.MoveFile(oldPath, newPath)
 }

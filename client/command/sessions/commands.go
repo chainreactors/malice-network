@@ -127,10 +127,11 @@ remove 08d6c05a21512a79a1dfeb9d2a8f262f
 
 	sessCmd.AddCommand(bindSessNewCmd, noteCommand, groupCommand, removeCommand)
 	useCommand := &cobra.Command{
-		Use:   consts.CommandUse + " [session]",
-		Short: "Use session",
-		Long:  "use",
-		Args:  cobra.MinimumNArgs(1),
+		Use:           consts.CommandUse + " [session]",
+		Short:         "Use session",
+		Long:          "use",
+		Args:          cobra.MinimumNArgs(1),
+		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return UseSessionCmd(cmd, con)
 		},
