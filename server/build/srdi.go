@@ -149,10 +149,11 @@ func ConvertArtifact(artifact *clientpb.Artifact, format string, rdi string) (*c
 		return artifact, nil
 	}
 	if rdi == "" {
-		rdi = consts.DefaultRDI
-	}
-	if artifact.Type == consts.CommandBuildPulse {
-		rdi = consts.RDIObjcopy
+		if artifact.Type == consts.CommandBuildPulse {
+			rdi = consts.RDIObjcopy
+		} else {
+			rdi = consts.DefaultRDI
+		}
 	}
 	shellcode, err := SRDIArtifact(artifact.Bin, artifact.Platform, artifact.Arch, rdi)
 	if err != nil {
