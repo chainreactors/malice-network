@@ -3,6 +3,8 @@ package core
 import (
 	"context"
 	"fmt"
+	"reflect"
+
 	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
@@ -10,7 +12,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/mals"
 	"github.com/chainreactors/tui"
-	"reflect"
 )
 
 //var (

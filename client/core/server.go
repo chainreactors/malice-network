@@ -114,9 +114,9 @@ func HandlerTask(sess *client.Session, log *client.Logger, ctx *clientpb.TaskCon
 		status, err := output.ParseStatus(ctx)
 		if err != nil {
 			log.Importantf("parse status error: %s\n", err)
-			return
+		} else {
+			log.Importantf("%s\n", status)
 		}
-		log.Importantf("task %d %t\n", ctx.Task.TaskId, status)
 		return
 	}
 	var prompt string
