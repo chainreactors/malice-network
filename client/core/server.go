@@ -182,7 +182,7 @@ func (s *Server) EventHandler() {
 		return
 	}
 	s.Update()
-	if s.GetInteractive() != nil {
+	if s.Session != nil {
 		s.UpdateSession(s.GetInteractive().SessionId)
 	}
 	s.EventStatus = true

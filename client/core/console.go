@@ -4,6 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"path/filepath"
+	"strings"
+	"time"
+
 	"github.com/carapace-sh/carapace/pkg/x"
 	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
@@ -12,10 +17,6 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
 	"google.golang.org/grpc/metadata"
-	"io"
-	"path/filepath"
-	"strings"
-	"time"
 
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/plugin"
@@ -111,7 +112,7 @@ func (c *Console) Start(bindCmds ...BindCmds) error {
 		c.InitLocalRPCServer()
 	}
 
-	if c.GetInteractive() == nil {
+	if c.Session == nil {
 		c.App.SwitchMenu(consts.ClientMenu)
 	} else {
 		c.SwitchImplant(c.GetInteractive(), consts.CalleeCMD)
@@ -191,7 +192,7 @@ func (c *Console) RefreshCmd(sess *client.Session) int {
 }
 
 func (c *Console) SwitchImplant(sess *client.Session, callee string) {
-	current := c.GetInteractive()
+	current := c.Session
 	if current != nil && current.SessionId == sess.SessionId {
 		return
 	}
