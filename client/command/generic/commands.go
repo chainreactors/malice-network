@@ -3,13 +3,18 @@ package generic
 import (
 	"errors"
 	"fmt"
+	"os"
+	"os/exec"
+
 	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
+	"github.com/chainreactors/IoM-go/types"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/kballard/go-shellquote"
-	"os"
-	"os/exec"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/carapace-sh/carapace"
 	"github.com/spf13/cobra"
@@ -147,6 +152,20 @@ func Log(con *core.Console, sess *client.Session, msg string, notify bool) (bool
 	return true, nil
 }
 
+// ExecuteModule executes a dynamically constructed module request via the ExecuteModule RPC.
+func ExecuteModule(rpc clientrpc.MaliceRPCClient, sess *client.Session, spite *implantpb.Spite, expect string) (*clientpb.Task, error) {
+	if spite == nil {
+		return nil, errors.New("spite required")
+	}
+	if expect == "" {
+		return nil, errors.New("expect required")
+	}
+	return rpc.ExecuteModule(sess.Context(), &implantpb.ExecuteModuleRequest{
+		Spite:  spite,
+		Expect: expect,
+	})
+}
+
 func Register(con *core.Console) {
 	con.RegisterServerFunc("console", func(con *core.Console) *core.Console {
 		return con
@@ -214,6 +233,31 @@ func Register(con *core.Console) {
 
 	con.RegisterServerFunc("blog", func(con *core.Console, sess *client.Session, msg string) (bool, error) {
 		return Log(con, sess, msg, false)
+	}, nil)
+
+	// ExecuteModule - execute a dynamically constructed module request
+	con.RegisterImplantFunc(
+		"execute_module",
+		ExecuteModule,
+		"",
+		nil,
+		nil,
+		nil)
+
+	con.AddCommandFuncHelper(
+		"execute_module",
+		"execute_module",
+		"execute_module(active(), spite, \"expect_type\")",
+		[]string{
+			"session: special session",
+			"spite: the spite request to execute",
+			"expect: expected response type name",
+		},
+		[]string{"task"})
+
+	// spite - build a Spite from a proto message body
+	con.RegisterServerFunc("spite", func(con *core.Console, body proto.Message) (*implantpb.Spite, error) {
+		return types.BuildSpite(&implantpb.Spite{}, body)
 	}, nil)
 
 }

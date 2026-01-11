@@ -137,9 +137,6 @@ func PrintSessions(sessions map[string]*client.Session, con *core.Console, isAll
 	tableModel.SetAscSort("Last")
 	tableModel.SetRows(rowEntries)
 	tableModel.SetMultiline()
-	if isStatic {
-		tableModel.SetWriter(client.Stdout)
-	}
 	tableModel.SetHandle(func() {
 		SessionLogin(tableModel, tableModel.Buffer, con)()
 	})

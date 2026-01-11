@@ -2,6 +2,8 @@ package rpc
 
 import (
 	"context"
+	"errors"
+
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
@@ -87,4 +89,16 @@ func (rpc *Server) Clear(ctx context.Context, req *implantpb.Request) (*clientpb
 
 	go greq.HandlerResponse(ch, types.MsgEmpty)
 	return greq.Task.ToProtobuf(), nil
+}
+
+// ExecuteModule passthrough for fully dynamic module execution.
+func (rpc *Server) ExecuteModule(ctx context.Context, req *implantpb.ExecuteModuleRequest) (*clientpb.Task, error) {
+	if req == nil || req.Spite == nil {
+		return nil, errors.New("spite required")
+	}
+	if req.Expect == "" {
+		return nil, errors.New("expect required")
+	}
+
+	return Handler(ctx, rpc, req.Spite, types.MsgName(req.Expect))
 }
