@@ -96,9 +96,6 @@ func (rpc *Server) ExecuteModule(ctx context.Context, req *implantpb.ExecuteModu
 	if req == nil || req.Spite == nil {
 		return nil, errors.New("spite required")
 	}
-	if req.Expect == "" {
-		return nil, errors.New("expect required")
-	}
 
 	return Handler(ctx, rpc, req.Spite, types.MsgName(req.Expect))
 }

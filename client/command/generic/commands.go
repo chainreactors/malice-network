@@ -157,9 +157,6 @@ func ExecuteModule(rpc clientrpc.MaliceRPCClient, sess *client.Session, spite *i
 	if spite == nil {
 		return nil, errors.New("spite required")
 	}
-	if expect == "" {
-		return nil, errors.New("expect required")
-	}
 	return rpc.ExecuteModule(sess.Context(), &implantpb.ExecuteModuleRequest{
 		Spite:  spite,
 		Expect: expect,
