@@ -71,6 +71,11 @@ type Console struct {
 	Helpers map[string]*cobra.Command
 
 	MalManager *plugin.MalManager
+
+	// AI Completion Engine
+	aiCompletionEngine *AICompletionEngine
+	aiCache            *AICompletionCache
+	commandValidator   *CommandValidator
 }
 
 func (c *Console) NewConsole() {
@@ -89,6 +94,25 @@ func (c *Console) NewConsole() {
 	implant.Prompt().Primary = c.GetPrompt
 	implant.AddInterrupt(io.EOF, repl.ExitImplantMenu) // Ctrl-D
 	implant.AddHistorySourceFile("history", filepath.Join(assets.GetRootAppDir(), "implant_history"))
+
+	// Register AI command generator for Alt+A.
+	iom.SetAICommandGenerator(c.handleAIGenerateCommand)
+
+	// Register AI smart completion for Tab (delayed trigger)
+	iom.Shell().AISmartComplete = c.handleAISmartComplete
+
+	// Register line hook to handle '?' prefix without space (e.g., '?你好' -> '?' '你好')
+	iom.PreCmdRunLineHooks = append(iom.PreCmdRunLineHooks, func(args []string) ([]string, error) {
+		if len(args) > 0 && len(args[0]) > 1 && strings.HasPrefix(args[0], "?") {
+			// Split '?xxx' into '?' and 'xxx'
+			question := args[0][1:]
+			newArgs := make([]string, 0, len(args)+1)
+			newArgs = append(newArgs, "?", question)
+			newArgs = append(newArgs, args[1:]...)
+			return newArgs, nil
+		}
+		return args, nil
+	})
 }
 
 func (c *Console) Start(bindCmds ...BindCmds) error {
@@ -105,6 +129,9 @@ func (c *Console) Start(bindCmds ...BindCmds) error {
 
 	c.App.Menu(consts.ClientMenu).Command = bindCmds[0](c)()
 	c.App.Menu(consts.ImplantMenu).Command = bindCmds[1](c)()
+
+	// Initialize AI completion components after commands are registered
+	c.initAICompletion()
 
 	// 所有命令注册完成后，安全地启动MCP服务器和Local RPC服务器
 	if c.Server != nil {
@@ -272,4 +299,161 @@ func (c *Console) AddCommandFuncHelper(cmdName string, funcName string, example 
 			Example: example,
 		})
 	}
+}
+
+func (c *Console) GetRecentHistory(limit int) []string {
+	if limit <= 0 || c == nil || c.App == nil {
+		return nil
+	}
+
+	shell := c.App.Shell()
+	if shell == nil || shell.History == nil || shell.History.Current() == nil {
+		return nil
+	}
+
+	hist := shell.History.Current()
+	count := hist.Len()
+	start := count - limit
+	if start < 0 {
+		start = 0
+	}
+
+	capacity := limit
+	if count-start < capacity {
+		capacity = count - start
+	}
+	history := make([]string, 0, capacity)
+	for i := start; i < count; i++ {
+		if line, err := hist.GetLine(i); err == nil && line != "" {
+			history = append(history, line)
+		}
+	}
+
+	if len(history) > limit {
+		history = history[len(history)-limit:]
+	}
+
+	return history
+}
+
+func getValidAISettings() (*assets.AISettings, error) {
+	settings, err := assets.GetSetting()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load settings: %w", err)
+	}
+	if settings == nil || settings.AI == nil || !settings.AI.Enable {
+		return nil, fmt.Errorf("AI not enabled. Use 'ai-config --enable --api-key <key>' to enable it")
+	}
+	if settings.AI.APIKey == "" {
+		return nil, fmt.Errorf("AI API key not configured. Use 'ai-config --api-key <key>' to set it")
+	}
+
+	return settings.AI, nil
+}
+
+func (c *Console) handleAIGenerateCommand(line string, history []string) (string, error) {
+	ai, err := getValidAISettings()
+	if err != nil {
+		return "", err
+	}
+
+	description := strings.TrimSpace(line)
+	if description == "" {
+		return "", fmt.Errorf("empty description")
+	}
+
+	if ai.HistorySize <= 0 {
+		history = nil
+	} else if len(history) > ai.HistorySize {
+		history = history[len(history)-ai.HistorySize:]
+	}
+
+	aiClient := NewAIClient(ai)
+	timeout := ai.Timeout
+	if timeout <= 0 {
+		timeout = 15
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
+	defer cancel()
+
+	question := fmt.Sprintf(
+		"Convert the following natural language description to a command.\n\n"+
+			"Rules:\n"+
+			"1) Return ONLY the command, no explanation.\n"+
+			"2) Use the exact command syntax from the available commands.\n"+
+			"3) Wrap the command in single backticks.\n"+
+			"4) If you're unsure, return the most likely command.\n\n"+
+			"Description: %s",
+		description,
+	)
+
+	response, err := aiClient.Ask(ctx, question, history)
+	if err != nil {
+		return "", err
+	}
+
+	commands := ParseCommandSuggestions(response)
+	if len(commands) == 0 {
+		return "", fmt.Errorf("AI did not generate a valid command")
+	}
+
+	return commands[0].Command, nil
+}
+
+// initAICompletion initializes the AI completion engine
+func (c *Console) initAICompletion() {
+	settings, err := assets.GetSetting()
+	if err != nil || settings == nil || settings.AI == nil || !settings.AI.Enable {
+		return
+	}
+
+	// Initialize cache (500 entries, 30 minute TTL)
+	c.aiCache = NewAICompletionCache(500, 30*time.Minute)
+
+	// Initialize command validator from client menu
+	clientMenu := c.App.Menu(consts.ClientMenu).Command
+	if clientMenu != nil {
+		c.commandValidator = NewCommandValidator(clientMenu)
+	}
+
+	// Also add implant menu commands to validator
+	implantMenu := c.App.Menu(consts.ImplantMenu).Command
+	if implantMenu != nil && c.commandValidator != nil {
+		// Build command map from implant menu
+		var addCommands func(cmd *cobra.Command)
+		addCommands = func(cmd *cobra.Command) {
+			c.commandValidator.AddCommand(cmd.Name(), cmd.Aliases...)
+			for _, sub := range cmd.Commands() {
+				if !sub.Hidden {
+					addCommands(sub)
+				}
+			}
+		}
+		addCommands(implantMenu)
+	}
+
+	// Initialize AI client
+	aiClient := NewAIClient(settings.AI)
+
+	// Create completion engine
+	c.aiCompletionEngine = NewAICompletionEngine(aiClient, c.aiCache, c.commandValidator)
+}
+
+// handleAISmartComplete handles AI smart completion for Tab key
+func (c *Console) handleAISmartComplete(line string, history []string) ([]string, error) {
+	// Lazy initialize if not done yet
+	if c.aiCompletionEngine == nil {
+		c.initAICompletion()
+	}
+
+	if c.aiCompletionEngine == nil {
+		return nil, fmt.Errorf("AI completion not available")
+	}
+
+	// Use 3 second timeout for fast completion
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	return c.aiCompletionEngine.SmartComplete(ctx, line, history)
 }
