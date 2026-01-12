@@ -2,6 +2,7 @@ package command
 
 import (
 	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/malice-network/client/command/ai"
 	"github.com/chainreactors/malice-network/client/command/audit"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/reeflective/console"
@@ -24,11 +25,14 @@ import (
 	"github.com/chainreactors/malice-network/client/command/pipeline"
 	"github.com/chainreactors/malice-network/client/command/sessions"
 	"github.com/chainreactors/malice-network/client/command/website"
+	"github.com/chainreactors/malice-network/client/command/wizard"
 )
 
 func BindCommonCommands(bind BindFunc) {
 	bind(consts.GenericGroup,
-		generic.Commands)
+		generic.Commands,
+		ai.Commands,
+		wizard.Commands)
 
 	bind(consts.ManageGroup,
 		sessions.Commands,
