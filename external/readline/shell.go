@@ -2,6 +2,8 @@ package readline
 
 import (
 	"fmt"
+	"sync"
+	"time"
 
 	"github.com/reeflective/readline/inputrc"
 	"github.com/reeflective/readline/internal/completion"
@@ -61,6 +63,20 @@ type Shell struct {
 	// It takes the readline line ([]rune) and cursor pos as parameters,
 	// and returns completions with their associated metadata/settings.
 	Completer func(line []rune, cursor int) Completions
+
+	// AIGenerateCommand is a callback function that converts natural language
+	// input to a command. Used by the ai-generate-command action (Alt+Q).
+	AIGenerateCommand func(line string, history []string) (string, error)
+
+	// AISmartComplete is a callback for AI-powered smart completion.
+	// Returns multiple command suggestions for Tab completion.
+	AISmartComplete func(line string, history []string) ([]string, error)
+
+	// AI completion state
+	aiCompletionMu       sync.Mutex
+	aiCompletionTimer    *time.Timer
+	aiCompletionActive   bool
+	aiCompletionCallback func(suggestions []string)
 }
 
 // NewShell returns a readline shell instance initialized with a default
