@@ -2,6 +2,8 @@ package readline
 
 import (
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/reeflective/readline/internal/color"
 	"github.com/reeflective/readline/internal/completion"
@@ -23,6 +25,7 @@ func (rl *Shell) completionCommands() commands {
 		"accept-and-menu-complete": rl.acceptAndMenuComplete,
 		"vi-registers-complete":    rl.viRegistersComplete,
 		"menu-incremental-search":  rl.menuIncrementalSearch,
+		"ai-complete":              rl.aiGenerateCommand, // AI command completion (Alt+Q)
 	}
 }
 
@@ -201,6 +204,9 @@ func (rl *Shell) startMenuComplete(completer completion.Completer) {
 
 	rl.Keymap.SetLocal(keymap.MenuSelect)
 	rl.completer.GenerateWith(completer)
+
+	// Start delayed AI completion trigger (1 second delay)
+	rl.startDelayedAICompletion()
 }
 
 // commandCompletion generates the completions for commands/args/flags.
@@ -257,4 +263,176 @@ func (rl *Shell) historyCompletion(forward, filterLine, substring bool) {
 			rl.completer.AutocompleteForce()
 		}
 	}
+}
+
+// aiGenerateCommand triggers AI-powered command generation.
+// It takes the current input line as natural language and generates a full command.
+func (rl *Shell) aiGenerateCommand() {
+	if rl.AIGenerateCommand == nil {
+		rl.Hint.SetTemporary(fmt.Sprintf("%s%s%s %s", color.Dim, color.FgRed, "AI command generation not configured", color.Reset))
+		return
+	}
+
+	// Get current input line
+	currentLine := string(*rl.line)
+	if currentLine == "" {
+		rl.Hint.SetTemporary(fmt.Sprintf("%s%s%s %s", color.Dim, color.FgYellow, "Enter a description to generate a command", color.Reset))
+		return
+	}
+
+	// Get recent command history
+	var history []string
+	histSrc := rl.History.Current()
+	if histSrc != nil {
+		histLen := histSrc.Len()
+		start := 0
+		if histLen > 20 {
+			start = histLen - 20
+		}
+		for i := start; i < histLen; i++ {
+			if cmd, err := histSrc.GetLine(i); err == nil && cmd != "" {
+				history = append(history, cmd)
+			}
+		}
+	}
+
+	// Show loading hint
+	rl.Hint.SetTemporary(fmt.Sprintf("%s%s%s", color.Dim, "Generating...", color.Reset))
+	rl.Display.Refresh()
+
+	// Call AI to generate command
+	newCommand, err := rl.AIGenerateCommand(currentLine, history)
+	if err != nil {
+		rl.Hint.SetTemporary(fmt.Sprintf("%s%s%s %s", color.Dim, color.FgRed, "AI Error: "+err.Error(), color.Reset))
+		return
+	}
+
+	if newCommand == "" {
+		rl.Hint.SetTemporary(fmt.Sprintf("%s%s%s %s", color.Dim, color.FgYellow, "No command generated", color.Reset))
+		return
+	}
+
+	// Clear the current line and insert the generated command
+	rl.line.Set([]rune(newCommand)...)
+	rl.cursor.Set(len(newCommand))
+
+	// Clear the hint
+	rl.Hint.Reset()
+}
+
+// startDelayedAICompletion starts the AI completion timer
+func (rl *Shell) startDelayedAICompletion() {
+	if rl.AISmartComplete == nil {
+		return
+	}
+
+	// Snapshot line + history on the main loop goroutine.
+	currentLine := string(*rl.line)
+	if currentLine == "" {
+		return
+	}
+
+	var history []string
+	histSrc := rl.History.Current()
+	if histSrc != nil {
+		histLen := histSrc.Len()
+		start := 0
+		if histLen > 20 {
+			start = histLen - 20
+		}
+		for i := start; i < histLen; i++ {
+			if cmd, err := histSrc.GetLine(i); err == nil && cmd != "" {
+				history = append(history, cmd)
+			}
+		}
+	}
+
+	rl.aiCompletionMu.Lock()
+	defer rl.aiCompletionMu.Unlock()
+
+	// Cancel any existing timer
+	if rl.aiCompletionTimer != nil {
+		rl.aiCompletionTimer.Stop()
+		rl.aiCompletionTimer = nil
+	}
+
+	// Don't start if already active
+	if rl.aiCompletionActive {
+		return
+	}
+
+	// Start timer for delayed AI completion (1 second)
+	rl.aiCompletionTimer = time.AfterFunc(1*time.Second, func() {
+		rl.triggerAICompletion(currentLine, history)
+	})
+}
+
+// triggerAICompletion triggers AI-powered completion asynchronously
+func (rl *Shell) triggerAICompletion(currentLine string, history []string) {
+	rl.aiCompletionMu.Lock()
+	if rl.aiCompletionActive {
+		rl.aiCompletionMu.Unlock()
+		return
+	}
+	rl.aiCompletionActive = true
+	rl.aiCompletionMu.Unlock()
+
+	defer func() {
+		rl.aiCompletionMu.Lock()
+		rl.aiCompletionActive = false
+		rl.aiCompletionMu.Unlock()
+	}()
+
+	currentLine = strings.TrimSpace(currentLine)
+	if currentLine == "" {
+		return
+	}
+
+	// Show AI loading hint
+	rl.Hint.SetTemporary(fmt.Sprintf("%s[AI]%s", color.FgCyan, color.Reset))
+	rl.Display.RefreshHelpers()
+
+	// Call AI completion
+	suggestions, err := rl.AISmartComplete(currentLine, history)
+	if err != nil {
+		// Silently fail - keep showing local completions
+		rl.Hint.Reset()
+		return
+	}
+
+	if len(suggestions) == 0 {
+		rl.Hint.Reset()
+		return
+	}
+
+	// Notify callback if set
+	if rl.aiCompletionCallback != nil {
+		rl.aiCompletionCallback(suggestions)
+	}
+
+	// Show AI suggestions in hint
+	hintText := fmt.Sprintf("%s[AI] %s%s", color.FgCyan, suggestions[0], color.Reset)
+	if len(suggestions) > 1 {
+		hintText += fmt.Sprintf(" %s(+%d more)%s", color.Dim, len(suggestions)-1, color.Reset)
+	}
+	rl.Hint.SetTemporary(hintText)
+	rl.Display.RefreshHelpers()
+}
+
+// cancelAICompletion cancels any pending AI completion
+func (rl *Shell) cancelAICompletion() {
+	rl.aiCompletionMu.Lock()
+	defer rl.aiCompletionMu.Unlock()
+
+	if rl.aiCompletionTimer != nil {
+		rl.aiCompletionTimer.Stop()
+		rl.aiCompletionTimer = nil
+	}
+}
+
+// SetAICompletionCallback sets a callback for when AI completion results arrive
+func (rl *Shell) SetAICompletionCallback(callback func(suggestions []string)) {
+	rl.aiCompletionMu.Lock()
+	defer rl.aiCompletionMu.Unlock()
+	rl.aiCompletionCallback = callback
 }

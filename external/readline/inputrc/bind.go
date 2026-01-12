@@ -70,6 +70,7 @@ func DefaultBinds() map[string]map[string]Bind {
 			Unescape(`\C-g`):     Bind{"abort", false},
 			Unescape(`\C-x\C-g`): Bind{"abort", false},
 			Unescape(`\M-\C-g`):  Bind{"abort", false},
+			Unescape(`\M-q`):     Bind{"ai-complete", false}, // Alt+Q for AI command completion
 			Unescape(`\C-j`):     Bind{"accept-line", false},
 			Unescape(`\C-m`):     Bind{"accept-line", false},
 			// alias-expand-line (not bound)

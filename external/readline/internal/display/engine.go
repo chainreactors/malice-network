@@ -98,6 +98,22 @@ func (e *Engine) Refresh() {
 	fmt.Print(term.ShowCursor)
 }
 
+// RefreshHelpers redraws the hint and completion sections without querying the
+// terminal for a new cursor position. It relies on the last computed display
+// coordinates, so it should only be used when the input line hasn't changed.
+func (e *Engine) RefreshHelpers() {
+	fmt.Print(term.HideCursor)
+
+	// Go to the last line of input (displayHelpers assumes that).
+	term.MoveCursorUp(e.cursorRow)
+	term.MoveCursorDown(e.lineRows)
+
+	e.displayHelpers()
+	e.cursorHintToLineStart()
+	e.lineStartToCursorPos()
+	fmt.Print(term.ShowCursor)
+}
+
 // PrintPrimaryPrompt redraws the primary prompt.
 // There are relatively few cases where you want to use this.
 // It is currently only used when using clear-screen commands.
