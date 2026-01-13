@@ -300,6 +300,11 @@ func (e *Engine) Line() (*core.Line, *core.Cursor) {
 	return e.line, e.cursor
 }
 
+// BaseLine returns the underlying, non-virtually-completed input line and cursor.
+func (e *Engine) BaseLine() (*core.Line, *core.Cursor) {
+	return e.line, e.cursor
+}
+
 // Autocomplete generates the correct completions in autocomplete mode.
 // We don't do it when we are currently in the completion keymap,
 // since that means completions have already been computed.
@@ -338,4 +343,36 @@ func (e *Engine) AutocompleteForce() {
 // command (like history-search-forward/backward).
 func (e *Engine) AutoCompleting() bool {
 	return e.keymap.Local() == keymap.Isearch || e.autoForce
+}
+
+// AppendAICompletions adds AI-generated suggestions to the completion menu
+// as a new group tagged "AI Suggestions". This allows users to select AI
+// completions using the normal completion selection mechanism.
+func (e *Engine) AppendAICompletions(suggestions []string) {
+	if len(suggestions) == 0 {
+		return
+	}
+
+	// Create completion candidates from AI suggestions
+	candidates := make(RawValues, len(suggestions))
+	for i, s := range suggestions {
+		candidates[i] = Candidate{
+			Value:       s,
+			Display:     s,
+			Description: "AI suggested",
+			Tag:         "AI Suggestions",
+		}
+	}
+
+	// Create a Values struct
+	comps := Values{
+		values:   candidates,
+		ListLong: map[string]bool{"AI Suggestions": true},
+		NoSort:   map[string]bool{"AI Suggestions": true},
+		ListSep:  make(map[string]string),
+		Pad:      make(map[string]bool),
+	}
+
+	// Add AI suggestions as a new group
+	e.newCompletionGroup(comps, "AI Suggestions", candidates, nil)
 }
