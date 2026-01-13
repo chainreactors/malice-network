@@ -2,6 +2,7 @@ package completion
 
 import (
 	"regexp"
+	"strings"
 
 	"github.com/reeflective/readline/inputrc"
 	"github.com/reeflective/readline/internal/core"
@@ -353,15 +354,48 @@ func (e *Engine) AppendAICompletions(suggestions []string) {
 		return
 	}
 
+	// Get current line content to check if we should strip prefix
+	currentLine := strings.TrimSpace(string(*e.line))
+
+	// Only strip prefix if user typed a complete command followed by space
+	// e.g., "wizard " -> strip "wizard " from "wizard build" to show "build"
+	// but "w" should show full "wizard", not "izard"
+	stripPrefix := ""
+	if currentLine != "" && strings.HasSuffix(string(*e.line), " ") {
+		// User typed something followed by space, strip that prefix
+		stripPrefix = currentLine + " "
+	}
+
 	// Create completion candidates from AI suggestions
-	candidates := make(RawValues, len(suggestions))
-	for i, s := range suggestions {
-		candidates[i] = Candidate{
-			Value:       s,
-			Display:     s,
+	candidates := make(RawValues, 0, len(suggestions))
+	for _, s := range suggestions {
+		display := s
+		value := s
+
+		// Strip prefix if applicable
+		if stripPrefix != "" && strings.HasPrefix(s, stripPrefix) {
+			suffix := strings.TrimSpace(s[len(stripPrefix):])
+			if suffix != "" {
+				display = suffix
+				value = suffix
+			} else {
+				continue
+			}
+		} else if currentLine != "" && strings.EqualFold(s, currentLine) {
+			// Skip if suggestion is exactly what user typed
+			continue
+		}
+
+		candidates = append(candidates, Candidate{
+			Value:       value,
+			Display:     display,
 			Description: "AI suggested",
 			Tag:         "AI Suggestions",
-		}
+		})
+	}
+
+	if len(candidates) == 0 {
+		return
 	}
 
 	// Create a Values struct
