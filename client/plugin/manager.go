@@ -82,6 +82,11 @@ func (mm *MalManager) loadEmbeddedMals() {
 			continue
 		}
 
+		// Auto-register wizard templates from embedded resources before running plugin init scripts.
+		if n := registerWizardTemplatesFromEmbedFS(embedPlugin.Name, embedPlugin.RootPath, embedPlugin.FS); n > 0 {
+			logs.Log.Debugf("Registered %d wizard templates from embedded plugin %s\n", n, embedPlugin.Name)
+		}
+
 		// 运行插件
 		if err := embedPlugin.Run(); err != nil {
 			logs.Log.Errorf("Failed to run embedded plugin %s: %v\n", levelName, err)
@@ -105,6 +110,11 @@ func (mm *MalManager) loadEmbeddedMals() {
 
 func (mm *MalManager) loadExternalMals() {
 	mm.globalPlugins = LoadGlobalLuaPlugin()
+	for _, plug := range mm.globalPlugins {
+		if n := registerWizardTemplatesFromDisk(plug.Name, plug.Path); n > 0 {
+			logs.Log.Debugf("Registered %d wizard templates from global plugin %s\n", n, plug.Name)
+		}
+	}
 
 	for _, manifest := range GetPluginManifest() {
 		_, err := mm.LoadExternalMal(manifest)
@@ -136,6 +146,11 @@ func (mm *MalManager) LoadExternalMal(manifest *MalManiFest) (Plugin, error) {
 
 	if err != nil {
 		return nil, err
+	}
+
+	// Auto-register wizard templates from plugin resources before running plugin init scripts.
+	if n := registerWizardTemplatesFromDisk(manifest.Name, filepath.Join(assets.GetMalsDir(), manifest.Name)); n > 0 {
+		logs.Log.Debugf("Registered %d wizard templates from external plugin %s\n", n, manifest.Name)
 	}
 
 	err = plugin.Run()
@@ -247,6 +262,10 @@ func (mm *MalManager) ReloadExternalMal(malName string) error {
 
 	if err != nil {
 		return fmt.Errorf("failed to create new plugin %s: %v", malName, err)
+	}
+
+	if n := registerWizardTemplatesFromDisk(manifest.Name, filepath.Join(assets.GetMalsDir(), manifest.Name)); n > 0 {
+		logs.Log.Debugf("Registered %d wizard templates from reloaded plugin %s\n", n, manifest.Name)
 	}
 
 	err = newPlugin.Run()

@@ -26,6 +26,8 @@ func NewLuaVM() *lua.LState {
 	}
 
 	// 注册所有内置函数
+	// Ensure wizard functions are part of builtin definitions/help generation.
+	wizard.RegisterBuiltinFunctions()
 	for name, fun := range intermediate.InternalFunctions.Package(intermediate.BuiltinPackage) {
 		vm.SetGlobal(name, vm.NewFunction(mals.WrapFuncForLua(fun)))
 	}
