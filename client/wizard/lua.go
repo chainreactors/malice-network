@@ -1,6 +1,10 @@
 package wizard
 
 import (
+	"errors"
+	"strings"
+	"sync"
+
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/mals"
 	lua "github.com/yuin/gopher-lua"
@@ -13,6 +17,9 @@ func RegisterLuaFunctions(vmFns map[string]lua.LGFunction) {
 	vmFns["wizard"] = luaWizardNew
 	vmFns["wizard_template"] = luaWizardTemplate
 	vmFns["wizard_templates"] = luaWizardListTemplates
+	vmFns["wizard_from_spec"] = luaWizardFromSpec
+	vmFns["wizard_from_file"] = luaWizardFromFile
+	vmFns["wizard_register_template"] = luaWizardRegisterTemplate
 }
 
 // SetupMetatable sets up the wizard metatable in a Lua VM
@@ -23,17 +30,18 @@ func SetupMetatable(L *lua.LState) {
 
 // wizardMethods contains all methods available on wizard userdata
 var wizardMethods = map[string]lua.LGFunction{
-	"input":        wizardInput,
-	"text":         wizardText,
-	"select":       wizardSelect,
-	"multiselect":  wizardMultiSelect,
-	"confirm":      wizardConfirm,
-	"number":       wizardNumber,
-	"filepath":     wizardFilePath,
-	"description":  wizardDescription,
-	"run":          wizardRun,
-	"get_field":    wizardGetField,
-	"field_count":  wizardFieldCount,
+	"input":       wizardInput,
+	"text":        wizardText,
+	"select":      wizardSelect,
+	"multiselect": wizardMultiSelect,
+	"confirm":     wizardConfirm,
+	"number":      wizardNumber,
+	"filepath":    wizardFilePath,
+	"description": wizardDescription,
+	"clone":       wizardClone,
+	"run":         wizardRun,
+	"get_field":   wizardGetField,
+	"field_count": wizardFieldCount,
 }
 
 // luaWizardNew creates a new wizard (Lua: wizard(id, title))
@@ -79,6 +87,108 @@ func luaWizardListTemplates(L *lua.LState) int {
 	return 1
 }
 
+// luaWizardFromSpec builds a wizard from a spec table (Lua: wizard_from_spec(spec))
+func luaWizardFromSpec(L *lua.LState) int {
+	raw := mals.ConvertLuaValueToGo(L.CheckTable(1))
+	specMap, ok := raw.(map[string]interface{})
+	if !ok {
+		L.Push(lua.LNil)
+		L.Push(lua.LString("spec must be a table"))
+		return 2
+	}
+	spec, err := SpecFromMap(specMap)
+	if err != nil {
+		L.Push(lua.LNil)
+		L.Push(lua.LString(err.Error()))
+		return 2
+	}
+	wiz, err := NewWizardFromSpec(spec)
+	if err != nil {
+		L.Push(lua.LNil)
+		L.Push(lua.LString(err.Error()))
+		return 2
+	}
+
+	ud := L.NewUserData()
+	ud.Value = wiz
+	L.SetMetatable(ud, L.GetTypeMetatable(luaWizardTypeName))
+	L.Push(ud)
+	return 1
+}
+
+// luaWizardFromFile loads a wizard spec from file (Lua: wizard_from_file(path))
+func luaWizardFromFile(L *lua.LState) int {
+	path := L.CheckString(1)
+	wiz, err := NewWizardFromFile(path)
+	if err != nil {
+		L.Push(lua.LNil)
+		L.Push(lua.LString(err.Error()))
+		return 2
+	}
+
+	ud := L.NewUserData()
+	ud.Value = wiz
+	L.SetMetatable(ud, L.GetTypeMetatable(luaWizardTypeName))
+	L.Push(ud)
+	return 1
+}
+
+// luaWizardRegisterTemplate registers a template from a wizard or a spec table.
+// Lua:
+//
+//	wizard_register_template(name, wiz)
+//	wizard_register_template(name, specTable)
+func luaWizardRegisterTemplate(L *lua.LState) int {
+	name := L.CheckString(1)
+	if name == "" {
+		L.Push(lua.LNil)
+		L.Push(lua.LString("template name is required"))
+		return 2
+	}
+
+	switch v := L.Get(2).(type) {
+	case *lua.LUserData:
+		wiz, ok := v.Value.(*Wizard)
+		if !ok {
+			L.Push(lua.LNil)
+			L.Push(lua.LString("second arg must be wizard userdata or spec table"))
+			return 2
+		}
+		base := wiz.Clone()
+		RegisterTemplate(name, func() *Wizard { return base.Clone() })
+		L.Push(lua.LTrue)
+		return 1
+	case *lua.LTable:
+		raw := mals.ConvertLuaValueToGo(v)
+		specMap, ok := raw.(map[string]interface{})
+		if !ok {
+			L.Push(lua.LNil)
+			L.Push(lua.LString("spec must be a table"))
+			return 2
+		}
+		spec, err := SpecFromMap(specMap)
+		if err != nil {
+			L.Push(lua.LNil)
+			L.Push(lua.LString(err.Error()))
+			return 2
+		}
+		if spec.ID == "" {
+			spec.ID = name
+		}
+		if err := RegisterTemplateFromSpec(name, spec); err != nil {
+			L.Push(lua.LNil)
+			L.Push(lua.LString(err.Error()))
+			return 2
+		}
+		L.Push(lua.LTrue)
+		return 1
+	default:
+		L.Push(lua.LNil)
+		L.Push(lua.LString("second arg must be wizard userdata or spec table"))
+		return 2
+	}
+}
+
 // checkWizard extracts wizard from userdata
 func checkWizard(L *lua.LState, n int) *Wizard {
 	ud := L.CheckUserData(n)
@@ -89,14 +199,70 @@ func checkWizard(L *lua.LState, n int) *Wizard {
 	return nil
 }
 
+type luaFieldOptions struct {
+	Description string
+	Required    bool
+}
+
+func parseLuaFieldOptions(L *lua.LState, idx int) luaFieldOptions {
+	if idx <= 0 || L.Get(idx).Type() != lua.LTTable {
+		return luaFieldOptions{}
+	}
+	tbl := L.CheckTable(idx)
+
+	desc := lua.LVAsString(L.GetField(tbl, "description"))
+	if desc == "" {
+		desc = lua.LVAsString(L.GetField(tbl, "desc"))
+	}
+	required := false
+	if v := L.GetField(tbl, "required"); v != lua.LNil {
+		required = lua.LVAsBool(v)
+	}
+
+	return luaFieldOptions{
+		Description: desc,
+		Required:    required,
+	}
+}
+
+func luaStringSlice(L *lua.LState, tbl *lua.LTable) ([]string, error) {
+	out := make([]string, 0, tbl.Len())
+	for i := 1; i <= tbl.Len(); i++ {
+		v := tbl.RawGetInt(i)
+		if v == lua.LNil {
+			continue
+		}
+		out = append(out, lua.LVAsString(v))
+	}
+	return out, nil
+}
+
 // wizardInput adds an input field (Lua: wiz:input(name, title, default))
 func wizardInput(L *lua.LState) int {
 	wiz := checkWizard(L, 1)
 	name := L.CheckString(2)
 	title := L.CheckString(3)
-	defaultVal := L.OptString(4, "")
-
-	wiz.Input(name, title, defaultVal)
+	defaultVal := ""
+	optsIdx := 0
+	if L.GetTop() >= 4 {
+		if L.Get(4).Type() == lua.LTTable {
+			optsIdx = 4
+		} else {
+			defaultVal = L.OptString(4, "")
+			if L.GetTop() >= 5 && L.Get(5).Type() == lua.LTTable {
+				optsIdx = 5
+			}
+		}
+	}
+	opts := parseLuaFieldOptions(L, optsIdx)
+	wiz.AddField(&WizardField{
+		Name:        name,
+		Title:       title,
+		Description: opts.Description,
+		Type:        FieldInput,
+		Default:     defaultVal,
+		Required:    opts.Required,
+	})
 
 	L.Push(L.Get(1)) // Return self for chaining
 	return 1
@@ -107,9 +273,27 @@ func wizardText(L *lua.LState) int {
 	wiz := checkWizard(L, 1)
 	name := L.CheckString(2)
 	title := L.CheckString(3)
-	defaultVal := L.OptString(4, "")
-
-	wiz.Text(name, title, defaultVal)
+	defaultVal := ""
+	optsIdx := 0
+	if L.GetTop() >= 4 {
+		if L.Get(4).Type() == lua.LTTable {
+			optsIdx = 4
+		} else {
+			defaultVal = L.OptString(4, "")
+			if L.GetTop() >= 5 && L.Get(5).Type() == lua.LTTable {
+				optsIdx = 5
+			}
+		}
+	}
+	opts := parseLuaFieldOptions(L, optsIdx)
+	wiz.AddField(&WizardField{
+		Name:        name,
+		Title:       title,
+		Description: opts.Description,
+		Type:        FieldText,
+		Default:     defaultVal,
+		Required:    opts.Required,
+	})
 
 	L.Push(L.Get(1))
 	return 1
@@ -121,13 +305,36 @@ func wizardSelect(L *lua.LState) int {
 	name := L.CheckString(2)
 	title := L.CheckString(3)
 
-	options := make([]string, 0)
-	tbl := L.CheckTable(4)
-	tbl.ForEach(func(_, v lua.LValue) {
-		options = append(options, v.String())
-	})
+	optionsTbl := L.CheckTable(4)
+	options, err := luaStringSlice(L, optionsTbl)
+	if err != nil {
+		L.Push(lua.LNil)
+		L.Push(lua.LString(err.Error()))
+		return 2
+	}
 
-	wiz.Select(name, title, options)
+	defaultVal := ""
+	optsIdx := 0
+	if L.GetTop() >= 5 {
+		if L.Get(5).Type() == lua.LTTable {
+			optsIdx = 5
+		} else {
+			defaultVal = L.OptString(5, "")
+			if L.GetTop() >= 6 && L.Get(6).Type() == lua.LTTable {
+				optsIdx = 6
+			}
+		}
+	}
+	opts := parseLuaFieldOptions(L, optsIdx)
+	wiz.AddField(&WizardField{
+		Name:        name,
+		Title:       title,
+		Description: opts.Description,
+		Type:        FieldSelect,
+		Options:     options,
+		Default:     defaultVal,
+		Required:    opts.Required,
+	})
 
 	L.Push(L.Get(1))
 	return 1
@@ -139,13 +346,46 @@ func wizardMultiSelect(L *lua.LState) int {
 	name := L.CheckString(2)
 	title := L.CheckString(3)
 
-	options := make([]string, 0)
-	tbl := L.CheckTable(4)
-	tbl.ForEach(func(_, v lua.LValue) {
-		options = append(options, v.String())
-	})
+	optionsTbl := L.CheckTable(4)
+	options, err := luaStringSlice(L, optionsTbl)
+	if err != nil {
+		L.Push(lua.LNil)
+		L.Push(lua.LString(err.Error()))
+		return 2
+	}
 
-	wiz.MultiSelect(name, title, options)
+	var defaults []string
+	optsIdx := 0
+	if L.GetTop() >= 5 && L.Get(5).Type() == lua.LTTable {
+		t := L.CheckTable(5)
+		if L.GetField(t, "required") != lua.LNil || L.GetField(t, "description") != lua.LNil || L.GetField(t, "desc") != lua.LNil {
+			optsIdx = 5
+		} else {
+			defaults, err = luaStringSlice(L, t)
+			if err != nil {
+				L.Push(lua.LNil)
+				L.Push(lua.LString(err.Error()))
+				return 2
+			}
+			if L.GetTop() >= 6 && L.Get(6).Type() == lua.LTTable {
+				optsIdx = 6
+			}
+		}
+	}
+	opts := parseLuaFieldOptions(L, optsIdx)
+
+	field := &WizardField{
+		Name:        name,
+		Title:       title,
+		Description: opts.Description,
+		Type:        FieldMultiSelect,
+		Options:     options,
+		Required:    opts.Required,
+	}
+	if defaults != nil {
+		field.Default = defaults
+	}
+	wiz.AddField(field)
 
 	L.Push(L.Get(1))
 	return 1
@@ -156,9 +396,27 @@ func wizardConfirm(L *lua.LState) int {
 	wiz := checkWizard(L, 1)
 	name := L.CheckString(2)
 	title := L.CheckString(3)
-	defaultVal := L.OptBool(4, false)
-
-	wiz.Confirm(name, title, defaultVal)
+	defaultVal := false
+	optsIdx := 0
+	if L.GetTop() >= 4 {
+		if L.Get(4).Type() == lua.LTTable {
+			optsIdx = 4
+		} else {
+			defaultVal = L.OptBool(4, false)
+			if L.GetTop() >= 5 && L.Get(5).Type() == lua.LTTable {
+				optsIdx = 5
+			}
+		}
+	}
+	opts := parseLuaFieldOptions(L, optsIdx)
+	wiz.AddField(&WizardField{
+		Name:        name,
+		Title:       title,
+		Description: opts.Description,
+		Type:        FieldConfirm,
+		Default:     defaultVal,
+		Required:    opts.Required,
+	})
 
 	L.Push(L.Get(1))
 	return 1
@@ -169,9 +427,27 @@ func wizardNumber(L *lua.LState) int {
 	wiz := checkWizard(L, 1)
 	name := L.CheckString(2)
 	title := L.CheckString(3)
-	defaultVal := L.OptInt(4, 0)
-
-	wiz.Number(name, title, defaultVal)
+	defaultVal := 0
+	optsIdx := 0
+	if L.GetTop() >= 4 {
+		if L.Get(4).Type() == lua.LTTable {
+			optsIdx = 4
+		} else {
+			defaultVal = L.OptInt(4, 0)
+			if L.GetTop() >= 5 && L.Get(5).Type() == lua.LTTable {
+				optsIdx = 5
+			}
+		}
+	}
+	opts := parseLuaFieldOptions(L, optsIdx)
+	wiz.AddField(&WizardField{
+		Name:        name,
+		Title:       title,
+		Description: opts.Description,
+		Type:        FieldNumber,
+		Default:     defaultVal,
+		Required:    opts.Required,
+	})
 
 	L.Push(L.Get(1))
 	return 1
@@ -183,7 +459,27 @@ func wizardFilePath(L *lua.LState) int {
 	name := L.CheckString(2)
 	title := L.CheckString(3)
 
-	wiz.FilePath(name, title)
+	defaultVal := ""
+	optsIdx := 0
+	if L.GetTop() >= 4 {
+		if L.Get(4).Type() == lua.LTTable {
+			optsIdx = 4
+		} else {
+			defaultVal = L.OptString(4, "")
+			if L.GetTop() >= 5 && L.Get(5).Type() == lua.LTTable {
+				optsIdx = 5
+			}
+		}
+	}
+	opts := parseLuaFieldOptions(L, optsIdx)
+	wiz.AddField(&WizardField{
+		Name:        name,
+		Title:       title,
+		Description: opts.Description,
+		Type:        FieldFilePath,
+		Default:     defaultVal,
+		Required:    opts.Required,
+	})
 
 	L.Push(L.Get(1))
 	return 1
@@ -197,6 +493,18 @@ func wizardDescription(L *lua.LState) int {
 	wiz.WithDescription(desc)
 
 	L.Push(L.Get(1))
+	return 1
+}
+
+// wizardClone creates a copy of the wizard (Lua: wiz:clone())
+func wizardClone(L *lua.LState) int {
+	wiz := checkWizard(L, 1)
+	clone := wiz.Clone()
+
+	ud := L.NewUserData()
+	ud.Value = clone
+	L.SetMetatable(ud, L.GetTypeMetatable(luaWizardTypeName))
+	L.Push(ud)
 	return 1
 }
 
@@ -235,6 +543,17 @@ func wizardGetField(L *lua.LState) int {
 			tbl.RawSetString("title", lua.LString(f.Title))
 			tbl.RawSetString("description", lua.LString(f.Description))
 			tbl.RawSetString("type", lua.LNumber(float64(f.Type)))
+			tbl.RawSetString("required", lua.LBool(f.Required))
+			if f.Default != nil {
+				tbl.RawSetString("default", convertToLuaValue(L, f.Default))
+			}
+			if len(f.Options) > 0 {
+				optTbl := L.NewTable()
+				for i, opt := range f.Options {
+					optTbl.RawSetInt(i+1, lua.LString(opt))
+				}
+				tbl.RawSetString("options", optTbl)
+			}
 			L.Push(tbl)
 			return 1
 		}
@@ -273,48 +592,124 @@ func convertToLuaValue(L *lua.LState, v interface{}) lua.LValue {
 	}
 }
 
+var registerBuiltinsOnce sync.Once
+
 // RegisterBuiltinFunctions registers wizard functions as builtin functions
 // This allows the functions to be available in all Lua VMs
 func RegisterBuiltinFunctions() {
-	// Register wizard constructor
-	intermediate.RegisterFunction("wizard", func(id string, title string) (*Wizard, error) {
-		return NewWizard(id, title), nil
-	})
+	registerBuiltinsOnce.Do(func() {
+		// Register wizard constructor
+		intermediate.RegisterFunction("wizard", func(id string, title string) (*Wizard, error) {
+			return NewWizard(id, title), nil
+		})
 
-	intermediate.AddHelper("wizard", &mals.Helper{
-		Group:   intermediate.ClientGroup,
-		Short:   "Create a new interactive wizard form",
-		Input:   []string{"id: wizard identifier", "title: wizard title"},
-		Output:  []string{"wizard"},
-		Example: `local wiz = wizard("my_wizard", "My Wizard")`,
-	})
+		intermediate.AddHelper("wizard", &mals.Helper{
+			Group:   intermediate.ClientGroup,
+			Short:   "Create a new interactive wizard form",
+			Input:   []string{"id: wizard identifier", "title: wizard title"},
+			Output:  []string{"wizard"},
+			Example: `local wiz = wizard("my_wizard", "My Wizard")`,
+		})
 
-	// Register template loader
-	intermediate.RegisterFunction("wizard_template", func(name string) (*Wizard, error) {
-		wiz, ok := GetTemplate(name)
-		if !ok {
-			return nil, nil
-		}
-		return wiz, nil
-	})
+		// Register template loader
+		intermediate.RegisterFunction("wizard_template", func(name string) (*Wizard, error) {
+			wiz, ok := GetTemplate(name)
+			if !ok {
+				return nil, nil
+			}
+			return wiz, nil
+		})
 
-	intermediate.AddHelper("wizard_template", &mals.Helper{
-		Group:   intermediate.ClientGroup,
-		Short:   "Load a predefined wizard template",
-		Input:   []string{"name: template name"},
-		Output:  []string{"wizard"},
-		Example: `local wiz = wizard_template("listener_setup")`,
-	})
+		intermediate.AddHelper("wizard_template", &mals.Helper{
+			Group:   intermediate.ClientGroup,
+			Short:   "Load a predefined wizard template",
+			Input:   []string{"name: template name"},
+			Output:  []string{"wizard"},
+			Example: `local wiz = wizard_template("listener_setup")`,
+		})
 
-	// Register template list
-	intermediate.RegisterFunction("wizard_templates", func() ([]string, error) {
-		return ListTemplates(), nil
-	})
+		// Register template list
+		intermediate.RegisterFunction("wizard_templates", func() ([]string, error) {
+			return ListTemplates(), nil
+		})
 
-	intermediate.AddHelper("wizard_templates", &mals.Helper{
-		Group:   intermediate.ClientGroup,
-		Short:   "List available wizard templates",
-		Output:  []string{"template names"},
-		Example: `local templates = wizard_templates()`,
+		intermediate.AddHelper("wizard_templates", &mals.Helper{
+			Group:   intermediate.ClientGroup,
+			Short:   "List available wizard templates",
+			Output:  []string{"template names"},
+			Example: `local templates = wizard_templates()`,
+		})
+
+		// Config-driven helpers
+		intermediate.RegisterFunction("wizard_from_file", func(path string) (*Wizard, error) {
+			return NewWizardFromFile(path)
+		})
+
+		intermediate.AddHelper("wizard_from_file", &mals.Helper{
+			Group:  intermediate.ClientGroup,
+			Short:  "Load a wizard from a JSON/YAML spec file",
+			Input:  []string{"path: .json/.yaml/.yml wizard spec file"},
+			Output: []string{"wizard"},
+			Example: `
+-- Prefer loading from plugin resources so embedded/external plugins both work:
+wiz = wizard_from_file(script_resource("wizards/priv_esc.yaml"))
+`,
+		})
+
+		intermediate.RegisterFunction("wizard_from_spec", func(spec map[string]interface{}) (*Wizard, error) {
+			ws, err := SpecFromMap(spec)
+			if err != nil {
+				return nil, err
+			}
+			return NewWizardFromSpec(ws)
+		})
+
+		intermediate.AddHelper("wizard_from_spec", &mals.Helper{
+			Group:  intermediate.ClientGroup,
+			Short:  "Build a wizard from a Lua spec table",
+			Input:  []string{"spec: table"},
+			Output: []string{"wizard"},
+			Example: `
+wiz = wizard_from_spec({
+  id = "my_wizard",
+  title = "My Wizard",
+  fields = {
+    { name = "host", title = "Host", type = "input", default = "0.0.0.0", required = true },
+  },
+})
+`,
+		})
+
+		intermediate.RegisterFunction("wizard_register_template", func(name string, spec map[string]interface{}) (bool, error) {
+			if strings.TrimSpace(name) == "" {
+				return false, errors.New("template name is required")
+			}
+			ws, err := SpecFromMap(spec)
+			if err != nil {
+				return false, err
+			}
+			if ws.ID == "" {
+				ws.ID = name
+			}
+			if err := RegisterTemplateFromSpec(name, ws); err != nil {
+				return false, err
+			}
+			return true, nil
+		})
+
+		intermediate.AddHelper("wizard_register_template", &mals.Helper{
+			Group:  intermediate.ClientGroup,
+			Short:  "Register a wizard template from a spec table",
+			Input:  []string{"name: template name", "spec: table"},
+			Output: []string{"ok: boolean"},
+			Example: `
+wizard_register_template("priv_esc", {
+  title = "Privilege Escalation",
+  fields = {
+    { name = "method", title = "Method", type = "select", options = {"uac","token"} },
+  },
+})
+`,
+		})
 	})
 }
