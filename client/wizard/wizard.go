@@ -24,6 +24,10 @@ type WizardField struct {
 	Required    bool
 	Validate    func(string) error
 
+	// OptionsProvider is called to dynamically populate Options before running
+	// The ctx parameter is typically *core.Console for accessing RPC
+	OptionsProvider func(ctx interface{}) []string
+
 	// parent is a reference to the wizard for chaining
 	parent *Wizard
 }
@@ -50,6 +54,12 @@ func (f *WizardField) SetRequiredWithValidate(fn func(string) error) *Wizard {
 // SetDescription sets the field description and returns the wizard for chaining
 func (f *WizardField) SetDescription(desc string) *Wizard {
 	f.Description = desc
+	return f.parent
+}
+
+// SetOptionsProvider sets a function to dynamically populate options
+func (f *WizardField) SetOptionsProvider(provider func(ctx interface{}) []string) *Wizard {
+	f.OptionsProvider = provider
 	return f.parent
 }
 
@@ -223,4 +233,17 @@ func (w *Wizard) Clone() *Wizard {
 		clone.Fields[i] = &fieldCopy
 	}
 	return clone
+}
+
+// PrepareOptions calls OptionsProvider for all fields that have one,
+// populating their Options dynamically. The ctx parameter is passed to providers.
+func (w *Wizard) PrepareOptions(ctx interface{}) {
+	for _, f := range w.Fields {
+		if f.OptionsProvider != nil {
+			opts := f.OptionsProvider(ctx)
+			if len(opts) > 0 {
+				f.Options = opts
+			}
+		}
+	}
 }
