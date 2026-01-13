@@ -23,6 +23,34 @@ type WizardField struct {
 	Options     []string
 	Required    bool
 	Validate    func(string) error
+
+	// parent is a reference to the wizard for chaining
+	parent *Wizard
+}
+
+// SetRequired marks this field as required and returns the wizard for chaining
+func (f *WizardField) SetRequired() *Wizard {
+	f.Required = true
+	return f.parent
+}
+
+// SetValidate sets a validation function and returns the wizard for chaining
+func (f *WizardField) SetValidate(fn func(string) error) *Wizard {
+	f.Validate = fn
+	return f.parent
+}
+
+// SetRequiredWithValidate marks field as required and sets validation
+func (f *WizardField) SetRequiredWithValidate(fn func(string) error) *Wizard {
+	f.Required = true
+	f.Validate = fn
+	return f.parent
+}
+
+// SetDescription sets the field description and returns the wizard for chaining
+func (f *WizardField) SetDescription(desc string) *Wizard {
+	f.Description = desc
+	return f.parent
 }
 
 // Wizard is the main wizard structure
@@ -50,8 +78,27 @@ func (w *Wizard) WithDescription(desc string) *Wizard {
 
 // AddField adds a field to the wizard
 func (w *Wizard) AddField(field *WizardField) *Wizard {
+	field.parent = w
 	w.Fields = append(w.Fields, field)
 	return w
+}
+
+// Field returns the last added field for configuration chaining
+func (w *Wizard) Field() *WizardField {
+	if len(w.Fields) == 0 {
+		return nil
+	}
+	return w.Fields[len(w.Fields)-1]
+}
+
+// GetField returns a field by name
+func (w *Wizard) GetField(name string) *WizardField {
+	for _, f := range w.Fields {
+		if f.Name == name {
+			return f
+		}
+	}
+	return nil
 }
 
 // Input adds an input field
@@ -166,6 +213,13 @@ func (w *Wizard) Clone() *Wizard {
 	}
 	for i, f := range w.Fields {
 		fieldCopy := *f
+		fieldCopy.parent = clone // Rebind parent to clone
+		if f.Options != nil {
+			fieldCopy.Options = append([]string(nil), f.Options...)
+		}
+		if defaults, ok := f.Default.([]string); ok {
+			fieldCopy.Default = append([]string(nil), defaults...)
+		}
 		clone.Fields[i] = &fieldCopy
 	}
 	return clone
