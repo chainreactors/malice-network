@@ -1,6 +1,7 @@
 package privilege
 
 import (
+	"github.com/carapace-sh/carapace"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
@@ -10,7 +11,7 @@ import (
 
 func Commands(con *core.Console) []*cobra.Command {
 	runasCmd := &cobra.Command{
-		Use:   "runas --username [username] --domain [domain] --password [password] --program [program] --args [args] --use-profile --use-env --netonly",
+		Use:   "runas --username [username] --domain [domain] --password [password] --path [path] --args [args] --use-profile --use-env --netonly",
 		Short: "Run a program as another user",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return RunasCmd(cmd, con)
@@ -21,7 +22,7 @@ func Commands(con *core.Console) []*cobra.Command {
 		},
 		Example: `Run a program as a different user:
   ~~~
-  sys runas --username admin --domain EXAMPLE --password admin123 --program /path/to/program --args "arg1 arg2" --use-profile --use-env
+  sys runas --username admin --domain EXAMPLE --password admin123 --path /path/to/program --args "arg1 arg2" --use-profile --use-env
   ~~~`,
 	}
 
@@ -34,6 +35,9 @@ func Commands(con *core.Console) []*cobra.Command {
 		f.Bool("use-profile", false, "Load user profile")
 		f.Bool("use-env", false, "Use user environment")
 		f.Bool("netonly", false, "Use network credentials only")
+	})
+	common.BindFlagCompletions(runasCmd, func(comp carapace.ActionMap) {
+		comp["path"] = carapace.ActionFiles().Usage("path to the program to execute")
 	})
 
 	privsCmd := &cobra.Command{
