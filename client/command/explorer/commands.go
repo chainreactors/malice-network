@@ -9,8 +9,9 @@ import (
 func Commands(con *core.Console) []*cobra.Command {
 
 	regCommand := &cobra.Command{
-		Use:   consts.CommandRegExplorer,
-		Short: "registry explorer",
+		Use:   consts.CommandRegExplorer + " [hive\\path]",
+		Short: "Interactive registry explorer",
+		Long:  "Explore registry keys and values interactively from a starting hive/path (e.g., HKEY_LOCAL_MACHINE\\SOFTWARE).",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return regExplorerCmd(cmd, con)
@@ -19,6 +20,10 @@ func Commands(con *core.Console) []*cobra.Command {
 			"depend":     consts.ModuleRegListKey,
 			"thirdParty": "true",
 		},
+		Example: `~~~
+reg_explorer HKLM\\SOFTWARE
+reg_explorer HKEY_CURRENT_USER\\Software
+~~~`,
 	}
 
 	fileCmd := &cobra.Command{

@@ -1,6 +1,7 @@
 package reg
 
 import (
+	"github.com/carapace-sh/carapace"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/malice-network/client/core"
 	"strings"
@@ -73,6 +74,16 @@ func Commands(con *core.Console) []*cobra.Command {
 		f.StringP("value", "v", "", "Value name")
 		f.StringP("type", "t", "REG_SZ", "Value type (REG_SZ, REG_BINARY, REG_DWORD, REG_QWORD)")
 		f.StringP("data", "d", "", "Data to set")
+	})
+	common.BindFlagCompletions(regAddCmd, func(comp carapace.ActionMap) {
+		comp["type"] = carapace.ActionValuesDescribed(
+			"REG_SZ", "String",
+			"REG_EXPAND_SZ", "Expandable string",
+			"REG_MULTI_SZ", "Multi-string",
+			"REG_BINARY", "Binary data",
+			"REG_DWORD", "32-bit number",
+			"REG_QWORD", "64-bit number",
+		).Tag("registry value type")
 	})
 
 	regDeleteCmd := &cobra.Command{
