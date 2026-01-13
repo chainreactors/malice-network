@@ -388,20 +388,29 @@ func (rl *Shell) triggerAICompletion(currentLine string, history []string) {
 		return
 	}
 
-	// Show AI loading hint
-	rl.Hint.SetTemporary(fmt.Sprintf("%s[AI]%s", color.FgCyan, color.Reset))
-	rl.Display.RefreshHelpers()
+	showLoading := rl.Keys != nil && rl.Keys.IsWaiting() && !rl.Keys.IsReading()
+	if showLoading {
+		// Show AI loading hint
+		rl.Hint.SetTemporary(fmt.Sprintf("%s[AI] Loading...%s", color.FgCyan, color.Reset))
+		rl.Display.RefreshHelpers()
+	}
 
 	// Call AI completion
 	suggestions, err := rl.AISmartComplete(currentLine, history)
 	if err != nil {
 		// Silently fail - keep showing local completions
-		rl.Hint.Reset()
+		if showLoading && rl.Keys != nil && rl.Keys.IsWaiting() && !rl.Keys.IsReading() {
+			rl.Hint.Reset()
+			rl.Display.RefreshHelpers()
+		}
 		return
 	}
 
 	if len(suggestions) == 0 {
-		rl.Hint.Reset()
+		if showLoading && rl.Keys != nil && rl.Keys.IsWaiting() && !rl.Keys.IsReading() {
+			rl.Hint.Reset()
+			rl.Display.RefreshHelpers()
+		}
 		return
 	}
 
@@ -410,13 +419,15 @@ func (rl *Shell) triggerAICompletion(currentLine string, history []string) {
 		rl.aiCompletionCallback(suggestions)
 	}
 
-	// Show AI suggestions in hint
-	hintText := fmt.Sprintf("%s[AI] %s%s", color.FgCyan, suggestions[0], color.Reset)
-	if len(suggestions) > 1 {
-		hintText += fmt.Sprintf(" %s(+%d more)%s", color.Dim, len(suggestions)-1, color.Reset)
+	// Queue AI suggestions to be applied by the main loop, or immediately if idle.
+	rl.aiCompletionMu.Lock()
+	rl.aiCompletionLine = currentLine
+	rl.aiCompletionPending = append([]string(nil), suggestions...)
+	rl.aiCompletionMu.Unlock()
+
+	if rl.Keys != nil && rl.Keys.IsWaiting() && !rl.Keys.IsReading() {
+		rl.applyPendingAICompletion(true)
 	}
-	rl.Hint.SetTemporary(hintText)
-	rl.Display.RefreshHelpers()
 }
 
 // cancelAICompletion cancels any pending AI completion
@@ -435,4 +446,44 @@ func (rl *Shell) SetAICompletionCallback(callback func(suggestions []string)) {
 	rl.aiCompletionMu.Lock()
 	defer rl.aiCompletionMu.Unlock()
 	rl.aiCompletionCallback = callback
+}
+
+func (rl *Shell) applyPendingAICompletion(refresh bool) bool {
+	rl.aiCompletionMu.Lock()
+	currentLine := rl.aiCompletionLine
+	suggestions := rl.aiCompletionPending
+	rl.aiCompletionLine = ""
+	rl.aiCompletionPending = nil
+	rl.aiCompletionMu.Unlock()
+
+	if len(suggestions) == 0 {
+		return false
+	}
+
+	// Discard stale suggestions.
+	baseLine, _ := rl.completer.BaseLine()
+	if strings.TrimSpace(string(*baseLine)) != currentLine {
+		return false
+	}
+
+	// Only enter completion mode if we're not already in another local keymap.
+	local := rl.Keymap.Local()
+	if local != "" && local != keymap.MenuSelect {
+		return false
+	}
+	if local == "" {
+		rl.Keymap.SetLocal(keymap.MenuSelect)
+	}
+
+	// Add AI suggestions to the completion menu as a selectable group.
+	rl.AppendAICompletions(suggestions)
+
+	// Show hint with count of AI suggestions.
+	hintText := fmt.Sprintf("%s[AI] %d suggestions available (use Tab/Arrow to select)%s", color.FgCyan, len(suggestions), color.Reset)
+	rl.Hint.SetTemporary(hintText)
+	if refresh {
+		rl.Display.RefreshHelpers()
+	}
+
+	return true
 }

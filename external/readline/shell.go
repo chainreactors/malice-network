@@ -77,6 +77,8 @@ type Shell struct {
 	aiCompletionTimer    *time.Timer
 	aiCompletionActive   bool
 	aiCompletionCallback func(suggestions []string)
+	aiCompletionPending  []string
+	aiCompletionLine     string
 }
 
 // NewShell returns a readline shell instance initialized with a default
@@ -152,6 +154,13 @@ func (rl *Shell) Cursor() *core.Cursor { return rl.cursor }
 // with the default cursor mark and position, and contains a list of additional surround
 // selections used to change/select multiple parts of the line at once.
 func (rl *Shell) Selection() *core.Selection { return rl.selection }
+
+// AppendAICompletions adds AI-generated suggestions to the completion menu
+// as a new group tagged "AI Suggestions". This allows users to select AI
+// completions using the normal completion selection mechanism.
+func (rl *Shell) AppendAICompletions(suggestions []string) {
+	rl.completer.AppendAICompletions(suggestions)
+}
 
 // Printf prints a formatted string below the current line and redisplays the prompt
 // and input line (and possibly completions/hints if active) below the logged string.

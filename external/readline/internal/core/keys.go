@@ -337,6 +337,14 @@ func (k *Keys) IsReading() bool {
 	return k.reading
 }
 
+// IsWaiting returns true if the key reader is currently blocked waiting for
+// input (i.e. inside WaitAvailableKeys).
+func (k *Keys) IsWaiting() bool {
+	k.mutex.RLock()
+	defer k.mutex.RUnlock()
+	return k.waiting
+}
+
 func (k *Keys) extractCursorPos(keys []byte) (cursor, remain []byte) {
 	if !rxRcvCursorPos.Match(keys) {
 		return cursor, keys
