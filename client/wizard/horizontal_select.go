@@ -34,6 +34,10 @@ type HorizontalSelect struct {
 
 	// Reference to store the result
 	value *string
+
+	// Edit mode state
+	editing    bool
+	editBuffer string
 }
 
 // NewHorizontalSelect creates a new horizontal select field
@@ -95,6 +99,42 @@ func (m *HorizontalSelect) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		m.err = nil
+
+		// Handle edit mode
+		if m.editing {
+			switch msg.String() {
+			case "enter":
+				// Finish editing
+				m.editing = false
+				if m.value != nil {
+					*m.value = m.editBuffer
+				}
+				if m.validate != nil {
+					m.err = m.validate(m.editBuffer)
+					if m.err != nil {
+						return m, nil
+					}
+				}
+				return m, nextFieldCmd
+			case "esc":
+				// Cancel editing
+				m.editing = false
+				m.editBuffer = ""
+				return m, nil
+			case "backspace", "ctrl+h":
+				if len(m.editBuffer) > 0 {
+					m.editBuffer = m.editBuffer[:len(m.editBuffer)-1]
+				}
+			default:
+				// Handle regular character input
+				if len(msg.String()) == 1 {
+					m.editBuffer += msg.String()
+				}
+			}
+			return m, nil
+		}
+
+		// Normal mode
 		switch msg.String() {
 		case "left", "h":
 			if m.cursor > 0 {
@@ -106,6 +146,11 @@ func (m *HorizontalSelect) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor++
 				m.updateValue()
 			}
+		case "e":
+			// Enter edit mode
+			m.editing = true
+			m.editBuffer = m.getSelectedValue()
+			return m, nil
 		case "enter", "tab", "shift+tab":
 			m.updateValue()
 			if m.validate != nil {
@@ -168,6 +213,7 @@ func (m *HorizontalSelect) View() string {
 	// Arrow and index styles
 	arrowStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
 	indexStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
+	hintStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Italic(true)
 
 	// Title
 	if m.title != "" {
@@ -181,26 +227,47 @@ func (m *HorizontalSelect) View() string {
 		sb.WriteString("\n")
 	}
 
-	// Single-line carousel style display
-	// Left arrow (if not first option)
-	if m.cursor > 0 {
-		sb.WriteString(arrowStyle.Render(" ◀ "))
-	} else {
+	// Edit mode display
+	if m.editing {
+		editStyle := lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color("0")).
+			Background(lipgloss.Color("226")). // yellow background for edit
+			Padding(0, 1)
+
 		sb.WriteString("   ")
-	}
-
-	// Current option with highlight
-	sb.WriteString(cursorStyle.Render(m.options[m.cursor]))
-
-	// Right arrow (if not last option)
-	if m.cursor < len(m.options)-1 {
-		sb.WriteString(arrowStyle.Render(" ▶ "))
+		sb.WriteString(editStyle.Render(m.editBuffer + "▌"))
+		sb.WriteString("\n")
+		sb.WriteString(hintStyle.Render("   按 Enter 确认, Esc 取消"))
 	} else {
-		sb.WriteString("   ")
-	}
+		// Single-line carousel style display
+		// Left arrow (if not first option)
+		if m.cursor > 0 {
+			sb.WriteString(arrowStyle.Render(" ◀ "))
+		} else {
+			sb.WriteString("   ")
+		}
 
-	// Position indicator (n/total)
-	sb.WriteString(indexStyle.Render(fmt.Sprintf(" (%d/%d)", m.cursor+1, len(m.options))))
+		// Current option with highlight
+		displayVal := m.options[m.cursor]
+		if displayVal == "" {
+			displayVal = "(空)"
+		}
+		sb.WriteString(cursorStyle.Render(displayVal))
+
+		// Right arrow (if not last option)
+		if m.cursor < len(m.options)-1 {
+			sb.WriteString(arrowStyle.Render(" ▶ "))
+		} else {
+			sb.WriteString("   ")
+		}
+
+		// Position indicator (n/total)
+		sb.WriteString(indexStyle.Render(fmt.Sprintf(" (%d/%d)", m.cursor+1, len(m.options))))
+
+		// Edit hint
+		sb.WriteString(hintStyle.Render("  按 e 编辑"))
+	}
 
 	// Error message
 	if m.err != nil {

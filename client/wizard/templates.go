@@ -134,7 +134,7 @@ func NewTCPPipelineWizard() *Wizard {
 	return NewWizard("tcp_pipeline", "TCP Pipeline Setup").
 		WithDescription("Configure a new TCP pipeline").
 		Input("name", "Pipeline Name", "").
-		Input("listener_id", "Listener ID", "").Field().SetRequired().
+		Select("listener_id", "Listener ID", []string{""}).Field().SetRequired().
 		Input("host", "Host Address", "0.0.0.0").Field().SetValidate(ValidateHost()).
 		Number("port", "Port", 5001).Field().SetValidate(ValidatePort()).
 		Confirm("tls", "Enable TLS?", false)
@@ -145,7 +145,7 @@ func NewHTTPPipelineWizard() *Wizard {
 	return NewWizard("http_pipeline", "HTTP Pipeline Setup").
 		WithDescription("Configure a new HTTP pipeline").
 		Input("name", "Pipeline Name", "").
-		Input("listener_id", "Listener ID", "").Field().SetRequired().
+		Select("listener_id", "Listener ID", []string{""}).Field().SetRequired().
 		Input("host", "Host Address", "0.0.0.0").Field().SetValidate(ValidateHost()).
 		Number("port", "Port", 443).Field().SetValidate(ValidatePort()).
 		Confirm("tls", "Enable TLS?", true)
@@ -156,7 +156,7 @@ func NewProfileCreateWizard() *Wizard {
 	return NewWizard("profile_create", "Create Profile").
 		WithDescription("Create a new implant profile").
 		Input("name", "Profile Name", "").Field().SetRequired().
-		Input("pipeline", "Pipeline ID", "").Field().SetRequired().
+		Select("pipeline", "Pipeline ID", []string{""}).Field().SetRequired().
 		Select("type", "Implant Type", []string{"beacon", "bind", "prelude"}).Field().SetRequired().
 		MultiSelect("modules", "Modules", []string{
 			"base",
@@ -174,7 +174,7 @@ func NewBuildBeaconWizard() *Wizard {
 	return NewWizard("build_beacon", "Build Beacon").
 		WithDescription("Build a beacon implant with full options").
 		// Basic configuration
-		Input("profile", "Profile Name", "").
+		Select("profile", "Profile Name", []string{""}).
 		Select("target", "Build Target", []string{
 			"x86_64-pc-windows-gnu", "i686-pc-windows-gnu",
 			"x86_64-pc-windows-msvc", "i686-pc-windows-msvc",
@@ -184,7 +184,7 @@ func NewBuildBeaconWizard() *Wizard {
 		Select("source", "Build Source", []string{"docker", "action", "saas"}).Field().SetRequired().
 		Confirm("lib", "Build as Library (DLL/SO)?", false).
 		// Network configuration
-		Input("addresses", "C2 Addresses (comma-separated)", "").Field().SetRequired().
+		Select("addresses", "C2 Addresses", []string{""}).Field().SetRequired().
 		Input("proxy", "Proxy URL", "").
 		Confirm("proxy_use_env", "Use Environment Proxy?", false).
 		// Communication parameters
@@ -221,10 +221,10 @@ func NewBuildPulseWizard() *Wizard {
 			"x86_64-pc-windows-msvc", "i686-pc-windows-msvc",
 		}).Field().SetRequired().
 		Select("source", "Build Source", []string{"docker", "action", "saas"}).Field().SetRequired().
-		Input("profile", "Profile Name", "").
-		Input("address", "C2 Address", "").Field().SetRequired().
+		Select("profile", "Profile Name", []string{""}).
+		Select("address", "C2 Address", []string{""}).Field().SetRequired().
 		Input("user_agent", "User-Agent", "").
-		Number("beacon_artifact_id", "Beacon Artifact ID", 0).
+		Select("beacon_artifact_id", "Beacon Artifact ID", []string{""}).
 		Input("path", "HTTP Path", "/pulse")
 }
 
@@ -239,7 +239,7 @@ func NewBuildPreludeWizard() *Wizard {
 			"x86_64-apple-darwin", "aarch64-apple-darwin",
 		}).Field().SetRequired().
 		FilePath("autorun", "Autorun ZIP File").
-		Input("profile", "Profile Name", "").
+		Select("profile", "Profile Name", []string{""}).
 		Select("source", "Build Source", []string{"docker", "action", "saas"}).Field().SetRequired()
 }
 
@@ -256,7 +256,7 @@ func NewBuildModuleWizard() *Wizard {
 			"fs_full", "sys_full", "execute_full", "net_full",
 		}).
 		MultiSelect("third_modules", "3rd Party Modules", []string{"rem", "curl"}).
-		Input("profile", "Profile Name", "").
+		Select("profile", "Profile Name", []string{""}).
 		Select("source", "Build Source", []string{"docker", "action", "saas"}).Field().SetRequired()
 }
 
@@ -264,7 +264,7 @@ func NewBuildModuleWizard() *Wizard {
 func NewBindPipelineWizard() *Wizard {
 	return NewWizard("bind_pipeline", "Bind Pipeline Setup").
 		WithDescription("Configure a bind pipeline").
-		Input("listener_id", "Listener ID", "").Field().SetRequired()
+		Select("listener_id", "Listener ID", []string{""}).Field().SetRequired()
 }
 
 // NewRemPipelineWizard creates a wizard for REM pipeline setup
@@ -272,7 +272,7 @@ func NewRemPipelineWizard() *Wizard {
 	return NewWizard("rem_pipeline", "REM Pipeline Setup").
 		WithDescription("Configure a REM pipeline").
 		Input("name", "Pipeline Name", "").
-		Input("listener_id", "Listener ID", "").Field().SetRequired().
+		Select("listener_id", "Listener ID", []string{""}).Field().SetRequired().
 		Input("console", "Console URL (tcp://host:port)", "tcp://0.0.0.0:19966").
 		Confirm("secure", "Enable Secure Mode?", false)
 }
