@@ -414,23 +414,13 @@ func (c *Console) initAICompletion() {
 	// Initialize command validator from client menu
 	clientMenu := c.App.Menu(consts.ClientMenu).Command
 	if clientMenu != nil {
-		c.commandValidator = NewCommandValidator(clientMenu)
+		c.commandValidator = NewCommandValidatorWithMenu(clientMenu, consts.ClientMenu)
 	}
 
 	// Also add implant menu commands to validator
 	implantMenu := c.App.Menu(consts.ImplantMenu).Command
 	if implantMenu != nil && c.commandValidator != nil {
-		// Build command map from implant menu
-		var addCommands func(cmd *cobra.Command)
-		addCommands = func(cmd *cobra.Command) {
-			c.commandValidator.AddCommand(cmd.Name(), cmd.Aliases...)
-			for _, sub := range cmd.Commands() {
-				if !sub.Hidden {
-					addCommands(sub)
-				}
-			}
-		}
-		addCommands(implantMenu)
+		c.commandValidator.AddCommandsFromCobra(implantMenu, consts.ImplantMenu)
 	}
 
 	// Initialize AI client
@@ -455,5 +445,12 @@ func (c *Console) handleAISmartComplete(line string, history []string) ([]string
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	return c.aiCompletionEngine.SmartComplete(ctx, line, history)
+	activeMenu := ""
+	if c != nil && c.App != nil {
+		if m := c.App.ActiveMenu(); m != nil {
+			activeMenu = m.Name()
+		}
+	}
+
+	return c.aiCompletionEngine.SmartComplete(ctx, line, history, activeMenu)
 }
