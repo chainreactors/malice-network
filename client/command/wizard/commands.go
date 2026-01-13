@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/carapace-sh/carapace"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/plugin"
 	wizardfw "github.com/chainreactors/malice-network/client/wizard"
@@ -52,6 +54,24 @@ wizard run --file ./wizards/priv_esc.yaml
 ~~~`,
 	}
 	runCmd.Flags().StringP("file", "f", "", "run wizard from a JSON/YAML spec file (path or embed://...)")
+
+	common.BindFlagCompletions(runCmd, func(comp carapace.ActionMap) {
+		comp["file"] = carapace.ActionFiles().Usage("wizard spec file (JSON/YAML)")
+	})
+	common.BindArgCompletions(runCmd, nil, carapace.ActionCallback(func(c carapace.Context) carapace.Action {
+		_ = plugin.GetGlobalMalManager()
+
+		templates := wizardfw.ListTemplates()
+		results := make([]string, 0, len(templates)*2)
+		for _, name := range templates {
+			desc := ""
+			if wiz, ok := wizardfw.GetTemplate(name); ok && wiz != nil {
+				desc = wiz.Description
+			}
+			results = append(results, name, desc)
+		}
+		return carapace.ActionValuesDescribed(results...).Tag("wizard template")
+	}))
 
 	wizardCmd.AddCommand(listCmd, runCmd)
 
@@ -118,6 +138,14 @@ func createCategoryCommand(con *core.Console, cat wizardfw.WizardCategory) *cobr
 
 			return runWizard(con, wiz)
 		},
+	}
+
+	if len(cat.Wizards) > 0 {
+		results := make([]string, 0, len(cat.Wizards)*2)
+		for _, w := range cat.Wizards {
+			results = append(results, w.ID, w.Description)
+		}
+		common.BindArgCompletions(cmd, nil, carapace.ActionValuesDescribed(results...).Tag(cat.Title+" wizard"))
 	}
 
 	// Add valid types to help text
@@ -241,7 +269,31 @@ func RunWizardFileCmd(cmd *cobra.Command, con *core.Console, path string) error 
 	return runWizard(con, wiz)
 }
 
+// setupDynamicProviders sets up OptionsProvider for known dynamic fields
+func setupDynamicProviders(wiz *wizardfw.Wizard) {
+	for _, f := range wiz.Fields {
+		switch f.Name {
+		case "profile":
+			f.OptionsProvider = ProfileOptionsProvider()
+		case "listener_id":
+			f.OptionsProvider = ListenerOptionsProvider()
+		case "pipeline", "pipeline_id":
+			f.OptionsProvider = PipelineOptionsProvider()
+		case "addresses", "address":
+			f.OptionsProvider = AddressOptionsProvider()
+		case "beacon_artifact_id":
+			f.OptionsProvider = ArtifactOptionsProvider("beacon")
+		}
+	}
+}
+
 func runWizard(con *core.Console, wiz *wizardfw.Wizard) error {
+	// Set dynamic options providers for known fields
+	setupDynamicProviders(wiz)
+
+	// Prepare dynamic options before running
+	wiz.PrepareOptions(con)
+
 	runner := wizardfw.NewRunner(wiz)
 	result, err := runner.RunTwoPhase()
 	if err != nil {
