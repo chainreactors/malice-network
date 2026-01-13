@@ -2,6 +2,9 @@ package wizard
 
 import (
 	"fmt"
+	"net"
+	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -12,6 +15,7 @@ import (
 	wizardfw "github.com/chainreactors/malice-network/client/wizard"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/implanttypes"
+	serverbuild "github.com/chainreactors/malice-network/server/build"
 	"github.com/corpix/uarand"
 )
 
@@ -61,38 +65,43 @@ func init() {
 
 // Helper functions for getting values from wizard result
 
+func derefString(v any) (string, bool) {
+	switch val := v.(type) {
+	case string:
+		return val, true
+	case *string:
+		if val != nil {
+			return *val, true
+		}
+	}
+	return "", false
+}
+
 func getString(result *wizardfw.WizardResult, key string) string {
 	if v, ok := result.Values[key]; ok {
-		switch val := v.(type) {
-		case string:
-			return val
-		case *string:
-			if val != nil {
-				return *val
-			}
+		if s, ok := derefString(v); ok {
+			return s
 		}
 	}
 	return ""
 }
 
 func getInt(result *wizardfw.WizardResult, key string) int {
-	if v, ok := result.Values[key]; ok {
-		switch val := v.(type) {
-		case int:
-			return val
-		case int64:
-			return int(val)
-		case float64:
-			return int(val)
-		case string:
-			if i, err := strconv.Atoi(val); err == nil {
+	v, ok := result.Values[key]
+	if !ok {
+		return 0
+	}
+	switch val := v.(type) {
+	case int:
+		return val
+	case int64:
+		return int(val)
+	case float64:
+		return int(val)
+	default:
+		if s, ok := derefString(v); ok {
+			if i, err := strconv.Atoi(s); err == nil {
 				return i
-			}
-		case *string:
-			if val != nil {
-				if i, err := strconv.Atoi(*val); err == nil {
-					return i
-				}
 			}
 		}
 	}
@@ -104,289 +113,241 @@ func getUint32(result *wizardfw.WizardResult, key string) uint32 {
 }
 
 func getBool(result *wizardfw.WizardResult, key string) bool {
-	if v, ok := result.Values[key]; ok {
-		switch val := v.(type) {
-		case bool:
-			return val
-		case *bool:
-			if val != nil {
-				return *val
-			}
-		case string:
-			return val == "true" || val == "yes" || val == "1"
-		case *string:
-			if val != nil {
-				s := *val
-				return s == "true" || s == "yes" || s == "1"
-			}
+	v, ok := result.Values[key]
+	if !ok {
+		return false
+	}
+	switch val := v.(type) {
+	case bool:
+		return val
+	case *bool:
+		return val != nil && *val
+	default:
+		if s, ok := derefString(v); ok {
+			return s == "true" || s == "yes" || s == "1"
 		}
 	}
 	return false
 }
 
 func getFloat64(result *wizardfw.WizardResult, key string) float64 {
-	if v, ok := result.Values[key]; ok {
-		switch val := v.(type) {
-		case float64:
-			return val
-		case float32:
-			return float64(val)
-		case int:
-			return float64(val)
-		case int64:
-			return float64(val)
-		case string:
-			if f, err := strconv.ParseFloat(val, 64); err == nil {
+	v, ok := result.Values[key]
+	if !ok {
+		return 0
+	}
+	switch val := v.(type) {
+	case float64:
+		return val
+	case float32:
+		return float64(val)
+	case int:
+		return float64(val)
+	case int64:
+		return float64(val)
+	default:
+		if s, ok := derefString(v); ok {
+			if f, err := strconv.ParseFloat(s, 64); err == nil {
 				return f
-			}
-		case *string:
-			if val != nil {
-				if f, err := strconv.ParseFloat(*val, 64); err == nil {
-					return f
-				}
 			}
 		}
 	}
 	return 0
 }
 
+func splitCommaSeparated(s string) []string {
+	if strings.TrimSpace(s) == "" {
+		return nil
+	}
+	parts := strings.Split(s, ",")
+	out := make([]string, 0, len(parts))
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part != "" {
+			out = append(out, part)
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
+func normalizeStringSlice(values []string) []string {
+	if len(values) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value != "" {
+			out = append(out, value)
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
 func getStringSlice(result *wizardfw.WizardResult, key string) []string {
-	if v, ok := result.Values[key]; ok {
-		switch val := v.(type) {
-		case []string:
-			return val
-		case *[]string:
-			if val != nil {
-				return *val
-			}
-		case []interface{}:
-			result := make([]string, len(val))
-			for i, item := range val {
-				if s, ok := item.(string); ok {
-					result[i] = s
+	v, ok := result.Values[key]
+	if !ok {
+		return nil
+	}
+	switch val := v.(type) {
+	case []string:
+		return normalizeStringSlice(val)
+	case *[]string:
+		if val != nil {
+			return normalizeStringSlice(*val)
+		}
+	case []interface{}:
+		out := make([]string, 0, len(val))
+		for _, item := range val {
+			if s, ok := item.(string); ok {
+				s = strings.TrimSpace(s)
+				if s != "" {
+					out = append(out, s)
 				}
 			}
-			return result
-		case string:
-			if val != "" {
-				return strings.Split(val, ",")
-			}
-		case *string:
-			if val != nil && *val != "" {
-				return strings.Split(*val, ",")
-			}
+		}
+		return normalizeStringSlice(out)
+	default:
+		if s, ok := derefString(v); ok && s != "" {
+			return splitCommaSeparated(s)
 		}
 	}
 	return nil
+}
+
+// pipelineParams holds common parameters for pipeline creation
+type pipelineParams struct {
+	name       string
+	listenerID string
+	host       string
+	port       uint32
+	tls        *clientpb.TLS
+}
+
+// extractPipelineParams extracts common pipeline parameters from wizard result
+func extractPipelineParams(result *wizardfw.WizardResult, prefix string) (*pipelineParams, error) {
+	listenerID := getString(result, "listener_id")
+	if listenerID == "" {
+		return nil, fmt.Errorf("listener_id is required")
+	}
+
+	host := getString(result, "host")
+	if host == "" {
+		host = "0.0.0.0"
+	}
+
+	port := getUint32(result, "port")
+	if port == 0 {
+		port = uint32(cryptography.RandomInRange(10240, 65535))
+	}
+
+	name := getString(result, "name")
+	if name == "" {
+		name = fmt.Sprintf("%s_%s_%d", prefix, listenerID, port)
+	}
+
+	var tls *clientpb.TLS
+	if getBool(result, "tls") {
+		tls = &clientpb.TLS{Enable: true}
+	}
+
+	return &pipelineParams{
+		name:       name,
+		listenerID: listenerID,
+		host:       host,
+		port:       port,
+		tls:        tls,
+	}, nil
 }
 
 // executeTCPPipeline executes the TCP pipeline wizard
 func executeTCPPipeline(con *core.Console, result *wizardfw.WizardResult) error {
-	name := getString(result, "name")
-	listenerID := getString(result, "listener_id")
-	host := getString(result, "host")
-	port := getUint32(result, "port")
-	tlsEnabled := getBool(result, "tls")
-
-	// Validate required fields
-	if listenerID == "" {
-		return fmt.Errorf("listener_id is required")
+	p, err := extractPipelineParams(result, "tcp")
+	if err != nil {
+		return err
 	}
-
-	// Generate name if not provided
-	if name == "" {
-		if port == 0 {
-			port = uint32(cryptography.RandomInRange(10240, 65535))
-		}
-		name = fmt.Sprintf("tcp_%s_%d", listenerID, port)
-	}
-
-	// Set defaults
-	if host == "" {
-		host = "0.0.0.0"
-	}
-	if port == 0 {
-		port = uint32(cryptography.RandomInRange(10240, 65535))
-	}
-
-	// Build TLS config
-	var tls *clientpb.TLS
-	if tlsEnabled {
-		tls = &clientpb.TLS{Enable: true}
-	}
-
 	pipeline := &clientpb.Pipeline{
-		Tls:        tls,
-		Name:       name,
-		ListenerId: listenerID,
+		Tls:        p.tls,
+		Name:       p.name,
+		ListenerId: p.listenerID,
 		Parser:     consts.ImplantMalefic,
 		Enable:     false,
-		Body: &clientpb.Pipeline_Tcp{
-			Tcp: &clientpb.TCPPipeline{
-				Name: name,
-				Host: host,
-				Port: port,
-			},
-		},
+		Body:       &clientpb.Pipeline_Tcp{Tcp: &clientpb.TCPPipeline{Name: p.name, Host: p.host, Port: p.port}},
 	}
-
-	// Register pipeline
-	_, err := con.Rpc.RegisterPipeline(con.Context(), pipeline)
-	if err != nil {
-		return fmt.Errorf("failed to register TCP pipeline: %w", err)
-	}
-
-	con.Log.Importantf("TCP Pipeline %s registered\n", name)
-
-	// Start pipeline
-	_, err = con.Rpc.StartPipeline(con.Context(), &clientpb.CtrlPipeline{
-		Name:       name,
-		ListenerId: listenerID,
-		Pipeline:   pipeline,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to start TCP pipeline: %w", err)
-	}
-
-	con.Log.Importantf("TCP Pipeline %s started successfully\n", name)
-	return nil
+	return registerAndStartPipeline(con, pipeline, "TCP")
 }
 
 // executeHTTPPipeline executes the HTTP pipeline wizard
 func executeHTTPPipeline(con *core.Console, result *wizardfw.WizardResult) error {
-	name := getString(result, "name")
-	listenerID := getString(result, "listener_id")
-	host := getString(result, "host")
-	port := getUint32(result, "port")
-	tlsEnabled := getBool(result, "tls")
-
-	// Validate required fields
-	if listenerID == "" {
-		return fmt.Errorf("listener_id is required")
+	p, err := extractPipelineParams(result, "http")
+	if err != nil {
+		return err
 	}
-
-	// Generate name if not provided
-	if name == "" {
-		if port == 0 {
-			port = uint32(cryptography.RandomInRange(10240, 65535))
-		}
-		name = fmt.Sprintf("http_%s_%d", listenerID, port)
-	}
-
-	// Set defaults
-	if host == "" {
-		host = "0.0.0.0"
-	}
-	if port == 0 {
-		port = uint32(cryptography.RandomInRange(10240, 65535))
-	}
-
-	// Build TLS config
-	var tls *clientpb.TLS
-	if tlsEnabled {
-		tls = &clientpb.TLS{Enable: true}
-	}
-
 	pipeline := &clientpb.Pipeline{
-		Tls:        tls,
-		Name:       name,
-		ListenerId: listenerID,
+		Tls:        p.tls,
+		Name:       p.name,
+		ListenerId: p.listenerID,
 		Parser:     consts.ImplantMalefic,
 		Enable:     false,
-		Body: &clientpb.Pipeline_Http{
-			Http: &clientpb.HTTPPipeline{
-				Name: name,
-				Host: host,
-				Port: port,
-			},
-		},
+		Body:       &clientpb.Pipeline_Http{Http: &clientpb.HTTPPipeline{Name: p.name, Host: p.host, Port: p.port}},
 	}
+	return registerAndStartPipeline(con, pipeline, "HTTP")
+}
 
-	// Register pipeline
-	_, err := con.Rpc.RegisterPipeline(con.Context(), pipeline)
-	if err != nil {
-		return fmt.Errorf("failed to register HTTP pipeline: %w", err)
+// registerAndStartPipeline handles the common register and start logic for all pipelines
+func registerAndStartPipeline(con *core.Console, pipeline *clientpb.Pipeline, pipelineType string) error {
+	if _, err := con.Rpc.RegisterPipeline(con.Context(), pipeline); err != nil {
+		return fmt.Errorf("failed to register %s pipeline: %w", pipelineType, err)
 	}
+	con.Log.Importantf("%s Pipeline %s registered\n", pipelineType, pipeline.Name)
 
-	con.Log.Importantf("HTTP Pipeline %s registered\n", name)
-
-	// Start pipeline
-	_, err = con.Rpc.StartPipeline(con.Context(), &clientpb.CtrlPipeline{
-		Name:       name,
-		ListenerId: listenerID,
+	if _, err := con.Rpc.StartPipeline(con.Context(), &clientpb.CtrlPipeline{
+		Name:       pipeline.Name,
+		ListenerId: pipeline.ListenerId,
 		Pipeline:   pipeline,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to start HTTP pipeline: %w", err)
+	}); err != nil {
+		return fmt.Errorf("failed to start %s pipeline: %w", pipelineType, err)
 	}
-
-	con.Log.Importantf("HTTP Pipeline %s started successfully\n", name)
+	con.Log.Importantf("%s Pipeline %s started successfully\n", pipelineType, pipeline.Name)
 	return nil
 }
 
 // executeBindPipeline executes the Bind pipeline wizard
 func executeBindPipeline(con *core.Console, result *wizardfw.WizardResult) error {
 	listenerID := getString(result, "listener_id")
-
-	// Validate required fields
 	if listenerID == "" {
 		return fmt.Errorf("listener_id is required")
 	}
 
 	name := fmt.Sprintf("bind_%s", listenerID)
-
 	pipeline := &clientpb.Pipeline{
 		Name:       name,
 		ListenerId: listenerID,
 		Parser:     consts.ImplantMalefic,
 		Enable:     false,
-		Body: &clientpb.Pipeline_Bind{
-			Bind: &clientpb.BindPipeline{
-				Name: name,
-			},
-		},
+		Body:       &clientpb.Pipeline_Bind{Bind: &clientpb.BindPipeline{Name: name}},
 	}
-
-	// Register pipeline
-	_, err := con.Rpc.RegisterPipeline(con.Context(), pipeline)
-	if err != nil {
-		return fmt.Errorf("failed to register Bind pipeline: %w", err)
-	}
-
-	con.Log.Importantf("Bind Pipeline %s registered\n", name)
-
-	// Start pipeline
-	_, err = con.Rpc.StartPipeline(con.Context(), &clientpb.CtrlPipeline{
-		Name:       name,
-		ListenerId: listenerID,
-		Pipeline:   pipeline,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to start Bind pipeline: %w", err)
-	}
-
-	con.Log.Importantf("Bind Pipeline %s started successfully\n", name)
-	return nil
+	return registerAndStartPipeline(con, pipeline, "Bind")
 }
 
 // executeREMPipeline executes the REM pipeline wizard
 func executeREMPipeline(con *core.Console, result *wizardfw.WizardResult) error {
-	name := getString(result, "name")
 	listenerID := getString(result, "listener_id")
-	console := getString(result, "console")
-	secure := getBool(result, "secure")
-
-	// Validate required fields
 	if listenerID == "" {
 		return fmt.Errorf("listener_id is required")
 	}
 
-	// Generate name if not provided
+	name := getString(result, "name")
 	if name == "" {
 		name = fmt.Sprintf("rem_%s", listenerID)
 	}
 
-	// Default console URL
+	console := getString(result, "console")
 	if console == "" {
 		console = "tcp://0.0.0.0:19966"
 	}
@@ -395,36 +356,11 @@ func executeREMPipeline(con *core.Console, result *wizardfw.WizardResult) error 
 		Name:       name,
 		ListenerId: listenerID,
 		Parser:     consts.ImplantMalefic,
-		Secure:     &clientpb.Secure{Enable: secure},
+		Secure:     &clientpb.Secure{Enable: getBool(result, "secure")},
 		Enable:     false,
-		Body: &clientpb.Pipeline_Rem{
-			Rem: &clientpb.REM{
-				Name:    name,
-				Console: console,
-			},
-		},
+		Body:       &clientpb.Pipeline_Rem{Rem: &clientpb.REM{Name: name, Console: console}},
 	}
-
-	// Register pipeline
-	_, err := con.Rpc.RegisterPipeline(con.Context(), pipeline)
-	if err != nil {
-		return fmt.Errorf("failed to register REM pipeline: %w", err)
-	}
-
-	con.Log.Importantf("REM Pipeline %s registered\n", name)
-
-	// Start pipeline
-	_, err = con.Rpc.StartPipeline(con.Context(), &clientpb.CtrlPipeline{
-		Name:       name,
-		ListenerId: listenerID,
-		Pipeline:   pipeline,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to start REM pipeline: %w", err)
-	}
-
-	con.Log.Importantf("REM Pipeline %s started successfully\n", name)
-	return nil
+	return registerAndStartPipeline(con, pipeline, "REM")
 }
 
 // executeBuildBeacon executes the build beacon wizard
@@ -444,6 +380,15 @@ func executeBuildPrelude(con *core.Console, result *wizardfw.WizardResult) error
 
 // executeBuildModule executes the build module wizard
 func executeBuildModule(con *core.Console, result *wizardfw.WizardResult) error {
+	modules := getStringSlice(result, "modules")
+	thirdModules := getStringSlice(result, "third_modules")
+
+	if len(modules) > 0 && len(thirdModules) > 0 {
+		return fmt.Errorf("please choose either modules or third_modules, not both")
+	}
+	if len(thirdModules) > 0 {
+		return executeBuild(con, result, consts.CommandBuild3rdModules)
+	}
 	return executeBuild(con, result, consts.CommandBuildModules)
 }
 
@@ -454,26 +399,52 @@ func executeBuild(con *core.Console, result *wizardfw.WizardResult, buildType st
 		return fmt.Errorf("target is required")
 	}
 
-	// Build profile from wizard results
-	profile, err := buildProfileFromWizard(result, buildType)
-	if err != nil {
-		return fmt.Errorf("failed to build profile: %w", err)
-	}
-
-	// Create build config
-	buildConfig := &clientpb.BuildConfig{
-		ProfileName: getString(result, "profile"),
-		Target:      target,
-		BuildType:   buildType,
-		Lib:         getBool(result, "lib"),
-	}
-
 	// Set source
 	source := getString(result, "source")
 	if source == "" {
 		source = consts.ArtifactFromDocker
 	}
-	buildConfig.Source = source
+
+	var buildConfig *clientpb.BuildConfig
+	if buildType == consts.CommandBuildPrelude {
+		autorunZipPath := getString(result, "autorun")
+		if autorunZipPath == "" {
+			return fmt.Errorf("autorun is required")
+		}
+		zipData, err := os.ReadFile(autorunZipPath)
+		if err != nil {
+			return fmt.Errorf("failed to read autorun zip: %w", err)
+		}
+		buildConfig, err = serverbuild.ProcessAutorunZipFromBytes(zipData)
+		if err != nil {
+			return fmt.Errorf("failed to process autorun zip: %w", err)
+		}
+		buildConfig.ProfileName = getString(result, "profile")
+		buildConfig.Target = target
+		buildConfig.BuildType = buildType
+		buildConfig.Lib = getBool(result, "lib")
+		buildConfig.Source = source
+	} else {
+		buildConfig = &clientpb.BuildConfig{
+			ProfileName: getString(result, "profile"),
+			Target:      target,
+			BuildType:   buildType,
+			Lib:         getBool(result, "lib"),
+			Source:      source,
+		}
+	}
+
+	// Build profile from wizard results if no implant.yaml provided by bundle (e.g., prelude builds without implant.yaml).
+	if len(buildConfig.MaleficConfig) == 0 {
+		profile, err := buildProfileFromWizard(con, result, buildType)
+		if err != nil {
+			return fmt.Errorf("failed to build profile: %w", err)
+		}
+		buildConfig.MaleficConfig, err = profile.ToYAML()
+		if err != nil {
+			return fmt.Errorf("failed to encode profile: %w", err)
+		}
+	}
 
 	// Check source availability
 	resp, err := con.Rpc.CheckSource(con.Context(), buildConfig)
@@ -481,9 +452,6 @@ func executeBuild(con *core.Console, result *wizardfw.WizardResult, buildType st
 		return fmt.Errorf("failed to check source: %w", err)
 	}
 	buildConfig.Source = resp.Source
-
-	// Set profile config
-	buildConfig.MaleficConfig, _ = profile.ToYAML()
 
 	// Handle artifact ID for pulse builds
 	if buildType == consts.CommandBuildPulse {
@@ -514,220 +482,509 @@ func executeBuild(con *core.Console, result *wizardfw.WizardResult, buildType st
 }
 
 // buildProfileFromWizard creates a ProfileConfig from wizard results
-func buildProfileFromWizard(result *wizardfw.WizardResult, buildType string) (*implanttypes.ProfileConfig, error) {
+func buildProfileFromWizard(con *core.Console, result *wizardfw.WizardResult, buildType string) (*implanttypes.ProfileConfig, error) {
 	profileName := getString(result, "profile")
-
 	var profile *implanttypes.ProfileConfig
 	var err error
 
 	if profileName != "" {
-		// Load existing profile - this would need RPC call, for now use default
-		profile, err = implanttypes.LoadProfile(consts.DefaultProfile)
+		profilePB, err := con.Rpc.GetProfileByName(con.Context(), &clientpb.Profile{Name: profileName})
+		if err != nil {
+			return nil, fmt.Errorf("failed to get profile %q: %w", profileName, err)
+		}
+		profile, err = implanttypes.LoadProfile(profilePB.Content)
 	} else {
 		profile, err = implanttypes.LoadProfile(consts.DefaultProfile)
 	}
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to load profile: %w", err)
 	}
 
+	ensureProfileSections(profile)
+
 	// Set implant mode
-	if profile.Implant != nil && (buildType == consts.CommandBuildBeacon || buildType == consts.CommandBuildBind) {
+	if buildType == consts.CommandBuildBeacon || buildType == consts.CommandBuildBind {
 		profile.Implant.Mod = buildType
 	}
 
-	// Basic profile settings
-	cron := getString(result, "cron")
-	if cron != "" {
-		profile.Basic.Cron = cron
+	// Apply build-specific settings
+	if buildType == consts.CommandBuildPulse {
+		if err := applyPulseSettings(result, profile); err != nil {
+			return nil, err
+		}
+		return profile, nil
 	}
 
-	jitter := getFloat64(result, "jitter")
-	if jitter > 0 {
-		profile.Basic.Jitter = jitter
+	// Apply basic settings
+	applyBasicSettings(result, profile)
+
+	// Parse and apply targets
+	if addresses := getString(result, "addresses"); addresses != "" {
+		targets, err := parseTargets(addresses)
+		if err != nil {
+			return nil, err
+		}
+		profile.Basic.Targets = targets
 	}
 
-	initRetry := getInt(result, "init_retry")
-	if initRetry > 0 {
-		profile.Basic.InitRetry = initRetry
+	// Apply modules
+	applyModuleSettings(result, profile)
+
+	// Apply build settings
+	applyBuildSettings(result, profile)
+
+	return profile, nil
+}
+
+func ensureProfileSections(profile *implanttypes.ProfileConfig) {
+	if profile.Basic == nil {
+		profile.Basic = &implanttypes.BasicProfile{}
+	}
+	if profile.Pulse == nil {
+		profile.Pulse = &implanttypes.PulseProfile{}
+	}
+	if profile.Implant == nil {
+		profile.Implant = &implanttypes.ImplantProfile{}
+	}
+	if profile.Build == nil {
+		profile.Build = &implanttypes.BuildProfile{}
+	}
+}
+
+// applyBasicSettings applies basic profile settings from wizard result
+func applyBasicSettings(result *wizardfw.WizardResult, profile *implanttypes.ProfileConfig) {
+	// String settings
+	if v := getString(result, "cron"); v != "" {
+		profile.Basic.Cron = v
+	}
+	if v := getString(result, "encryption"); v != "" {
+		profile.Basic.Encryption = v
+	}
+	if v := getString(result, "key"); v != "" {
+		profile.Basic.Key = v
 	}
 
-	serverRetry := getInt(result, "server_retry")
-	if serverRetry > 0 {
-		profile.Basic.ServerRetry = serverRetry
+	// Numeric settings
+	if v := getFloat64(result, "jitter"); v > 0 {
+		profile.Basic.Jitter = v
 	}
-
-	globalRetry := getInt(result, "global_retry")
-	if globalRetry > 0 {
-		profile.Basic.GlobalRetry = globalRetry
+	if v := getInt(result, "init_retry"); v > 0 {
+		profile.Basic.InitRetry = v
 	}
-
-	encryption := getString(result, "encryption")
-	if encryption != "" {
-		profile.Basic.Encryption = encryption
+	if v := getInt(result, "server_retry"); v > 0 {
+		profile.Basic.ServerRetry = v
 	}
-
-	key := getString(result, "key")
-	if key != "" {
-		profile.Basic.Key = key
+	if v := getInt(result, "global_retry"); v > 0 {
+		profile.Basic.GlobalRetry = v
 	}
 
 	// Secure mode
-	secure := getBool(result, "secure")
-	if secure {
-		profile.Basic.Secure = &implanttypes.SecureProfile{
-			Enable: true,
+	if getBool(result, "secure") {
+		if profile.Basic.Secure == nil {
+			profile.Basic.Secure = &implanttypes.SecureProfile{}
 		}
+		profile.Basic.Secure.Enable = true
 	}
 
 	// Proxy settings
-	proxy := getString(result, "proxy")
-	proxyUseEnv := getBool(result, "proxy_use_env")
+	proxy, proxyUseEnv := getString(result, "proxy"), getBool(result, "proxy_use_env")
 	if proxy != "" || proxyUseEnv {
-		profile.Basic.Proxy = &implanttypes.ProxyProfile{
-			URL:         proxy,
-			UseEnvProxy: proxyUseEnv,
-		}
+		profile.Basic.Proxy = &implanttypes.ProxyProfile{URL: proxy, UseEnvProxy: proxyUseEnv}
 	}
 
 	// Guardrail settings
-	guardrailIPs := getString(result, "guardrail_ips")
-	guardrailUsers := getString(result, "guardrail_users")
-	guardrailServers := getString(result, "guardrail_servers")
-	guardrailDomains := getString(result, "guardrail_domains")
+	applyGuardrailSettings(result, profile)
+}
 
-	if guardrailIPs != "" || guardrailUsers != "" || guardrailServers != "" || guardrailDomains != "" {
-		if profile.Basic.Guardrail == nil {
-			profile.Basic.Guardrail = &implanttypes.GuardrailProfile{}
-		}
-		profile.Basic.Guardrail.Enable = true
-		profile.Basic.Guardrail.RequireAll = true
+type pulseAddress struct {
+	protocol string
+	target   string
+}
 
-		if guardrailIPs != "" {
-			profile.Basic.Guardrail.IPAddresses = strings.Split(guardrailIPs, ",")
-		}
-		if guardrailUsers != "" {
-			profile.Basic.Guardrail.Usernames = strings.Split(guardrailUsers, ",")
-		}
-		if guardrailServers != "" {
-			profile.Basic.Guardrail.ServerNames = strings.Split(guardrailServers, ",")
-		}
-		if guardrailDomains != "" {
-			profile.Basic.Guardrail.Domains = strings.Split(guardrailDomains, ",")
-		}
+func parsePulseAddress(address string) (*pulseAddress, error) {
+	address = strings.TrimSpace(address)
+	if address == "" {
+		return nil, fmt.Errorf("address is required")
 	}
 
-	// Parse addresses
-	addresses := getString(result, "addresses")
-	if addresses != "" {
-		for _, address := range strings.Split(addresses, ",") {
-			address = strings.TrimSpace(address)
-			if address == "" {
-				continue
-			}
-			target := implanttypes.Target{}
+	if strings.Contains(address, "://") {
+		u, err := url.Parse(address)
+		if err != nil {
+			return nil, fmt.Errorf("invalid address %q: %w", address, err)
+		}
+		if u.User != nil || u.RawQuery != "" || u.Fragment != "" || (u.Path != "" && u.Path != "/") {
+			return nil, fmt.Errorf("invalid address %q: only scheme://host[:port] is supported", address)
+		}
 
-			if strings.HasPrefix(address, "http://") {
-				address = strings.TrimPrefix(address, "http://")
-				if !strings.Contains(address, ":") {
-					address = address + ":80"
-				}
-				target.Address = address
-				target.Http = &implanttypes.HttpProfile{
-					Method:  "POST",
-					Path:    "/",
-					Version: "1.1",
-					Headers: map[string]string{
-						"User-Agent":   uarand.GetRandom(),
-						"Content-Type": "application/octet-stream",
-					},
-				}
-			} else if strings.HasPrefix(address, "https://") {
-				address = strings.TrimPrefix(address, "https://")
-				if !strings.Contains(address, ":") {
-					address = address + ":443"
-				}
-				target.Address = address
-				target.Http = &implanttypes.HttpProfile{
-					Method:  "POST",
-					Path:    "/",
-					Version: "1.1",
-					Headers: map[string]string{
-						"User-Agent":   uarand.GetRandom(),
-						"Content-Type": "application/octet-stream",
-					},
-				}
-				target.TLS = &implanttypes.TLSProfile{
-					Enable:           true,
-					SNI:              strings.Split(address, ":")[0],
-					SkipVerification: true,
-				}
-			} else if strings.HasPrefix(address, "tcp://") {
-				address = strings.TrimPrefix(address, "tcp://")
-				if !strings.Contains(address, ":") {
-					address = address + ":5001"
-				}
-				target.Address = address
-				target.TCP = &implanttypes.TCPProfile{}
-			} else if strings.HasPrefix(address, "tcp+tls://") {
-				address = strings.TrimPrefix(address, "tcp+tls://")
-				if !strings.Contains(address, ":") {
-					address = address + ":5001"
-				}
-				target.Address = address
-				target.TCP = &implanttypes.TCPProfile{}
-				target.TLS = &implanttypes.TLSProfile{
-					Enable:           true,
-					SNI:              strings.Split(address, ":")[0],
-					SkipVerification: true,
-				}
+		scheme := strings.ToLower(strings.TrimSpace(u.Scheme))
+		switch scheme {
+		case "http", "tcp":
+		case "https":
+			return nil, fmt.Errorf("pulse build only supports http:// or tcp:// addresses")
+		default:
+			return nil, fmt.Errorf("unsupported address scheme %q", u.Scheme)
+		}
+
+		if strings.Count(u.Host, ":") > 1 && !strings.HasPrefix(u.Host, "[") {
+			return nil, fmt.Errorf("invalid address %q: IPv6 hosts must be in brackets, e.g. http://[::1]:80", address)
+		}
+
+		host := strings.TrimSpace(u.Hostname())
+		if host == "" {
+			return nil, fmt.Errorf("invalid address %q: missing host", address)
+		}
+		port := strings.TrimSpace(u.Port())
+		if port == "" {
+			if scheme == "tcp" {
+				port = "5001"
 			} else {
-				// Default to TCP
-				if !strings.Contains(address, ":") {
-					address = address + ":5001"
-				}
-				target.Address = address
-				target.TCP = &implanttypes.TCPProfile{}
+				port = "80"
 			}
+		}
+		if err := validatePort(port); err != nil {
+			return nil, err
+		}
 
-			profile.Basic.Targets = append(profile.Basic.Targets, target)
+		target := net.JoinHostPort(host, port)
+		if scheme == "tcp" {
+			return &pulseAddress{protocol: consts.TCPPipeline, target: target}, nil
+		}
+		return &pulseAddress{protocol: consts.HTTPPipeline, target: target}, nil
+	}
+
+	if strings.ContainsAny(address, "/?#") {
+		return nil, fmt.Errorf("invalid address %q: expected host[:port], http://host[:port], or tcp://host[:port]", address)
+	}
+
+	host, target, err := normalizeHostPort(address, "80")
+	if err != nil {
+		return nil, err
+	}
+	_ = host
+	return &pulseAddress{protocol: consts.HTTPPipeline, target: target}, nil
+}
+
+// applyPulseSettings applies pulse profile settings from wizard result
+func applyPulseSettings(result *wizardfw.WizardResult, profile *implanttypes.ProfileConfig) error {
+	if profile.Pulse == nil {
+		profile.Pulse = &implanttypes.PulseProfile{}
+	}
+
+	parsed, err := parsePulseAddress(getString(result, "address"))
+	if err != nil {
+		return err
+	}
+	profile.Pulse.Protocol = parsed.protocol
+	profile.Pulse.Target = parsed.target
+
+	if profile.Pulse.Protocol == consts.HTTPPipeline {
+		if profile.Pulse.Http == nil {
+			profile.Pulse.Http = &implanttypes.HttpProfile{}
+		}
+		profile.Pulse.Http.Method = "POST"
+		profile.Pulse.Http.Version = "1.1"
+		profile.Pulse.Http.Host = parsed.target
+		if profile.Pulse.Http.Headers == nil {
+			profile.Pulse.Http.Headers = map[string]string{}
+		}
+		profile.Pulse.Http.Headers["Host"] = parsed.target
+	}
+
+	if profile.Pulse.Http != nil {
+		if v := strings.TrimSpace(getString(result, "path")); v != "" {
+			profile.Pulse.Http.Path = v
+		}
+		if v := strings.TrimSpace(getString(result, "user_agent")); v != "" {
+			if profile.Pulse.Http.Headers == nil {
+				profile.Pulse.Http.Headers = map[string]string{}
+			}
+			profile.Pulse.Http.Headers["User-Agent"] = v
 		}
 	}
 
-	// Modules
-	modules := getStringSlice(result, "modules")
-	if len(modules) > 0 {
+	if artifactID := getUint32(result, "beacon_artifact_id"); artifactID != 0 {
+		if profile.Pulse.Flags == nil {
+			profile.Pulse.Flags = &implanttypes.PulseFlags{}
+		}
+		profile.Pulse.Flags.ArtifactID = artifactID
+	}
+
+	return nil
+}
+
+// applyGuardrailSettings applies guardrail settings from wizard result
+func applyGuardrailSettings(result *wizardfw.WizardResult, profile *implanttypes.ProfileConfig) {
+	ips := splitCommaSeparated(getString(result, "guardrail_ips"))
+	users := splitCommaSeparated(getString(result, "guardrail_users"))
+	servers := splitCommaSeparated(getString(result, "guardrail_servers"))
+	domains := splitCommaSeparated(getString(result, "guardrail_domains"))
+	if len(ips) == 0 && len(users) == 0 && len(servers) == 0 && len(domains) == 0 {
+		return
+	}
+
+	if profile.Basic.Guardrail == nil {
+		profile.Basic.Guardrail = &implanttypes.GuardrailProfile{}
+	}
+	profile.Basic.Guardrail.Enable = true
+	profile.Basic.Guardrail.RequireAll = true
+
+	if len(ips) > 0 {
+		profile.Basic.Guardrail.IPAddresses = ips
+	}
+	if len(users) > 0 {
+		profile.Basic.Guardrail.Usernames = users
+	}
+	if len(servers) > 0 {
+		profile.Basic.Guardrail.ServerNames = servers
+	}
+	if len(domains) > 0 {
+		profile.Basic.Guardrail.Domains = domains
+	}
+}
+
+// addressScheme defines how to parse a URL scheme into a Target
+type addressScheme struct {
+	prefix      string
+	defaultPort string
+	configure   func(host string, target *implanttypes.Target)
+}
+
+var addressSchemes = []addressScheme{
+	{"http://", "80", configureHTTP},
+	{"https://", "443", configureHTTPS},
+	{"tcp+tls://", "5001", configureTCPTLS},
+	{"tcp://", "5001", configureTCP},
+}
+
+func configureHTTP(host string, target *implanttypes.Target) {
+	target.Http = defaultHTTPProfile()
+}
+
+func configureHTTPS(host string, target *implanttypes.Target) {
+	target.Http = defaultHTTPProfile()
+	target.TLS = &implanttypes.TLSProfile{
+		Enable:           true,
+		SNI:              host,
+		SkipVerification: true,
+	}
+}
+
+func configureTCP(host string, target *implanttypes.Target) {
+	target.TCP = &implanttypes.TCPProfile{}
+}
+
+func configureTCPTLS(host string, target *implanttypes.Target) {
+	target.TCP = &implanttypes.TCPProfile{}
+	target.TLS = &implanttypes.TLSProfile{
+		Enable:           true,
+		SNI:              host,
+		SkipVerification: true,
+	}
+}
+
+func defaultHTTPProfile() *implanttypes.HttpProfile {
+	return &implanttypes.HttpProfile{
+		Method:  "POST",
+		Path:    "/",
+		Version: "1.1",
+		Headers: map[string]string{
+			"User-Agent":   uarand.GetRandom(),
+			"Content-Type": "application/octet-stream",
+		},
+	}
+}
+
+// parseTargets parses comma-separated addresses into Target slice
+func parseTargets(addresses string) ([]implanttypes.Target, error) {
+	var targets []implanttypes.Target
+	for _, raw := range strings.Split(addresses, ",") {
+		addr := strings.TrimSpace(raw)
+		if addr == "" {
+			continue
+		}
+		target, err := parseAddress(addr)
+		if err != nil {
+			return nil, err
+		}
+		targets = append(targets, *target)
+	}
+	if len(targets) == 0 {
+		return nil, fmt.Errorf("no valid targets found in addresses")
+	}
+	return targets, nil
+}
+
+// parseAddress parses a single address into a Target
+func parseAddress(address string) (*implanttypes.Target, error) {
+	address = strings.TrimSpace(address)
+	if address == "" {
+		return nil, fmt.Errorf("address is empty")
+	}
+
+	if strings.Contains(address, "://") {
+		u, err := url.Parse(address)
+		if err != nil {
+			return nil, fmt.Errorf("invalid address %q: %w", address, err)
+		}
+		if u.User != nil || u.RawQuery != "" || u.Fragment != "" || (u.Path != "" && u.Path != "/") {
+			return nil, fmt.Errorf("invalid address %q: only scheme://host[:port] is supported", address)
+		}
+		if strings.Count(u.Host, ":") > 1 && !strings.HasPrefix(u.Host, "[") {
+			return nil, fmt.Errorf("invalid address %q: IPv6 hosts must be in brackets, e.g. tcp://[::1]:5001", address)
+		}
+
+		scheme := strings.ToLower(strings.TrimSpace(u.Scheme))
+		target := &implanttypes.Target{}
+		var defaultPort string
+		for _, candidate := range addressSchemes {
+			if strings.TrimSuffix(candidate.prefix, "://") == scheme {
+				defaultPort = candidate.defaultPort
+				break
+			}
+		}
+		if defaultPort == "" {
+			return nil, fmt.Errorf("unsupported address scheme %q", u.Scheme)
+		}
+
+		host := strings.TrimSpace(u.Hostname())
+		if host == "" {
+			return nil, fmt.Errorf("invalid address %q: missing host", address)
+		}
+		port := strings.TrimSpace(u.Port())
+		if port == "" {
+			port = defaultPort
+		}
+		if err := validatePort(port); err != nil {
+			return nil, err
+		}
+		target.Address = net.JoinHostPort(host, port)
+
+		for _, schemeConfig := range addressSchemes {
+			if strings.TrimSuffix(schemeConfig.prefix, "://") == scheme {
+				schemeConfig.configure(host, target)
+				return target, nil
+			}
+		}
+		return nil, fmt.Errorf("unsupported address scheme %q", u.Scheme)
+	}
+
+	if strings.ContainsAny(address, "/?#") {
+		return nil, fmt.Errorf("invalid address %q: expected host[:port] or scheme://host[:port]", address)
+	}
+
+	host, addr, err := normalizeHostPort(address, "5001")
+	if err != nil {
+		return nil, err
+	}
+	target := &implanttypes.Target{
+		Address: addr,
+		TCP:     &implanttypes.TCPProfile{},
+	}
+	_ = host
+	return target, nil
+}
+
+func validatePort(port string) error {
+	p, err := strconv.Atoi(port)
+	if err != nil || p < 1 || p > 65535 {
+		return fmt.Errorf("invalid port: %q", port)
+	}
+	return nil
+}
+
+func normalizeHostPort(addr string, defaultPort string) (host string, normalized string, err error) {
+	addr = strings.TrimSpace(addr)
+	if addr == "" {
+		return "", "", fmt.Errorf("address is empty")
+	}
+	if strings.ContainsAny(addr, "/?#") {
+		return "", "", fmt.Errorf("invalid address %q: expected host[:port]", addr)
+	}
+
+	port := defaultPort
+
+	switch {
+	case strings.HasPrefix(addr, "["):
+		if strings.Contains(addr, "]") && !strings.Contains(addr, "]:") {
+			addr = addr + ":" + port
+		}
+		h, p, splitErr := net.SplitHostPort(addr)
+		if splitErr != nil {
+			return "", "", fmt.Errorf("invalid address %q: %w", addr, splitErr)
+		}
+		if strings.TrimSpace(h) == "" {
+			return "", "", fmt.Errorf("invalid address %q: missing host", addr)
+		}
+		if err := validatePort(p); err != nil {
+			return "", "", err
+		}
+		return h, net.JoinHostPort(h, p), nil
+
+	case strings.Count(addr, ":") == 0:
+		if err := validatePort(port); err != nil {
+			return "", "", err
+		}
+		return addr, net.JoinHostPort(addr, port), nil
+
+	case strings.Count(addr, ":") == 1:
+		h, p, splitErr := net.SplitHostPort(addr)
+		if splitErr != nil {
+			return "", "", fmt.Errorf("invalid address %q: %w", addr, splitErr)
+		}
+		if strings.TrimSpace(h) == "" {
+			return "", "", fmt.Errorf("invalid address %q: missing host", addr)
+		}
+		if err := validatePort(p); err != nil {
+			return "", "", err
+		}
+		return h, net.JoinHostPort(h, p), nil
+
+	default:
+		host = addr
+		ipPart := host
+		if i := strings.LastIndex(ipPart, "%"); i != -1 {
+			ipPart = ipPart[:i]
+		}
+		if net.ParseIP(ipPart) == nil {
+			return "", "", fmt.Errorf("invalid IPv6 address %q (use [ipv6]:port)", addr)
+		}
+		if err := validatePort(port); err != nil {
+			return "", "", err
+		}
+		return host, net.JoinHostPort(host, port), nil
+	}
+}
+
+// applyModuleSettings applies module settings from wizard result
+func applyModuleSettings(result *wizardfw.WizardResult, profile *implanttypes.ProfileConfig) {
+	if modules := getStringSlice(result, "modules"); len(modules) > 0 {
 		profile.Implant.Modules = modules
 	}
-
-	thirdModules := getStringSlice(result, "third_modules")
-	if len(thirdModules) > 0 {
+	if thirdModules := getStringSlice(result, "third_modules"); len(thirdModules) > 0 {
 		profile.Implant.ThirdModules = thirdModules
 		profile.Implant.Enable3rd = true
 	}
+}
 
-	// OLLVM
-	ollvm := getBool(result, "ollvm")
-	if ollvm {
+// applyBuildSettings applies build settings from wizard result
+func applyBuildSettings(result *wizardfw.WizardResult, profile *implanttypes.ProfileConfig) {
+	if getBool(result, "ollvm") {
+		if profile.Build == nil {
+			profile.Build = &implanttypes.BuildProfile{}
+		}
 		profile.Build.OLLVM = &implanttypes.OLLVMProfile{
-			Enable:   true,
-			BCFObf:   true,
-			SplitObf: true,
-			SubObf:   true,
-			FCO:      true,
-			ConstEnc: true,
+			Enable: true, BCFObf: true, SplitObf: true, SubObf: true, FCO: true, ConstEnc: true,
 		}
 	}
-
-	// Anti-sandbox
-	antiSandbox := getBool(result, "anti_sandbox")
-	if antiSandbox {
-		profile.Implant.Anti = &implanttypes.AntiProfile{
-			Sandbox: true,
+	if getBool(result, "anti_sandbox") {
+		if profile.Implant == nil {
+			profile.Implant = &implanttypes.ImplantProfile{}
 		}
+		if profile.Implant.Anti == nil {
+			profile.Implant.Anti = &implanttypes.AntiProfile{}
+		}
+		profile.Implant.Anti.Sandbox = true
 	}
-
-	return profile, nil
 }
 
 // validateLibFlag validates the lib flag based on build type and target

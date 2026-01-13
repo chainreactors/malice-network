@@ -58,6 +58,126 @@ func (r *Runner) Run() (*WizardResult, error) {
 	return result, nil
 }
 
+// RunCompact executes the wizard using the compact two-layer selector UI
+// Supports all field types
+func (r *Runner) RunCompact() (*WizardResult, error) {
+	result := NewWizardResult(r.wizard.ID)
+
+	// Convert all wizard fields to FormField
+	formFields := make([]*FormField, 0, len(r.wizard.Fields))
+
+	for _, f := range r.wizard.Fields {
+		ff := &FormField{
+			Name:     f.Name,
+			Title:    f.Title,
+			Required: f.Required,
+			Validate: f.Validate,
+		}
+
+		switch f.Type {
+		case FieldSelect:
+			ff.Kind = KindSelect
+			ff.Options = f.Options
+			val := ""
+			if f.Default != nil {
+				val = fmt.Sprintf("%v", f.Default)
+			}
+			if val == "" && len(f.Options) > 0 {
+				val = f.Options[0]
+			}
+			for i, opt := range f.Options {
+				if opt == val {
+					ff.Selected = i
+					break
+				}
+			}
+			result.Values[f.Name] = &val
+			ff.Value = &val
+
+		case FieldMultiSelect:
+			ff.Kind = KindMultiSelect
+			ff.Options = f.Options
+			var vals []string
+			if f.Default != nil {
+				if defaults, ok := f.Default.([]string); ok {
+					vals = defaults
+				}
+			}
+			ff.MultiSelect = make(map[int]bool)
+			for _, v := range vals {
+				for i, opt := range f.Options {
+					if opt == v {
+						ff.MultiSelect[i] = true
+						break
+					}
+				}
+			}
+			result.Values[f.Name] = &vals
+			ff.Value = &vals
+
+		case FieldConfirm:
+			ff.Kind = KindConfirm
+			val := false
+			if f.Default != nil {
+				if b, ok := f.Default.(bool); ok {
+					val = b
+				}
+			}
+			ff.ConfirmVal = val
+			result.Values[f.Name] = &val
+			ff.Value = &val
+
+		case FieldInput, FieldText, FieldFilePath:
+			ff.Kind = KindInput
+			val := ""
+			if f.Default != nil {
+				val = fmt.Sprintf("%v", f.Default)
+			}
+			ff.InputValue = val
+			result.Values[f.Name] = &val
+			ff.Value = &val
+
+		case FieldNumber:
+			ff.Kind = KindNumber
+			val := ""
+			if f.Default != nil {
+				switch v := f.Default.(type) {
+				case int:
+					val = strconv.Itoa(v)
+				case string:
+					val = v
+				}
+			}
+			ff.InputValue = val
+			result.Values[f.Name] = &val
+			ff.Value = &val
+
+		default:
+			return nil, fmt.Errorf("unsupported field type: %d", f.Type)
+		}
+
+		formFields = append(formFields, ff)
+	}
+
+	// Create and run the compact form
+	wizardForm := NewWizardForm(formFields).WithTheme(r.theme)
+
+	if err := wizardForm.Run(); err != nil {
+		return nil, err
+	}
+
+	r.finalizeResult(result)
+	return result, nil
+}
+
+// RunTwoPhase executes the wizard in two phases:
+// Phase 1: Use compact UI for Select/MultiSelect fields
+// Phase 2: Use standard form for other fields
+func (r *Runner) RunTwoPhase() (*WizardResult, error) {
+	// Now RunCompact supports all field types, so just use it directly
+	return r.RunCompact()
+}
+
 func (r *Runner) finalizeResult(result *WizardResult) {
 	for _, f := range r.wizard.Fields {
 		if f.Type != FieldNumber {
@@ -222,15 +342,11 @@ func (r *Runner) buildSelectField(f *WizardField, result *WizardResult) huh.Fiel
 
 	result.Values[f.Name] = &val
 
-	options := make([]huh.Option[string], len(f.Options))
-	for i, opt := range f.Options {
-		options[i] = huh.NewOption(opt, opt)
-	}
-
-	selectField := huh.NewSelect[string]().
+	// Use horizontal select for inline display (similar to Claude Code plan mode)
+	selectField := NewHorizontalSelect(f.Options).
 		Title(f.Title).
-		Options(options...).
-		Value(&val)
+		Value(&val).
+		Key(f.Name)
 
 	if f.Description != "" {
 		selectField = selectField.Description(f.Description)
@@ -263,15 +379,11 @@ func (r *Runner) buildMultiSelectField(f *WizardField, result *WizardResult) huh
 
 	result.Values[f.Name] = &vals
 
-	options := make([]huh.Option[string], len(f.Options))
-	for i, opt := range f.Options {
-		options[i] = huh.NewOption(opt, opt)
-	}
-
-	multiSelect := huh.NewMultiSelect[string]().
+	// Use horizontal multi-select for inline display
+	multiSelect := NewHorizontalMultiSelect(f.Options).
 		Title(f.Title).
-		Options(options...).
-		Value(&vals)
+		Value(&vals).
+		Key(f.Name)
 
 	if f.Description != "" {
 		multiSelect = multiSelect.Description(f.Description)
@@ -420,7 +532,8 @@ func RunSelect(title string, options []SelectOption) (string, error) {
 	selectField := huh.NewSelect[string]().
 		Title(title).
 		Options(huhOptions...).
-		Value(&selected)
+		Value(&selected).
+		Inline(true)
 
 	form := huh.NewForm(huh.NewGroup(selectField)).WithTheme(huh.ThemeCharm())
 
