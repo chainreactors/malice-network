@@ -229,6 +229,17 @@ type pipelineParams struct {
 	tls        *clientpb.TLS
 }
 
+// checkPortAvailable checks if a TCP port is available for binding
+func checkPortAvailable(host string, port uint32) error {
+	addr := fmt.Sprintf("%s:%d", host, port)
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		return fmt.Errorf("port %d is already in use on %s", port, host)
+	}
+	ln.Close()
+	return nil
+}
+
 // extractPipelineParams extracts common pipeline parameters from wizard result
 func extractPipelineParams(result *wizardfw.WizardResult, prefix string) (*pipelineParams, error) {
 	listenerID := getString(result, "listener_id")
@@ -271,6 +282,10 @@ func executeTCPPipeline(con *core.Console, result *wizardfw.WizardResult) error 
 	if err != nil {
 		return err
 	}
+	// Check if port is available before registration
+	if err := checkPortAvailable(p.host, p.port); err != nil {
+		return fmt.Errorf("cannot create TCP pipeline: %w", err)
+	}
 	pipeline := &clientpb.Pipeline{
 		Tls:        p.tls,
 		Name:       p.name,
@@ -287,6 +302,10 @@ func executeHTTPPipeline(con *core.Console, result *wizardfw.WizardResult) error
 	p, err := extractPipelineParams(result, "http")
 	if err != nil {
 		return err
+	}
+	// Check if port is available before registration
+	if err := checkPortAvailable(p.host, p.port); err != nil {
+		return fmt.Errorf("cannot create HTTP pipeline: %w", err)
 	}
 	pipeline := &clientpb.Pipeline{
 		Tls:        p.tls,
