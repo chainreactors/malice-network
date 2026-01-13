@@ -3,6 +3,7 @@ package wizard
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/charmbracelet/huh"
 )
@@ -53,7 +54,70 @@ func (r *Runner) Run() (*WizardResult, error) {
 		return nil, err
 	}
 
+	r.finalizeResult(result)
 	return result, nil
+}
+
+func (r *Runner) finalizeResult(result *WizardResult) {
+	for _, f := range r.wizard.Fields {
+		if f.Type != FieldNumber {
+			continue
+		}
+		raw, ok := result.Values[f.Name]
+		if !ok {
+			continue
+		}
+		switch val := raw.(type) {
+		case *string:
+			if val == nil {
+				result.Values[f.Name] = 0
+				continue
+			}
+			s := strings.TrimSpace(*val)
+			if s == "" {
+				result.Values[f.Name] = 0
+				continue
+			}
+			if n, err := strconv.Atoi(s); err == nil {
+				result.Values[f.Name] = n
+			}
+		case string:
+			s := strings.TrimSpace(val)
+			if s == "" {
+				result.Values[f.Name] = 0
+				continue
+			}
+			if n, err := strconv.Atoi(s); err == nil {
+				result.Values[f.Name] = n
+			}
+		}
+	}
+}
+
+func requiredStringValidator(label string) func(string) error {
+	return func(s string) error {
+		if strings.TrimSpace(s) == "" {
+			if label != "" {
+				return fmt.Errorf("%s is required", label)
+			}
+			return fmt.Errorf("value is required")
+		}
+		return nil
+	}
+}
+
+func chainStringValidators(validators ...func(string) error) func(string) error {
+	return func(s string) error {
+		for _, v := range validators {
+			if v == nil {
+				continue
+			}
+			if err := v(s); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
 }
 
 // buildField creates a huh field from a WizardField
@@ -101,8 +165,16 @@ func (r *Runner) buildInputField(f *WizardField, result *WizardResult) huh.Field
 		input = input.Description(f.Description)
 	}
 
-	if f.Validate != nil {
-		input = input.Validate(f.Validate)
+	if f.Required || f.Validate != nil {
+		validate := f.Validate
+		if f.Required {
+			label := f.Title
+			if label == "" {
+				label = f.Name
+			}
+			validate = chainStringValidators(requiredStringValidator(label), f.Validate)
+		}
+		input = input.Validate(validate)
 	}
 
 	return input
@@ -124,8 +196,16 @@ func (r *Runner) buildTextField(f *WizardField, result *WizardResult) huh.Field 
 		text = text.Description(f.Description)
 	}
 
-	if f.Validate != nil {
-		text = text.Validate(f.Validate)
+	if f.Required || f.Validate != nil {
+		validate := f.Validate
+		if f.Required {
+			label := f.Title
+			if label == "" {
+				label = f.Name
+			}
+			validate = chainStringValidators(requiredStringValidator(label), f.Validate)
+		}
+		text = text.Validate(validate)
 	}
 
 	return text
@@ -135,6 +215,9 @@ func (r *Runner) buildSelectField(f *WizardField, result *WizardResult) huh.Fiel
 	val := ""
 	if f.Default != nil {
 		val = fmt.Sprintf("%v", f.Default)
+	}
+	if f.Default == nil && val == "" && len(f.Options) > 0 {
+		val = f.Options[0]
 	}
 
 	result.Values[f.Name] = &val
@@ -151,6 +234,20 @@ func (r *Runner) buildSelectField(f *WizardField, result *WizardResult) huh.Fiel
 
 	if f.Description != "" {
 		selectField = selectField.Description(f.Description)
+	}
+
+	if f.Required || f.Validate != nil {
+		selectField = selectField.Validate(func(s string) error {
+			var required func(string) error
+			if f.Required {
+				label := f.Title
+				if label == "" {
+					label = f.Name
+				}
+				required = requiredStringValidator(label)
+			}
+			return chainStringValidators(required, f.Validate)(s)
+		})
 	}
 
 	return selectField
@@ -180,6 +277,19 @@ func (r *Runner) buildMultiSelectField(f *WizardField, result *WizardResult) huh
 		multiSelect = multiSelect.Description(f.Description)
 	}
 
+	if f.Required {
+		multiSelect = multiSelect.Validate(func(values []string) error {
+			if len(values) == 0 {
+				label := f.Title
+				if label == "" {
+					label = f.Name
+				}
+				return fmt.Errorf("%s is required", label)
+			}
+			return nil
+		})
+	}
+
 	return multiSelect
 }
 
@@ -201,6 +311,7 @@ func (r *Runner) buildConfirmField(f *WizardField, result *WizardResult) huh.Fie
 		confirm = confirm.Description(f.Description)
 	}
 
+	// Required has no clear meaning for a boolean confirm; leave it to callers via custom validation.
 	return confirm
 }
 
@@ -221,12 +332,23 @@ func (r *Runner) buildNumberField(f *WizardField, result *WizardResult) huh.Fiel
 		Title(f.Title).
 		Value(&val).
 		Validate(func(s string) error {
+			s = strings.TrimSpace(s)
 			if s == "" {
+				if f.Required {
+					label := f.Title
+					if label == "" {
+						label = f.Name
+					}
+					return fmt.Errorf("%s is required", label)
+				}
 				return nil
 			}
 			_, err := strconv.Atoi(s)
 			if err != nil {
 				return fmt.Errorf("please enter a valid number")
+			}
+			if f.Validate != nil {
+				return f.Validate(s)
 			}
 			return nil
 		})
@@ -256,5 +378,55 @@ func (r *Runner) buildFilePathField(f *WizardField, result *WizardResult) huh.Fi
 		input = input.Description(f.Description)
 	}
 
+	if f.Required || f.Validate != nil {
+		validate := f.Validate
+		if f.Required {
+			label := f.Title
+			if label == "" {
+				label = f.Name
+			}
+			validate = chainStringValidators(requiredStringValidator(label), f.Validate)
+		}
+		input = input.Validate(validate)
+	}
+
 	return input
+}
+
+// SelectOption represents an option in a select menu
+type SelectOption struct {
+	Value       string
+	Label       string
+	Description string
+}
+
+// RunSelect displays an interactive select menu and returns the selected value
+func RunSelect(title string, options []SelectOption) (string, error) {
+	if len(options) == 0 {
+		return "", fmt.Errorf("no options provided")
+	}
+
+	selected := options[0].Value
+
+	huhOptions := make([]huh.Option[string], len(options))
+	for i, opt := range options {
+		label := opt.Label
+		if opt.Description != "" {
+			label = fmt.Sprintf("%-12s - %s", opt.Label, opt.Description)
+		}
+		huhOptions[i] = huh.NewOption(label, opt.Value)
+	}
+
+	selectField := huh.NewSelect[string]().
+		Title(title).
+		Options(huhOptions...).
+		Value(&selected)
+
+	form := huh.NewForm(huh.NewGroup(selectField)).WithTheme(huh.ThemeCharm())
+
+	if err := form.Run(); err != nil {
+		return "", err
+	}
+
+	return selected, nil
 }
