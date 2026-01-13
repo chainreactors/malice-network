@@ -78,6 +78,58 @@ func TestWizardTemplates(t *testing.T) {
 	}
 }
 
+func TestAllTemplatesRegistered(t *testing.T) {
+	expectedTemplates := []string{
+		// Existing
+		"listener_setup",
+		"tcp_pipeline",
+		"http_pipeline",
+		"profile_create",
+		// Build
+		"build_beacon",
+		"build_pulse",
+		"build_prelude",
+		"build_module",
+		// Pipeline
+		"bind_pipeline",
+		"rem_pipeline",
+		// Certificate
+		"cert_generate",
+		"cert_import",
+		// Config
+		"github_config",
+		"notify_config",
+		// Composite
+		"infrastructure_setup",
+	}
+
+	templates := ListTemplates()
+	if len(templates) != len(expectedTemplates) {
+		t.Errorf("Expected %d templates, got %d", len(expectedTemplates), len(templates))
+	}
+
+	for _, name := range expectedTemplates {
+		wiz, ok := GetTemplate(name)
+		if !ok {
+			t.Errorf("Template '%s' not found", name)
+			continue
+		}
+		if wiz == nil {
+			t.Errorf("Template '%s' is nil", name)
+			continue
+		}
+		if wiz.ID != name {
+			t.Errorf("Template '%s' has wrong ID: %s", name, wiz.ID)
+		}
+		if wiz.Title == "" {
+			t.Errorf("Template '%s' has empty title", name)
+		}
+		if len(wiz.Fields) == 0 {
+			t.Errorf("Template '%s' has no fields", name)
+		}
+	}
+}
+
 func TestWizardClone(t *testing.T) {
 	wiz := NewWizard("original", "Original").
 		Input("field1", "Field 1", "").
@@ -97,5 +149,28 @@ func TestWizardClone(t *testing.T) {
 	clone.ID = "modified"
 	if wiz.ID == "modified" {
 		t.Error("Modifying clone affected original")
+	}
+
+	// Verify parent rebinding: clone's fields should point to clone, not original
+	for i, f := range clone.Fields {
+		if f.parent != clone {
+			t.Errorf("Clone field %d has wrong parent (expected clone, got original)", i)
+		}
+	}
+
+	// Verify original's fields still point to original
+	for i, f := range wiz.Fields {
+		if f.parent != wiz {
+			t.Errorf("Original field %d has wrong parent after clone", i)
+		}
+	}
+
+	// Test that chaining on clone affects clone, not original
+	clone.Field().SetRequired()
+	if wiz.Fields[len(wiz.Fields)-1].Required {
+		t.Error("SetRequired on clone affected original")
+	}
+	if !clone.Fields[len(clone.Fields)-1].Required {
+		t.Error("SetRequired on clone did not set Required")
 	}
 }
