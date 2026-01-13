@@ -243,7 +243,7 @@ func RunWizardFileCmd(cmd *cobra.Command, con *core.Console, path string) error 
 
 func runWizard(con *core.Console, wiz *wizardfw.Wizard) error {
 	runner := wizardfw.NewRunner(wiz)
-	result, err := runner.Run()
+	result, err := runner.RunTwoPhase()
 	if err != nil {
 		return fmt.Errorf("wizard failed: %w", err)
 	}
