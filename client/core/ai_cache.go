@@ -27,6 +27,8 @@ type cacheEntry struct {
 	Timestamp   time.Time
 }
 
+const cacheScopeSeparator = "\x00"
+
 // NewAICompletionCache creates a new cache with specified size and TTL
 func NewAICompletionCache(maxSize int, ttl time.Duration) *AICompletionCache {
 	return &AICompletionCache{
@@ -48,6 +50,39 @@ func (c *AICompletionCache) Get(input string) ([]string, bool) {
 	defer c.mu.Unlock()
 
 	// Try exact match first
+	el, ok := c.entries[key]
+	if !ok {
+		return nil, false
+	}
+
+	entry := el.Value.(*cacheEntry)
+	if c.isExpired(entry) {
+		c.removeElement(el)
+		return nil, false
+	}
+
+	c.lru.MoveToFront(el)
+	return cloneStringSlice(entry.Suggestions), true
+}
+
+// GetScoped retrieves cached completions for the given input under a namespace.
+// Scope is typically the active menu name, so caches don't mix across contexts.
+func (c *AICompletionCache) GetScoped(scope string, input string) ([]string, bool) {
+	scopeKey := normalizeCacheKey(scope)
+	if scopeKey == "" {
+		return c.Get(input)
+	}
+
+	inputKey := normalizeCacheKey(input)
+	if inputKey == "" {
+		return nil, false
+	}
+
+	key := scopeKey + cacheScopeSeparator + inputKey
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	el, ok := c.entries[key]
 	if !ok {
 		return nil, false
@@ -112,12 +147,115 @@ func (c *AICompletionCache) GetPrefix(prefix string) ([]string, bool) {
 	return filtered, true
 }
 
+// GetPrefixScoped retrieves cached completions matching the given prefix under a namespace.
+func (c *AICompletionCache) GetPrefixScoped(scope string, prefix string) ([]string, bool) {
+	scopeKey := normalizeCacheKey(scope)
+	if scopeKey == "" {
+		return c.GetPrefix(prefix)
+	}
+
+	normalizedPrefix := normalizeCacheKey(prefix)
+	if normalizedPrefix == "" {
+		return nil, false
+	}
+
+	scopePrefix := scopeKey + cacheScopeSeparator
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	var bestEntry *cacheEntry
+	var bestEl *list.Element
+	bestInputKeyLen := -1
+
+	for key, el := range c.entries {
+		if !strings.HasPrefix(key, scopePrefix) {
+			continue
+		}
+
+		inputKey := strings.TrimPrefix(key, scopePrefix)
+		if inputKey == "" {
+			continue
+		}
+
+		if !strings.HasPrefix(normalizedPrefix, inputKey) {
+			continue
+		}
+
+		entry := el.Value.(*cacheEntry)
+		if c.isExpired(entry) {
+			c.removeElement(el)
+			continue
+		}
+
+		if bestEntry == nil || len(inputKey) > bestInputKeyLen {
+			bestEntry = entry
+			bestEl = el
+			bestInputKeyLen = len(inputKey)
+		}
+	}
+
+	if bestEntry == nil {
+		return nil, false
+	}
+
+	filtered := make([]string, 0, len(bestEntry.Suggestions))
+	for _, suggestion := range bestEntry.Suggestions {
+		if strings.HasPrefix(strings.ToLower(suggestion), normalizedPrefix) {
+			filtered = append(filtered, suggestion)
+		}
+	}
+	if len(filtered) == 0 {
+		return nil, false
+	}
+
+	c.lru.MoveToFront(bestEl)
+	return filtered, true
+}
+
 // Set stores completions in the cache
 func (c *AICompletionCache) Set(input string, suggestions []string) {
 	key := normalizeCacheKey(input)
 	if key == "" || len(suggestions) == 0 {
 		return
 	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if el, ok := c.entries[key]; ok {
+		entry := el.Value.(*cacheEntry)
+		entry.Suggestions = cloneStringSlice(suggestions)
+		entry.Timestamp = time.Now()
+		c.lru.MoveToFront(el)
+		return
+	}
+
+	entry := &cacheEntry{
+		Key:         key,
+		Suggestions: cloneStringSlice(suggestions),
+		Timestamp:   time.Now(),
+	}
+	el := c.lru.PushFront(entry)
+	c.entries[key] = el
+
+	c.evictLRU()
+}
+
+// SetScoped stores completions in the cache under a namespace.
+func (c *AICompletionCache) SetScoped(scope string, input string, suggestions []string) {
+	scopeKey := normalizeCacheKey(scope)
+	if scopeKey == "" {
+		c.Set(input, suggestions)
+		return
+	}
+
+	inputKey := normalizeCacheKey(input)
+	if inputKey == "" || len(suggestions) == 0 {
+		return
+	}
+
+	key := scopeKey + cacheScopeSeparator + inputKey
 
 	c.mu.Lock()
 	defer c.mu.Unlock()

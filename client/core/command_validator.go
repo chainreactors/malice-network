@@ -1,6 +1,7 @@
 package core
 
 import (
+	"sort"
 	"strings"
 	"sync"
 
@@ -12,6 +13,7 @@ type CommandValidator struct {
 	mu         sync.RWMutex
 	commandMap map[string]bool   // command name -> exists
 	aliases    map[string]string // alias -> canonical name
+	menuMap    map[string]map[string]bool
 }
 
 // NewCommandValidator creates a validator from a cobra root command
@@ -19,10 +21,18 @@ func NewCommandValidator(rootCmd *cobra.Command) *CommandValidator {
 	v := &CommandValidator{
 		commandMap: make(map[string]bool),
 		aliases:    make(map[string]string),
+		menuMap:    make(map[string]map[string]bool),
 	}
 	if rootCmd != nil {
 		v.buildCommandMap(rootCmd, "")
 	}
+	return v
+}
+
+// NewCommandValidatorWithMenu creates a validator from a cobra root command and records menu ownership.
+func NewCommandValidatorWithMenu(rootCmd *cobra.Command, menu string) *CommandValidator {
+	v := NewCommandValidator(nil)
+	v.AddCommandsFromCobra(rootCmd, menu)
 	return v
 }
 
@@ -52,6 +62,127 @@ func (v *CommandValidator) buildCommandMap(cmd *cobra.Command, prefix string) {
 			v.buildCommandMap(subCmd, fullName)
 		}
 	}
+}
+
+// AddCommandsFromCobra adds commands from a cobra root command and records menu ownership.
+// Menu ownership is tracked for the root command and its direct subcommands (non-hidden).
+func (v *CommandValidator) AddCommandsFromCobra(rootCmd *cobra.Command, menu string) {
+	if rootCmd == nil {
+		return
+	}
+
+	v.mu.Lock()
+	defer v.mu.Unlock()
+
+	v.buildCommandMap(rootCmd, "")
+
+	if menu == "" {
+		return
+	}
+
+	if v.menuMap[menu] == nil {
+		v.menuMap[menu] = make(map[string]bool)
+	}
+
+	v.menuMap[menu][rootCmd.Name()] = true
+	for _, sub := range rootCmd.Commands() {
+		if sub == nil || sub.Hidden {
+			continue
+		}
+		v.menuMap[menu][sub.Name()] = true
+	}
+}
+
+// AddCommandWithMenu manually adds a command to the validator and assigns it to a menu.
+func (v *CommandValidator) AddCommandWithMenu(menu string, name string, aliases ...string) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+
+	v.commandMap[name] = true
+	for _, alias := range aliases {
+		v.aliases[alias] = name
+	}
+
+	if menu == "" {
+		return
+	}
+	if v.menuMap[menu] == nil {
+		v.menuMap[menu] = make(map[string]bool)
+	}
+	v.menuMap[menu][name] = true
+}
+
+// GetCommandsForMenu returns commands registered for a specific menu.
+// If menu is empty, it returns the union of commands across all menus.
+func (v *CommandValidator) GetCommandsForMenu(menu string) []string {
+	v.mu.RLock()
+	defer v.mu.RUnlock()
+
+	collect := make(map[string]bool)
+
+	if menu == "" {
+		for _, cmds := range v.menuMap {
+			for cmd := range cmds {
+				collect[cmd] = true
+			}
+		}
+	} else if cmds, ok := v.menuMap[menu]; ok {
+		for cmd := range cmds {
+			collect[cmd] = true
+		}
+	} else {
+		// Unknown menu: fall back to all single-word commands.
+		for cmd := range v.commandMap {
+			if !strings.Contains(cmd, " ") {
+				collect[cmd] = true
+			}
+		}
+	}
+
+	out := make([]string, 0, len(collect))
+	for cmd := range collect {
+		out = append(out, cmd)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// IsCommandAllowedInMenu checks whether a command line belongs to a given menu.
+// If the menu is unknown or empty, it allows all commands.
+func (v *CommandValidator) IsCommandAllowedInMenu(menu string, commandLine string) bool {
+	menu = strings.TrimSpace(menu)
+	if menu == "" {
+		return true
+	}
+
+	commandLine = strings.TrimSpace(commandLine)
+	if commandLine == "" {
+		return false
+	}
+
+	parts := strings.Fields(commandLine)
+	if len(parts) == 0 {
+		return false
+	}
+	cmdName := parts[0]
+
+	v.mu.RLock()
+	defer v.mu.RUnlock()
+
+	cmds, ok := v.menuMap[menu]
+	if !ok || len(cmds) == 0 {
+		return true
+	}
+
+	if cmds[cmdName] {
+		return true
+	}
+
+	if canonical, ok := v.aliases[cmdName]; ok && cmds[canonical] {
+		return true
+	}
+
+	return false
 }
 
 // Validate checks if a command is valid
@@ -168,6 +299,20 @@ func (v *CommandValidator) GetAllCommands() []string {
 			commands = append(commands, cmd)
 		}
 	}
+	sort.Strings(commands)
+	return commands
+}
+
+// GetAllCommandsWithSubcommands returns all registered commands including subcommands
+func (v *CommandValidator) GetAllCommandsWithSubcommands() []string {
+	v.mu.RLock()
+	defer v.mu.RUnlock()
+
+	commands := make([]string, 0, len(v.commandMap))
+	for cmd := range v.commandMap {
+		commands = append(commands, cmd)
+	}
+	sort.Strings(commands)
 	return commands
 }
 

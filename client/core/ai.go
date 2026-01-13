@@ -317,6 +317,10 @@ func ParseCommandSuggestions(response string) []CommandSuggestion {
 			if strings.Contains(cmd, "=") || strings.HasPrefix(cmd, "$") {
 				continue
 			}
+			// Skip shell escape syntax (! prefix)
+			if strings.HasPrefix(cmd, "!") {
+				continue
+			}
 			if !seen[cmd] {
 				seen[cmd] = true
 				suggestions = append(suggestions, CommandSuggestion{
@@ -554,20 +558,29 @@ func NewAICompletionEngine(client *AIClient, cache *AICompletionCache, validator
 }
 
 // SmartComplete provides fast AI completion with caching and validation
-func (e *AICompletionEngine) SmartComplete(ctx context.Context, input string, history []string) ([]string, error) {
+func (e *AICompletionEngine) SmartComplete(ctx context.Context, input string, history []string, menu string) ([]string, error) {
 	input = strings.TrimSpace(input)
 	if input == "" {
 		return nil, nil
 	}
 
+	normalizedInput := strings.TrimSpace(strings.ToLower(input))
+
 	// Step 1: Check cache first (instant)
 	if e.cache != nil {
-		if cached, ok := e.cache.Get(input); ok {
-			return cached, nil
+		if cached, ok := e.cache.GetScoped(menu, input); ok {
+			// Filter out suggestions that match input exactly
+			filtered := filterSameAsInput(cached, normalizedInput)
+			if len(filtered) > 0 {
+				return filtered, nil
+			}
 		}
 		// Try prefix match
-		if cached, ok := e.cache.GetPrefix(input); ok {
-			return cached, nil
+		if cached, ok := e.cache.GetPrefixScoped(menu, input); ok {
+			filtered := filterSameAsInput(cached, normalizedInput)
+			if len(filtered) > 0 {
+				return filtered, nil
+			}
 		}
 	}
 
@@ -576,7 +589,7 @@ func (e *AICompletionEngine) SmartComplete(ctx context.Context, input string, hi
 		return nil, fmt.Errorf("AI not enabled")
 	}
 
-	prompt := e.buildCompletionPrompt(input)
+	prompt := e.buildCompletionPrompt(input, menu)
 	response, err := e.client.Ask(ctx, prompt, history)
 	if err != nil {
 		return nil, err
@@ -585,48 +598,129 @@ func (e *AICompletionEngine) SmartComplete(ctx context.Context, input string, hi
 	// Step 3: Parse and validate commands
 	suggestions := ParseCommandSuggestions(response)
 	validSuggestions := make([]string, 0, len(suggestions))
+	seen := make(map[string]bool)
+
+	// Prepare input prefix for stripping (handle both "cmd" and "cmd " cases)
+	inputLower := strings.ToLower(input)
+	inputTrimmed := strings.TrimSpace(inputLower)
+	inputWithSpace := inputLower
+	if !strings.HasSuffix(inputLower, " ") {
+		inputWithSpace = inputLower + " "
+	}
+
+	// Check if user is typing a subcommand (input ends with space)
+	isSubcommandContext := strings.HasSuffix(input, " ")
 
 	for _, suggestion := range suggestions {
 		cmd := suggestion.Command
+
+		// Skip suggestions that are identical to the input (no point suggesting what user already typed)
+		if strings.TrimSpace(strings.ToLower(cmd)) == normalizedInput {
+			continue
+		}
+
+		// Convert full command to completion by stripping input prefix
+		cmdLower := strings.ToLower(cmd)
+		completionPart := cmd
+		wasStripped := false
+
+		// Case 1: Suggestion starts with user input (e.g., input="website ", suggestion="website add")
+		if strings.HasPrefix(cmdLower, inputWithSpace) {
+			completionPart = strings.TrimSpace(cmd[len(inputWithSpace):])
+			wasStripped = true
+		} else if strings.HasPrefix(cmdLower, inputTrimmed+" ") {
+			completionPart = strings.TrimSpace(cmd[len(inputTrimmed)+1:])
+			wasStripped = true
+		} else {
+			// Case 2: User input is in the middle (e.g., input="website ", suggestion="client website add")
+			// Find the input command in the suggestion and extract what follows
+			idx := strings.Index(cmdLower, inputTrimmed+" ")
+			if idx >= 0 {
+				completionPart = strings.TrimSpace(cmd[idx+len(inputTrimmed)+1:])
+				wasStripped = true
+			}
+		}
+
+		// Skip empty completions
+		if completionPart == "" {
+			continue
+		}
+
 		// Validate and fix if validator is available
 		if e.validator != nil {
-			fixed, valid := e.validator.ValidateAndFix(cmd)
+			// Determine full command for validation
+			var fullCmd string
+			if isSubcommandContext && (wasStripped || !strings.Contains(completionPart, " ")) {
+				// User is typing subcommand (e.g., "website "), prepend input for validation
+				fullCmd = strings.TrimSpace(input) + " " + completionPart
+			} else {
+				// User is typing command prefix (e.g., "w"), validate as-is
+				fullCmd = completionPart
+			}
+
+			fixed, valid := e.validator.ValidateAndFix(fullCmd)
 			if valid {
-				validSuggestions = append(validSuggestions, fixed)
+				// Also skip if fixed version matches input
+				if strings.TrimSpace(strings.ToLower(fixed)) == normalizedInput {
+					continue
+				}
+				// Filter by menu: only allow commands available in the current menu
+				if menu != "" && !e.validator.IsCommandAllowedInMenu(menu, fixed) {
+					continue
+				}
+
+				// Always store just the completion part for display
+				if !seen[completionPart] {
+					seen[completionPart] = true
+					validSuggestions = append(validSuggestions, completionPart)
+				}
 			}
 		} else {
-			validSuggestions = append(validSuggestions, cmd)
+			// Without validator, only accept simple command-like strings
+			if !seen[completionPart] {
+				seen[completionPart] = true
+				validSuggestions = append(validSuggestions, completionPart)
+			}
 		}
 	}
 
-	// Limit to top 5 suggestions
-	if len(validSuggestions) > 5 {
-		validSuggestions = validSuggestions[:5]
+	// Limit to top 10 suggestions
+	if len(validSuggestions) > 10 {
+		validSuggestions = validSuggestions[:10]
 	}
 
 	// Step 4: Cache the result
 	if e.cache != nil && len(validSuggestions) > 0 {
-		e.cache.Set(input, validSuggestions)
+		e.cache.SetScoped(menu, input, validSuggestions)
 	}
 
 	return validSuggestions, nil
 }
 
-func (e *AICompletionEngine) buildCompletionPrompt(input string) string {
+func (e *AICompletionEngine) buildCompletionPrompt(input string, menu string) string {
 	var sb strings.Builder
 
-	sb.WriteString("Complete the following partial command or convert natural language to a command.\n\n")
+	sb.WriteString("Complete the following partial command. Return ONLY the completion part.\n\n")
 	sb.WriteString("RULES:\n")
-	sb.WriteString("1. Return ONLY valid, executable commands\n")
-	sb.WriteString("2. Return up to 3 suggestions, one per line\n")
-	sb.WriteString("3. Do NOT hallucinate commands - only use commands from the available list\n")
-	sb.WriteString("4. Wrap each command in backticks\n")
-	sb.WriteString("5. Use EXACT command names, not plural forms\n\n")
+	sb.WriteString("1. Return ONLY the part that should be appended to complete the command\n")
+	sb.WriteString("2. Do NOT repeat what the user has already typed\n")
+	sb.WriteString("3. Return up to 10 suggestions, ONE completion per line\n")
+	sb.WriteString("4. Wrap EACH completion in backticks like `subcommand` or `subcommand arg`\n")
+	sb.WriteString("5. If input is a command with subcommands, suggest its subcommand names only\n")
+	sb.WriteString("6. If input looks like a typo, suggest the correct full command\n")
+	sb.WriteString("7. ONLY suggest commands from the AVAILABLE COMMANDS list below\n\n")
+	sb.WriteString("EXAMPLE:\n")
+	sb.WriteString("- Input: 'website ' -> suggest `add`, `list`, `remove` (NOT `website add`)\n")
+	sb.WriteString("- Input: 'websi' -> suggest `website` (typo correction)\n\n")
 
 	// Add available commands if validator is present
 	if e.validator != nil {
-		commands := e.validator.GetAllCommands()
+		// Only use commands available in the current menu
+		commands := e.validator.GetCommandsForMenu(menu)
 		if len(commands) > 0 {
+			if strings.TrimSpace(menu) != "" {
+				sb.WriteString(fmt.Sprintf("CURRENT MENU: %s (only commands below are available)\n\n", menu))
+			}
 			sb.WriteString("AVAILABLE COMMANDS:\n")
 			for _, cmd := range commands {
 				sb.WriteString(fmt.Sprintf("- %s\n", cmd))
@@ -648,4 +742,15 @@ func (e *AICompletionEngine) SetValidator(v *CommandValidator) {
 // SetCache updates the cache
 func (e *AICompletionEngine) SetCache(c *AICompletionCache) {
 	e.cache = c
+}
+
+// filterSameAsInput removes suggestions that exactly match the input
+func filterSameAsInput(suggestions []string, normalizedInput string) []string {
+	result := make([]string, 0, len(suggestions))
+	for _, s := range suggestions {
+		if strings.TrimSpace(strings.ToLower(s)) != normalizedInput {
+			result = append(result, s)
+		}
+	}
+	return result
 }
