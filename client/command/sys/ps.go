@@ -48,7 +48,7 @@ func RegisterPsFunc(con *core.Console) {
 			psSet := ctx.Spite.GetPsResponse()
 			var ps []string
 			for _, p := range psSet.GetProcesses() {
-				ps = append(ps, fmt.Sprintf("%s:%d:%d:%s:%s:%s:%s:%s",
+				ps = append(ps, fmt.Sprintf("%s:%d:%d:%s:%s:%s:%s",
 					p.Name,
 					p.Pid,
 					p.Ppid,

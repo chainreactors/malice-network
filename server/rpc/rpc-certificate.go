@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
@@ -22,23 +23,45 @@ func (rpc *Server) GenerateSelfCert(ctx context.Context, req *clientpb.Pipeline)
 		return nil, fmt.Errorf("pipeline %s tls config is nil", req.Name)
 	}
 
-	if !req.Tls.Enable {
-		return &clientpb.Empty{}, nil
-	}
+	pipelineName := strings.TrimSpace(req.Name)
+	attachToPipeline := pipelineName != ""
+	// Standalone certificate management: allow generating/importing certs without binding to a pipeline.
+	if !attachToPipeline {
+		if req.Tls.Cert != nil && req.Tls.Cert.Cert != "" {
+			certModel, err := db.SaveCertFromTLS(req.Tls, "")
+			if err != nil {
+				return nil, err
+			}
+			return rpc.publishCertEvent(certModel)
+		}
 
-	if req.Name == "" {
-		return nil, fmt.Errorf("pipeline name is required to generate certificate")
-	}
+		tls, err := certutils.GenerateSelfTLS("", req.Tls.CertSubject)
+		if err != nil {
+			return nil, err
+		}
+		req.Tls = tls
 
-	if req.Tls.Cert != nil && req.Tls.Cert.Cert != "" {
-		certModel, err := db.SaveCertFromTLS(req.Tls, req.Name)
+		certModel, err := db.SaveCertFromTLS(req.Tls, "")
 		if err != nil {
 			return nil, err
 		}
 		return rpc.publishCertEvent(certModel)
 	}
 
-	certModel, err := db.FindPipelineCert(req.Name, req.ListenerId)
+	// Pipeline-bound certificate generation: only act when TLS is enabled.
+	if !req.Tls.Enable {
+		return &clientpb.Empty{}, nil
+	}
+
+	if req.Tls.Cert != nil && req.Tls.Cert.Cert != "" {
+		certModel, err := db.SaveCertFromTLS(req.Tls, pipelineName)
+		if err != nil {
+			return nil, err
+		}
+		return rpc.publishCertEvent(certModel)
+	}
+
+	certModel, err := db.FindPipelineCert(pipelineName, req.ListenerId)
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +76,7 @@ func (rpc *Server) GenerateSelfCert(ctx context.Context, req *clientpb.Pipeline)
 	}
 	req.Tls = tls
 
-	certModel, err = db.SaveCertFromTLS(req.Tls, req.Name)
+	certModel, err = db.SaveCertFromTLS(req.Tls, pipelineName)
 	if err != nil {
 		return nil, err
 	}

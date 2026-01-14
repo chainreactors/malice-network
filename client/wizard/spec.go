@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -16,6 +17,15 @@ import (
 // WizardSpec is a serializable wizard definition (JSON/YAML) for building reusable templates.
 type WizardSpec struct {
 	ID          string      `json:"id" yaml:"id"`
+	Title       string      `json:"title" yaml:"title"`
+	Description string      `json:"description,omitempty" yaml:"description,omitempty"`
+	Fields      []FieldSpec `json:"fields,omitempty" yaml:"fields,omitempty"`   // Flat fields (legacy/simple)
+	Groups      []GroupSpec `json:"groups,omitempty" yaml:"groups,omitempty"`   // Grouped fields (new)
+}
+
+// GroupSpec is a serializable group definition.
+type GroupSpec struct {
+	Name        string      `json:"name" yaml:"name"`
 	Title       string      `json:"title" yaml:"title"`
 	Description string      `json:"description,omitempty" yaml:"description,omitempty"`
 	Fields      []FieldSpec `json:"fields" yaml:"fields"`
@@ -104,62 +114,95 @@ func NewWizardFromSpec(spec *WizardSpec) (*Wizard, error) {
 
 	wiz := NewWizard(spec.ID, spec.Title).WithDescription(spec.Description)
 
-	for i, fs := range spec.Fields {
-		if strings.TrimSpace(fs.Name) == "" {
-			return nil, fmt.Errorf("fields[%d].name is required", i)
-		}
-		if strings.TrimSpace(fs.Title) == "" {
-			return nil, fmt.Errorf("fields[%d].title is required", i)
-		}
-		ft, err := parseFieldTypeName(fs.Type)
-		if err != nil {
-			return nil, fmt.Errorf("fields[%d].type: %w", i, err)
-		}
+	// Check if spec uses groups
+	if len(spec.Groups) > 0 {
+		for i, gs := range spec.Groups {
+			if strings.TrimSpace(gs.Name) == "" {
+				return nil, fmt.Errorf("groups[%d].name is required", i)
+			}
+			if strings.TrimSpace(gs.Title) == "" {
+				return nil, fmt.Errorf("groups[%d].title is required", i)
+			}
 
-		field := &WizardField{
-			Name:        fs.Name,
-			Title:       fs.Title,
-			Description: fs.Description,
-			Type:        ft,
-			Options:     append([]string(nil), fs.Options...),
-			Required:    fs.Required,
-		}
+			group := wiz.NewGroup(gs.Name, gs.Title).WithDescription(gs.Description)
 
-		if fs.Default != nil {
-			switch ft {
-			case FieldConfirm:
-				b, err := coerceBool(fs.Default)
+			for j, fs := range gs.Fields {
+				field, err := parseFieldSpec(fs, fmt.Sprintf("groups[%d].fields[%d]", i, j))
 				if err != nil {
-					return nil, fmt.Errorf("fields[%d].default: %w", i, err)
+					return nil, err
 				}
-				field.Default = b
-			case FieldNumber:
-				n, err := coerceInt(fs.Default)
-				if err != nil {
-					return nil, fmt.Errorf("fields[%d].default: %w", i, err)
-				}
-				field.Default = n
-			case FieldMultiSelect:
-				ss, err := coerceStrings(fs.Default)
-				if err != nil {
-					return nil, fmt.Errorf("fields[%d].default: %w", i, err)
-				}
-				field.Default = ss
-			default:
-				field.Default = fmt.Sprintf("%v", fs.Default)
+				group.AddField(field)
 			}
 		}
-
-		if ft == FieldSelect || ft == FieldMultiSelect {
-			if len(field.Options) == 0 {
-				return nil, fmt.Errorf("fields[%d].options is required for %s", i, fs.Type)
+	} else if len(spec.Fields) > 0 {
+		// Legacy flat fields (backward compatible)
+		for i, fs := range spec.Fields {
+			field, err := parseFieldSpec(fs, fmt.Sprintf("fields[%d]", i))
+			if err != nil {
+				return nil, err
 			}
+			wiz.AddField(field)
 		}
-
-		wiz.AddField(field)
 	}
 
 	return wiz, nil
+}
+
+// parseFieldSpec parses a single FieldSpec into a WizardField
+func parseFieldSpec(fs FieldSpec, path string) (*WizardField, error) {
+	if strings.TrimSpace(fs.Name) == "" {
+		return nil, fmt.Errorf("%s.name is required", path)
+	}
+	if strings.TrimSpace(fs.Title) == "" {
+		return nil, fmt.Errorf("%s.title is required", path)
+	}
+
+	ft, err := parseFieldTypeName(fs.Type)
+	if err != nil {
+		return nil, fmt.Errorf("%s.type: %w", path, err)
+	}
+
+	field := &WizardField{
+		Name:        fs.Name,
+		Title:       fs.Title,
+		Description: fs.Description,
+		Type:        ft,
+		Options:     append([]string(nil), fs.Options...),
+		Required:    fs.Required,
+	}
+
+	if fs.Default != nil {
+		switch ft {
+		case FieldConfirm:
+			b, err := coerceBool(fs.Default)
+			if err != nil {
+				return nil, fmt.Errorf("%s.default: %w", path, err)
+			}
+			field.Default = b
+		case FieldNumber:
+			n, err := coerceInt(fs.Default)
+			if err != nil {
+				return nil, fmt.Errorf("%s.default: %w", path, err)
+			}
+			field.Default = n
+		case FieldMultiSelect:
+			ss, err := coerceStrings(fs.Default)
+			if err != nil {
+				return nil, fmt.Errorf("%s.default: %w", path, err)
+			}
+			field.Default = ss
+		default:
+			field.Default = fmt.Sprintf("%v", fs.Default)
+		}
+	}
+
+	if ft == FieldSelect || ft == FieldMultiSelect {
+		if len(field.Options) == 0 {
+			return nil, fmt.Errorf("%s.options is required for %s", path, fs.Type)
+		}
+	}
+
+	return field, nil
 }
 
 // RegisterTemplateFromSpec registers a template backed by a WizardSpec.
@@ -225,37 +268,28 @@ func coerceBool(v any) (bool, error) {
 }
 
 func coerceInt(v any) (int, error) {
-	switch val := v.(type) {
-	case int:
-		return val, nil
-	case int8:
-		return int(val), nil
-	case int16:
-		return int(val), nil
-	case int32:
-		return int(val), nil
-	case int64:
-		return int(val), nil
-	case uint:
-		return int(val), nil
-	case uint8:
-		return int(val), nil
-	case uint16:
-		return int(val), nil
-	case uint32:
-		return int(val), nil
-	case uint64:
-		return int(val), nil
-	case float32:
-		return int(val), nil
-	case float64:
-		return int(val), nil
-	case string:
-		n, err := strconv.Atoi(strings.TrimSpace(val))
+	if v == nil {
+		return 0, fmt.Errorf("invalid int: nil")
+	}
+
+	// Handle string specially for parsing
+	if s, ok := v.(string); ok {
+		n, err := strconv.Atoi(strings.TrimSpace(s))
 		if err != nil {
-			return 0, fmt.Errorf("invalid int: %q", val)
+			return 0, fmt.Errorf("invalid int: %q", s)
 		}
 		return n, nil
+	}
+
+	// Use reflect for all numeric types
+	rv := reflect.ValueOf(v)
+	switch rv.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return int(rv.Int()), nil
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return int(rv.Uint()), nil
+	case reflect.Float32, reflect.Float64:
+		return int(rv.Float()), nil
 	default:
 		return 0, fmt.Errorf("invalid int type: %T", v)
 	}

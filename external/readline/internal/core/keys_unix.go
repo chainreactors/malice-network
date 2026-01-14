@@ -51,19 +51,19 @@ func (k *Keys) GetCursorPos() (x, y int) {
 			return disable()
 		}
 
-		// Attempt to locate cursor response in it.
-		match = rxRcvCursorPos.FindAllStringSubmatch(string(cursor), 1)
-
-		// If there is something but not cursor answer, its user input.
-		if len(match) == 0 && len(cursor) > 0 {
+		// Strip any cursor response and push remaining bytes back as user input.
+		cursorResp, remain := k.extractCursorPos(cursor)
+		if len(remain) > 0 {
 			k.mutex.RLock()
-			k.buf = append(k.buf, cursor...)
+			k.buf = append(k.buf, remain...)
 			k.mutex.RUnlock()
+		}
 
+		if len(cursorResp) == 0 {
 			continue
 		}
 
-		// And if empty, then we should abort.
+		match = rxRcvCursorPos.FindAllStringSubmatch(string(cursorResp), 1)
 		if len(match) == 0 {
 			return disable()
 		}

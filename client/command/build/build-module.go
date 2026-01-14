@@ -49,8 +49,10 @@ func ModulesCmd(cmd *cobra.Command, con *core.Console) error {
 	} else {
 		mainProfile.Implant.Modules = strings.Split(modules, ",")
 	}
-	buildConfig.MaleficConfig, _ = mainProfile.ToYAML()
+	buildConfig.MaleficConfig, err = mainProfile.ToYAML()
+	if err != nil {
+		return err
+	}
 
-	executeBuild(con, buildConfig)
-	return nil
+	return executeBuild(con, buildConfig)
 }

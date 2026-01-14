@@ -629,6 +629,10 @@ func (rl *Shell) autosuggestDisable() {
 //
 
 func (rl *Shell) acceptLineWith(infer, hold bool) {
+	// Stop any pending inline suggestion timers to avoid background refresh after accept.
+	rl.clearLocalSuggestion()
+	rl.ClearAIPrediction()
+
 	// If we are currently using the incremental-search buffer,
 	// we should cancel this mode so as to run the rest of this
 	// function on (with) the input line itself, not the minibuffer.

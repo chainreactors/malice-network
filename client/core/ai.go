@@ -116,6 +116,37 @@ func (c *AIClient) Ask(ctx context.Context, question string, history []string) (
 	}
 }
 
+// AskPrediction sends a request optimized for low-latency inline predictions.
+func (c *AIClient) AskPrediction(ctx context.Context, question string, history []string) (string, error) {
+	if c.settings == nil || !c.settings.Enable {
+		return "", fmt.Errorf("AI is not enabled. Use 'ai-config --enable' to enable it")
+	}
+
+	if c.settings.APIKey == "" {
+		return "", fmt.Errorf("AI API key is not configured. Use 'ai-config --api-key <key>' to set it")
+	}
+
+	// Keep the context small to minimize latency/cost.
+	const maxHistory = 5
+	if len(history) > maxHistory {
+		history = history[len(history)-maxHistory:]
+	}
+
+	systemPrompt := c.buildPredictionSystemPrompt(history)
+
+	maxTokens := 64
+	if c.settings.MaxTokens > 0 && c.settings.MaxTokens < maxTokens {
+		maxTokens = c.settings.MaxTokens
+	}
+
+	switch strings.ToLower(c.settings.Provider) {
+	case "claude", "anthropic":
+		return c.askClaudeWith(ctx, systemPrompt, question, maxTokens)
+	default: // openai and compatible
+		return c.askOpenAIWith(ctx, systemPrompt, question, maxTokens, 0.2)
+	}
+}
+
 func (c *AIClient) buildSystemPrompt(history []string) string {
 	var sb strings.Builder
 	sb.WriteString("You are an AI assistant for IoM (Malice Network), a C2 framework. ")
@@ -147,6 +178,23 @@ func (c *AIClient) buildSystemPrompt(history []string) string {
 	sb.WriteString("- job: List jobs\n")
 	sb.WriteString("- pipeline: Manage pipelines\n")
 	sb.WriteString("- build: Build implants\n")
+
+	return sb.String()
+}
+
+func (c *AIClient) buildPredictionSystemPrompt(history []string) string {
+	var sb strings.Builder
+	sb.WriteString("You are an autocomplete engine for IoM (Malice Network).\n")
+	sb.WriteString("Return ONLY the next argument/value wrapped in backticks (example: `--help`).\n")
+	sb.WriteString("If unsure, return an empty response.\n\n")
+
+	if len(history) > 0 {
+		sb.WriteString("Recent command history:\n")
+		for _, cmd := range history {
+			sb.WriteString(fmt.Sprintf("- %s\n", cmd))
+		}
+		sb.WriteString("\n")
+	}
 
 	return sb.String()
 }
@@ -191,11 +239,22 @@ func (c *AIClient) buildEndpoint(suffix string) (string, error) {
 }
 
 func (c *AIClient) askOpenAI(ctx context.Context, systemPrompt, question string) (string, error) {
+	return c.askOpenAIWith(ctx, systemPrompt, question, c.settings.MaxTokens, 0.7)
+}
+
+func (c *AIClient) askOpenAIWith(ctx context.Context, systemPrompt, question string, maxTokens int, temperature float64) (string, error) {
+	if maxTokens <= 0 {
+		maxTokens = c.settings.MaxTokens
+	}
+	if temperature < 0 {
+		temperature = 0.7
+	}
+
 	req := OpenAIChatRequest{
 		Model:       c.settings.Model,
 		Messages:    []Message{{Role: "system", Content: systemPrompt}, {Role: "user", Content: question}},
-		MaxTokens:   c.settings.MaxTokens,
-		Temperature: 0.7,
+		MaxTokens:   maxTokens,
+		Temperature: temperature,
 	}
 
 	body, err := json.Marshal(req)
@@ -242,9 +301,20 @@ func (c *AIClient) askOpenAI(ctx context.Context, systemPrompt, question string)
 }
 
 func (c *AIClient) askClaude(ctx context.Context, systemPrompt, question string) (string, error) {
+	return c.askClaudeWith(ctx, systemPrompt, question, c.settings.MaxTokens)
+}
+
+func (c *AIClient) askClaudeWith(ctx context.Context, systemPrompt, question string, maxTokens int) (string, error) {
+	if maxTokens <= 0 {
+		maxTokens = c.settings.MaxTokens
+	}
+	if maxTokens <= 0 {
+		maxTokens = 256
+	}
+
 	req := ClaudeChatRequest{
 		Model:     c.settings.Model,
-		MaxTokens: c.settings.MaxTokens,
+		MaxTokens: maxTokens,
 		System:    systemPrompt,
 		Messages:  []ClaudeMessage{{Role: "user", Content: question}},
 	}
@@ -753,4 +823,89 @@ func filterSameAsInput(suggestions []string, normalizedInput string) []string {
 		}
 	}
 	return result
+}
+
+// PredictNextArgument predicts the next argument the user is likely to type
+func (e *AICompletionEngine) PredictNextArgument(ctx context.Context, input string, history []string, menu string) (string, error) {
+	if strings.TrimSpace(input) == "" {
+		return "", nil
+	}
+	input = strings.TrimLeft(input, " \t")
+
+	// Check cache first (use a special prefix for predictions)
+	cacheKey := "predict:" + input
+	if e.cache != nil {
+		if cached, ok := e.cache.GetScoped(menu, cacheKey); ok && len(cached) > 0 {
+			return cached[0], nil
+		}
+	}
+
+	// Call AI for prediction
+	if e.client == nil || e.client.settings == nil || !e.client.settings.Enable {
+		return "", fmt.Errorf("AI not enabled")
+	}
+
+	prompt := e.buildPredictionPrompt(input, menu)
+	response, err := e.client.AskPrediction(ctx, prompt, history)
+	if err != nil {
+		return "", err
+	}
+
+	// Parse prediction from response
+	prediction := parsePrediction(response)
+	if prediction == "" {
+		return "", nil
+	}
+
+	// Cache the result
+	if e.cache != nil {
+		e.cache.SetScoped(menu, cacheKey, []string{prediction})
+	}
+
+	return prediction, nil
+}
+
+func (e *AICompletionEngine) buildPredictionPrompt(input string, menu string) string {
+	var sb strings.Builder
+
+	sb.WriteString("Predict the next argument/value for the current CLI input.\n")
+	sb.WriteString("Return exactly ONE value wrapped in backticks (example: `--help`). If unsure, return nothing.\n")
+	if strings.TrimSpace(menu) != "" {
+		sb.WriteString(fmt.Sprintf("MENU: %s\n", menu))
+	}
+	sb.WriteString(fmt.Sprintf("CURRENT INPUT: %s\n", input))
+	sb.WriteString("NEXT ARGUMENT:")
+
+	return sb.String()
+}
+
+// parsePrediction extracts a single prediction from AI response
+func parsePrediction(response string) string {
+	// Look for backtick-wrapped prediction
+	lines := strings.Split(response, "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		// Extract content between backticks
+		start := strings.Index(line, "`")
+		if start == -1 {
+			continue
+		}
+		end := strings.Index(line[start+1:], "`")
+		if end == -1 {
+			continue
+		}
+		prediction := line[start+1 : start+1+end]
+		prediction = strings.TrimSpace(prediction)
+		if prediction != "" {
+			return prediction
+		}
+	}
+
+	// Fallback: try to find any reasonable single-word/value
+	response = strings.TrimSpace(response)
+	if !strings.Contains(response, " ") && !strings.Contains(response, "\n") && len(response) < 50 {
+		return response
+	}
+
+	return ""
 }

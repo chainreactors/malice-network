@@ -79,7 +79,7 @@ func (rl *Shell) Readline() (string, error) {
 		// been consumed but did not match any command.
 		core.FlushUsed(rl.Keys)
 
-		// Apply any async AI completion results before redisplay.
+		// Apply any async AI completion/prediction results before redisplay.
 		rl.applyPendingAICompletion(false)
 
 		// Since we always update helpers after being asked to read
@@ -130,6 +130,9 @@ func (rl *Shell) Readline() (string, error) {
 
 // init gathers all steps to perform at the beginning of readline loop.
 func (rl *Shell) init() {
+	rl.clearLocalSuggestion()
+	rl.ClearAIPrediction()
+
 	// Reset core editor components.
 	core.FlushUsed(rl.Keys)
 	rl.line.Set()

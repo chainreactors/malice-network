@@ -1,6 +1,9 @@
 package common
 
 import (
+	"errors"
+	"strings"
+
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/cryptography"
@@ -333,29 +336,35 @@ func ParseImportCertFlags(cmd *cobra.Command) (*clientpb.TLS, error) {
 	keyPath, _ := cmd.Flags().GetString("key")
 	caPath, _ := cmd.Flags().GetString("ca-cert")
 
-	var err error
-	var cert, key, ca string
-	if certPath != "" && keyPath != "" && caPath != "" {
-		cert, err = cryptography.ProcessPEM(certPath)
-		if err != nil {
-			return nil, err
-		}
-		key, err = cryptography.ProcessPEM(keyPath)
-		if err != nil {
-			return nil, err
-		}
-		ca, err = cryptography.ProcessPEM(caPath)
-		if err != nil {
-			return nil, err
-		}
+	certPath = strings.TrimSpace(certPath)
+	keyPath = strings.TrimSpace(keyPath)
+	caPath = strings.TrimSpace(caPath)
+
+	if certPath == "" || keyPath == "" {
+		return nil, errors.New("cert and key are required")
 	}
-	return &clientpb.TLS{
+
+	cert, err := cryptography.ProcessPEM(certPath)
+	if err != nil {
+		return nil, err
+	}
+	key, err := cryptography.ProcessPEM(keyPath)
+	if err != nil {
+		return nil, err
+	}
+
+	tls := &clientpb.TLS{
 		Cert: &clientpb.Cert{
 			Cert: cert,
 			Key:  key,
 		},
-		Ca: &clientpb.Cert{
-			Cert: ca,
-		},
-	}, nil
+	}
+	if caPath != "" {
+		ca, err := cryptography.ProcessPEM(caPath)
+		if err != nil {
+			return nil, err
+		}
+		tls.Ca = &clientpb.Cert{Cert: ca}
+	}
+	return tls, nil
 }

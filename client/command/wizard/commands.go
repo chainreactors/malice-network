@@ -279,8 +279,14 @@ func setupDynamicProviders(wiz *wizardfw.Wizard) {
 			f.OptionsProvider = ListenerOptionsProvider()
 		case "pipeline", "pipeline_id":
 			f.OptionsProvider = PipelineOptionsProvider()
-		case "addresses", "address":
+		case "addresses":
 			f.OptionsProvider = AddressOptionsProvider()
+		case "address":
+			if wiz.ID == "build_pulse" {
+				f.OptionsProvider = PulseAddressOptionsProvider()
+			} else {
+				f.OptionsProvider = AddressOptionsProvider()
+			}
 		case "beacon_artifact_id":
 			f.OptionsProvider = ArtifactOptionsProvider("beacon")
 		}

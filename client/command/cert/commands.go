@@ -34,6 +34,8 @@ cert import --cert cert_file_path --key key_file_path --ca-cert ca_cert_path
 	}
 
 	common.BindFlag(importCmd, common.ImportSet)
+	_ = importCmd.MarkFlagRequired("cert")
+	_ = importCmd.MarkFlagRequired("key")
 	common.BindFlagCompletions(importCmd, func(comp carapace.ActionMap) {
 		comp["cert"] = carapace.ActionFiles().Usage("path to the cert file")
 		comp["key"] = carapace.ActionFiles().Usage("path to the key file")

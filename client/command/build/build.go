@@ -2,6 +2,7 @@ package build
 
 import (
 	"errors"
+	"fmt"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/client/command/common"
@@ -60,16 +61,14 @@ func parseSourceConfig(cmd *cobra.Command, con *core.Console, buildConfig *clien
 }
 
 // executeBuild 执行构建逻辑
-func executeBuild(con *core.Console, buildConfig *clientpb.BuildConfig) {
-	go func() {
-		artifact, err := con.Rpc.Build(con.Context(), buildConfig)
-		if err != nil {
-			con.Log.Errorf("Build %s failed: %v\n", buildConfig.BuildType, err)
-			return
-		}
-		con.Log.Infof("Build started: %s (type: %s, target: %s, source: %s)\n",
-			artifact.Name, artifact.Type, artifact.Target, artifact.Source)
-	}()
+func executeBuild(con *core.Console, buildConfig *clientpb.BuildConfig) error {
+	artifact, err := con.Rpc.Build(con.Context(), buildConfig)
+	if err != nil {
+		return fmt.Errorf("build %s failed: %w", buildConfig.BuildType, err)
+	}
+	con.Log.Infof("Build started: %s (type: %s, target: %s, source: %s)\n",
+		artifact.Name, artifact.Type, artifact.Target, artifact.Source)
+	return nil
 }
 
 func BindCmd(cmd *cobra.Command, con *core.Console) error {
@@ -78,8 +77,7 @@ func BindCmd(cmd *cobra.Command, con *core.Console) error {
 		return err
 	}
 
-	executeBuild(con, buildConfig)
-	return nil
+	return executeBuild(con, buildConfig)
 }
 
 // parseLibFlag sets buildConfig.Lib based on the --lib flag and validates compatibility with buildType/target.

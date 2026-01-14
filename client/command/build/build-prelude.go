@@ -42,6 +42,5 @@ func PreludeCmd(cmd *cobra.Command, con *core.Console) error {
 		return err
 	}
 
-	executeBuild(con, buildConfig)
-	return nil
+	return executeBuild(con, buildConfig)
 }
