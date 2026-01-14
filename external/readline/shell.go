@@ -72,13 +72,21 @@ type Shell struct {
 	// Returns multiple command suggestions for Tab completion.
 	AISmartComplete func(line string, history []string) ([]string, error)
 
-	// AI completion state
-	aiCompletionMu       sync.Mutex
-	aiCompletionTimer    *time.Timer
-	aiCompletionActive   bool
-	aiCompletionCallback func(suggestions []string)
-	aiCompletionPending  []string
-	aiCompletionLine     string
+	// AI prediction state (for inline ghost text)
+	AIPredictNext     func(line string, history []string) (string, error) // Predicts next argument
+	aiPrediction      string                                              // Current prediction text
+	aiPredictionLine  string                                              // Line snapshot for the current prediction
+	aiPredictionMu    sync.Mutex
+	aiPredictionTimer *time.Timer
+	aiPredictionSeq   uint64    // Monotonically increasing, used to drop stale requests.
+	lastTabTime       time.Time // For double-tab detection
+
+	// Local suggestion state (fast completion-based suggestions without AI)
+	localSuggestion      string       // Current local suggestion text (full line)
+	localSuggestionLine  string       // Line snapshot when suggestion was computed
+	localSuggestionMu    sync.Mutex   // Protects local suggestion state
+	localSuggestionTimer *time.Timer  // Debounce timer
+	localSuggestionSeq   uint64       // Sequence number to drop stale requests
 }
 
 // NewShell returns a readline shell instance initialized with a default
@@ -155,11 +163,19 @@ func (rl *Shell) Cursor() *core.Cursor { return rl.cursor }
 // selections used to change/select multiple parts of the line at once.
 func (rl *Shell) Selection() *core.Selection { return rl.selection }
 
-// AppendAICompletions adds AI-generated suggestions to the completion menu
-// as a new group tagged "AI Suggestions". This allows users to select AI
-// completions using the normal completion selection mechanism.
-func (rl *Shell) AppendAICompletions(suggestions []string) {
-	rl.completer.AppendAICompletions(suggestions)
+// SetAISuggestion sets an AI inline suggestion to display after the cursor (fish-style).
+func (rl *Shell) SetAISuggestion(suggestion string) {
+	rl.Display.SetAISuggestion(suggestion)
+}
+
+// ClearAISuggestion clears the AI inline suggestion.
+func (rl *Shell) ClearAISuggestion() {
+	rl.Display.ClearAISuggestion()
+}
+
+// GetAISuggestion returns the current AI inline suggestion.
+func (rl *Shell) GetAISuggestion() string {
+	return rl.Display.GetAISuggestion()
 }
 
 // Printf prints a formatted string below the current line and redisplays the prompt

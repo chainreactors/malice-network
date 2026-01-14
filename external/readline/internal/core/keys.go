@@ -41,16 +41,16 @@ type Keys struct {
 
 // WaitAvailableKeys waits until an input key is either read from standard input,
 // or directly returns if the key stack still/already has available keys.
-func WaitAvailableKeys(keys *Keys, cfg *inputrc.Config) {
+func WaitAvailableKeys(keys *Keys, cfg *inputrc.Config) bool {
 	keys.cfg = cfg
 
 	if len(keys.buf) > 0 && !keys.mustWait {
-		return
+		return false
 	}
 
 	// The macro engine might have fed some keys
 	if len(keys.macroKeys) > 0 {
-		return
+		return false
 	}
 
 	keys.mutex.Lock()
@@ -70,7 +70,7 @@ func WaitAvailableKeys(keys *Keys, cfg *inputrc.Config) {
 		// send by ourselves, because we pause reading.
 		keyBuf, err := keys.readInputFiltered()
 		if err != nil && errors.Is(err, io.EOF) {
-			return
+			return false
 		}
 
 		if len(keyBuf) == 0 {
@@ -94,7 +94,7 @@ func WaitAvailableKeys(keys *Keys, cfg *inputrc.Config) {
 			keys.mutex.RUnlock()
 		}
 
-		return
+		return false
 	}
 }
 

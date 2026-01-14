@@ -165,6 +165,13 @@ func (rl *Shell) emacsEditingMode() {
 func (rl *Shell) forwardChar() {
 	startPos := rl.cursor.Pos()
 
+	// At end of line: accept AI suggestion if available (fish-style)
+	if rl.cursor.Pos() >= rl.line.Len()-1 && rl.GetAIPrediction() != "" {
+		if rl.acceptAIPrediction() {
+			return
+		}
+	}
+
 	// Only exception where we actually don't forward a character.
 	if rl.Config.GetBool("history-autosuggest") && rl.cursor.Pos() >= rl.line.Len()-1 {
 		rl.autosuggestAccept()
@@ -321,6 +328,8 @@ func (rl *Shell) clearDisplay() {
 func (rl *Shell) endOfFile() {
 	switch rl.line.Len() {
 	case 0:
+		rl.clearLocalSuggestion()
+		rl.ClearAIPrediction()
 		rl.Display.AcceptLine()
 		rl.History.Accept(false, false, io.EOF)
 	default:
@@ -450,6 +459,9 @@ func (rl *Shell) selfInsert() {
 	rl.cursor.InsertAt(quoted...)
 	rl.cursor.Move(-1 * len(quoted))
 	rl.cursor.Move(length)
+
+	// Trigger local suggestion after character insertion
+	rl.startDelayedLocalSuggestion()
 }
 
 func (rl *Shell) bracketedPasteBegin() {
@@ -1244,6 +1256,8 @@ func (rl *Shell) abort() {
 	}
 
 	// If no line was active,
+	rl.clearLocalSuggestion()
+	rl.ClearAIPrediction()
 	rl.Display.AcceptLine()
 	rl.History.Accept(false, false, ErrInterrupt)
 }
@@ -1544,6 +1558,8 @@ func (rl *Shell) editAndExecuteCommand() {
 
 	// Update our line and return it the caller.
 	rl.line.Set(edited...)
+	rl.clearLocalSuggestion()
+	rl.ClearAIPrediction()
 	rl.Display.AcceptLine()
 	rl.History.Accept(false, false, nil)
 }

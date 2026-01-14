@@ -52,6 +52,7 @@ func HasExecutor(templateID string) bool {
 
 func init() {
 	// Register all built-in executors
+	// Pipeline executors
 	RegisterExecutor("tcp_pipeline", executeTCPPipeline)
 	RegisterExecutor("http_pipeline", executeHTTPPipeline)
 	RegisterExecutor("bind_pipeline", executeBindPipeline)
@@ -61,6 +62,18 @@ func init() {
 	RegisterExecutor("build_pulse", executeBuildPulse)
 	RegisterExecutor("build_prelude", executeBuildPrelude)
 	RegisterExecutor("build_module", executeBuildModule)
+	// Profile executor
+	RegisterExecutor("profile_create", executeProfileCreate)
+	// Listener executor
+	RegisterExecutor("listener_setup", executeListenerSetup)
+	// Infrastructure executor (composite)
+	RegisterExecutor("infrastructure_setup", executeInfrastructureSetup)
+	// Certificate executors
+	RegisterExecutor("cert_generate", executeCertGenerate)
+	RegisterExecutor("cert_import", executeCertImport)
+	// Config executors
+	RegisterExecutor("github_config", executeGithubConfig)
+	RegisterExecutor("notify_config", executeNotifyConfig)
 }
 
 // Helper functions for getting values from wizard result
@@ -485,18 +498,12 @@ func executeBuild(con *core.Console, result *wizardfw.WizardResult, buildType st
 		return err
 	}
 
-	// Execute build asynchronously
-	go func() {
-		artifact, err := con.Rpc.Build(con.Context(), buildConfig)
-		if err != nil {
-			con.Log.Errorf("Build %s failed: %v\n", buildConfig.BuildType, err)
-			return
-		}
-		con.Log.Infof("Build started: %s (type: %s, target: %s, source: %s)\n",
-			artifact.Name, artifact.Type, artifact.Target, artifact.Source)
-	}()
-
-	con.Log.Importantf("Build task submitted (type: %s, target: %s)\n", buildType, target)
+	artifact, err := con.Rpc.Build(con.Context(), buildConfig)
+	if err != nil {
+		return fmt.Errorf("build %s failed: %w", buildConfig.BuildType, err)
+	}
+	con.Log.Infof("Build started: %s (type: %s, target: %s, source: %s)\n",
+		artifact.Name, artifact.Type, artifact.Target, artifact.Source)
 	return nil
 }
 
@@ -675,11 +682,10 @@ func parsePulseAddress(address string) (*pulseAddress, error) {
 		return nil, fmt.Errorf("invalid address %q: expected host[:port], http://host[:port], or tcp://host[:port]", address)
 	}
 
-	host, target, err := normalizeHostPort(address, "80")
+	target, err := normalizeHostPort(address, "80")
 	if err != nil {
 		return nil, err
 	}
-	_ = host
 	return &pulseAddress{protocol: consts.HTTPPipeline, target: target}, nil
 }
 
@@ -853,15 +859,16 @@ func parseAddress(address string) (*implanttypes.Target, error) {
 		}
 
 		scheme := strings.ToLower(strings.TrimSpace(u.Scheme))
-		target := &implanttypes.Target{}
-		var defaultPort string
-		for _, candidate := range addressSchemes {
-			if strings.TrimSuffix(candidate.prefix, "://") == scheme {
-				defaultPort = candidate.defaultPort
+
+		// Find matching scheme config in a single pass
+		var matched *addressScheme
+		for i := range addressSchemes {
+			if strings.TrimSuffix(addressSchemes[i].prefix, "://") == scheme {
+				matched = &addressSchemes[i]
 				break
 			}
 		}
-		if defaultPort == "" {
+		if matched == nil {
 			return nil, fmt.Errorf("unsupported address scheme %q", u.Scheme)
 		}
 
@@ -871,27 +878,22 @@ func parseAddress(address string) (*implanttypes.Target, error) {
 		}
 		port := strings.TrimSpace(u.Port())
 		if port == "" {
-			port = defaultPort
+			port = matched.defaultPort
 		}
 		if err := validatePort(port); err != nil {
 			return nil, err
 		}
-		target.Address = net.JoinHostPort(host, port)
 
-		for _, schemeConfig := range addressSchemes {
-			if strings.TrimSuffix(schemeConfig.prefix, "://") == scheme {
-				schemeConfig.configure(host, target)
-				return target, nil
-			}
-		}
-		return nil, fmt.Errorf("unsupported address scheme %q", u.Scheme)
+		target := &implanttypes.Target{Address: net.JoinHostPort(host, port)}
+		matched.configure(host, target)
+		return target, nil
 	}
 
 	if strings.ContainsAny(address, "/?#") {
 		return nil, fmt.Errorf("invalid address %q: expected host[:port] or scheme://host[:port]", address)
 	}
 
-	host, addr, err := normalizeHostPort(address, "5001")
+	addr, err := normalizeHostPort(address, "5001")
 	if err != nil {
 		return nil, err
 	}
@@ -899,7 +901,6 @@ func parseAddress(address string) (*implanttypes.Target, error) {
 		Address: addr,
 		TCP:     &implanttypes.TCPProfile{},
 	}
-	_ = host
 	return target, nil
 }
 
@@ -911,13 +912,13 @@ func validatePort(port string) error {
 	return nil
 }
 
-func normalizeHostPort(addr string, defaultPort string) (host string, normalized string, err error) {
+func normalizeHostPort(addr string, defaultPort string) (string, error) {
 	addr = strings.TrimSpace(addr)
 	if addr == "" {
-		return "", "", fmt.Errorf("address is empty")
+		return "", fmt.Errorf("address is empty")
 	}
 	if strings.ContainsAny(addr, "/?#") {
-		return "", "", fmt.Errorf("invalid address %q: expected host[:port]", addr)
+		return "", fmt.Errorf("invalid address %q: expected host[:port]", addr)
 	}
 
 	port := defaultPort
@@ -929,48 +930,48 @@ func normalizeHostPort(addr string, defaultPort string) (host string, normalized
 		}
 		h, p, splitErr := net.SplitHostPort(addr)
 		if splitErr != nil {
-			return "", "", fmt.Errorf("invalid address %q: %w", addr, splitErr)
+			return "", fmt.Errorf("invalid address %q: %w", addr, splitErr)
 		}
 		if strings.TrimSpace(h) == "" {
-			return "", "", fmt.Errorf("invalid address %q: missing host", addr)
+			return "", fmt.Errorf("invalid address %q: missing host", addr)
 		}
 		if err := validatePort(p); err != nil {
-			return "", "", err
+			return "", err
 		}
-		return h, net.JoinHostPort(h, p), nil
+		return net.JoinHostPort(h, p), nil
 
 	case strings.Count(addr, ":") == 0:
 		if err := validatePort(port); err != nil {
-			return "", "", err
+			return "", err
 		}
-		return addr, net.JoinHostPort(addr, port), nil
+		return net.JoinHostPort(addr, port), nil
 
 	case strings.Count(addr, ":") == 1:
 		h, p, splitErr := net.SplitHostPort(addr)
 		if splitErr != nil {
-			return "", "", fmt.Errorf("invalid address %q: %w", addr, splitErr)
+			return "", fmt.Errorf("invalid address %q: %w", addr, splitErr)
 		}
 		if strings.TrimSpace(h) == "" {
-			return "", "", fmt.Errorf("invalid address %q: missing host", addr)
+			return "", fmt.Errorf("invalid address %q: missing host", addr)
 		}
 		if err := validatePort(p); err != nil {
-			return "", "", err
+			return "", err
 		}
-		return h, net.JoinHostPort(h, p), nil
+		return net.JoinHostPort(h, p), nil
 
 	default:
-		host = addr
-		ipPart := host
+		// Bare IPv6 address without brackets
+		ipPart := addr
 		if i := strings.LastIndex(ipPart, "%"); i != -1 {
 			ipPart = ipPart[:i]
 		}
 		if net.ParseIP(ipPart) == nil {
-			return "", "", fmt.Errorf("invalid IPv6 address %q (use [ipv6]:port)", addr)
+			return "", fmt.Errorf("invalid IPv6 address %q (use [ipv6]:port)", addr)
 		}
 		if err := validatePort(port); err != nil {
-			return "", "", err
+			return "", err
 		}
-		return host, net.JoinHostPort(host, port), nil
+		return net.JoinHostPort(addr, port), nil
 	}
 }
 
@@ -1027,5 +1028,386 @@ func validateLibFlag(buildConfig *clientpb.BuildConfig) error {
 		}
 		buildConfig.Lib = false
 	}
+	return nil
+}
+
+// executeProfileCreate creates a new profile from wizard results
+func executeProfileCreate(con *core.Console, result *wizardfw.WizardResult) error {
+	name := getString(result, "name")
+	if name == "" {
+		return fmt.Errorf("profile name is required")
+	}
+
+	pipelineID := getString(result, "pipeline")
+	if pipelineID == "" {
+		return fmt.Errorf("pipeline is required")
+	}
+
+	implantType := getString(result, "type")
+	modules := getStringSlice(result, "modules")
+
+	// Build profile params
+	var params implanttypes.ProfileParams
+	if len(modules) > 0 {
+		params.Modules = strings.Join(modules, ",")
+	}
+
+	profile := &clientpb.Profile{
+		Name:       name,
+		PipelineId: pipelineID,
+		Params:     params.String(),
+	}
+
+	// Note: implantType is stored in profile content, not params
+	_ = implantType
+
+	_, err := con.Rpc.NewProfile(con.Context(), profile)
+	if err != nil {
+		return fmt.Errorf("failed to create profile: %w", err)
+	}
+
+	con.Log.Importantf("Profile '%s' created successfully for pipeline '%s'\n", name, pipelineID)
+	return nil
+}
+
+// executeListenerSetup displays listener setup instructions
+// Note: Listeners are typically configured via server config file or listener binary
+func executeListenerSetup(con *core.Console, result *wizardfw.WizardResult) error {
+	name := getString(result, "name")
+	host := getString(result, "host")
+	protocol := getString(result, "protocol")
+	port := getInt(result, "port")
+	tls := getBool(result, "tls")
+
+	con.Log.Importantf("Listener Configuration:\n")
+	con.Log.Infof("  Name:     %s\n", name)
+	con.Log.Infof("  Host:     %s\n", host)
+	con.Log.Infof("  Protocol: %s\n", protocol)
+	con.Log.Infof("  Port:     %d\n", port)
+	con.Log.Infof("  TLS:      %v\n", tls)
+	con.Log.Warnf("\nNote: Listeners must be started separately using the listener binary.\n")
+	con.Log.Infof("Example: ./listener --config listener.yaml\n")
+
+	return nil
+}
+
+// executeInfrastructureSetup creates listener config, pipeline, and profile
+func executeInfrastructureSetup(con *core.Console, result *wizardfw.WizardResult) error {
+	// Step 1: Display listener configuration (listeners need to be started separately)
+	listenerName := getString(result, "listener_name")
+	listenerHost := getString(result, "listener_host")
+	listenerProtocol := getString(result, "listener_protocol")
+	listenerPort := getInt(result, "listener_port")
+	listenerTLS := getBool(result, "listener_tls")
+
+	con.Log.Importantf("=== Infrastructure Setup ===\n\n")
+	con.Log.Infof("[1/3] Listener Configuration:\n")
+	con.Log.Infof("  Name:     %s\n", listenerName)
+	con.Log.Infof("  Host:     %s\n", listenerHost)
+	con.Log.Infof("  Protocol: %s\n", listenerProtocol)
+	con.Log.Infof("  Port:     %d\n", listenerPort)
+	con.Log.Infof("  TLS:      %v\n", listenerTLS)
+	con.Log.Warnf("  Note: Start listener separately with: ./listener --config listener.yaml\n\n")
+
+	// Step 2: Create pipeline
+	pipelineType := getString(result, "pipeline_type")
+	pipelineName := getString(result, "pipeline_name")
+	pipelineHost := getString(result, "pipeline_host")
+	pipelinePort := getUint32(result, "pipeline_port")
+	pipelineTLS := getBool(result, "pipeline_tls")
+
+	if pipelineName == "" {
+		pipelineName = fmt.Sprintf("%s_%s_%d", pipelineType, listenerName, pipelinePort)
+	}
+
+	con.Log.Infof("[2/3] Creating Pipeline '%s'...\n", pipelineName)
+
+	// Check port availability
+	if err := checkPortAvailable(pipelineHost, pipelinePort); err != nil {
+		return fmt.Errorf("cannot create pipeline: %w", err)
+	}
+
+	var tls *clientpb.TLS
+	if pipelineTLS {
+		tls = &clientpb.TLS{Enable: true}
+	}
+
+	var pipeline *clientpb.Pipeline
+	if pipelineType == "http" {
+		pipeline = &clientpb.Pipeline{
+			Tls:        tls,
+			Name:       pipelineName,
+			ListenerId: listenerName,
+			Parser:     consts.ImplantMalefic,
+			Enable:     false,
+			Body:       &clientpb.Pipeline_Http{Http: &clientpb.HTTPPipeline{Name: pipelineName, Host: pipelineHost, Port: pipelinePort}},
+		}
+	} else {
+		pipeline = &clientpb.Pipeline{
+			Tls:        tls,
+			Name:       pipelineName,
+			ListenerId: listenerName,
+			Parser:     consts.ImplantMalefic,
+			Enable:     false,
+			Body:       &clientpb.Pipeline_Tcp{Tcp: &clientpb.TCPPipeline{Name: pipelineName, Host: pipelineHost, Port: pipelinePort}},
+		}
+	}
+
+	if _, err := con.Rpc.RegisterPipeline(con.Context(), pipeline); err != nil {
+		return fmt.Errorf("failed to register pipeline: %w", err)
+	}
+	con.Log.Importantf("  Pipeline '%s' registered\n", pipelineName)
+
+	if _, err := con.Rpc.StartPipeline(con.Context(), &clientpb.CtrlPipeline{
+		Name:       pipeline.Name,
+		ListenerId: pipeline.ListenerId,
+		Pipeline:   pipeline,
+	}); err != nil {
+		return fmt.Errorf("failed to start pipeline: %w", err)
+	}
+	con.Log.Importantf("  Pipeline '%s' started\n\n", pipelineName)
+
+	// Step 3: Create profile
+	profileName := getString(result, "profile_name")
+	implantType := getString(result, "implant_type")
+	modules := getStringSlice(result, "modules")
+
+	con.Log.Infof("[3/3] Creating Profile '%s'...\n", profileName)
+
+	var params implanttypes.ProfileParams
+	if len(modules) > 0 {
+		params.Modules = strings.Join(modules, ",")
+	}
+
+	// Note: implantType is stored in profile content, not params
+	_ = implantType
+
+	profile := &clientpb.Profile{
+		Name:       profileName,
+		PipelineId: pipelineName,
+		Params:     params.String(),
+	}
+
+	if _, err := con.Rpc.NewProfile(con.Context(), profile); err != nil {
+		return fmt.Errorf("failed to create profile: %w", err)
+	}
+	con.Log.Importantf("  Profile '%s' created for pipeline '%s'\n\n", profileName, pipelineName)
+
+	con.Log.Importantf("=== Infrastructure Setup Complete ===\n")
+	con.Log.Infof("Next steps:\n")
+	con.Log.Infof("  1. Start listener: ./listener --config listener.yaml\n")
+	con.Log.Infof("  2. Build implant:  wizard build beacon\n")
+
+	return nil
+}
+
+// executeCertGenerate generates a self-signed certificate
+func executeCertGenerate(con *core.Console, result *wizardfw.WizardResult) error {
+	cn := getString(result, "cn")
+	if cn == "" {
+		return fmt.Errorf("Common Name (CN) is required")
+	}
+
+	certSubject := &clientpb.CertificateSubject{
+		Cn:       cn,
+		O:        getString(result, "o"),
+		C:        getString(result, "c"),
+		L:        getString(result, "l"),
+		Ou:       getString(result, "ou"),
+		St:       getString(result, "st"),
+		Validity: fmt.Sprintf("%d", getInt(result, "validity")),
+	}
+
+	_, err := con.Rpc.GenerateSelfCert(con.Context(), &clientpb.Pipeline{
+		Tls: &clientpb.TLS{
+			CertSubject: certSubject,
+			Acme:        false,
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to generate certificate: %w", err)
+	}
+
+	con.Log.Importantf("Self-signed certificate generated successfully\n")
+	con.Log.Infof("  CN: %s\n", cn)
+	if certSubject.O != "" {
+		con.Log.Infof("  O:  %s\n", certSubject.O)
+	}
+	if certSubject.Validity != "" && certSubject.Validity != "0" {
+		con.Log.Infof("  Validity: %s days\n", certSubject.Validity)
+	}
+
+	return nil
+}
+
+// executeCertImport imports an existing certificate
+func executeCertImport(con *core.Console, result *wizardfw.WizardResult) error {
+	certPath := getString(result, "cert")
+	keyPath := getString(result, "key")
+
+	if certPath == "" || keyPath == "" {
+		return fmt.Errorf("certificate and key files are required")
+	}
+
+	// Read certificate file
+	certData, err := cryptography.ProcessPEM(certPath)
+	if err != nil {
+		return fmt.Errorf("failed to read certificate file: %w", err)
+	}
+
+	// Read key file
+	keyData, err := cryptography.ProcessPEM(keyPath)
+	if err != nil {
+		return fmt.Errorf("failed to read key file: %w", err)
+	}
+
+	// Read CA certificate if provided
+	var caCert *clientpb.Cert
+	caPath := getString(result, "ca_cert")
+	if caPath != "" {
+		caData, err := cryptography.ProcessPEM(caPath)
+		if err != nil {
+			return fmt.Errorf("failed to read CA certificate file: %w", err)
+		}
+		caCert = &clientpb.Cert{
+			Cert: caData,
+		}
+	}
+
+	tls := &clientpb.TLS{
+		Cert: &clientpb.Cert{
+			Cert: certData,
+			Key:  keyData,
+		},
+		Ca: caCert,
+	}
+
+	_, err = con.Rpc.GenerateSelfCert(con.Context(), &clientpb.Pipeline{
+		Tls: tls,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to import certificate: %w", err)
+	}
+
+	con.Log.Importantf("Certificate imported successfully\n")
+	con.Log.Infof("  Certificate: %s\n", certPath)
+	con.Log.Infof("  Key:         %s\n", keyPath)
+	if caPath != "" {
+		con.Log.Infof("  CA Cert:     %s\n", caPath)
+	}
+
+	return nil
+}
+
+// executeGithubConfig configures GitHub Actions build
+func executeGithubConfig(con *core.Console, result *wizardfw.WizardResult) error {
+	owner := getString(result, "owner")
+	repo := getString(result, "repo")
+	token := getString(result, "token")
+
+	if owner == "" || repo == "" || token == "" {
+		return fmt.Errorf("owner, repo, and token are required")
+	}
+
+	workflowFile := getString(result, "workflow_file")
+
+	githubConfig := &clientpb.GithubActionBuildConfig{
+		Owner:      owner,
+		Repo:       repo,
+		Token:      token,
+		WorkflowId: workflowFile,
+	}
+
+	_, err := con.Rpc.UpdateGithubConfig(con.Context(), githubConfig)
+	if err != nil {
+		return fmt.Errorf("failed to update GitHub config: %w", err)
+	}
+
+	con.Log.Importantf("GitHub Actions configuration updated successfully\n")
+	con.Log.Infof("  Owner:    %s\n", owner)
+	con.Log.Infof("  Repo:     %s\n", repo)
+	con.Log.Infof("  Token:    %s***\n", token[:min(4, len(token))])
+	if workflowFile != "" {
+		con.Log.Infof("  Workflow: %s\n", workflowFile)
+	}
+
+	return nil
+}
+
+// executeNotifyConfig configures notification channels
+func executeNotifyConfig(con *core.Console, result *wizardfw.WizardResult) error {
+	notify := &clientpb.Notify{}
+	hasConfig := false
+
+	// Telegram
+	if getBool(result, "telegram_enable") {
+		notify.TelegramEnable = true
+		notify.TelegramApiKey = getString(result, "telegram_token")
+		if chatID := getString(result, "telegram_chat_id"); chatID != "" {
+			// Parse chat ID as int64
+			var id int64
+			fmt.Sscanf(chatID, "%d", &id)
+			notify.TelegramChatId = id
+		}
+		hasConfig = true
+	}
+
+	// DingTalk
+	if getBool(result, "dingtalk_enable") {
+		notify.DingtalkEnable = true
+		notify.DingtalkToken = getString(result, "dingtalk_token")
+		notify.DingtalkSecret = getString(result, "dingtalk_secret")
+		hasConfig = true
+	}
+
+	// Lark
+	if getBool(result, "lark_enable") {
+		notify.LarkEnable = true
+		notify.LarkWebhookUrl = getString(result, "lark_webhook")
+		hasConfig = true
+	}
+
+	// ServerChan
+	if getBool(result, "serverchan_enable") {
+		notify.ServerchanEnable = true
+		notify.ServerchanUrl = getString(result, "serverchan_url")
+		hasConfig = true
+	}
+
+	// PushPlus
+	if getBool(result, "pushplus_enable") {
+		notify.PushplusEnable = true
+		notify.PushplusToken = getString(result, "pushplus_token")
+		notify.PushplusTopic = getString(result, "pushplus_topic")
+		hasConfig = true
+	}
+
+	if !hasConfig {
+		con.Log.Warnf("No notification channels enabled\n")
+		return nil
+	}
+
+	_, err := con.Rpc.UpdateNotifyConfig(con.Context(), notify)
+	if err != nil {
+		return fmt.Errorf("failed to update notification config: %w", err)
+	}
+
+	con.Log.Importantf("Notification configuration updated successfully\n")
+	if notify.TelegramEnable {
+		con.Log.Infof("  Telegram: enabled\n")
+	}
+	if notify.DingtalkEnable {
+		con.Log.Infof("  DingTalk: enabled\n")
+	}
+	if notify.LarkEnable {
+		con.Log.Infof("  Lark:     enabled\n")
+	}
+	if notify.ServerchanEnable {
+		con.Log.Infof("  ServerChan: enabled\n")
+	}
+	if notify.PushplusEnable {
+		con.Log.Infof("  PushPlus: enabled\n")
+	}
+
 	return nil
 }

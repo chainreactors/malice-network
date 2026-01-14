@@ -204,6 +204,40 @@ type luaFieldOptions struct {
 	Required    bool
 }
 
+// luaFieldArgs holds parsed arguments for field creation methods
+type luaFieldArgs struct {
+	Name    string
+	Title   string
+	Default lua.LValue
+	Options luaFieldOptions
+	OptsIdx int
+}
+
+// parseLuaFieldArgs extracts name, title, optional default value, and options table
+// from Lua stack starting at position 2 (position 1 is self).
+// defaultIdx is the position where the default value is expected (usually 4).
+func parseLuaFieldArgs(L *lua.LState, defaultIdx int) luaFieldArgs {
+	args := luaFieldArgs{
+		Name:  L.CheckString(2),
+		Title: L.CheckString(3),
+	}
+
+	if L.GetTop() >= defaultIdx {
+		v := L.Get(defaultIdx)
+		if v.Type() == lua.LTTable {
+			args.OptsIdx = defaultIdx
+		} else {
+			args.Default = v
+			if L.GetTop() >= defaultIdx+1 && L.Get(defaultIdx+1).Type() == lua.LTTable {
+				args.OptsIdx = defaultIdx + 1
+			}
+		}
+	}
+
+	args.Options = parseLuaFieldOptions(L, args.OptsIdx)
+	return args
+}
+
 func parseLuaFieldOptions(L *lua.LState, idx int) luaFieldOptions {
 	if idx <= 0 || L.Get(idx).Type() != lua.LTTable {
 		return luaFieldOptions{}
@@ -240,59 +274,53 @@ func luaStringSlice(L *lua.LState, tbl *lua.LTable) ([]string, error) {
 // wizardInput adds an input field (Lua: wiz:input(name, title, default))
 func wizardInput(L *lua.LState) int {
 	wiz := checkWizard(L, 1)
-	name := L.CheckString(2)
-	title := L.CheckString(3)
+	args := parseLuaFieldArgs(L, 4)
+
 	defaultVal := ""
-	optsIdx := 0
-	if L.GetTop() >= 4 {
-		if L.Get(4).Type() == lua.LTTable {
-			optsIdx = 4
-		} else {
-			defaultVal = L.OptString(4, "")
-			if L.GetTop() >= 5 && L.Get(5).Type() == lua.LTTable {
-				optsIdx = 5
-			}
+	if args.Default != nil && args.Default != lua.LNil {
+		s, ok := args.Default.(lua.LString)
+		if !ok {
+			L.TypeError(4, lua.LTString)
+			return 0
 		}
+		defaultVal = string(s)
 	}
-	opts := parseLuaFieldOptions(L, optsIdx)
+
 	wiz.AddField(&WizardField{
-		Name:        name,
-		Title:       title,
-		Description: opts.Description,
+		Name:        args.Name,
+		Title:       args.Title,
+		Description: args.Options.Description,
 		Type:        FieldInput,
 		Default:     defaultVal,
-		Required:    opts.Required,
+		Required:    args.Options.Required,
 	})
 
-	L.Push(L.Get(1)) // Return self for chaining
+	L.Push(L.Get(1))
 	return 1
 }
 
 // wizardText adds a text field (Lua: wiz:text(name, title, default))
 func wizardText(L *lua.LState) int {
 	wiz := checkWizard(L, 1)
-	name := L.CheckString(2)
-	title := L.CheckString(3)
+	args := parseLuaFieldArgs(L, 4)
+
 	defaultVal := ""
-	optsIdx := 0
-	if L.GetTop() >= 4 {
-		if L.Get(4).Type() == lua.LTTable {
-			optsIdx = 4
-		} else {
-			defaultVal = L.OptString(4, "")
-			if L.GetTop() >= 5 && L.Get(5).Type() == lua.LTTable {
-				optsIdx = 5
-			}
+	if args.Default != nil && args.Default != lua.LNil {
+		s, ok := args.Default.(lua.LString)
+		if !ok {
+			L.TypeError(4, lua.LTString)
+			return 0
 		}
+		defaultVal = string(s)
 	}
-	opts := parseLuaFieldOptions(L, optsIdx)
+
 	wiz.AddField(&WizardField{
-		Name:        name,
-		Title:       title,
-		Description: opts.Description,
+		Name:        args.Name,
+		Title:       args.Title,
+		Description: args.Options.Description,
 		Type:        FieldText,
 		Default:     defaultVal,
-		Required:    opts.Required,
+		Required:    args.Options.Required,
 	})
 
 	L.Push(L.Get(1))
@@ -394,28 +422,25 @@ func wizardMultiSelect(L *lua.LState) int {
 // wizardConfirm adds a confirm field (Lua: wiz:confirm(name, title, default))
 func wizardConfirm(L *lua.LState) int {
 	wiz := checkWizard(L, 1)
-	name := L.CheckString(2)
-	title := L.CheckString(3)
+	args := parseLuaFieldArgs(L, 4)
+
 	defaultVal := false
-	optsIdx := 0
-	if L.GetTop() >= 4 {
-		if L.Get(4).Type() == lua.LTTable {
-			optsIdx = 4
-		} else {
-			defaultVal = L.OptBool(4, false)
-			if L.GetTop() >= 5 && L.Get(5).Type() == lua.LTTable {
-				optsIdx = 5
-			}
+	if args.Default != nil && args.Default != lua.LNil {
+		b, ok := args.Default.(lua.LBool)
+		if !ok {
+			L.TypeError(4, lua.LTBool)
+			return 0
 		}
+		defaultVal = bool(b)
 	}
-	opts := parseLuaFieldOptions(L, optsIdx)
+
 	wiz.AddField(&WizardField{
-		Name:        name,
-		Title:       title,
-		Description: opts.Description,
+		Name:        args.Name,
+		Title:       args.Title,
+		Description: args.Options.Description,
 		Type:        FieldConfirm,
 		Default:     defaultVal,
-		Required:    opts.Required,
+		Required:    args.Options.Required,
 	})
 
 	L.Push(L.Get(1))
@@ -425,28 +450,25 @@ func wizardConfirm(L *lua.LState) int {
 // wizardNumber adds a number field (Lua: wiz:number(name, title, default))
 func wizardNumber(L *lua.LState) int {
 	wiz := checkWizard(L, 1)
-	name := L.CheckString(2)
-	title := L.CheckString(3)
+	args := parseLuaFieldArgs(L, 4)
+
 	defaultVal := 0
-	optsIdx := 0
-	if L.GetTop() >= 4 {
-		if L.Get(4).Type() == lua.LTTable {
-			optsIdx = 4
-		} else {
-			defaultVal = L.OptInt(4, 0)
-			if L.GetTop() >= 5 && L.Get(5).Type() == lua.LTTable {
-				optsIdx = 5
-			}
+	if args.Default != nil && args.Default != lua.LNil {
+		n, ok := args.Default.(lua.LNumber)
+		if !ok {
+			L.TypeError(4, lua.LTNumber)
+			return 0
 		}
+		defaultVal = int(n)
 	}
-	opts := parseLuaFieldOptions(L, optsIdx)
+
 	wiz.AddField(&WizardField{
-		Name:        name,
-		Title:       title,
-		Description: opts.Description,
+		Name:        args.Name,
+		Title:       args.Title,
+		Description: args.Options.Description,
 		Type:        FieldNumber,
 		Default:     defaultVal,
-		Required:    opts.Required,
+		Required:    args.Options.Required,
 	})
 
 	L.Push(L.Get(1))
@@ -456,29 +478,25 @@ func wizardNumber(L *lua.LState) int {
 // wizardFilePath adds a file path field (Lua: wiz:filepath(name, title))
 func wizardFilePath(L *lua.LState) int {
 	wiz := checkWizard(L, 1)
-	name := L.CheckString(2)
-	title := L.CheckString(3)
+	args := parseLuaFieldArgs(L, 4)
 
 	defaultVal := ""
-	optsIdx := 0
-	if L.GetTop() >= 4 {
-		if L.Get(4).Type() == lua.LTTable {
-			optsIdx = 4
-		} else {
-			defaultVal = L.OptString(4, "")
-			if L.GetTop() >= 5 && L.Get(5).Type() == lua.LTTable {
-				optsIdx = 5
-			}
+	if args.Default != nil && args.Default != lua.LNil {
+		s, ok := args.Default.(lua.LString)
+		if !ok {
+			L.TypeError(4, lua.LTString)
+			return 0
 		}
+		defaultVal = string(s)
 	}
-	opts := parseLuaFieldOptions(L, optsIdx)
+
 	wiz.AddField(&WizardField{
-		Name:        name,
-		Title:       title,
-		Description: opts.Description,
+		Name:        args.Name,
+		Title:       args.Title,
+		Description: args.Options.Description,
 		Type:        FieldFilePath,
 		Default:     defaultVal,
-		Required:    opts.Required,
+		Required:    args.Options.Required,
 	})
 
 	L.Push(L.Get(1))

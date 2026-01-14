@@ -2,12 +2,10 @@ package cryptography
 
 import (
 	"bytes"
-	"crypto/ed25519"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"filippo.io/age"
 	"fmt"
@@ -41,6 +39,16 @@ var (
 	// and we can ensure there will only ever be a single recipient,
 	// we can just ignore add/remove it at runtime to safe space.
 	agePrefix = []byte("age-encryption.org/v1\n-> X25519 ")
+
+	cachedAgeServerKeyPairOnce sync.Once
+	cachedAgeServerKeyPair     *AgeKeyPair
+	cachedAgeServerKeyPairErr  error
+
+	cachedMinisignServerKeyOnce sync.Once
+	cachedMinisignServerKey     *minisign.PrivateKey
+	cachedMinisignServerKeyErr  error
+
+	ageKeyExReplay sync.Map
 )
 
 // deriveKeyFrom - Derives a key from input data using SHA256
@@ -121,7 +129,7 @@ func AgeEncrypt(recipientPublicKey string, plaintext []byte) ([]byte, error) {
 	if err := stream.Close(); err != nil {
 		return nil, err
 	}
-	return buf.Bytes(), nil
+	return bytes.TrimPrefix(buf.Bytes(), agePrefix), nil
 }
 
 // AgeDecrypt - Decrypt using Curve 25519 + ChaCha20Poly1305
@@ -132,7 +140,15 @@ func AgeDecrypt(recipientPrivateKey string, ciphertext []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	// 直接使用 ciphertext，Age 库会自动处理 grease recipients
+	// Accept both full age ciphertext and ciphertext with the standard prefix trimmed.
+	if !bytes.HasPrefix(ciphertext, []byte("age-encryption.org/v1")) {
+		prefixed := make([]byte, 0, len(agePrefix)+len(ciphertext))
+		prefixed = append(prefixed, agePrefix...)
+		prefixed = append(prefixed, ciphertext...)
+		ciphertext = prefixed
+	}
+
+	// Age 库会自动处理 grease recipients
 	buf := bytes.NewBuffer(ciphertext)
 	stream, err := age.Decrypt(buf, identity)
 	if err != nil {
@@ -150,11 +166,8 @@ func AgeDecrypt(recipientPrivateKey string, ciphertext []byte) ([]byte, error) {
 
 // AgeKeyPairFromImplant - Decrypt the session key from an implant
 func AgeKeyExFromImplant(serverPrivateKey string, implantPrivateKey string, ciphertext []byte) ([]byte, error) {
-	// TODO - Store the hash of the implant's key exchange to prevent replay attacks
-	// Check for replay attacks
-	//if err := db.CheckKeyExReplay(ciphertext); err != nil {
-	//	return nil, ErrDecryptFailed
-	//}
+	ciphertextDigest := sha256.Sum256(ciphertext)
+	b64Digest := base64.RawStdEncoding.EncodeToString(ciphertextDigest[:])
 
 	// Decrypt the message
 	plaintext, err := AgeDecrypt(serverPrivateKey, ciphertext)
@@ -175,6 +188,10 @@ func AgeKeyExFromImplant(serverPrivateKey string, implantPrivateKey string, ciph
 	// Constant-time comparison of the HMACs
 	if !hmac.Equal(mac.Sum(nil), plaintext[:sha256Size]) {
 		return nil, ErrDecryptFailed
+	}
+
+	if _, ok := ageKeyExReplay.LoadOrStore(b64Digest, true); ok {
+		return nil, ErrReplayAttack
 	}
 	return plaintext[sha256Size:], nil
 }
@@ -272,45 +289,14 @@ func serverSignRawBuf(buf []byte) []byte {
 
 // AgeServerKeyPair - Get teh server's ECC key pair
 func AgeServerKeyPair() *AgeKeyPair {
-	// TODO - get key value from db
-	//data, err := db.GetKeyValue(serverAgeKeyPairKey)
-	// test
-	data, err := json.Marshal(&AgeKeyPair{})
-	//if err == db.ErrRecordNotFound {
-	//	keyPair, err := generateServerKeyPair()
-	//	if err != nil {
-	//		panic(err)
-	//	}
-	//	return keyPair
-	//}
-	keyPair := &AgeKeyPair{}
-	err = json.Unmarshal([]byte(data), keyPair)
-	if err != nil {
-		panic(err)
+	// TODO: load from persistent storage; fall back to an in-memory keypair.
+	cachedAgeServerKeyPairOnce.Do(func() {
+		cachedAgeServerKeyPair, cachedAgeServerKeyPairErr = RandomAgeKeyPair()
+	})
+	if cachedAgeServerKeyPairErr != nil {
+		panic(cachedAgeServerKeyPairErr)
 	}
-	return keyPair
-}
-
-func generateServerKeyPair() (*AgeKeyPair, error) {
-	keyPair, err := RandomAgeKeyPair()
-	if err != nil {
-		return nil, err
-	}
-	data, err := json.Marshal(keyPair)
-	// test
-	data = []byte(string(data))
-	if err != nil {
-		return nil, err
-	}
-	// TODO - set key value in db
-	// err = db.SetKeyValue(serverAgeKeyPairKey, string(data))
-	return keyPair, err
-}
-
-// minisignPrivateKey - This is here so we can marshal to/from JSON
-type minisignPrivateKey struct {
-	ID         uint64 `json:"id"`
-	PrivateKey []byte `json:"private_key"`
+	return cachedAgeServerKeyPair
 }
 
 // MinisignServerPublicKey - Get the server's minisign public key string
@@ -331,47 +317,19 @@ func MinisignServerSign(message []byte) string {
 
 // MinisignServerPrivateKey - Get the server's minisign key pair
 func MinisignServerPrivateKey() *minisign.PrivateKey {
-	// TODO - get key value from db
-	// test
-	data, err := json.Marshal(&AgeKeyPair{})
-	//data, err := db.GetKeyValue(serverMinisignPrivateKey)
-	//if err == db.ErrRecordNotFound {
-	//	privateKey, err := generateServerMinisignPrivateKey()
-	//	if err != nil {
-	//		panic(err)
-	//	}
-	//	return privateKey
-	//}
-	privateKey := &minisignPrivateKey{}
-	err = json.Unmarshal([]byte(data), privateKey)
-	if err != nil {
-		panic(err)
-	}
-	rawBytes := [ed25519.PrivateKeySize]byte{}
-	copy(rawBytes[:], privateKey.PrivateKey)
-	return &minisign.PrivateKey{
-		RawID:    privateKey.ID,
-		RawBytes: rawBytes,
-	}
-}
-
-func generateServerMinisignPrivateKey() (*minisign.PrivateKey, error) {
-	_, privateKey, err := minisign.GenerateKey(rand.Reader)
-	if err != nil {
-		return nil, err
-	}
-	data, _ := json.Marshal(&minisignPrivateKey{
-		ID:         privateKey.ID(),
-		PrivateKey: privateKey.Bytes(),
+	// TODO: load from persistent storage; fall back to an in-memory keypair.
+	cachedMinisignServerKeyOnce.Do(func() {
+		_, privateKey, err := minisign.GenerateKey(rand.Reader)
+		if err != nil {
+			cachedMinisignServerKeyErr = err
+			return
+		}
+		cachedMinisignServerKey = &privateKey
 	})
-	// test
-	data = []byte(data)
-	// TODO - set key value in db
-	//err = db.SetKeyValue(serverMinisignPrivateKey, string(data))
-	if err != nil {
-		return nil, err
+	if cachedMinisignServerKeyErr != nil {
+		panic(cachedMinisignServerKeyErr)
 	}
-	return &privateKey, err
+	return cachedMinisignServerKey
 }
 
 func RandomInRange(min, max uint32) uint32 {

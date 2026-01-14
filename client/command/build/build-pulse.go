@@ -42,9 +42,11 @@ func PulseCmd(cmd *cobra.Command, con *core.Console) error {
 		return fmt.Errorf("failed to parse pulse's build flags: %w", err)
 	}
 	buildConfig.MaleficConfig, err = profile.ToYAML()
+	if err != nil {
+		return fmt.Errorf("failed to encode profile: %w", err)
+	}
 
-	executeBuild(con, buildConfig)
-	return nil
+	return executeBuild(con, buildConfig)
 }
 
 func parsePulseBuildFlags(cmd *cobra.Command) (*implanttypes.ProfileConfig, error) {

@@ -95,11 +95,8 @@ func (c *Console) NewConsole() {
 	implant.AddInterrupt(io.EOF, repl.ExitImplantMenu) // Ctrl-D
 	implant.AddHistorySourceFile("history", filepath.Join(assets.GetRootAppDir(), "implant_history"))
 
-	// Register AI command generator for Alt+A.
-	iom.SetAICommandGenerator(c.handleAIGenerateCommand)
-
-	// Register AI smart completion for Tab (delayed trigger)
-	iom.Shell().AISmartComplete = c.handleAISmartComplete
+	// Register AI prediction for next argument (double-tap Tab to accept)
+	iom.Shell().AIPredictNext = c.handleAIPredictNext
 
 	// Register line hook to handle '?' prefix without space (e.g., '?你好' -> '?' '你好')
 	iom.PreCmdRunLineHooks = append(iom.PreCmdRunLineHooks, func(args []string) ([]string, error) {
@@ -351,56 +348,6 @@ func getValidAISettings() (*assets.AISettings, error) {
 	return settings.AI, nil
 }
 
-func (c *Console) handleAIGenerateCommand(line string, history []string) (string, error) {
-	ai, err := getValidAISettings()
-	if err != nil {
-		return "", err
-	}
-
-	description := strings.TrimSpace(line)
-	if description == "" {
-		return "", fmt.Errorf("empty description")
-	}
-
-	if ai.HistorySize <= 0 {
-		history = nil
-	} else if len(history) > ai.HistorySize {
-		history = history[len(history)-ai.HistorySize:]
-	}
-
-	aiClient := NewAIClient(ai)
-	timeout := ai.Timeout
-	if timeout <= 0 {
-		timeout = 15
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
-	defer cancel()
-
-	question := fmt.Sprintf(
-		"Convert the following natural language description to a command.\n\n"+
-			"Rules:\n"+
-			"1) Return ONLY the command, no explanation.\n"+
-			"2) Use the exact command syntax from the available commands.\n"+
-			"3) Wrap the command in single backticks.\n"+
-			"4) If you're unsure, return the most likely command.\n\n"+
-			"Description: %s",
-		description,
-	)
-
-	response, err := aiClient.Ask(ctx, question, history)
-	if err != nil {
-		return "", err
-	}
-
-	commands := ParseCommandSuggestions(response)
-	if len(commands) == 0 {
-		return "", fmt.Errorf("AI did not generate a valid command")
-	}
-
-	return commands[0].Command, nil
-}
-
 // initAICompletion initializes the AI completion engine
 func (c *Console) initAICompletion() {
 	settings, err := assets.GetSetting()
@@ -430,19 +377,19 @@ func (c *Console) initAICompletion() {
 	c.aiCompletionEngine = NewAICompletionEngine(aiClient, c.aiCache, c.commandValidator)
 }
 
-// handleAISmartComplete handles AI smart completion for Tab key
-func (c *Console) handleAISmartComplete(line string, history []string) ([]string, error) {
+// handleAIPredictNext handles AI prediction for the next argument (double-tap Tab to accept)
+func (c *Console) handleAIPredictNext(line string, history []string) (string, error) {
 	// Lazy initialize if not done yet
 	if c.aiCompletionEngine == nil {
 		c.initAICompletion()
 	}
 
 	if c.aiCompletionEngine == nil {
-		return nil, fmt.Errorf("AI completion not available")
+		return "", fmt.Errorf("AI prediction not available")
 	}
 
-	// Use 3 second timeout for fast completion
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	// Use 2 second timeout for fast prediction
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
 	activeMenu := ""
@@ -452,5 +399,5 @@ func (c *Console) handleAISmartComplete(line string, history []string) ([]string
 		}
 	}
 
-	return c.aiCompletionEngine.SmartComplete(ctx, line, history, activeMenu)
+	return c.aiCompletionEngine.PredictNextArgument(ctx, line, history, activeMenu)
 }

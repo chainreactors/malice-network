@@ -25,7 +25,6 @@ func (rl *Shell) completionCommands() commands {
 		"accept-and-menu-complete": rl.acceptAndMenuComplete,
 		"vi-registers-complete":    rl.viRegistersComplete,
 		"menu-incremental-search":  rl.menuIncrementalSearch,
-		"ai-complete":              rl.aiGenerateCommand, // AI command completion (Alt+Q)
 	}
 }
 
@@ -34,9 +33,15 @@ func (rl *Shell) completionCommands() commands {
 //
 
 // Attempt completion on the current word.
-// Currently identitical to menu-complete.
 func (rl *Shell) completeWord() {
 	rl.History.SkipSave()
+
+	// If there's a local suggestion and we're not in completion menu, accept it
+	if rl.hasLocalSuggestion() && !rl.completer.IsActive() {
+		if rl.acceptLocalSuggestion() {
+			return
+		}
+	}
 
 	// This completion function should attempt to insert the first
 	// valid completion found, without printing the actual list.
@@ -44,12 +49,17 @@ func (rl *Shell) completeWord() {
 		rl.startMenuComplete(rl.commandCompletion)
 
 		if rl.Config.GetBool("menu-complete-display-prefix") {
+			// Trigger local suggestion for next argument
+			rl.startDelayedLocalSuggestion()
 			return
 		}
 	}
 
 	rl.completer.Select(1, 0)
 	rl.completer.SkipDisplay()
+
+	// Trigger local suggestion for next argument (after we selected a candidate).
+	rl.startDelayedLocalSuggestion()
 }
 
 // List possible completions for the current word.
@@ -204,9 +214,6 @@ func (rl *Shell) startMenuComplete(completer completion.Completer) {
 
 	rl.Keymap.SetLocal(keymap.MenuSelect)
 	rl.completer.GenerateWith(completer)
-
-	// Start delayed AI completion trigger (1 second delay)
-	rl.startDelayedAICompletion()
 }
 
 // commandCompletion generates the completions for commands/args/flags.
@@ -265,74 +272,27 @@ func (rl *Shell) historyCompletion(forward, filterLine, substring bool) {
 	}
 }
 
-// aiGenerateCommand triggers AI-powered command generation.
-// It takes the current input line as natural language and generates a full command.
-func (rl *Shell) aiGenerateCommand() {
-	if rl.AIGenerateCommand == nil {
-		rl.Hint.SetTemporary(fmt.Sprintf("%s%s%s %s", color.Dim, color.FgRed, "AI command generation not configured", color.Reset))
-		return
-	}
+//
+// AI Prediction (inline ghost text) -------------------------------------------------------
+//
 
-	// Get current input line
-	currentLine := string(*rl.line)
-	if currentLine == "" {
-		rl.Hint.SetTemporary(fmt.Sprintf("%s%s%s %s", color.Dim, color.FgYellow, "Enter a description to generate a command", color.Reset))
-		return
-	}
-
-	// Get recent command history
-	var history []string
-	histSrc := rl.History.Current()
-	if histSrc != nil {
-		histLen := histSrc.Len()
-		start := 0
-		if histLen > 20 {
-			start = histLen - 20
-		}
-		for i := start; i < histLen; i++ {
-			if cmd, err := histSrc.GetLine(i); err == nil && cmd != "" {
-				history = append(history, cmd)
-			}
-		}
-	}
-
-	// Show loading hint
-	rl.Hint.SetTemporary(fmt.Sprintf("%s%s%s", color.Dim, "Generating...", color.Reset))
-	rl.Display.Refresh()
-
-	// Call AI to generate command
-	newCommand, err := rl.AIGenerateCommand(currentLine, history)
-	if err != nil {
-		rl.Hint.SetTemporary(fmt.Sprintf("%s%s%s %s", color.Dim, color.FgRed, "AI Error: "+err.Error(), color.Reset))
-		return
-	}
-
-	if newCommand == "" {
-		rl.Hint.SetTemporary(fmt.Sprintf("%s%s%s %s", color.Dim, color.FgYellow, "No command generated", color.Reset))
-		return
-	}
-
-	// Clear the current line and insert the generated command
-	rl.line.Set([]rune(newCommand)...)
-	rl.cursor.Set(len(newCommand))
-
-	// Clear the hint
-	rl.Hint.Reset()
-}
-
-// startDelayedAICompletion starts the AI completion timer
-func (rl *Shell) startDelayedAICompletion() {
-	if rl.AISmartComplete == nil {
+// startDelayedAIPrediction starts the AI prediction timer
+func (rl *Shell) startDelayedAIPrediction() {
+	if rl.AIPredictNext == nil {
 		return
 	}
 
 	// Snapshot line + history on the main loop goroutine.
-	currentLine := string(*rl.line)
+	line, _ := rl.completer.Line()
+	if line == nil {
+		return
+	}
+	currentLine := string(*line)
 	if currentLine == "" {
 		return
 	}
 
-	var history []string
+	var historyLines []string
 	histSrc := rl.History.Current()
 	if histSrc != nil {
 		histLen := histSrc.Len()
@@ -342,148 +302,552 @@ func (rl *Shell) startDelayedAICompletion() {
 		}
 		for i := start; i < histLen; i++ {
 			if cmd, err := histSrc.GetLine(i); err == nil && cmd != "" {
-				history = append(history, cmd)
+				historyLines = append(historyLines, cmd)
 			}
 		}
 	}
 
-	rl.aiCompletionMu.Lock()
-	defer rl.aiCompletionMu.Unlock()
+	rl.aiPredictionMu.Lock()
+	defer rl.aiPredictionMu.Unlock()
 
 	// Cancel any existing timer
-	if rl.aiCompletionTimer != nil {
-		rl.aiCompletionTimer.Stop()
-		rl.aiCompletionTimer = nil
+	if rl.aiPredictionTimer != nil {
+		rl.aiPredictionTimer.Stop()
+		rl.aiPredictionTimer = nil
 	}
 
-	// Don't start if already active
-	if rl.aiCompletionActive {
-		return
+	rl.aiPredictionSeq++
+	seq := rl.aiPredictionSeq
+
+	delay := 250 * time.Millisecond
+	if strings.HasSuffix(currentLine, " ") || strings.HasSuffix(currentLine, "\t") {
+		delay = 80 * time.Millisecond
 	}
 
-	// Start timer for delayed AI completion (1 second)
-	rl.aiCompletionTimer = time.AfterFunc(1*time.Second, func() {
-		rl.triggerAICompletion(currentLine, history)
+	if rl.Config != nil {
+		if strings.HasSuffix(currentLine, " ") || strings.HasSuffix(currentLine, "\t") {
+			if ms := rl.Config.GetInt("ai-prediction-delay-space"); ms > 0 {
+				delay = time.Duration(ms) * time.Millisecond
+			}
+		} else {
+			if ms := rl.Config.GetInt("ai-prediction-delay"); ms > 0 {
+				delay = time.Duration(ms) * time.Millisecond
+			}
+		}
+	}
+
+	rl.aiPredictionTimer = time.AfterFunc(delay, func() {
+		rl.triggerAIPrediction(seq, currentLine, historyLines)
 	})
 }
 
-// triggerAICompletion triggers AI-powered completion asynchronously
-func (rl *Shell) triggerAICompletion(currentLine string, history []string) {
-	rl.aiCompletionMu.Lock()
-	if rl.aiCompletionActive {
-		rl.aiCompletionMu.Unlock()
+// triggerAIPrediction triggers AI-powered prediction asynchronously
+func (rl *Shell) triggerAIPrediction(seq uint64, currentLine string, historyLines []string) {
+	rl.aiPredictionMu.Lock()
+	if seq != rl.aiPredictionSeq {
+		rl.aiPredictionMu.Unlock()
 		return
 	}
-	rl.aiCompletionActive = true
-	rl.aiCompletionMu.Unlock()
+	rl.aiPredictionMu.Unlock()
 
-	defer func() {
-		rl.aiCompletionMu.Lock()
-		rl.aiCompletionActive = false
-		rl.aiCompletionMu.Unlock()
-	}()
-
-	currentLine = strings.TrimSpace(currentLine)
 	if currentLine == "" {
 		return
 	}
 
-	showLoading := rl.Keys != nil && rl.Keys.IsWaiting() && !rl.Keys.IsReading()
-	if showLoading {
-		// Show AI loading hint
-		rl.Hint.SetTemporary(fmt.Sprintf("%s[AI] Loading...%s", color.FgCyan, color.Reset))
-		rl.Display.RefreshHelpers()
-	}
-
-	// Call AI completion
-	suggestions, err := rl.AISmartComplete(currentLine, history)
-	if err != nil {
-		// Silently fail - keep showing local completions
-		if showLoading && rl.Keys != nil && rl.Keys.IsWaiting() && !rl.Keys.IsReading() {
-			rl.Hint.Reset()
-			rl.Display.RefreshHelpers()
-		}
+	// Drop stale predictions if the line has changed since scheduling.
+	line, _ := rl.completer.Line()
+	if line == nil || string(*line) != currentLine {
 		return
 	}
 
-	if len(suggestions) == 0 {
-		if showLoading && rl.Keys != nil && rl.Keys.IsWaiting() && !rl.Keys.IsReading() {
-			rl.Hint.Reset()
-			rl.Display.RefreshHelpers()
-		}
+	// Call AI prediction
+	prediction, err := rl.AIPredictNext(currentLine, historyLines)
+	if err != nil || prediction == "" {
 		return
 	}
 
-	// Notify callback if set
-	if rl.aiCompletionCallback != nil {
-		rl.aiCompletionCallback(suggestions)
+	// Drop stale predictions if the line changed while the request was running.
+	line, _ = rl.completer.Line()
+	if line == nil || string(*line) != currentLine {
+		return
 	}
 
-	// Queue AI suggestions to be applied by the main loop, or immediately if idle.
-	rl.aiCompletionMu.Lock()
-	rl.aiCompletionLine = currentLine
-	rl.aiCompletionPending = append([]string(nil), suggestions...)
-	rl.aiCompletionMu.Unlock()
+	// Store prediction
+	prediction = strings.TrimLeft(prediction, " \t")
+	insertText := aiPredictionInsertText(currentLine, prediction)
+	if insertText == "" {
+		return
+	}
+	fullSuggestion := currentLine + insertText
+	rl.aiPredictionMu.Lock()
+	if seq != rl.aiPredictionSeq {
+		rl.aiPredictionMu.Unlock()
+		return
+	}
+	rl.aiPrediction = fullSuggestion
+	rl.aiPredictionLine = currentLine
+	rl.aiPredictionMu.Unlock()
 
+	// Show prediction as inline ghost text (fish-style).
+	rl.SetAISuggestion(fullSuggestion)
+
+	// If the main readline loop is currently blocked waiting for input,
+	// proactively refresh so the suggestion appears immediately.
+	// This avoids waiting for the next keypress.
 	if rl.Keys != nil && rl.Keys.IsWaiting() && !rl.Keys.IsReading() {
-		rl.applyPendingAICompletion(true)
+		if rl.Config != nil && !rl.Config.GetBool("ai-prediction-auto-refresh") {
+			return
+		}
+
+		rl.Display.RefreshLine()
 	}
 }
 
-// cancelAICompletion cancels any pending AI completion
-func (rl *Shell) cancelAICompletion() {
-	rl.aiCompletionMu.Lock()
-	defer rl.aiCompletionMu.Unlock()
+// acceptAIPrediction accepts the current AI prediction and inserts it
+func (rl *Shell) acceptAIPrediction() bool {
+	rl.aiPredictionMu.Lock()
+	suggestion := rl.aiPrediction
+	rl.aiPredictionMu.Unlock()
 
-	if rl.aiCompletionTimer != nil {
-		rl.aiCompletionTimer.Stop()
-		rl.aiCompletionTimer = nil
-	}
-}
-
-// SetAICompletionCallback sets a callback for when AI completion results arrive
-func (rl *Shell) SetAICompletionCallback(callback func(suggestions []string)) {
-	rl.aiCompletionMu.Lock()
-	defer rl.aiCompletionMu.Unlock()
-	rl.aiCompletionCallback = callback
-}
-
-func (rl *Shell) applyPendingAICompletion(refresh bool) bool {
-	rl.aiCompletionMu.Lock()
-	currentLine := rl.aiCompletionLine
-	suggestions := rl.aiCompletionPending
-	rl.aiCompletionLine = ""
-	rl.aiCompletionPending = nil
-	rl.aiCompletionMu.Unlock()
-
-	if len(suggestions) == 0 {
+	if suggestion == "" {
 		return false
 	}
 
-	// Discard stale suggestions.
-	baseLine, _ := rl.completer.BaseLine()
-	if strings.TrimSpace(string(*baseLine)) != currentLine {
+	line, _ := rl.completer.Line()
+	if line == nil {
+		return false
+	}
+	currentLine := string(*line)
+	if currentLine == "" || !strings.HasPrefix(suggestion, currentLine) || len(suggestion) <= len(currentLine) {
+		rl.ClearAIPrediction()
 		return false
 	}
 
-	// Only enter completion mode if we're not already in another local keymap.
-	local := rl.Keymap.Local()
-	if local != "" && local != keymap.MenuSelect {
+	// We only render the ghost text at end-of-line; keep acceptance consistent.
+	if rl.cursor.Pos() != rl.line.Len() {
 		return false
 	}
-	if local == "" {
-		rl.Keymap.SetLocal(keymap.MenuSelect)
+
+	// Accept any virtually inserted completion candidate and exit completion mode.
+	completion.UpdateInserted(rl.completer)
+
+	// Insert prediction
+	suffix := suggestion[len(currentLine):]
+	for _, r := range suffix {
+		rl.line.Insert(rl.cursor.Pos(), r)
+		rl.cursor.Inc()
 	}
 
-	// Add AI suggestions to the completion menu as a selectable group.
-	rl.AppendAICompletions(suggestions)
+	rl.ClearAIPrediction()
 
-	// Show hint with count of AI suggestions.
-	hintText := fmt.Sprintf("%s[AI] %d suggestions available (use Tab/Arrow to select)%s", color.FgCyan, len(suggestions), color.Reset)
-	rl.Hint.SetTemporary(hintText)
-	if refresh {
-		rl.Display.RefreshHelpers()
-	}
+	// Refresh display
+	rl.Display.Refresh()
 
 	return true
+}
+
+// ClearAIPrediction clears any pending AI prediction
+func (rl *Shell) ClearAIPrediction() {
+	rl.aiPredictionMu.Lock()
+	defer rl.aiPredictionMu.Unlock()
+
+	// Invalidate any in-flight predictions/timers.
+	rl.aiPredictionSeq++
+
+	if rl.aiPredictionTimer != nil {
+		rl.aiPredictionTimer.Stop()
+		rl.aiPredictionTimer = nil
+	}
+	rl.aiPrediction = ""
+	rl.aiPredictionLine = ""
+
+	// Clear inline suggestion
+	rl.Display.ClearAISuggestion()
+}
+
+// GetAIPrediction returns the current AI prediction (for display purposes)
+func (rl *Shell) GetAIPrediction() string {
+	// Only consider predictions when the cursor is at end-of-line, since the
+	// ghost text is rendered there.
+	if rl.cursor.Pos() != rl.line.Len() {
+		return ""
+	}
+
+	rl.aiPredictionMu.Lock()
+	suggestion := rl.aiPrediction
+	rl.aiPredictionMu.Unlock()
+	if suggestion == "" {
+		return ""
+	}
+
+	line, _ := rl.completer.Line()
+	if line == nil {
+		return ""
+	}
+	currentLine := string(*line)
+	if currentLine == "" || !strings.HasPrefix(suggestion, currentLine) || len(suggestion) <= len(currentLine) {
+		return ""
+	}
+
+	return suggestion[len(currentLine):]
+}
+
+// aiPredictionInsertText returns the suffix to insert/display for a given
+// predicted next argument/value and the current input line.
+//
+// The predictor is instructed to return a single "next argument/value". In
+// practice that can also mean a completion of the current token (e.g. when the
+// user already typed a prefix). In that case we should only insert the
+// remaining suffix rather than adding a new space-delimited token.
+func aiPredictionInsertText(currentLine, prediction string) string {
+	prediction = strings.TrimLeft(prediction, " \t")
+	if prediction == "" {
+		return ""
+	}
+	if currentLine == "" {
+		return prediction
+	}
+
+	// If we're already at an argument boundary, insert the prediction as-is.
+	lastChar := currentLine[len(currentLine)-1]
+	if lastChar == ' ' || lastChar == '\t' {
+		return prediction
+	}
+
+	// Otherwise, try to interpret the prediction as a completion of the current token.
+	tokenStart := strings.LastIndexAny(currentLine, " \t") + 1
+	if tokenStart < 0 || tokenStart > len(currentLine) {
+		tokenStart = 0
+	}
+
+	tokenPrefix := currentLine[tokenStart:]
+	if tokenPrefix != "" && strings.HasPrefix(prediction, tokenPrefix) {
+		return prediction[len(tokenPrefix):]
+	}
+
+	// Fallback: treat as the next token and add a separating space.
+	return " " + prediction
+}
+
+// applyPendingAICompletion is kept for compatibility with async completion hooks.
+// It currently ensures stale AI predictions are discarded when the input line changes.
+func (rl *Shell) applyPendingAICompletion(refresh bool) bool {
+	// Ensure inline suggestions don't leak when the line is empty.
+	line, _ := rl.completer.Line()
+	if line != nil && len(*line) == 0 {
+		rl.clearLocalSuggestion()
+		rl.ClearAIPrediction()
+		if refresh {
+			rl.Display.Refresh()
+		}
+		return true
+	}
+
+	rl.aiPredictionMu.Lock()
+	suggestion := rl.aiPrediction
+	rl.aiPredictionMu.Unlock()
+
+	if suggestion == "" {
+		return false
+	}
+
+	line, _ = rl.completer.Line()
+	if line == nil {
+		return false
+	}
+
+	currentLine := string(*line)
+
+	// Clear when the suggestion no longer matches the current input (or when the
+	// user already typed it all), to avoid stale ghost text reappearing later.
+	if currentLine == "" || !strings.HasPrefix(suggestion, currentLine) || len(suggestion) <= len(currentLine) {
+		rl.ClearAIPrediction()
+		if refresh {
+			rl.Display.Refresh()
+		}
+
+		return true
+	}
+
+	return false
+}
+
+//
+// Local Suggestion (fast completion-based suggestions without AI) --------------------------
+//
+
+// startDelayedLocalSuggestion starts a timer to compute local suggestions after a short delay.
+// This provides debouncing to avoid computing suggestions on every keystroke.
+func (rl *Shell) startDelayedLocalSuggestion() {
+	line, _ := rl.completer.Line()
+	if line == nil || len(*line) == 0 {
+		rl.clearLocalSuggestion()
+		return
+	}
+	currentLine := string(*line)
+
+	rl.localSuggestionMu.Lock()
+	defer rl.localSuggestionMu.Unlock()
+
+	// Cancel any existing timer
+	if rl.localSuggestionTimer != nil {
+		rl.localSuggestionTimer.Stop()
+		rl.localSuggestionTimer = nil
+	}
+
+	rl.localSuggestionSeq++
+	seq := rl.localSuggestionSeq
+
+	// Use a short delay (50ms) for debouncing
+	delay := 50 * time.Millisecond
+	if strings.HasSuffix(currentLine, " ") || strings.HasSuffix(currentLine, "\t") {
+		delay = 30 * time.Millisecond // Faster after space
+	}
+
+	rl.localSuggestionTimer = time.AfterFunc(delay, func() {
+		rl.computeLocalSuggestion(seq, currentLine)
+	})
+}
+
+// computeLocalSuggestion computes and displays a local suggestion.
+// Priority: completion candidates > history match
+func (rl *Shell) computeLocalSuggestion(seq uint64, currentLine string) {
+	rl.localSuggestionMu.Lock()
+	if seq != rl.localSuggestionSeq {
+		rl.localSuggestionMu.Unlock()
+		return
+	}
+	rl.localSuggestionMu.Unlock()
+
+	// Check if the line has changed since scheduling
+	line, _ := rl.completer.Line()
+	if line == nil || string(*line) != currentLine {
+		return
+	}
+
+	var suggestion string
+
+	// Priority 1: Try to get suggestion from completion system
+	suggestion = rl.getCompletionSuggestion(currentLine)
+
+	// Priority 2: If no completion, try history match
+	if suggestion == "" {
+		suggestion = rl.getHistorySuggestion(currentLine)
+	}
+
+	if suggestion == "" || suggestion == currentLine {
+		rl.clearLocalSuggestion()
+		if rl.Keys != nil && rl.Keys.IsWaiting() && !rl.Keys.IsReading() {
+			rl.Display.RefreshLine()
+		}
+		return
+	}
+
+	// Store and display suggestion
+	rl.localSuggestionMu.Lock()
+	if seq != rl.localSuggestionSeq {
+		rl.localSuggestionMu.Unlock()
+		return
+	}
+	rl.localSuggestion = suggestion
+	rl.localSuggestionLine = currentLine
+	// Use the existing AI suggestion display mechanism
+	rl.SetAISuggestion(suggestion)
+	rl.localSuggestionMu.Unlock()
+
+	// Refresh display if the main loop is waiting for input
+	if rl.Keys != nil && rl.Keys.IsWaiting() && !rl.Keys.IsReading() {
+		rl.Display.RefreshLine()
+	}
+}
+
+// getCompletionSuggestion gets a suggestion from the completion system.
+// Returns the first matching candidate or the common prefix of multiple candidates.
+func (rl *Shell) getCompletionSuggestion(currentLine string) string {
+	if rl.Completer == nil {
+		return ""
+	}
+
+	// Get completions for current line
+	line := []rune(currentLine)
+	cursor := len(line)
+	comps := rl.Completer(line, cursor)
+
+	if len(comps.values) == 0 {
+		return ""
+	}
+
+	// Get the current word prefix
+	prefix := ""
+	if comps.PREFIX != "" {
+		prefix = comps.PREFIX
+	} else {
+		// Calculate prefix from word boundary
+		pos := len(line) - 1
+		for pos >= 0 {
+			c := line[pos]
+			if c == ' ' || c == '\t' {
+				break
+			}
+			pos--
+		}
+		prefix = string(line[pos+1:])
+	}
+
+	// Filter candidates that match the prefix
+	var matchingValues []string
+	ignoreCase := rl.Config != nil && rl.Config.GetBool("completion-ignore-case")
+	for _, v := range comps.values {
+		value := v.Value
+		matchPrefix := prefix
+		if ignoreCase {
+			value = strings.ToLower(value)
+			matchPrefix = strings.ToLower(matchPrefix)
+		}
+		if strings.HasPrefix(value, matchPrefix) {
+			matchingValues = append(matchingValues, v.Value)
+		}
+	}
+
+	if len(matchingValues) == 0 {
+		return ""
+	}
+
+	prefixLen := len([]rune(prefix))
+	if prefixLen > len(line) {
+		return ""
+	}
+
+	// If only one candidate, return it
+	if len(matchingValues) == 1 {
+		// Build full line with completion
+		lineWithoutPrefix := string(line[:len(line)-prefixLen])
+		return lineWithoutPrefix + matchingValues[0]
+	}
+
+	// Multiple candidates: compute common prefix
+	commonPrefix := longestCommonPrefix(matchingValues)
+	if len([]rune(commonPrefix)) > prefixLen {
+		lineWithoutPrefix := string(line[:len(line)-prefixLen])
+		return lineWithoutPrefix + commonPrefix
+	}
+
+	return ""
+}
+
+// longestCommonPrefix returns the longest common prefix of a slice of strings.
+func longestCommonPrefix(strs []string) string {
+	if len(strs) == 0 {
+		return ""
+	}
+	prefix := []rune(strs[0])
+	for _, s := range strs[1:] {
+		runes := []rune(s)
+		i := 0
+		for i < len(prefix) && i < len(runes) && prefix[i] == runes[i] {
+			i++
+		}
+		prefix = prefix[:i]
+		if len(prefix) == 0 {
+			break
+		}
+	}
+	return string(prefix)
+}
+
+// getHistorySuggestion gets a suggestion from command history.
+func (rl *Shell) getHistorySuggestion(currentLine string) string {
+	suggested := string(rl.History.Suggest(rl.line))
+	if suggested == "" || suggested == currentLine {
+		return ""
+	}
+	if !strings.HasPrefix(suggested, currentLine) {
+		return ""
+	}
+	return suggested
+}
+
+// hasLocalSuggestion returns true if there's a valid local suggestion for the current line.
+func (rl *Shell) hasLocalSuggestion() bool {
+	rl.localSuggestionMu.Lock()
+	defer rl.localSuggestionMu.Unlock()
+
+	if rl.localSuggestion == "" {
+		return false
+	}
+
+	line, _ := rl.completer.Line()
+	if line == nil {
+		return false
+	}
+	currentLine := string(*line)
+	if currentLine == "" {
+		return false
+	}
+
+	return strings.HasPrefix(rl.localSuggestion, currentLine) &&
+		len(rl.localSuggestion) > len(currentLine)
+}
+
+// acceptLocalSuggestion accepts the current local suggestion and inserts it.
+func (rl *Shell) acceptLocalSuggestion() bool {
+	rl.localSuggestionMu.Lock()
+	suggestion := rl.localSuggestion
+	rl.localSuggestionMu.Unlock()
+
+	if suggestion == "" {
+		return false
+	}
+
+	line, _ := rl.completer.Line()
+	if line == nil {
+		return false
+	}
+	currentLine := string(*line)
+	if currentLine == "" {
+		rl.clearLocalSuggestion()
+		return false
+	}
+
+	if !strings.HasPrefix(suggestion, currentLine) || len(suggestion) <= len(currentLine) {
+		rl.clearLocalSuggestion()
+		return false
+	}
+
+	// Only accept when cursor is at end of line
+	if rl.cursor.Pos() != rl.line.Len() {
+		return false
+	}
+
+	// Accept any virtually inserted completion candidate and exit completion mode.
+	completion.UpdateInserted(rl.completer)
+
+	// Insert the suggestion suffix
+	suffix := suggestion[len(currentLine):]
+	for _, r := range suffix {
+		rl.line.Insert(rl.cursor.Pos(), r)
+		rl.cursor.Inc()
+	}
+
+	rl.clearLocalSuggestion()
+	rl.Display.Refresh()
+
+	return true
+}
+
+// clearLocalSuggestion clears the current local suggestion.
+func (rl *Shell) clearLocalSuggestion() {
+	rl.localSuggestionMu.Lock()
+	defer rl.localSuggestionMu.Unlock()
+
+	if rl.localSuggestionTimer != nil {
+		rl.localSuggestionTimer.Stop()
+		rl.localSuggestionTimer = nil
+	}
+	rl.localSuggestionSeq++
+	rl.localSuggestion = ""
+	rl.localSuggestionLine = ""
+
+	// Clear the displayed suggestion
+	rl.Display.ClearAISuggestion()
 }

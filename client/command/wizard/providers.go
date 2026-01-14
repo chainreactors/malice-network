@@ -140,3 +140,47 @@ func AddressOptionsProvider() func(ctx interface{}) []string {
 		return opts
 	}
 }
+
+// PulseAddressOptionsProvider returns a function that fetches stage-0 compatible addresses.
+// Pulse currently supports only `http://` and `tcp://` targets; HTTPS is intentionally excluded.
+func PulseAddressOptionsProvider() func(ctx interface{}) []string {
+	return func(ctx interface{}) []string {
+		con, ok := ctx.(*core.Console)
+		if !ok || con == nil {
+			return nil
+		}
+
+		pipelines, err := con.Rpc.ListJobs(con.Context(), &clientpb.Empty{})
+		if err != nil {
+			return nil
+		}
+
+		opts := make([]string, 0)
+		opts = append(opts, "") // Allow empty (manual input)
+		seen := make(map[string]bool)
+
+		for _, p := range pipelines.GetPipelines() {
+			var addr string
+			switch body := p.Body.(type) {
+			case *clientpb.Pipeline_Tcp:
+				tcp := body.Tcp
+				if tcp.Host != "" && tcp.Port != 0 {
+					addr = fmt.Sprintf("tcp://%s:%d", tcp.Host, tcp.Port)
+				}
+			case *clientpb.Pipeline_Http:
+				http := body.Http
+				if http.Host != "" && http.Port != 0 {
+					if p.Tls != nil && p.Tls.Enable {
+						continue
+					}
+					addr = fmt.Sprintf("http://%s:%d", http.Host, http.Port)
+				}
+			}
+			if addr != "" && !seen[addr] {
+				seen[addr] = true
+				opts = append(opts, addr)
+			}
+		}
+		return opts
+	}
+}

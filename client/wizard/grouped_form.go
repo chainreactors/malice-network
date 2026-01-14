@@ -1,0 +1,869 @@
+package wizard
+
+import (
+	"fmt"
+	"strconv"
+	"strings"
+
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/huh"
+	"github.com/charmbracelet/lipgloss"
+)
+
+// FieldKind represents the type of field in the form
+type FieldKind int
+
+const (
+	KindSelect FieldKind = iota
+	KindMultiSelect
+	KindInput
+	KindConfirm
+	KindNumber
+)
+
+// Styles - package-level style definitions to avoid recreation
+var (
+	styleTabActive = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color("0")).
+			Background(lipgloss.Color("212")).
+			Padding(0, 1)
+	styleTabInactive = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("250")).
+				Padding(0, 1)
+	styleTabCompleted = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("42")).
+				Padding(0, 1)
+	styleSeparator = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
+	styleError     = lipgloss.NewStyle().Foreground(lipgloss.Color("9")).Bold(true)
+	styleHelp      = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
+
+	styleFocusedTitle   = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("212"))
+	styleNormalTitle    = lipgloss.NewStyle().Foreground(lipgloss.Color("250"))
+	styleDescription    = lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Italic(true)
+	styleSelectedOption = lipgloss.NewStyle().
+				Bold(true).
+				Foreground(lipgloss.Color("0")).
+				Background(lipgloss.Color("212")).
+				Padding(0, 1)
+	styleUnselectedOption   = lipgloss.NewStyle().Foreground(lipgloss.Color("250")).Padding(0, 1)
+	styleFocusedUnselected  = lipgloss.NewStyle().Foreground(lipgloss.Color("255")).Padding(0, 1)
+	styleMultiSelectChecked = lipgloss.NewStyle().Foreground(lipgloss.Color("42")).Padding(0, 1)
+	styleInputFocused       = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("212")).Padding(0, 1)
+	styleInputBlurred       = lipgloss.NewStyle().Foreground(lipgloss.Color("250")).Padding(0, 1)
+)
+
+// FormField represents a field that can be displayed in the form
+type FormField struct {
+	Name        string
+	Title       string
+	Description string
+	Kind        FieldKind
+	Options     []string     // For Select/MultiSelect
+	Selected    int          // For Select: current selection index
+	MultiSelect map[int]bool // For MultiSelect: selected indices
+	InputValue  string       // For Input/Number
+	ConfirmVal  bool         // For Confirm
+	Required    bool
+	Validate    func(string) error
+	Value       interface{} // Pointer to store result
+}
+
+// GroupedWizardForm is a wizard form with Tab navigation for groups
+type GroupedWizardForm struct {
+	groups     []*FormGroup
+	groupIndex int // Current group being edited
+
+	// Current field within group
+	fieldIndex int
+	cursor     int // Cursor within field options
+
+	inputMode   bool
+	inputBuf    string
+	inputCurPos int
+
+	width    int
+	height   int
+	theme    *huh.Theme
+	quitting bool
+	aborted  bool
+
+	errMsg string
+}
+
+// FormGroup represents a group of fields
+type FormGroup struct {
+	Name        string
+	Title       string
+	Description string
+	Fields      []*FormField
+}
+
+// NewGroupedWizardForm creates a new grouped wizard form
+func NewGroupedWizardForm(groups []*FormGroup) *GroupedWizardForm {
+	return &GroupedWizardForm{
+		groups:     groups,
+		groupIndex: 0,
+		fieldIndex: 0,
+		cursor:     0,
+		width:      80,
+		theme:      huh.ThemeCharm(),
+	}
+}
+
+// WithTheme sets the theme
+func (f *GroupedWizardForm) WithTheme(theme *huh.Theme) *GroupedWizardForm {
+	f.theme = theme
+	return f
+}
+
+// Init implements tea.Model
+func (f *GroupedWizardForm) Init() tea.Cmd {
+	f.initCursorForField()
+	return nil
+}
+
+// Update implements tea.Model
+func (f *GroupedWizardForm) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		// Handle input mode separately
+		if f.inputMode {
+			return f.handleInputMode(msg)
+		}
+
+		key := msg.String()
+
+		// Number keys 1-9 for group navigation
+		if len(key) == 1 && key[0] >= '1' && key[0] <= '9' {
+			groupNum := int(key[0] - '1')
+			if groupNum < len(f.groups) {
+				f.errMsg = ""
+				f.saveCurrentField()
+				f.groupIndex = groupNum
+				f.fieldIndex = 0
+				f.initCursorForField()
+				return f, nil
+			}
+		}
+
+		switch key {
+		case "ctrl+c", "esc":
+			f.aborted = true
+			f.quitting = true
+			return f, tea.Quit
+
+		case "tab":
+			// Next group
+			f.errMsg = ""
+			f.saveCurrentField()
+			f.nextGroup()
+
+		case "shift+tab":
+			// Previous group
+			f.errMsg = ""
+			f.saveCurrentField()
+			f.prevGroup()
+
+		case "up", "k":
+			f.errMsg = ""
+			f.saveCurrentField()
+			f.prevField()
+
+		case "down", "j":
+			f.errMsg = ""
+			f.saveCurrentField()
+			f.nextField()
+
+		case "left", "h":
+			f.errMsg = ""
+			f.prevOption()
+
+		case "right", "l":
+			f.errMsg = ""
+			f.nextOption()
+
+		case " ":
+			f.errMsg = ""
+			field := f.currentField()
+			if field == nil {
+				break
+			}
+			if field.Kind == KindMultiSelect {
+				f.toggleSelection()
+			} else if field.Kind == KindConfirm {
+				f.cursor = 1 - f.cursor
+				f.saveCurrentField()
+			}
+
+		case "ctrl+d":
+			return f.trySubmit()
+
+		case "enter":
+			field := f.currentField()
+			if field == nil {
+				return f.trySubmit()
+			}
+			if field.Kind == KindInput || field.Kind == KindNumber {
+				f.errMsg = ""
+				f.inputMode = true
+				f.inputBuf = field.InputValue
+				f.inputCurPos = len(f.inputBuf)
+			} else {
+				return f.trySubmit()
+			}
+
+		case "a":
+			if f.currentField() != nil && f.currentField().Kind == KindMultiSelect {
+				f.errMsg = ""
+				f.selectAll()
+			}
+
+		case "n":
+			field := f.currentField()
+			if field != nil {
+				if field.Kind == KindMultiSelect {
+					f.errMsg = ""
+					f.deselectAll()
+				} else if field.Kind == KindConfirm {
+					f.errMsg = ""
+					f.cursor = 1
+					f.saveCurrentField()
+				}
+			}
+
+		case "y":
+			if f.currentField() != nil && f.currentField().Kind == KindConfirm {
+				f.errMsg = ""
+				f.cursor = 0
+				f.saveCurrentField()
+			}
+		}
+
+	case tea.WindowSizeMsg:
+		f.width = msg.Width
+		f.height = msg.Height
+	}
+
+	return f, nil
+}
+
+// handleInputMode handles key events when in text input mode
+func (f *GroupedWizardForm) handleInputMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "ctrl+c", "esc":
+		f.inputMode = false
+		f.inputBuf = ""
+		f.errMsg = ""
+
+	case "enter":
+		field := f.currentField()
+		if field == nil {
+			f.inputMode = false
+			return f, nil
+		}
+		candidate := f.inputBuf
+		old := field.InputValue
+		field.InputValue = candidate
+		if err := f.validateField(field); err != nil {
+			field.InputValue = old
+			f.errMsg = err.Error()
+			return f, nil
+		}
+		f.saveCurrentField()
+		f.inputMode = false
+		f.inputBuf = ""
+		f.errMsg = ""
+		// Move to next field
+		if f.fieldIndex < len(f.currentGroup().Fields)-1 {
+			f.nextField()
+		}
+
+	case "ctrl+d":
+		field := f.currentField()
+		if field == nil {
+			f.inputMode = false
+			return f.trySubmit()
+		}
+		candidate := f.inputBuf
+		old := field.InputValue
+		field.InputValue = candidate
+		if err := f.validateField(field); err != nil {
+			field.InputValue = old
+			f.errMsg = err.Error()
+			return f, nil
+		}
+		f.saveCurrentField()
+		f.inputMode = false
+		f.inputBuf = ""
+		f.errMsg = ""
+		return f.trySubmit()
+
+	case "backspace":
+		f.errMsg = ""
+		if len(f.inputBuf) > 0 {
+			f.inputBuf = f.inputBuf[:len(f.inputBuf)-1]
+		}
+
+	default:
+		f.errMsg = ""
+		if len(msg.String()) == 1 {
+			f.inputBuf += msg.String()
+		} else if msg.Type == tea.KeySpace {
+			f.inputBuf += " "
+		}
+	}
+
+	return f, nil
+}
+
+// View implements tea.Model
+func (f *GroupedWizardForm) View() string {
+	var sb strings.Builder
+
+	// Tab bar
+	var tabs []string
+	for i, group := range f.groups {
+		label := fmt.Sprintf("%d.%s", i+1, group.Title)
+		switch {
+		case i == f.groupIndex:
+			tabs = append(tabs, styleTabActive.Render(label))
+		case f.isGroupComplete(i):
+			tabs = append(tabs, styleTabCompleted.Render("✓ "+label))
+		default:
+			tabs = append(tabs, styleTabInactive.Render(label))
+		}
+	}
+	sb.WriteString(strings.Join(tabs, " "))
+	sb.WriteString("\n")
+
+	// Separator
+	sb.WriteString(styleSeparator.Render(strings.Repeat("─", min(f.width, 70))))
+	sb.WriteString("\n\n")
+
+	// Render ALL fields in current group
+	group := f.currentGroup()
+	if group == nil || len(group.Fields) == 0 {
+		sb.WriteString("(No fields in this group)\n")
+	} else {
+		for i, field := range group.Fields {
+			sb.WriteString(f.renderField(field, i == f.fieldIndex))
+			sb.WriteString("\n")
+		}
+	}
+
+	// Error message
+	if strings.TrimSpace(f.errMsg) != "" {
+		sb.WriteString("\n")
+		sb.WriteString(styleError.Render("Error: " + f.errMsg))
+	}
+
+	// Help text
+	sb.WriteString("\n")
+	sb.WriteString(f.renderHelp())
+
+	return sb.String()
+}
+
+// renderField renders a single field with all its options visible
+func (f *GroupedWizardForm) renderField(field *FormField, isFocused bool) string {
+	var sb strings.Builder
+
+	// Title with focus indicator
+	if isFocused {
+		sb.WriteString(styleFocusedTitle.Render("> " + field.Title))
+	} else {
+		sb.WriteString(styleNormalTitle.Render("  " + field.Title))
+	}
+
+	// Description on same line if short
+	if field.Description != "" && len(field.Description) < 40 {
+		sb.WriteString(styleDescription.Render("  " + field.Description))
+	}
+	sb.WriteString("\n")
+
+	// Render options based on field kind
+	sb.WriteString("  ")
+	switch field.Kind {
+	case KindSelect:
+		sb.WriteString(f.renderSelectOptions(field, isFocused))
+	case KindMultiSelect:
+		sb.WriteString(f.renderMultiSelectOptions(field, isFocused))
+	case KindConfirm:
+		sb.WriteString(f.renderConfirmOptions(field, isFocused))
+	case KindInput, KindNumber:
+		sb.WriteString(f.renderInputField(field, isFocused))
+	}
+
+	return sb.String()
+}
+
+// selectOptionStyle returns the appropriate style based on focus and selection state
+func selectOptionStyle(isFocused, isSelected bool) lipgloss.Style {
+	if isSelected {
+		return styleSelectedOption
+	}
+	if isFocused {
+		return styleFocusedUnselected
+	}
+	return styleUnselectedOption
+}
+
+func (f *GroupedWizardForm) renderSelectOptions(field *FormField, isFocused bool) string {
+	parts := make([]string, 0, len(field.Options))
+	for i, opt := range field.Options {
+		display := opt
+		if display == "" {
+			display = "(empty)"
+		}
+		style := selectOptionStyle(isFocused, i == field.Selected)
+		parts = append(parts, style.Render(display))
+	}
+	return strings.Join(parts, " ")
+}
+
+func (f *GroupedWizardForm) renderMultiSelectOptions(field *FormField, isFocused bool) string {
+	parts := make([]string, 0, len(field.Options))
+	for i, opt := range field.Options {
+		marker := "○"
+		if field.MultiSelect[i] {
+			marker = "●"
+		}
+		display := fmt.Sprintf("%s %s", marker, opt)
+		isCursor := isFocused && i == f.cursor
+
+		var style lipgloss.Style
+		switch {
+		case isCursor:
+			style = styleSelectedOption
+		case field.MultiSelect[i]:
+			style = styleMultiSelectChecked
+		case isFocused:
+			style = styleFocusedUnselected
+		default:
+			style = styleUnselectedOption
+		}
+		parts = append(parts, style.Render(display))
+	}
+	return strings.Join(parts, " ")
+}
+
+func (f *GroupedWizardForm) renderConfirmOptions(field *FormField, isFocused bool) string {
+	yesStyle := selectOptionStyle(isFocused, field.ConfirmVal)
+	noStyle := selectOptionStyle(isFocused, !field.ConfirmVal)
+	return yesStyle.Render("Yes") + " " + noStyle.Render("No")
+}
+
+func (f *GroupedWizardForm) renderInputField(field *FormField, isFocused bool) string {
+	if isFocused && f.inputMode {
+		return styleInputFocused.Render("[" + f.inputBuf + "█]")
+	}
+	display := field.InputValue
+	if display == "" {
+		display = "(empty)"
+	}
+	if isFocused {
+		return styleInputFocused.Render("["+display+"]") + styleDescription.Render("  Enter to edit")
+	}
+	return styleInputBlurred.Render("[" + display + "]")
+}
+
+func (f *GroupedWizardForm) renderHelp() string {
+	field := f.currentField()
+	if field == nil {
+		return styleHelp.Render("Tab: next group  Shift+Tab: prev group  1-9: jump to group  Ctrl+D: submit")
+	}
+
+	baseHelp := "↑/↓: field  Tab/Shift+Tab: group  1-9: jump  "
+
+	switch field.Kind {
+	case KindMultiSelect:
+		return styleHelp.Render(baseHelp + "←/→: move  Space: toggle  a: all  n: none  Ctrl+D: submit")
+	case KindConfirm:
+		return styleHelp.Render(baseHelp + "←/→: toggle  y: Yes  n: No  Ctrl+D: submit")
+	case KindInput, KindNumber:
+		if f.inputMode {
+			return styleHelp.Render("Enter: save  Esc: cancel  Ctrl+D: save & submit")
+		}
+		return styleHelp.Render(baseHelp + "Enter: edit  Ctrl+D: submit")
+	default:
+		return styleHelp.Render(baseHelp + "←/→: select  Ctrl+D: submit")
+	}
+}
+
+// Helper methods
+
+func (f *GroupedWizardForm) currentGroup() *FormGroup {
+	if f.groupIndex >= 0 && f.groupIndex < len(f.groups) {
+		return f.groups[f.groupIndex]
+	}
+	return nil
+}
+
+func (f *GroupedWizardForm) currentField() *FormField {
+	group := f.currentGroup()
+	if group == nil {
+		return nil
+	}
+	if f.fieldIndex >= 0 && f.fieldIndex < len(group.Fields) {
+		return group.Fields[f.fieldIndex]
+	}
+	return nil
+}
+
+func (f *GroupedWizardForm) nextGroup() {
+	f.groupIndex++
+	if f.groupIndex >= len(f.groups) {
+		f.groupIndex = 0
+	}
+	f.fieldIndex = 0
+	f.initCursorForField()
+}
+
+func (f *GroupedWizardForm) prevGroup() {
+	f.groupIndex--
+	if f.groupIndex < 0 {
+		f.groupIndex = len(f.groups) - 1
+	}
+	f.fieldIndex = 0
+	f.initCursorForField()
+}
+
+func (f *GroupedWizardForm) nextField() {
+	group := f.currentGroup()
+	if group == nil {
+		return
+	}
+	f.fieldIndex++
+	if f.fieldIndex >= len(group.Fields) {
+		f.fieldIndex = 0
+	}
+	f.initCursorForField()
+}
+
+func (f *GroupedWizardForm) prevField() {
+	group := f.currentGroup()
+	if group == nil {
+		return
+	}
+	f.fieldIndex--
+	if f.fieldIndex < 0 {
+		f.fieldIndex = len(group.Fields) - 1
+	}
+	f.initCursorForField()
+}
+
+func (f *GroupedWizardForm) initCursorForField() {
+	field := f.currentField()
+	if field == nil {
+		f.cursor = 0
+		return
+	}
+	switch field.Kind {
+	case KindSelect:
+		f.cursor = field.Selected
+	case KindConfirm:
+		if field.ConfirmVal {
+			f.cursor = 0
+		} else {
+			f.cursor = 1
+		}
+	default:
+		f.cursor = 0
+	}
+}
+
+// wrapIndex wraps index in range [0, max) with cycling
+func wrapIndex(index, delta, max int) int {
+	if max <= 0 {
+		return 0
+	}
+	return (index + delta + max) % max
+}
+
+func (f *GroupedWizardForm) nextOption() {
+	field := f.currentField()
+	if field == nil {
+		return
+	}
+	switch field.Kind {
+	case KindSelect:
+		f.cursor = wrapIndex(f.cursor, 1, len(field.Options))
+		field.Selected = f.cursor
+		f.saveCurrentField()
+	case KindMultiSelect:
+		f.cursor = wrapIndex(f.cursor, 1, len(field.Options))
+	case KindConfirm:
+		f.cursor = 1 - f.cursor
+		f.saveCurrentField()
+	case KindInput, KindNumber:
+		if !f.inputMode {
+			f.saveCurrentField()
+			f.nextField()
+		}
+	}
+}
+
+func (f *GroupedWizardForm) prevOption() {
+	field := f.currentField()
+	if field == nil {
+		return
+	}
+	switch field.Kind {
+	case KindSelect:
+		f.cursor = wrapIndex(f.cursor, -1, len(field.Options))
+		field.Selected = f.cursor
+		f.saveCurrentField()
+	case KindMultiSelect:
+		f.cursor = wrapIndex(f.cursor, -1, len(field.Options))
+	case KindConfirm:
+		f.cursor = 1 - f.cursor
+		f.saveCurrentField()
+	case KindInput, KindNumber:
+		if !f.inputMode {
+			f.saveCurrentField()
+			f.prevField()
+		}
+	}
+}
+
+func (f *GroupedWizardForm) ensureMultiSelect(field *FormField) {
+	if field.MultiSelect == nil {
+		field.MultiSelect = make(map[int]bool)
+	}
+}
+
+func (f *GroupedWizardForm) toggleSelection() {
+	field := f.currentField()
+	if field == nil {
+		return
+	}
+	f.ensureMultiSelect(field)
+	field.MultiSelect[f.cursor] = !field.MultiSelect[f.cursor]
+	f.saveCurrentField()
+}
+
+func (f *GroupedWizardForm) selectAll() {
+	field := f.currentField()
+	if field == nil {
+		return
+	}
+	f.ensureMultiSelect(field)
+	for i := range field.Options {
+		field.MultiSelect[i] = true
+	}
+	f.saveCurrentField()
+}
+
+func (f *GroupedWizardForm) deselectAll() {
+	field := f.currentField()
+	if field == nil {
+		return
+	}
+	field.MultiSelect = make(map[int]bool)
+	f.saveCurrentField()
+}
+
+func (f *GroupedWizardForm) saveCurrentField() {
+	field := f.currentField()
+	if field == nil {
+		return
+	}
+
+	switch field.Kind {
+	case KindSelect:
+		if ptr, ok := field.Value.(*string); ok && ptr != nil {
+			if field.Selected >= 0 && field.Selected < len(field.Options) {
+				*ptr = field.Options[field.Selected]
+			}
+		}
+	case KindMultiSelect:
+		if ptr, ok := field.Value.(*[]string); ok && ptr != nil {
+			var selected []string
+			for i, opt := range field.Options {
+				if field.MultiSelect[i] {
+					selected = append(selected, opt)
+				}
+			}
+			*ptr = selected
+		}
+	case KindConfirm:
+		field.ConfirmVal = (f.cursor == 0)
+		if ptr, ok := field.Value.(*bool); ok && ptr != nil {
+			*ptr = field.ConfirmVal
+		}
+	case KindInput, KindNumber:
+		if ptr, ok := field.Value.(*string); ok && ptr != nil {
+			*ptr = field.InputValue
+		}
+	}
+}
+
+func (f *GroupedWizardForm) isGroupComplete(groupIdx int) bool {
+	if groupIdx < 0 || groupIdx >= len(f.groups) {
+		return false
+	}
+	group := f.groups[groupIdx]
+	for _, field := range group.Fields {
+		if err := f.validateField(field); err != nil {
+			return false
+		}
+	}
+	return true
+}
+
+func (f *GroupedWizardForm) trySubmit() (tea.Model, tea.Cmd) {
+	f.saveCurrentField()
+	if err := f.validateAllFields(); err != nil {
+		return f, nil
+	}
+	f.quitting = true
+	return f, tea.Quit
+}
+
+func (f *GroupedWizardForm) validateAllFields() error {
+	for gi, group := range f.groups {
+		for fi, field := range group.Fields {
+			if err := f.validateField(field); err != nil {
+				f.errMsg = err.Error()
+				f.inputMode = false
+				f.inputBuf = ""
+				f.groupIndex = gi
+				f.fieldIndex = fi
+				f.initCursorForField()
+				return err
+			}
+		}
+	}
+	f.errMsg = ""
+	return nil
+}
+
+// validateStringField validates string-like fields (Select, Input)
+func (f *GroupedWizardForm) validateStringField(value string, field *FormField, label string) error {
+	if !field.Required && field.Validate == nil {
+		return nil
+	}
+	var required func(string) error
+	if field.Required {
+		required = requiredStringValidator(label)
+	}
+	return chainStringValidators(required, field.Validate)(value)
+}
+
+// requiredError returns a formatted required error message
+func requiredError(label string) error {
+	if label != "" {
+		return fmt.Errorf("%s is required", label)
+	}
+	return fmt.Errorf("value is required")
+}
+
+func (f *GroupedWizardForm) validateField(field *FormField) error {
+	if field == nil {
+		return nil
+	}
+
+	label := field.Title
+	if strings.TrimSpace(label) == "" {
+		label = field.Name
+	}
+
+	switch field.Kind {
+	case KindSelect:
+		val := ""
+		if field.Selected >= 0 && field.Selected < len(field.Options) {
+			val = field.Options[field.Selected]
+		}
+		return f.validateStringField(val, field, label)
+
+	case KindMultiSelect:
+		if !field.Required {
+			return nil
+		}
+		for _, selected := range field.MultiSelect {
+			if selected {
+				return nil
+			}
+		}
+		return requiredError(label)
+
+	case KindInput:
+		return f.validateStringField(field.InputValue, field, label)
+
+	case KindNumber:
+		s := strings.TrimSpace(field.InputValue)
+		if s == "" {
+			if field.Required {
+				return requiredError(label)
+			}
+			return nil
+		}
+		if _, err := strconv.Atoi(s); err != nil {
+			return fmt.Errorf("please enter a valid number")
+		}
+		if field.Validate != nil {
+			return field.Validate(s)
+		}
+		return nil
+
+	case KindConfirm:
+		return nil
+	default:
+		return nil
+	}
+}
+
+// Run executes the grouped form
+func (f *GroupedWizardForm) Run() error {
+	p := tea.NewProgram(f)
+	_, err := p.Run()
+	if err != nil {
+		return err
+	}
+	if f.aborted {
+		return fmt.Errorf("wizard aborted")
+	}
+	// Final save of all fields
+	for gi := range f.groups {
+		for fi := range f.groups[gi].Fields {
+			f.groupIndex = gi
+			f.fieldIndex = fi
+			f.saveCurrentField()
+		}
+	}
+	return nil
+}
+
+// Aborted returns true if the user cancelled
+func (f *GroupedWizardForm) Aborted() bool {
+	return f.aborted
+}
+
+// requiredStringValidator creates a validator that checks for non-empty strings
+func requiredStringValidator(label string) func(string) error {
+	return func(s string) error {
+		if strings.TrimSpace(s) == "" {
+			if label != "" {
+				return fmt.Errorf("%s is required", label)
+			}
+			return fmt.Errorf("value is required")
+		}
+		return nil
+	}
+}
+
+// chainStringValidators chains multiple string validators together
+func chainStringValidators(validators ...func(string) error) func(string) error {
+	return func(s string) error {
+		for _, v := range validators {
+			if v == nil {
+				continue
+			}
+			if err := v(s); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+}
