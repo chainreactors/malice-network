@@ -1,6 +1,7 @@
 package command
 
 import (
+	"github.com/carapace-sh/carapace"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/malice-network/client/command/ai"
 	"github.com/chainreactors/malice-network/client/command/audit"
@@ -93,6 +94,13 @@ func BindClientsCommands(con *core.Console) console.Commands {
 			},
 		}
 
+		// 注册全局 --wizard 标志
+		RegisterWizardFlag(client)
+		// 包装 PersistentPreRunE 以支持 wizard 模式
+		client.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+			return HandleWizardFlag(cmd, con)
+		}
+
 		bind := MakeBind(client, con, "golang")
 
 		BindCommonCommands(bind)
@@ -102,6 +110,9 @@ func BindClientsCommands(con *core.Console) console.Commands {
 		client.SetUsageFunc(help.UsageFunc)
 		client.SetHelpFunc(help.HelpFunc)
 		client.SetHelpCommandGroupID(consts.GenericGroup)
+
+		// 为根命令注册 carapace 补全（使 PersistentFlags 在子命令中显示）
+		carapace.Gen(client)
 
 		RegisterClientFunc(con)
 		RegisterImplantFunc(con)

@@ -24,10 +24,14 @@ func rootCmd(con *core.Console) (*cobra.Command, error) {
 	cmd.PersistentFlags().String("mcp", "", "enable MCP server with address (e.g., 127.0.0.1:5005)")
 	// 添加 --rpc flag
 	cmd.PersistentFlags().String("rpc", "", "enable local gRPC server with address (e.g., 127.0.0.1:15004)")
+	// 添加全局 --wizard flag
+	command.RegisterWizardFlag(cmd)
 
 	bind := command.MakeBind(cmd, con, "golang")
 	command.BindCommonCommands(bind)
-	cmd.PersistentPreRunE, cmd.PersistentPostRunE = command.ConsoleRunnerCmd(con, cmd)
+	// 包装 PersistentPreRunE 以支持 wizard 模式
+	originalPre, originalPost := command.ConsoleRunnerCmd(con, cmd)
+	cmd.PersistentPreRunE, cmd.PersistentPostRunE = command.WrapWithWizardSupport(con, originalPre, originalPost)
 	cmd.AddCommand(command.ImplantCmd(con))
 	carapace.Gen(cmd)
 
