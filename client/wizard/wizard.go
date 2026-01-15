@@ -100,6 +100,8 @@ type WizardGroup struct {
 	Title       string         // Display title (e.g., "基础配置")
 	Description string         // Group description
 	Fields      []*WizardField // Fields in this group
+	Optional    bool           // If true, this group can be skipped (collapsed by default)
+	Expanded    bool           // If true and Optional, show fields; otherwise collapsed
 	parent      *Wizard        // Reference to parent wizard
 }
 
@@ -173,6 +175,19 @@ func (w *Wizard) Group(name string) *WizardGroup {
 // WithDescription sets the group description and returns the group for chaining
 func (g *WizardGroup) WithDescription(desc string) *WizardGroup {
 	g.Description = desc
+	return g
+}
+
+// AsOptional marks this group as optional (collapsed by default)
+func (g *WizardGroup) AsOptional() *WizardGroup {
+	g.Optional = true
+	g.Expanded = false
+	return g
+}
+
+// SetExpanded sets the expanded state for optional groups
+func (g *WizardGroup) SetExpanded(expanded bool) *WizardGroup {
+	g.Expanded = expanded
 	return g
 }
 
@@ -446,6 +461,8 @@ func (w *Wizard) Clone() *Wizard {
 			Title:       g.Title,
 			Description: g.Description,
 			Fields:      make([]*WizardField, 0, len(g.Fields)),
+			Optional:    g.Optional,
+			Expanded:    g.Expanded,
 			parent:      clone,
 		}
 		for _, f := range g.Fields {

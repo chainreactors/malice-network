@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/huh"
+	"github.com/charmbracelet/lipgloss"
 )
 
 // Runner handles the execution of wizards
@@ -75,6 +76,8 @@ func (r *Runner) runGrouped(result *WizardResult) (*WizardResult, error) {
 			Title:       wg.Title,
 			Description: wg.Description,
 			Fields:      formFields,
+			Optional:    wg.Optional,
+			Expanded:    wg.Expanded,
 		})
 	}
 
@@ -111,8 +114,18 @@ func (r *Runner) wizardFieldToFormField(f *WizardField, result *WizardResult) *F
 		if f.Default != nil {
 			val = fmt.Sprintf("%v", f.Default)
 		}
+		// Auto-select first non-empty option if default is empty
 		if val == "" && len(f.Options) > 0 {
-			val = f.Options[0]
+			for _, opt := range f.Options {
+				if opt != "" && opt != "(empty)" {
+					val = opt
+					break
+				}
+			}
+			// Fallback to first option if all are empty
+			if val == "" {
+				val = f.Options[0]
+			}
 		}
 		for i, opt := range f.Options {
 			if opt == val {
@@ -230,6 +243,12 @@ type SelectOption struct {
 
 // RunSelect displays an interactive select menu and returns the selected value
 func RunSelect(title string, options []SelectOption) (string, error) {
+	// Prevent lipgloss from sending OSC terminal queries (like \x1b]11;?)
+	// which can conflict with readline's input handling and cause garbled output.
+	lipglossInitOnce.Do(func() {
+		lipgloss.SetHasDarkBackground(true)
+	})
+
 	if len(options) == 0 {
 		return "", fmt.Errorf("no options provided")
 	}
