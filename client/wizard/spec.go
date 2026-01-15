@@ -28,6 +28,7 @@ type GroupSpec struct {
 	Name        string      `json:"name" yaml:"name"`
 	Title       string      `json:"title" yaml:"title"`
 	Description string      `json:"description,omitempty" yaml:"description,omitempty"`
+	Optional    bool        `json:"optional,omitempty" yaml:"optional,omitempty"`
 	Fields      []FieldSpec `json:"fields" yaml:"fields"`
 }
 
@@ -125,6 +126,9 @@ func NewWizardFromSpec(spec *WizardSpec) (*Wizard, error) {
 			}
 
 			group := wiz.NewGroup(gs.Name, gs.Title).WithDescription(gs.Description)
+			if gs.Optional {
+				group.AsOptional()
+			}
 
 			for j, fs := range gs.Fields {
 				field, err := parseFieldSpec(fs, fmt.Sprintf("groups[%d].fields[%d]", i, j))

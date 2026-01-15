@@ -4,10 +4,17 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
+)
+
+var (
+	// lipglossInitOnce ensures we only initialize lipgloss background detection once
+	// to avoid OSC terminal queries that can conflict with readline input handling.
+	lipglossInitOnce sync.Once
 )
 
 // FieldKind represents the type of field in the form
@@ -97,6 +104,8 @@ type FormGroup struct {
 	Title       string
 	Description string
 	Fields      []*FormField
+	Optional    bool // If true, this group can be collapsed
+	Expanded    bool // If true and Optional, show fields; otherwise collapsed
 }
 
 // NewGroupedWizardForm creates a new grouped wizard form
@@ -134,6 +143,10 @@ func (f *GroupedWizardForm) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		key := msg.String()
 
+		// Check if current group is a collapsed optional group
+		group := f.currentGroup()
+		isCollapsedOptional := group != nil && group.Optional && !group.Expanded
+
 		// Number keys 1-9 for group navigation
 		if len(key) == 1 && key[0] >= '1' && key[0] <= '9' {
 			groupNum := int(key[0] - '1')
@@ -166,25 +179,44 @@ func (f *GroupedWizardForm) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			f.prevGroup()
 
 		case "up", "k":
+			if isCollapsedOptional {
+				break // No field navigation in collapsed group
+			}
 			f.errMsg = ""
 			f.saveCurrentField()
 			f.prevField()
 
 		case "down", "j":
+			if isCollapsedOptional {
+				break // No field navigation in collapsed group
+			}
 			f.errMsg = ""
 			f.saveCurrentField()
 			f.nextField()
 
 		case "left", "h":
+			if isCollapsedOptional {
+				break
+			}
 			f.errMsg = ""
 			f.prevOption()
 
 		case "right", "l":
+			if isCollapsedOptional {
+				break
+			}
 			f.errMsg = ""
 			f.nextOption()
 
 		case " ":
 			f.errMsg = ""
+			// Handle collapsed optional group - expand it
+			if isCollapsedOptional {
+				group.Expanded = true
+				f.fieldIndex = 0
+				f.initCursorForField()
+				break
+			}
 			field := f.currentField()
 			if field == nil {
 				break
@@ -200,6 +232,14 @@ func (f *GroupedWizardForm) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return f.trySubmit()
 
 		case "enter":
+			// Handle collapsed optional group - expand it
+			if isCollapsedOptional {
+				f.errMsg = ""
+				group.Expanded = true
+				f.fieldIndex = 0
+				f.initCursorForField()
+				break
+			}
 			field := f.currentField()
 			if field == nil {
 				return f.trySubmit()
@@ -213,13 +253,27 @@ func (f *GroupedWizardForm) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return f.trySubmit()
 			}
 
+		case "c":
+			// Collapse current optional group if expanded
+			if group != nil && group.Optional && group.Expanded {
+				f.errMsg = ""
+				group.Expanded = false
+				f.fieldIndex = 0
+			}
+
 		case "a":
+			if isCollapsedOptional {
+				break
+			}
 			if f.currentField() != nil && f.currentField().Kind == KindMultiSelect {
 				f.errMsg = ""
 				f.selectAll()
 			}
 
 		case "n":
+			if isCollapsedOptional {
+				break
+			}
 			field := f.currentField()
 			if field != nil {
 				if field.Kind == KindMultiSelect {
@@ -233,6 +287,9 @@ func (f *GroupedWizardForm) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "y":
+			if isCollapsedOptional {
+				break
+			}
 			if f.currentField() != nil && f.currentField().Kind == KindConfirm {
 				f.errMsg = ""
 				f.cursor = 0
@@ -321,13 +378,26 @@ func (f *GroupedWizardForm) handleInputMode(msg tea.KeyMsg) (tea.Model, tea.Cmd)
 func (f *GroupedWizardForm) View() string {
 	var sb strings.Builder
 
-	// Tab bar
+	// Tab bar - show required groups first, then optional groups
 	var tabs []string
 	for i, group := range f.groups {
 		label := fmt.Sprintf("%d.%s", i+1, group.Title)
+
+		// Add indicator for optional groups
+		if group.Optional {
+			if group.Expanded {
+				label = fmt.Sprintf("%d.▼ %s", i+1, group.Title)
+			} else {
+				label = fmt.Sprintf("%d.▶ %s", i+1, group.Title)
+			}
+		}
+
 		switch {
 		case i == f.groupIndex:
 			tabs = append(tabs, styleTabActive.Render(label))
+		case group.Optional && !group.Expanded:
+			// Collapsed optional groups are "skipped": show them dimmed instead of as completed.
+			tabs = append(tabs, styleHelp.Render(label))
 		case f.isGroupComplete(i):
 			tabs = append(tabs, styleTabCompleted.Render("✓ "+label))
 		default:
@@ -341,11 +411,18 @@ func (f *GroupedWizardForm) View() string {
 	sb.WriteString(styleSeparator.Render(strings.Repeat("─", min(f.width, 70))))
 	sb.WriteString("\n\n")
 
-	// Render ALL fields in current group
+	// Render current group
 	group := f.currentGroup()
 	if group == nil || len(group.Fields) == 0 {
 		sb.WriteString("(No fields in this group)\n")
+	} else if group.Optional && !group.Expanded {
+		// Collapsed optional group - show toggle prompt
+		sb.WriteString(styleDescription.Render(fmt.Sprintf("  %s (可选配置)", group.Title)))
+		sb.WriteString("\n\n")
+		sb.WriteString(styleHelp.Render("  按 Enter 或 Space 展开配置，或按 Tab 跳过"))
+		sb.WriteString("\n")
 	} else {
+		// Show all fields in current group
 		for i, field := range group.Fields {
 			sb.WriteString(f.renderField(field, i == f.fieldIndex))
 			sb.WriteString("\n")
@@ -469,6 +546,35 @@ func (f *GroupedWizardForm) renderInputField(field *FormField, isFocused bool) s
 }
 
 func (f *GroupedWizardForm) renderHelp() string {
+	group := f.currentGroup()
+
+	// Check if current group is a collapsed optional group
+	if group != nil && group.Optional && !group.Expanded {
+		return styleHelp.Render("Enter/Space: 展开配置  Tab: 跳过此组  1-9: 跳转  Ctrl+D: 提交")
+	}
+
+	// Check if current group is an expanded optional group
+	if group != nil && group.Optional && group.Expanded {
+		field := f.currentField()
+		baseHelp := "↑/↓: field  c: 折叠  Tab: group  "
+		if field == nil {
+			return styleHelp.Render(baseHelp + "Ctrl+D: submit")
+		}
+		switch field.Kind {
+		case KindMultiSelect:
+			return styleHelp.Render(baseHelp + "Space: toggle  a: all  Ctrl+D: submit")
+		case KindConfirm:
+			return styleHelp.Render(baseHelp + "←/→: toggle  Ctrl+D: submit")
+		case KindInput, KindNumber:
+			if f.inputMode {
+				return styleHelp.Render("Enter: save  Esc: cancel  Ctrl+D: save & submit")
+			}
+			return styleHelp.Render(baseHelp + "Enter: edit  Ctrl+D: submit")
+		default:
+			return styleHelp.Render(baseHelp + "←/→: select  Ctrl+D: submit")
+		}
+	}
+
 	field := f.currentField()
 	if field == nil {
 		return styleHelp.Render("Tab: next group  Shift+Tab: prev group  1-9: jump to group  Ctrl+D: submit")
@@ -704,6 +810,12 @@ func (f *GroupedWizardForm) isGroupComplete(groupIdx int) bool {
 		return false
 	}
 	group := f.groups[groupIdx]
+
+	// Collapsed optional groups are considered "complete" (skipped)
+	if group.Optional && !group.Expanded {
+		return true
+	}
+
 	for _, field := range group.Fields {
 		if err := f.validateField(field); err != nil {
 			return false
@@ -723,6 +835,11 @@ func (f *GroupedWizardForm) trySubmit() (tea.Model, tea.Cmd) {
 
 func (f *GroupedWizardForm) validateAllFields() error {
 	for gi, group := range f.groups {
+		// Skip collapsed optional groups (user chose to skip)
+		if group.Optional && !group.Expanded {
+			continue
+		}
+
 		for fi, field := range group.Fields {
 			if err := f.validateField(field); err != nil {
 				f.errMsg = err.Error()
@@ -816,6 +933,13 @@ func (f *GroupedWizardForm) validateField(field *FormField) error {
 
 // Run executes the grouped form
 func (f *GroupedWizardForm) Run() error {
+	// Prevent lipgloss from sending OSC terminal queries (like \x1b]11;?)
+	// which can conflict with readline's input handling and cause garbled output.
+	// We set HasDarkBackground once at startup to avoid runtime OSC queries.
+	lipglossInitOnce.Do(func() {
+		lipgloss.SetHasDarkBackground(true)
+	})
+
 	p := tea.NewProgram(f)
 	_, err := p.Run()
 	if err != nil {
