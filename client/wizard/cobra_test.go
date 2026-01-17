@@ -55,7 +55,7 @@ func TestCobraToWizard(t *testing.T) {
 		t.Errorf("Expected description to be set, got '%s'", wiz.Description)
 	}
 
-	// Verify groups were created (Basic, Network, and "基础配置" for ungrouped)
+	// Verify groups were created (Basic, Network, and "General" for ungrouped)
 	if len(wiz.Groups) == 0 {
 		t.Error("Expected groups to be created")
 	}

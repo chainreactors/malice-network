@@ -1326,7 +1326,7 @@ func executeGithubConfig(con *core.Console, result *wizardfw.WizardResult) error
 	con.Log.Importantf("GitHub Actions configuration updated successfully\n")
 	con.Log.Infof("  Owner:    %s\n", owner)
 	con.Log.Infof("  Repo:     %s\n", repo)
-	con.Log.Infof("  Token:    %s***\n", token[:min(4, len(token))])
+	con.Log.Infof("  Token:    %s***\n", token[:minInt(4, len(token))])
 	if workflowFile != "" {
 		con.Log.Infof("  Workflow: %s\n", workflowFile)
 	}
@@ -1410,4 +1410,11 @@ func executeNotifyConfig(con *core.Console, result *wizardfw.WizardResult) error
 	}
 
 	return nil
+}
+
+func minInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }

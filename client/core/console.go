@@ -98,7 +98,7 @@ func (c *Console) NewConsole() {
 	// Register AI prediction for next argument (double-tap Tab to accept)
 	iom.Shell().AIPredictNext = c.handleAIPredictNext
 
-	// Register line hook to handle '?' prefix without space (e.g., '?你好' -> '?' '你好')
+	// Register line hook to handle '?' prefix without space (e.g., '?hello' -> '?' 'hello')
 	iom.PreCmdRunLineHooks = append(iom.PreCmdRunLineHooks, func(args []string) ([]string, error) {
 		if len(args) > 0 && len(args[0]) > 1 && strings.HasPrefix(args[0], "?") {
 			// Split '?xxx' into '?' and 'xxx'
@@ -130,7 +130,7 @@ func (c *Console) Start(bindCmds ...BindCmds) error {
 	// Initialize AI completion components after commands are registered
 	c.initAICompletion()
 
-	// 所有命令注册完成后，安全地启动MCP服务器和Local RPC服务器
+	// After all commands are registered, safely start MCP server and Local RPC server
 	if c.Server != nil {
 		c.InitMCPServer()
 		c.InitLocalRPCServer()

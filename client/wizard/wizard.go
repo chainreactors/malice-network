@@ -97,7 +97,7 @@ func (f *WizardField) EndGroup() *WizardGroup {
 // WizardGroup represents a logical group of fields
 type WizardGroup struct {
 	Name        string         // Group identifier (e.g., "basic", "network")
-	Title       string         // Display title (e.g., "基础配置")
+	Title       string         // Display title (e.g., "Basic Settings")
 	Description string         // Group description
 	Fields      []*WizardField // Fields in this group
 	Optional    bool           // If true, this group can be skipped (collapsed by default)

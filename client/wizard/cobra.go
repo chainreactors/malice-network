@@ -64,7 +64,7 @@ func CobraToWizard(cmd *cobra.Command) *Wizard {
 		// Add ungrouped fields as "Basic" group first
 		if len(ungroupedFlags) > 0 {
 			sortFlagsByOrder(ungroupedFlags)
-			basicGroup := wiz.NewGroup(uniqueGroupID(usedGroupIDs, "general"), "基础配置")
+			basicGroup := wiz.NewGroup(uniqueGroupID(usedGroupIDs, "general"), "General")
 			for _, flag := range ungroupedFlags {
 				field := flagToWizardField(flag)
 				basicGroup.AddField(field)
@@ -245,7 +245,7 @@ func flagToWizardField(flag *pflag.Flag) *WizardField {
 		if sv, ok := flag.Value.(pflag.SliceValue); ok {
 			field.Type = FieldInput
 			field.Default = formatCSV(sv.GetSlice())
-			field.Description = flag.Usage + " (逗号分隔多个值)"
+			field.Description = flag.Usage + " (comma-separated values)"
 			field.Validate = csvListValidator()
 			break
 		}

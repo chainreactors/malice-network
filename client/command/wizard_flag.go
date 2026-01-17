@@ -13,7 +13,7 @@ const WizardFlagName = "wizard"
 
 // RegisterWizardFlag registers the global --wizard flag on the root command
 func RegisterWizardFlag(rootCmd *cobra.Command) {
-	rootCmd.PersistentFlags().Bool(WizardFlagName, false, "启动交互式向导模式")
+	rootCmd.PersistentFlags().Bool(WizardFlagName, false, "Start interactive wizard mode")
 }
 
 // WrapWithWizardSupport wraps the PersistentPreRunE to add wizard support
@@ -37,12 +37,12 @@ func WrapWithWizardSupport(
 		// Wizard mode: convert command flags to wizard
 		wiz := wizard.CobraToWizard(cmd)
 		if wiz == nil {
-			return fmt.Errorf("无法为命令 %s 创建向导", cmd.Name())
+			return fmt.Errorf("cannot create wizard for command %s", cmd.Name())
 		}
 
 		// Check if there are any fields to display
 		if len(wiz.Fields) == 0 {
-			cmd.Printf("命令 %s 没有可配置的参数\n", cmd.Name())
+			cmd.Printf("Command %s has no configurable parameters\n", cmd.Name())
 			// Continue with original PreRunE
 			if originalPre != nil {
 				return originalPre(cmd, args)
@@ -59,12 +59,12 @@ func WrapWithWizardSupport(
 		runner := wizard.NewRunner(wiz)
 		result, err := runner.Run()
 		if err != nil {
-			return fmt.Errorf("向导取消或失败: %w", err)
+			return fmt.Errorf("wizard cancelled or failed: %w", err)
 		}
 
 		// Apply wizard results to flags
 		if err := wizard.ApplyWizardResultToFlags(cmd, result); err != nil {
-			return fmt.Errorf("应用向导结果失败: %w", err)
+			return fmt.Errorf("failed to apply wizard result: %w", err)
 		}
 
 		// Execute original PreRunE (if any)
@@ -96,12 +96,12 @@ func HandleWizardFlag(cmd *cobra.Command, con *core.Console) error {
 	// Wizard mode: convert command flags to wizard
 	wiz := wizard.CobraToWizard(cmd)
 	if wiz == nil {
-		return fmt.Errorf("无法为命令 %s 创建向导", cmd.Name())
+		return fmt.Errorf("cannot create wizard for command %s", cmd.Name())
 	}
 
 	// Check if there are any fields to display
 	if len(wiz.Fields) == 0 {
-		cmd.Printf("命令 %s 没有可配置的参数\n", cmd.Name())
+		cmd.Printf("Command %s has no configurable parameters\n", cmd.Name())
 		return nil
 	}
 
@@ -114,12 +114,12 @@ func HandleWizardFlag(cmd *cobra.Command, con *core.Console) error {
 	runner := wizard.NewRunner(wiz)
 	result, err := runner.Run()
 	if err != nil {
-		return fmt.Errorf("向导取消或失败: %w", err)
+		return fmt.Errorf("wizard cancelled or failed: %w", err)
 	}
 
 	// Apply wizard results to flags
 	if err := wizard.ApplyWizardResultToFlags(cmd, result); err != nil {
-		return fmt.Errorf("应用向导结果失败: %w", err)
+		return fmt.Errorf("failed to apply wizard result: %w", err)
 	}
 
 	return nil
@@ -130,7 +130,7 @@ func HandleWizardFlag(cmd *cobra.Command, con *core.Console) error {
 func RunWizardForCommand(cmd *cobra.Command, con *core.Console) error {
 	wiz := wizard.CobraToWizard(cmd)
 	if wiz == nil {
-		return fmt.Errorf("无法为命令 %s 创建向导", cmd.Name())
+		return fmt.Errorf("cannot create wizard for command %s", cmd.Name())
 	}
 
 	if len(wiz.Fields) == 0 {

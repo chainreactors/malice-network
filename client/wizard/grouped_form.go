@@ -408,7 +408,7 @@ func (f *GroupedWizardForm) View() string {
 	sb.WriteString("\n")
 
 	// Separator
-	sb.WriteString(styleSeparator.Render(strings.Repeat("─", min(f.width, 70))))
+	sb.WriteString(styleSeparator.Render(strings.Repeat("─", minInt(f.width, 70))))
 	sb.WriteString("\n\n")
 
 	// Render current group
@@ -417,9 +417,9 @@ func (f *GroupedWizardForm) View() string {
 		sb.WriteString("(No fields in this group)\n")
 	} else if group.Optional && !group.Expanded {
 		// Collapsed optional group - show toggle prompt
-		sb.WriteString(styleDescription.Render(fmt.Sprintf("  %s (可选配置)", group.Title)))
+		sb.WriteString(styleDescription.Render(fmt.Sprintf("  %s (Optional)", group.Title)))
 		sb.WriteString("\n\n")
-		sb.WriteString(styleHelp.Render("  按 Enter 或 Space 展开配置，或按 Tab 跳过"))
+		sb.WriteString(styleHelp.Render("  Press Enter or Space to expand, or Tab to skip"))
 		sb.WriteString("\n")
 	} else {
 		// Show all fields in current group
@@ -550,13 +550,13 @@ func (f *GroupedWizardForm) renderHelp() string {
 
 	// Check if current group is a collapsed optional group
 	if group != nil && group.Optional && !group.Expanded {
-		return styleHelp.Render("Enter/Space: 展开配置  Tab: 跳过此组  1-9: 跳转  Ctrl+D: 提交")
+		return styleHelp.Render("Enter/Space: expand  Tab: skip group  1-9: jump  Ctrl+D: submit")
 	}
 
 	// Check if current group is an expanded optional group
 	if group != nil && group.Optional && group.Expanded {
 		field := f.currentField()
-		baseHelp := "↑/↓: field  c: 折叠  Tab: group  "
+		baseHelp := "↑/↓: field  c: collapse  Tab: group  "
 		if field == nil {
 			return styleHelp.Render(baseHelp + "Ctrl+D: submit")
 		}
@@ -990,4 +990,11 @@ func chainStringValidators(validators ...func(string) error) func(string) error 
 		}
 		return nil
 	}
+}
+
+func minInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }

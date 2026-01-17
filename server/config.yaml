@@ -87,5 +87,5 @@ server:
   saas:
     enable: true
     url: https://build.chainreactors.red
-    token: fd4ac8d3-03dd-476a-84d4-3569f5c190e0
+    token: YOUR_TOKEN_HERE
 

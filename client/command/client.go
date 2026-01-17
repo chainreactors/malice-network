@@ -94,9 +94,9 @@ func BindClientsCommands(con *core.Console) console.Commands {
 			},
 		}
 
-		// 注册全局 --wizard 标志
+		// Register global --wizard flag
 		RegisterWizardFlag(client)
-		// 包装 PersistentPreRunE 以支持 wizard 模式
+		// Wrap PersistentPreRunE to support wizard mode
 		client.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
 			return HandleWizardFlag(cmd, con)
 		}
@@ -111,7 +111,7 @@ func BindClientsCommands(con *core.Console) console.Commands {
 		client.SetHelpFunc(help.HelpFunc)
 		client.SetHelpCommandGroupID(consts.GenericGroup)
 
-		// 为根命令注册 carapace 补全（使 PersistentFlags 在子命令中显示）
+		// Register carapace completion for root command (make PersistentFlags visible in subcommands)
 		carapace.Gen(client)
 
 		RegisterClientFunc(con)

@@ -267,8 +267,7 @@ func RunSelect(title string, options []SelectOption) (string, error) {
 	selectField := huh.NewSelect[string]().
 		Title(title).
 		Options(huhOptions...).
-		Value(&selected).
-		Inline(true)
+		Value(&selected)
 
 	form := huh.NewForm(huh.NewGroup(selectField)).WithTheme(huh.ThemeCharm())
 
