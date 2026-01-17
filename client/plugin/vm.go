@@ -32,7 +32,7 @@ func NewLuaVM() *lua.LState {
 		vm.SetGlobal(name, vm.NewFunction(mals.WrapFuncForLua(fun)))
 	}
 
-	// 设置 wizard metatable 和函数
+	// Setup wizard metatable and functions
 	wizard.SetupMetatable(vm)
 	wizardFns := make(map[string]lua.LGFunction)
 	wizard.RegisterLuaFunctions(wizardFns)

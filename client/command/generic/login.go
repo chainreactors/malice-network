@@ -35,8 +35,8 @@ func LoginCmd(cmd *cobra.Command, con *core.Console) error {
 		return Login(con, filename)
 	}
 
-	// 只有根命令或 login 命令才检查 Arg(0) 作为认证文件
-	// 避免子命令的参数（如 wizard build beacon 中的 beacon）被误当作认证文件
+	// Only check Arg(0) as auth file for root command or login command
+	// Avoid treating subcommand arguments (e.g., 'beacon' in 'wizard build beacon') as auth file
 	if cmd.Parent() == nil || cmd.Use == "client" || cmd.Use == "login" {
 		if filename := cmd.Flags().Arg(0); strings.HasSuffix(filename, ".auth") {
 			return Login(con, filename)

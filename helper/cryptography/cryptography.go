@@ -148,11 +148,11 @@ func AgeDecrypt(recipientPrivateKey string, ciphertext []byte) ([]byte, error) {
 		ciphertext = prefixed
 	}
 
-	// Age 库会自动处理 grease recipients
+	// Age library automatically handles grease recipients
 	buf := bytes.NewBuffer(ciphertext)
 	stream, err := age.Decrypt(buf, identity)
 	if err != nil {
-		// 如果解密失败，尝试添加调试信息
+		// If decryption fails, add debug info
 		return nil, fmt.Errorf("age decrypt failed (ciphertext size: %d bytes): %w", len(ciphertext), err)
 	}
 

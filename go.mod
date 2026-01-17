@@ -13,10 +13,8 @@ require (
 	github.com/chainreactors/rem v0.2.4
 	github.com/chainreactors/tui v0.0.0-20250825071101-9e61744e554f
 	github.com/chainreactors/utils v0.0.0-20241209140746-65867d2f78b2
-	github.com/charmbracelet/bubbletea v0.25.0
-	github.com/charmbracelet/glamour v0.6.0
-	github.com/charmbracelet/huh v0.2.3
-	github.com/charmbracelet/lipgloss v0.9.1
+	github.com/charmbracelet/bubbletea v1.3.4
+	github.com/charmbracelet/glamour v0.8.0
 	github.com/corpix/uarand v0.2.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/evertras/bubble-table v0.17.2
@@ -30,7 +28,7 @@ require (
 	github.com/klauspost/compress v1.17.8
 	github.com/mark3labs/mcp-go v0.25.0
 	github.com/mattn/go-tty v0.0.7
-	github.com/muesli/termenv v0.15.2
+	github.com/muesli/termenv v0.16.0
 	github.com/ncruces/go-sqlite3 v0.9.0
 	github.com/nikoksr/notify v0.41.0
 	github.com/reeflective/console v0.0.0-00010101000000-000000000000
@@ -53,12 +51,12 @@ require (
 	github.com/docker/distribution v2.8.2+incompatible // indirect
 	github.com/docker/docker v24.0.9+incompatible
 	golang.org/x/crypto v0.33.0
-	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
+	golang.org/x/exp v0.0.0-20230817173708-d852ddb80c63
 	golang.org/x/net v0.40.0 // indirect
-	golang.org/x/sync v0.15.0 // indirect
+	golang.org/x/sync v0.14.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect
 	golang.org/x/term v0.29.0 // indirect
-	golang.org/x/text v0.23.0
+	golang.org/x/text v0.22.0
 	golang.org/x/time v0.9.0 // indirect
 	google.golang.org/grpc v1.57.2
 	google.golang.org/protobuf v1.34.1
@@ -69,26 +67,30 @@ require (
 	dario.cat/mergo v1.0.0 // indirect
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/Microsoft/go-winio v0.5.1 // indirect
-	github.com/alecthomas/chroma v0.10.0 // indirect
+	github.com/alecthomas/chroma/v2 v2.14.0 // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/blinkbean/dingtalk v1.1.3 // indirect
 	github.com/carapace-sh/carapace-shlex v1.0.1 // indirect
-	github.com/catppuccin/go v0.3.0 // indirect
 	github.com/cbroglie/mustache v1.4.0 // indirect
 	github.com/chainreactors/fingers v0.0.0-20240702104653-a66e34aa41df // indirect
 	github.com/chainreactors/go-metrics v0.0.0-20220926021830-24787b7a10f8 // indirect
 	github.com/chainreactors/proxyclient v1.0.2 // indirect
-	github.com/charmbracelet/bubbles v0.17.1 // indirect
+	github.com/charmbracelet/bubbles v0.20.0 // indirect
+	github.com/charmbracelet/colorprofile v0.2.3-0.20250311203215-f60798e515dc // indirect
 	github.com/charmbracelet/harmonica v0.2.0 // indirect
+	github.com/charmbracelet/lipgloss v1.1.0 // indirect
+	github.com/charmbracelet/x/ansi v0.8.0 // indirect
+	github.com/charmbracelet/x/cellbuf v0.0.13-0.20250311204145-2c3ea96c31dd // indirect
+	github.com/charmbracelet/x/term v0.2.1 // indirect
 	github.com/cjoudrey/gluahttp v0.0.0-20201111170219-25003d9adfa9 // indirect
-	github.com/containerd/console v1.0.4-0.20230313162750-1ae8d489ac81 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dlclark/regexp2 v1.11.5 // indirect
 	github.com/docker/go-connections v0.5.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/edsrzf/mmap-go v1.1.0 // indirect
+	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
 	github.com/facebookincubator/nvdtools v0.1.5 // indirect
 	github.com/fatih/color v1.16.0 // indirect
 	github.com/go-dedup/megophone v0.0.0-20170830025436-f01be21026f5 // indirect
@@ -118,6 +120,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/mattn/go-sqlite3 v1.14.24 // indirect
 	github.com/microcosm-cc/bluemonday v1.0.27 // indirect
+	github.com/miekg/dns v1.1.67 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/moby/term v0.5.0 // indirect
 	github.com/montanaflynn/stats v0.7.1 // indirect
@@ -126,7 +129,6 @@ require (
 	github.com/muesli/cancelreader v0.2.2 // indirect
 	github.com/muesli/reflow v0.3.0 // indirect
 	github.com/ncruces/julianday v0.1.5 // indirect
-	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
@@ -153,6 +155,8 @@ require (
 	github.com/yuin/gluamapper v0.0.0-20150323120927-d836955830e7 // indirect
 	github.com/yuin/goldmark v1.7.4 // indirect
 	github.com/yuin/goldmark-emoji v1.0.3 // indirect
+	golang.org/x/mod v0.24.0 // indirect
+	golang.org/x/tools v0.33.0 // indirect
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230530153820-e85fd2cbaebc // indirect
 	gotest.tools/v3 v3.5.1 // indirect
@@ -161,29 +165,16 @@ require (
 )
 
 replace (
-	golang.org/x/crypto => golang.org/x/crypto v0.17.0
-	golang.org/x/net => golang.org/x/net v0.19.0
-	golang.org/x/sync => golang.org/x/sync v0.6.0
-	golang.org/x/sys => golang.org/x/sys v0.16.0
-	golang.org/x/term => golang.org/x/term v0.16.0
-	golang.org/x/text => golang.org/x/text v0.14.0
-	golang.org/x/time => golang.org/x/time v0.5.0
-)
-
-replace (
-	github.com/charmbracelet/bubbles => github.com/charmbracelet/bubbles v0.16.1
-	github.com/charmbracelet/bubbletea => github.com/charmbracelet/bubbletea v0.24.2
-	github.com/charmbracelet/huh => github.com/charmbracelet/huh v0.2.3
-	github.com/charmbracelet/lipgloss => github.com/charmbracelet/lipgloss v0.9.1
-	github.com/muesli/termenv => github.com/muesli/termenv v0.15.2
-	github.com/ncruces/go-sqlite3 => github.com/ncruces/go-sqlite3 v0.8.3
+	golang.org/x/crypto => golang.org/x/crypto v0.24.0
+	golang.org/x/net => golang.org/x/net v0.23.0
+	golang.org/x/sync => golang.org/x/sync v0.11.0
+	golang.org/x/sys => golang.org/x/sys v0.30.0
 )
 
 replace (
 	github.com/chainreactors/IoM-go => ./external/IoM-go
 	github.com/chainreactors/proxyclient => github.com/chainreactors/proxyclient v1.0.3
 	//github.com/chainreactors/rem => github.com/chainreactors/rem-community v0.2.4
-	github.com/chainreactors/tui => /tmp/tui-fork
 	github.com/mark3labs/mcp-go => ./external/mcp-go
 	github.com/reeflective/console => ./external/console
 	github.com/reeflective/readline => ./external/readline
