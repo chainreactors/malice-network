@@ -9,6 +9,21 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// Provider constants
+const (
+	ProviderOpenAI    = "openai"
+	ProviderClaude    = "claude"
+	ProviderAnthropic = "anthropic"
+
+	EndpointOpenAI    = "https://api.openai.com/v1"
+	EndpointAnthropic = "https://api.anthropic.com/v1"
+
+	DefaultModel     = "gpt-4"
+	DefaultMaxTokens = 1024
+	DefaultTimeout   = 30
+	DefaultHistory   = 20
+)
+
 // AIConfigCmd handles the ai-config command
 func AIConfigCmd(cmd *cobra.Command, con *core.Console) error {
 	showConfig, _ := cmd.Flags().GetBool("show")
@@ -25,12 +40,12 @@ func AIConfigCmd(cmd *cobra.Command, con *core.Console) error {
 	if settings.AI == nil {
 		settings.AI = &assets.AISettings{
 			Enable:      false,
-			Provider:    "openai",
-			Endpoint:    "https://api.openai.com/v1",
-			Model:       "gpt-4",
-			MaxTokens:   1024,
-			Timeout:     30,
-			HistorySize: 20,
+			Provider:    ProviderOpenAI,
+			Endpoint:    EndpointOpenAI,
+			Model:       DefaultModel,
+			MaxTokens:   DefaultMaxTokens,
+			Timeout:     DefaultTimeout,
+			HistorySize: DefaultHistory,
 		}
 	}
 
@@ -60,20 +75,20 @@ func AIConfigCmd(cmd *cobra.Command, con *core.Console) error {
 
 	if provider, _ := cmd.Flags().GetString("provider"); provider != "" {
 		provider = strings.ToLower(provider)
-		if provider == "anthropic" {
-			provider = "claude"
+		if provider == ProviderAnthropic {
+			provider = ProviderClaude
 		}
-		if provider != "openai" && provider != "claude" {
-			return fmt.Errorf("invalid provider: %s. Must be 'openai' or 'claude'", provider)
+		if provider != ProviderOpenAI && provider != ProviderClaude {
+			return fmt.Errorf("invalid provider: %s. Must be '%s' or '%s'", provider, ProviderOpenAI, ProviderClaude)
 		}
 		settings.AI.Provider = provider
 
 		// Set default endpoint based on provider
 		if !cmd.Flags().Changed("endpoint") {
-			if provider == "claude" {
-				settings.AI.Endpoint = "https://api.anthropic.com/v1"
+			if provider == ProviderClaude {
+				settings.AI.Endpoint = EndpointAnthropic
 			} else {
-				settings.AI.Endpoint = "https://api.openai.com/v1"
+				settings.AI.Endpoint = EndpointOpenAI
 			}
 		}
 	}
@@ -123,15 +138,18 @@ func AIConfigCmd(cmd *cobra.Command, con *core.Console) error {
 	return nil
 }
 
+func boolToYesNo(b bool) string {
+	if b {
+		return "Yes"
+	}
+	return "No"
+}
+
 func printAIConfig(ai *assets.AISettings) {
 	fmt.Println("\nAI Configuration:")
 	fmt.Println("─────────────────────────────────────")
 
-	enabledStr := "No"
-	if ai.Enable {
-		enabledStr = "Yes"
-	}
-	fmt.Printf("  Enabled:      %s\n", enabledStr)
+	fmt.Printf("  Enabled:      %s\n", boolToYesNo(ai.Enable))
 	fmt.Printf("  Provider:     %s\n", ai.Provider)
 	fmt.Printf("  Endpoint:     %s\n", ai.Endpoint)
 	fmt.Printf("  Model:        %s\n", ai.Model)
@@ -151,10 +169,6 @@ func printAIConfig(ai *assets.AISettings) {
 	fmt.Printf("  Timeout:      %ds\n", ai.Timeout)
 	fmt.Printf("  History Size: %d lines\n", ai.HistorySize)
 
-	opsecCheckStr := "No"
-	if ai.OpsecCheck {
-		opsecCheckStr = "Yes"
-	}
-	fmt.Printf("  OPSEC Check:  %s\n", opsecCheckStr)
+	fmt.Printf("  OPSEC Check:  %s\n", boolToYesNo(ai.OpsecCheck))
 	fmt.Println()
 }

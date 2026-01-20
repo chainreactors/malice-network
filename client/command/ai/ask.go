@@ -18,18 +18,10 @@ func AskCmd(cmd *cobra.Command, con *core.Console, args []string) error {
 		return fmt.Errorf("please provide a question")
 	}
 
-	// Load settings
-	settings, err := assets.LoadSettings()
+	// Validate AI settings
+	aiSettings, err := assets.GetValidAISettings()
 	if err != nil {
-		return fmt.Errorf("failed to load settings: %w", err)
-	}
-
-	if settings.AI == nil || !settings.AI.Enable {
-		return fmt.Errorf("AI is not enabled. Use 'ai-config --enable --api-key <key>' to enable it")
-	}
-
-	if settings.AI.APIKey == "" {
-		return fmt.Errorf("AI API key is not configured. Use 'ai-config --api-key <key>' to set it")
+		return err
 	}
 
 	// Get history settings
@@ -42,10 +34,10 @@ func AskCmd(cmd *cobra.Command, con *core.Console, args []string) error {
 	}
 
 	// Create AI client
-	aiClient := core.NewAIClient(settings.AI)
+	aiClient := core.NewAIClient(aiSettings)
 
 	// Create context with timeout
-	timeout := settings.AI.Timeout
+	timeout := aiSettings.Timeout
 	if timeout <= 0 {
 		timeout = 30
 	}

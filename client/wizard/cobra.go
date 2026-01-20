@@ -13,6 +13,9 @@ import (
 	"github.com/spf13/pflag"
 )
 
+// DefaultFlagOrder is the default order value for flags without explicit ordering
+const DefaultFlagOrder = 9999
+
 // ============ Dynamic Providers ============
 
 // OptionProvider returns dynamic options for a flag's select menu
@@ -25,8 +28,14 @@ var (
 	optionProviders   = make(map[string]OptionProvider)
 	optionProvidersMu sync.RWMutex
 
+	scopedOptionProviders   = make(map[*cobra.Command]map[string]OptionProvider)
+	scopedOptionProvidersMu sync.RWMutex
+
 	defaultProviders   = make(map[string]DefaultProvider)
 	defaultProvidersMu sync.RWMutex
+
+	scopedDefaultProviders   = make(map[*cobra.Command]map[string]DefaultProvider)
+	scopedDefaultProvidersMu sync.RWMutex
 )
 
 // RegisterProvider registers a dynamic option provider for a flag name
@@ -36,11 +45,39 @@ func RegisterProvider(flagName string, fn OptionProvider) {
 	optionProviders[flagName] = fn
 }
 
+// RegisterProviderForCommand registers a dynamic option provider scoped to a command and its children.
+func RegisterProviderForCommand(cmd *cobra.Command, flagName string, fn OptionProvider) {
+	if cmd == nil {
+		RegisterProvider(flagName, fn)
+		return
+	}
+	scopedOptionProvidersMu.Lock()
+	defer scopedOptionProvidersMu.Unlock()
+	if scopedOptionProviders[cmd] == nil {
+		scopedOptionProviders[cmd] = make(map[string]OptionProvider)
+	}
+	scopedOptionProviders[cmd][flagName] = fn
+}
+
 // RegisterDefaultProvider registers a default value provider for a flag name
 func RegisterDefaultProvider(flagName string, fn DefaultProvider) {
 	defaultProvidersMu.Lock()
 	defer defaultProvidersMu.Unlock()
 	defaultProviders[flagName] = fn
+}
+
+// RegisterDefaultProviderForCommand registers a default value provider scoped to a command and its children.
+func RegisterDefaultProviderForCommand(cmd *cobra.Command, flagName string, fn DefaultProvider) {
+	if cmd == nil {
+		RegisterDefaultProvider(flagName, fn)
+		return
+	}
+	scopedDefaultProvidersMu.Lock()
+	defer scopedDefaultProvidersMu.Unlock()
+	if scopedDefaultProviders[cmd] == nil {
+		scopedDefaultProviders[cmd] = make(map[string]DefaultProvider)
+	}
+	scopedDefaultProviders[cmd][flagName] = fn
 }
 
 func getOptionProvider(flagName string) (OptionProvider, bool) {
@@ -50,11 +87,51 @@ func getOptionProvider(flagName string) (OptionProvider, bool) {
 	return fn, ok
 }
 
+func getScopedOptionProvider(cmd *cobra.Command, flagName string) (OptionProvider, bool) {
+	scopedOptionProvidersMu.RLock()
+	defer scopedOptionProvidersMu.RUnlock()
+	cmdProviders, ok := scopedOptionProviders[cmd]
+	if !ok {
+		return nil, false
+	}
+	fn, ok := cmdProviders[flagName]
+	return fn, ok
+}
+
+func getOptionProviderForCommand(cmd *cobra.Command, flagName string) (OptionProvider, bool) {
+	for current := cmd; current != nil; current = current.Parent() {
+		if fn, ok := getScopedOptionProvider(current, flagName); ok {
+			return fn, true
+		}
+	}
+	return getOptionProvider(flagName)
+}
+
 func getDefaultProvider(flagName string) (DefaultProvider, bool) {
 	defaultProvidersMu.RLock()
 	defer defaultProvidersMu.RUnlock()
 	fn, ok := defaultProviders[flagName]
 	return fn, ok
+}
+
+func getScopedDefaultProvider(cmd *cobra.Command, flagName string) (DefaultProvider, bool) {
+	scopedDefaultProvidersMu.RLock()
+	defer scopedDefaultProvidersMu.RUnlock()
+	cmdProviders, ok := scopedDefaultProviders[cmd]
+	if !ok {
+		return nil, false
+	}
+	fn, ok := cmdProviders[flagName]
+	return fn, ok
+}
+
+func getDefaultProviderForCommand(cmd *cobra.Command, flagName string) (DefaultProvider, bool) {
+	for current := cmd; current != nil; current = current.Parent() {
+		if fn, ok := getScopedDefaultProvider(current, flagName); ok {
+			return fn, true
+		}
+	}
+	return getDefaultProvider(flagName)
 }
 
 // RunWizard runs an interactive wizard for the given command's flags.
@@ -119,7 +196,7 @@ func buildFormGroups(cmd *cobra.Command, result map[string]any) []*FormGroup {
 		formGroups = append(formGroups, &FormGroup{
 			Name:   "general",
 			Title:  "General",
-			Fields: flagsToFields(ungrouped, result),
+			Fields: flagsToFields(cmd, ungrouped, result),
 		})
 	}
 
@@ -130,7 +207,7 @@ func buildFormGroups(cmd *cobra.Command, result map[string]any) []*FormGroup {
 		formGroups = append(formGroups, &FormGroup{
 			Name:   sanitize(name),
 			Title:  name,
-			Fields: flagsToFields(flags, result),
+			Fields: flagsToFields(cmd, flags, result),
 		})
 	}
 
@@ -138,16 +215,16 @@ func buildFormGroups(cmd *cobra.Command, result map[string]any) []*FormGroup {
 }
 
 // flagsToFields converts a slice of flags to FormFields
-func flagsToFields(flags []*pflag.Flag, result map[string]any) []*FormField {
+func flagsToFields(cmd *cobra.Command, flags []*pflag.Flag, result map[string]any) []*FormField {
 	fields := make([]*FormField, 0, len(flags))
 	for _, flag := range flags {
-		fields = append(fields, flagToField(flag, result))
+		fields = append(fields, flagToField(cmd, flag, result))
 	}
 	return fields
 }
 
 // flagToField converts a single flag to a FormField
-func flagToField(flag *pflag.Flag, result map[string]any) *FormField {
+func flagToField(cmd *cobra.Command, flag *pflag.Flag, result map[string]any) *FormField {
 	field := &FormField{
 		Name:        flag.Name,
 		Title:       flag.Name,
@@ -157,8 +234,10 @@ func flagToField(flag *pflag.Flag, result map[string]any) *FormField {
 
 	// Get current/default value
 	val := flag.Value.String()
-	if v, ok := getDefaultFromAnnotation(flag); ok {
-		val = v
+	if !flag.Changed {
+		if v, ok := getDefaultFromAnnotation(cmd, flag); ok {
+			val = v
+		}
 	}
 
 	// Determine field type
@@ -206,7 +285,8 @@ func flagToField(flag *pflag.Flag, result map[string]any) *FormField {
 	}
 
 	// Check for enum options -> convert to Select
-	if opts := getOptions(flag); len(opts) > 0 {
+	if opts := getOptions(cmd, flag); len(opts) > 0 {
+		opts = ensureOptionValue(opts, val)
 		field.Kind = KindSelect
 		field.Options = opts
 
@@ -332,7 +412,7 @@ func getFlagGroup(flag *pflag.Flag) string {
 }
 
 func getGroupOrder(flags []*pflag.Flag) int {
-	min := 9999
+	min := DefaultFlagOrder
 	for _, f := range flags {
 		if o := getFlagOrder(f); o < min {
 			min = o
@@ -343,14 +423,14 @@ func getGroupOrder(flags []*pflag.Flag) int {
 
 func getFlagOrder(flag *pflag.Flag) int {
 	if flag.Annotations == nil {
-		return 9999
+		return DefaultFlagOrder
 	}
 	if o, ok := flag.Annotations["ui:order"]; ok && len(o) > 0 {
 		if n, err := strconv.Atoi(o[0]); err == nil {
 			return n
 		}
 	}
-	return 9999
+	return DefaultFlagOrder
 }
 
 func sortByOrder(flags []*pflag.Flag) {
@@ -379,9 +459,9 @@ func isRequired(flag *pflag.Flag) bool {
 	return false
 }
 
-func getDefaultFromAnnotation(flag *pflag.Flag) (string, bool) {
+func getDefaultFromAnnotation(cmd *cobra.Command, flag *pflag.Flag) (string, bool) {
 	// 1. Check dynamic provider first
-	if provider, ok := getDefaultProvider(flag.Name); ok {
+	if provider, ok := getDefaultProviderForCommand(cmd, flag.Name); ok {
 		if val := provider(); val != "" {
 			return val, true
 		}
@@ -405,9 +485,9 @@ func getWidget(flag *pflag.Flag) string {
 	return ""
 }
 
-func getOptions(flag *pflag.Flag) []string {
+func getOptions(cmd *cobra.Command, flag *pflag.Flag) []string {
 	// 1. Check dynamic provider first
-	if provider, ok := getOptionProvider(flag.Name); ok {
+	if provider, ok := getOptionProviderForCommand(cmd, flag.Name); ok {
 		if opts := provider(); len(opts) > 0 {
 			return opts
 		}
@@ -507,30 +587,7 @@ func intValidator(typeName string) func(string) error {
 		if s == "" {
 			return nil
 		}
-		var err error
-		switch typeName {
-		case "int":
-			_, err = strconv.ParseInt(s, 10, strconv.IntSize)
-		case "int8":
-			_, err = strconv.ParseInt(s, 10, 8)
-		case "int16":
-			_, err = strconv.ParseInt(s, 10, 16)
-		case "int32":
-			_, err = strconv.ParseInt(s, 10, 32)
-		case "int64":
-			_, err = strconv.ParseInt(s, 10, 64)
-		case "uint":
-			_, err = strconv.ParseUint(s, 10, strconv.IntSize)
-		case "uint8":
-			_, err = strconv.ParseUint(s, 10, 8)
-		case "uint16":
-			_, err = strconv.ParseUint(s, 10, 16)
-		case "uint32":
-			_, err = strconv.ParseUint(s, 10, 32)
-		case "uint64":
-			_, err = strconv.ParseUint(s, 10, 64)
-		}
-		if err != nil {
+		if _, ok := parseNumber(typeName, s); !ok {
 			return fmt.Errorf("please enter a valid number")
 		}
 		return nil

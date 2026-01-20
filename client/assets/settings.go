@@ -1,6 +1,10 @@
 package assets
 
 import (
+	"fmt"
+	"os"
+	"path/filepath"
+
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/gookit/config/v2"
 )
@@ -148,5 +152,30 @@ func SaveSettings(settings *Settings) error {
 		}
 	}
 
-	return nil
+	// Write config to file
+	rootDir, _ := filepath.Abs(GetRootAppDir())
+	file, err := os.OpenFile(filepath.Join(rootDir, maliceProfile), os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	_, err = config.DumpTo(file, config.Yaml)
+	return err
+}
+
+// GetValidAISettings validates and returns AI settings, or an error if not properly configured.
+func GetValidAISettings() (*AISettings, error) {
+	settings, err := GetSetting()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load settings: %w", err)
+	}
+	if settings == nil || settings.AI == nil || !settings.AI.Enable {
+		return nil, fmt.Errorf("AI is not enabled. Use 'ai-config --enable --api-key <key>' to enable it")
+	}
+	if settings.AI.APIKey == "" {
+		return nil, fmt.Errorf("AI API key not configured. Use 'ai-config --api-key <key>' to set it")
+	}
+
+	return settings.AI, nil
 }

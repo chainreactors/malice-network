@@ -1,67 +1,39 @@
 package common
 
 import (
-	"fmt"
-
 	"github.com/chainreactors/malice-network/client/wizard"
 	"github.com/spf13/cobra"
 )
 
 // AddWizardFlag adds the --wizard flag to a command
+// Deprecated: Use wizard.AddWizardFlag instead
 func AddWizardFlag(cmd *cobra.Command) {
-	cmd.Flags().Bool("wizard", false, "Start interactive wizard mode")
+	wizard.AddWizardFlag(cmd)
 }
 
 // WrapPreRunEWithWizard wraps a command's PreRunE to support wizard mode.
-// Usage: cmd.PreRunE = common.WrapPreRunEWithWizard(originalPreRunE, originalPreRun)
+// Deprecated: Use wizard.WrapPreRunEWithWizard instead
 func WrapPreRunEWithWizard(
 	originalPreRunE func(cmd *cobra.Command, args []string) error,
 	originalPreRun func(cmd *cobra.Command, args []string),
 ) func(cmd *cobra.Command, args []string) error {
-	return func(cmd *cobra.Command, args []string) error {
-		if wizardMode, _ := cmd.Flags().GetBool("wizard"); wizardMode {
-			if _, err := wizard.RunWizard(cmd); err != nil {
-				return fmt.Errorf("wizard failed: %w", err)
-			}
-		}
-		if originalPreRunE != nil {
-			return originalPreRunE(cmd, args)
-		}
-		if originalPreRun != nil {
-			originalPreRun(cmd, args)
-		}
-		return nil
-	}
+	return wizard.WrapPreRunEWithWizard(originalPreRunE, originalPreRun)
 }
 
 // WrapRunEWithWizard wraps a command's RunE to support wizard mode
-// Usage: cmd.RunE = common.WrapRunEWithWizard(cmd, originalRunE)
+// Deprecated: Use wizard.WrapRunEWithWizard instead
 func WrapRunEWithWizard(originalRunE func(cmd *cobra.Command, args []string) error) func(cmd *cobra.Command, args []string) error {
-	return func(cmd *cobra.Command, args []string) error {
-		if wizardMode, _ := cmd.Flags().GetBool("wizard"); wizardMode {
-			if _, err := wizard.RunWizard(cmd); err != nil {
-				return fmt.Errorf("wizard failed: %w", err)
-			}
-		}
-		return originalRunE(cmd, args)
-	}
+	return wizard.WrapRunEWithWizard(originalRunE)
 }
 
 // EnableWizard adds --wizard flag and wraps PreRunE for a command
-// This is a convenience function that combines AddWizardFlag and WrapPreRunEWithWizard
+// Deprecated: Use wizard.EnableWizard instead
 func EnableWizard(cmd *cobra.Command) {
-	if cmd.RunE == nil && cmd.Run == nil {
-		return
-	}
-	AddWizardFlag(cmd)
-	originalPreRunE := cmd.PreRunE
-	originalPreRun := cmd.PreRun
-	cmd.PreRunE = WrapPreRunEWithWizard(originalPreRunE, originalPreRun)
+	wizard.EnableWizard(cmd)
 }
 
 // EnableWizardForCommands enables wizard for multiple commands
+// Deprecated: Use wizard.EnableWizardForCommands instead
 func EnableWizardForCommands(cmds ...*cobra.Command) {
-	for _, cmd := range cmds {
-		EnableWizard(cmd)
-	}
+	wizard.EnableWizardForCommands(cmds...)
 }

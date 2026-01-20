@@ -321,18 +321,3 @@ func (c *Console) GetRecentHistory(limit int) []string {
 
 	return history
 }
-
-func getValidAISettings() (*assets.AISettings, error) {
-	settings, err := assets.GetSetting()
-	if err != nil {
-		return nil, fmt.Errorf("failed to load settings: %w", err)
-	}
-	if settings == nil || settings.AI == nil || !settings.AI.Enable {
-		return nil, fmt.Errorf("AI not enabled. Use 'ai-config --enable --api-key <key>' to enable it")
-	}
-	if settings.AI.APIKey == "" {
-		return nil, fmt.Errorf("AI API key not configured. Use 'ai-config --api-key <key>' to set it")
-	}
-
-	return settings.AI, nil
-}

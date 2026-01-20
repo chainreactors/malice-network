@@ -34,7 +34,12 @@ func rootCmd(con *core.Console) (*cobra.Command, error) {
 		}
 		return nil
 	}
-	cmd.PersistentPostRunE = originalPost
+	cmd.PersistentPostRunE = func(c *cobra.Command, args []string) error {
+		if originalPost != nil {
+			return originalPost(c, args)
+		}
+		return nil
+	}
 	cmd.AddCommand(command.ImplantCmd(con))
 	carapace.Gen(cmd)
 

@@ -2,6 +2,7 @@ package wizard
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -9,6 +10,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
+	"golang.org/x/term"
 )
 
 var (
@@ -28,37 +30,72 @@ const (
 	KindNumber
 )
 
-// Styles - package-level style definitions to avoid recreation
-var (
-	styleTabActive = lipgloss.NewStyle().
+// FormTheme defines styles for the grouped wizard form
+type FormTheme struct {
+	TabActive           lipgloss.Style
+	TabInactive         lipgloss.Style
+	TabCompleted        lipgloss.Style
+	Separator           lipgloss.Style
+	Error               lipgloss.Style
+	Help                lipgloss.Style
+	FocusedTitle        lipgloss.Style
+	NormalTitle         lipgloss.Style
+	Description         lipgloss.Style
+	SelectedOption      lipgloss.Style
+	UnselectedOption    lipgloss.Style
+	FocusedUnselected   lipgloss.Style
+	MultiSelectChecked  lipgloss.Style
+	InputFocused        lipgloss.Style
+	InputBlurred        lipgloss.Style
+}
+
+// DefaultFormTheme returns the default theme for grouped wizard forms
+func DefaultFormTheme() *FormTheme {
+	return &FormTheme{
+		TabActive: lipgloss.NewStyle().
 			Bold(true).
 			Foreground(lipgloss.Color("0")).
 			Background(lipgloss.Color("212")).
-			Padding(0, 1)
-	styleTabInactive = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("250")).
-				Padding(0, 1)
-	styleTabCompleted = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("42")).
-				Padding(0, 1)
-	styleSeparator = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
-	styleError     = lipgloss.NewStyle().Foreground(lipgloss.Color("9")).Bold(true)
-	styleHelp      = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
+			Padding(0, 1),
+		TabInactive: lipgloss.NewStyle().
+			Foreground(lipgloss.Color("250")).
+			Padding(0, 1),
+		TabCompleted: lipgloss.NewStyle().
+			Foreground(lipgloss.Color("42")).
+			Padding(0, 1),
+		Separator:    lipgloss.NewStyle().Foreground(lipgloss.Color("240")),
+		Error:        lipgloss.NewStyle().Foreground(lipgloss.Color("9")).Bold(true),
+		Help:         lipgloss.NewStyle().Foreground(lipgloss.Color("240")),
+		FocusedTitle: lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("212")),
+		NormalTitle:  lipgloss.NewStyle().Foreground(lipgloss.Color("250")),
+		Description:  lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Italic(true),
+		SelectedOption: lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color("0")).
+			Background(lipgloss.Color("212")).
+			Padding(0, 1),
+		UnselectedOption:   lipgloss.NewStyle().Foreground(lipgloss.Color("250")).Padding(0, 1),
+		FocusedUnselected:  lipgloss.NewStyle().Foreground(lipgloss.Color("255")).Padding(0, 1),
+		MultiSelectChecked: lipgloss.NewStyle().Foreground(lipgloss.Color("42")).Padding(0, 1),
+		InputFocused:       lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("212")).Padding(0, 1),
+		InputBlurred:       lipgloss.NewStyle().Foreground(lipgloss.Color("250")).Padding(0, 1),
+	}
+}
 
-	styleFocusedTitle   = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("212"))
-	styleNormalTitle    = lipgloss.NewStyle().Foreground(lipgloss.Color("250"))
-	styleDescription    = lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Italic(true)
-	styleSelectedOption = lipgloss.NewStyle().
-				Bold(true).
-				Foreground(lipgloss.Color("0")).
-				Background(lipgloss.Color("212")).
-				Padding(0, 1)
-	styleUnselectedOption   = lipgloss.NewStyle().Foreground(lipgloss.Color("250")).Padding(0, 1)
-	styleFocusedUnselected  = lipgloss.NewStyle().Foreground(lipgloss.Color("255")).Padding(0, 1)
-	styleMultiSelectChecked = lipgloss.NewStyle().Foreground(lipgloss.Color("42")).Padding(0, 1)
-	styleInputFocused       = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("212")).Padding(0, 1)
-	styleInputBlurred       = lipgloss.NewStyle().Foreground(lipgloss.Color("250")).Padding(0, 1)
-)
+// Package-level default theme instance
+var defaultFormTheme = DefaultFormTheme()
+
+// defaultTerminalWidth is the fallback width when terminal size cannot be determined
+const defaultTerminalWidth = 80
+
+// getTerminalWidth returns the current terminal width or a default value
+func getTerminalWidth() int {
+	width, _, err := term.GetSize(int(os.Stdout.Fd()))
+	if err != nil || width <= 0 {
+		return defaultTerminalWidth
+	}
+	return width
+}
 
 // FormField represents a field that can be displayed in the form
 type FormField struct {
@@ -89,11 +126,12 @@ type GroupedWizardForm struct {
 	inputBuf    string
 	inputCurPos int
 
-	width    int
-	height   int
-	theme    *huh.Theme
-	quitting bool
-	aborted  bool
+	width     int
+	height    int
+	theme     *huh.Theme
+	formTheme *FormTheme
+	quitting  bool
+	aborted   bool
 
 	errMsg string
 }
@@ -115,14 +153,21 @@ func NewGroupedWizardForm(groups []*FormGroup) *GroupedWizardForm {
 		groupIndex: 0,
 		fieldIndex: 0,
 		cursor:     0,
-		width:      80,
+		width:      getTerminalWidth(),
 		theme:      huh.ThemeCharm(),
+		formTheme:  defaultFormTheme,
 	}
 }
 
-// WithTheme sets the theme
+// WithTheme sets the huh theme
 func (f *GroupedWizardForm) WithTheme(theme *huh.Theme) *GroupedWizardForm {
 	f.theme = theme
+	return f
+}
+
+// WithFormTheme sets the form theme for styling
+func (f *GroupedWizardForm) WithFormTheme(theme *FormTheme) *GroupedWizardForm {
+	f.formTheme = theme
 	return f
 }
 
@@ -394,21 +439,21 @@ func (f *GroupedWizardForm) View() string {
 
 		switch {
 		case i == f.groupIndex:
-			tabs = append(tabs, styleTabActive.Render(label))
+			tabs = append(tabs, f.formTheme.TabActive.Render(label))
 		case group.Optional && !group.Expanded:
 			// Collapsed optional groups are "skipped": show them dimmed instead of as completed.
-			tabs = append(tabs, styleHelp.Render(label))
+			tabs = append(tabs, f.formTheme.Help.Render(label))
 		case f.isGroupComplete(i):
-			tabs = append(tabs, styleTabCompleted.Render("✓ "+label))
+			tabs = append(tabs, f.formTheme.TabCompleted.Render("✓ "+label))
 		default:
-			tabs = append(tabs, styleTabInactive.Render(label))
+			tabs = append(tabs, f.formTheme.TabInactive.Render(label))
 		}
 	}
 	sb.WriteString(strings.Join(tabs, " "))
 	sb.WriteString("\n")
 
 	// Separator
-	sb.WriteString(styleSeparator.Render(strings.Repeat("─", minInt(f.width, 70))))
+	sb.WriteString(f.formTheme.Separator.Render(strings.Repeat("─", minInt(f.width, 70))))
 	sb.WriteString("\n\n")
 
 	// Render current group
@@ -417,9 +462,9 @@ func (f *GroupedWizardForm) View() string {
 		sb.WriteString("(No fields in this group)\n")
 	} else if group.Optional && !group.Expanded {
 		// Collapsed optional group - show toggle prompt
-		sb.WriteString(styleDescription.Render(fmt.Sprintf("  %s (Optional)", group.Title)))
+		sb.WriteString(f.formTheme.Description.Render(fmt.Sprintf("  %s (Optional)", group.Title)))
 		sb.WriteString("\n\n")
-		sb.WriteString(styleHelp.Render("  Press Enter or Space to expand, or Tab to skip"))
+		sb.WriteString(f.formTheme.Help.Render("  Press Enter or Space to expand, or Tab to skip"))
 		sb.WriteString("\n")
 	} else {
 		// Show all fields in current group
@@ -432,7 +477,7 @@ func (f *GroupedWizardForm) View() string {
 	// Error message
 	if strings.TrimSpace(f.errMsg) != "" {
 		sb.WriteString("\n")
-		sb.WriteString(styleError.Render("Error: " + f.errMsg))
+		sb.WriteString(f.formTheme.Error.Render("Error: " + f.errMsg))
 	}
 
 	// Help text
@@ -448,14 +493,14 @@ func (f *GroupedWizardForm) renderField(field *FormField, isFocused bool) string
 
 	// Title with focus indicator
 	if isFocused {
-		sb.WriteString(styleFocusedTitle.Render("> " + field.Title))
+		sb.WriteString(f.formTheme.FocusedTitle.Render("> " + field.Title))
 	} else {
-		sb.WriteString(styleNormalTitle.Render("  " + field.Title))
+		sb.WriteString(f.formTheme.NormalTitle.Render("  " + field.Title))
 	}
 
 	// Description on same line if short
 	if field.Description != "" && len(field.Description) < 40 {
-		sb.WriteString(styleDescription.Render("  " + field.Description))
+		sb.WriteString(f.formTheme.Description.Render("  " + field.Description))
 	}
 	sb.WriteString("\n")
 
@@ -476,14 +521,14 @@ func (f *GroupedWizardForm) renderField(field *FormField, isFocused bool) string
 }
 
 // selectOptionStyle returns the appropriate style based on focus and selection state
-func selectOptionStyle(isFocused, isSelected bool) lipgloss.Style {
+func (f *GroupedWizardForm) selectOptionStyle(isFocused, isSelected bool) lipgloss.Style {
 	if isSelected {
-		return styleSelectedOption
+		return f.formTheme.SelectedOption
 	}
 	if isFocused {
-		return styleFocusedUnselected
+		return f.formTheme.FocusedUnselected
 	}
-	return styleUnselectedOption
+	return f.formTheme.UnselectedOption
 }
 
 func (f *GroupedWizardForm) renderSelectOptions(field *FormField, isFocused bool) string {
@@ -493,7 +538,7 @@ func (f *GroupedWizardForm) renderSelectOptions(field *FormField, isFocused bool
 		if display == "" {
 			display = "(empty)"
 		}
-		style := selectOptionStyle(isFocused, i == field.Selected)
+		style := f.selectOptionStyle(isFocused, i == field.Selected)
 		parts = append(parts, style.Render(display))
 	}
 	return strings.Join(parts, " ")
@@ -512,13 +557,13 @@ func (f *GroupedWizardForm) renderMultiSelectOptions(field *FormField, isFocused
 		var style lipgloss.Style
 		switch {
 		case isCursor:
-			style = styleSelectedOption
+			style = f.formTheme.SelectedOption
 		case field.MultiSelect[i]:
-			style = styleMultiSelectChecked
+			style = f.formTheme.MultiSelectChecked
 		case isFocused:
-			style = styleFocusedUnselected
+			style = f.formTheme.FocusedUnselected
 		default:
-			style = styleUnselectedOption
+			style = f.formTheme.UnselectedOption
 		}
 		parts = append(parts, style.Render(display))
 	}
@@ -526,23 +571,23 @@ func (f *GroupedWizardForm) renderMultiSelectOptions(field *FormField, isFocused
 }
 
 func (f *GroupedWizardForm) renderConfirmOptions(field *FormField, isFocused bool) string {
-	yesStyle := selectOptionStyle(isFocused, field.ConfirmVal)
-	noStyle := selectOptionStyle(isFocused, !field.ConfirmVal)
+	yesStyle := f.selectOptionStyle(isFocused, field.ConfirmVal)
+	noStyle := f.selectOptionStyle(isFocused, !field.ConfirmVal)
 	return yesStyle.Render("Yes") + " " + noStyle.Render("No")
 }
 
 func (f *GroupedWizardForm) renderInputField(field *FormField, isFocused bool) string {
 	if isFocused && f.inputMode {
-		return styleInputFocused.Render("[" + f.inputBuf + "█]")
+		return f.formTheme.InputFocused.Render("[" + f.inputBuf + "█]")
 	}
 	display := field.InputValue
 	if display == "" {
 		display = "(empty)"
 	}
 	if isFocused {
-		return styleInputFocused.Render("["+display+"]") + styleDescription.Render("  Enter to edit")
+		return f.formTheme.InputFocused.Render("["+display+"]") + f.formTheme.Description.Render("  Enter to edit")
 	}
-	return styleInputBlurred.Render("[" + display + "]")
+	return f.formTheme.InputBlurred.Render("[" + display + "]")
 }
 
 func (f *GroupedWizardForm) renderHelp() string {
@@ -550,7 +595,7 @@ func (f *GroupedWizardForm) renderHelp() string {
 
 	// Check if current group is a collapsed optional group
 	if group != nil && group.Optional && !group.Expanded {
-		return styleHelp.Render("Enter/Space: expand  Tab: skip group  1-9: jump  Ctrl+D: submit")
+		return f.formTheme.Help.Render("Enter/Space: expand  Tab: skip group  1-9: jump  Ctrl+D: submit")
 	}
 
 	// Check if current group is an expanded optional group
@@ -558,42 +603,42 @@ func (f *GroupedWizardForm) renderHelp() string {
 		field := f.currentField()
 		baseHelp := "↑/↓: field  c: collapse  Tab: group  "
 		if field == nil {
-			return styleHelp.Render(baseHelp + "Ctrl+D: submit")
+			return f.formTheme.Help.Render(baseHelp + "Ctrl+D: submit")
 		}
 		switch field.Kind {
 		case KindMultiSelect:
-			return styleHelp.Render(baseHelp + "Space: toggle  a: all  Ctrl+D: submit")
+			return f.formTheme.Help.Render(baseHelp + "Space: toggle  a: all  Ctrl+D: submit")
 		case KindConfirm:
-			return styleHelp.Render(baseHelp + "←/→: toggle  Ctrl+D: submit")
+			return f.formTheme.Help.Render(baseHelp + "←/→: toggle  Ctrl+D: submit")
 		case KindInput, KindNumber:
 			if f.inputMode {
-				return styleHelp.Render("Enter: save  Esc: cancel  Ctrl+D: save & submit")
+				return f.formTheme.Help.Render("Enter: save  Esc: cancel  Ctrl+D: save & submit")
 			}
-			return styleHelp.Render(baseHelp + "Enter: edit  Ctrl+D: submit")
+			return f.formTheme.Help.Render(baseHelp + "Enter: edit  Ctrl+D: submit")
 		default:
-			return styleHelp.Render(baseHelp + "←/→: select  Ctrl+D: submit")
+			return f.formTheme.Help.Render(baseHelp + "←/→: select  Ctrl+D: submit")
 		}
 	}
 
 	field := f.currentField()
 	if field == nil {
-		return styleHelp.Render("Tab: next group  Shift+Tab: prev group  1-9: jump to group  Ctrl+D: submit")
+		return f.formTheme.Help.Render("Tab: next group  Shift+Tab: prev group  1-9: jump to group  Ctrl+D: submit")
 	}
 
 	baseHelp := "↑/↓: field  Tab/Shift+Tab: group  1-9: jump  "
 
 	switch field.Kind {
 	case KindMultiSelect:
-		return styleHelp.Render(baseHelp + "←/→: move  Space: toggle  a: all  n: none  Ctrl+D: submit")
+		return f.formTheme.Help.Render(baseHelp + "←/→: move  Space: toggle  a: all  n: none  Ctrl+D: submit")
 	case KindConfirm:
-		return styleHelp.Render(baseHelp + "←/→: toggle  y: Yes  n: No  Ctrl+D: submit")
+		return f.formTheme.Help.Render(baseHelp + "←/→: toggle  y: Yes  n: No  Ctrl+D: submit")
 	case KindInput, KindNumber:
 		if f.inputMode {
-			return styleHelp.Render("Enter: save  Esc: cancel  Ctrl+D: save & submit")
+			return f.formTheme.Help.Render("Enter: save  Esc: cancel  Ctrl+D: save & submit")
 		}
-		return styleHelp.Render(baseHelp + "Enter: edit  Ctrl+D: submit")
+		return f.formTheme.Help.Render(baseHelp + "Enter: edit  Ctrl+D: submit")
 	default:
-		return styleHelp.Render(baseHelp + "←/→: select  Ctrl+D: submit")
+		return f.formTheme.Help.Render(baseHelp + "←/→: select  Ctrl+D: submit")
 	}
 }
 
@@ -868,13 +913,6 @@ func (f *GroupedWizardForm) validateStringField(value string, field *FormField, 
 	return chainStringValidators(required, field.Validate)(value)
 }
 
-// requiredError returns a formatted required error message
-func requiredError(label string) error {
-	if label != "" {
-		return fmt.Errorf("%s is required", label)
-	}
-	return fmt.Errorf("value is required")
-}
 
 func (f *GroupedWizardForm) validateField(field *FormField) error {
 	if field == nil {
@@ -903,7 +941,7 @@ func (f *GroupedWizardForm) validateField(field *FormField) error {
 				return nil
 			}
 		}
-		return requiredError(label)
+		return requiredStringValidator(label)("")
 
 	case KindInput:
 		return f.validateStringField(field.InputValue, field, label)
@@ -912,7 +950,7 @@ func (f *GroupedWizardForm) validateField(field *FormField) error {
 		s := strings.TrimSpace(field.InputValue)
 		if s == "" {
 			if field.Required {
-				return requiredError(label)
+				return requiredStringValidator(label)("")
 			}
 			return nil
 		}

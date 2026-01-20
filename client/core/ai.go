@@ -96,14 +96,21 @@ type CommandSuggestion struct {
 	Description string
 }
 
+// validate checks if the AI client is properly configured
+func (c *AIClient) validate() error {
+	if c.settings == nil || !c.settings.Enable {
+		return fmt.Errorf("AI is not enabled. Use 'ai-config --enable' to enable it")
+	}
+	if c.settings.APIKey == "" {
+		return fmt.Errorf("AI API key is not configured. Use 'ai-config --api-key <key>' to set it")
+	}
+	return nil
+}
+
 // Ask sends a question to the AI with context
 func (c *AIClient) Ask(ctx context.Context, question string, history []string) (string, error) {
-	if c.settings == nil || !c.settings.Enable {
-		return "", fmt.Errorf("AI is not enabled. Use 'ai-config --enable' to enable it")
-	}
-
-	if c.settings.APIKey == "" {
-		return "", fmt.Errorf("AI API key is not configured. Use 'ai-config --api-key <key>' to set it")
+	if err := c.validate(); err != nil {
+		return "", err
 	}
 
 	systemPrompt := c.buildSystemPrompt(history)
@@ -396,12 +403,8 @@ type ClaudeStreamEvent struct {
 
 // AskStream sends a question to the AI and streams the response
 func (c *AIClient) AskStream(ctx context.Context, question string, history []string, onChunk func(chunk string)) (string, error) {
-	if c.settings == nil || !c.settings.Enable {
-		return "", fmt.Errorf("AI is not enabled. Use 'ai-config --enable' to enable it")
-	}
-
-	if c.settings.APIKey == "" {
-		return "", fmt.Errorf("AI API key is not configured. Use 'ai-config --api-key <key>' to set it")
+	if err := c.validate(); err != nil {
+		return "", err
 	}
 
 	systemPrompt := c.buildSystemPrompt(history)

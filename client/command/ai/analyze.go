@@ -13,17 +13,9 @@ import (
 
 // AnalyzeCmd handles the analyze command - analyzes errors and provides suggestions
 func AnalyzeCmd(cmd *cobra.Command, con *core.Console, args []string) error {
-	settings, err := assets.LoadSettings()
+	aiSettings, err := assets.GetValidAISettings()
 	if err != nil {
-		return fmt.Errorf("failed to load settings: %w", err)
-	}
-
-	if settings.AI == nil || !settings.AI.Enable {
-		return fmt.Errorf("AI is not enabled. Use 'ai-config --enable' to enable it")
-	}
-
-	if settings.AI.APIKey == "" {
-		return fmt.Errorf("AI API key is not configured. Use 'ai-config --api-key <key>' to set it")
+		return err
 	}
 
 	// Get the error to analyze
@@ -37,7 +29,7 @@ func AnalyzeCmd(cmd *cobra.Command, con *core.Console, args []string) error {
 	}
 
 	// Get context
-	historySize := settings.AI.HistorySize
+	historySize := aiSettings.HistorySize
 	if historySize <= 0 {
 		historySize = 20
 	}
@@ -49,9 +41,9 @@ func AnalyzeCmd(cmd *cobra.Command, con *core.Console, args []string) error {
 	// Build the analysis prompt
 	prompt := buildAnalysisPrompt(errorText, history, sessionContext)
 
-	aiClient := core.NewAIClient(settings.AI)
+	aiClient := core.NewAIClient(aiSettings)
 
-	timeout := settings.AI.Timeout
+	timeout := aiSettings.Timeout
 	if timeout <= 0 {
 		timeout = 30
 	}
