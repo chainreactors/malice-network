@@ -2,7 +2,6 @@ package display
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/reeflective/readline/inputrc"
 	"github.com/reeflective/readline/internal/color"
@@ -33,9 +32,6 @@ type Engine struct {
 	hintRows       int
 	compRows       int
 	primaryPrinted bool
-
-	// AI inline suggestion (fish-style)
-	aiSuggestion string
 
 	// UI components
 	keys      *core.Keys
@@ -70,21 +66,6 @@ func Init(e *Engine, highlighter func([]rune) string) {
 	e.highlighter = highlighter
 }
 
-// SetAISuggestion sets the AI inline suggestion to display after the cursor.
-func (e *Engine) SetAISuggestion(suggestion string) {
-	e.aiSuggestion = suggestion
-}
-
-// ClearAISuggestion clears the AI inline suggestion.
-func (e *Engine) ClearAISuggestion() {
-	e.aiSuggestion = ""
-}
-
-// GetAISuggestion returns the current AI inline suggestion.
-func (e *Engine) GetAISuggestion() string {
-	return e.aiSuggestion
-}
-
 // Refresh recomputes and redisplays the entire readline interface, except
 // the first lines of the primary prompt when the latter is a multiline one.
 func (e *Engine) Refresh() {
@@ -111,22 +92,6 @@ func (e *Engine) Refresh() {
 
 	// Display hints and completions, go back
 	// to the start of the line, then to cursor.
-	e.displayHelpers()
-	e.cursorHintToLineStart()
-	e.lineStartToCursorPos()
-	fmt.Print(term.ShowCursor)
-}
-
-// RefreshHelpers redraws the hint and completion sections without querying the
-// terminal for a new cursor position. It relies on the last computed display
-// coordinates, so it should only be used when the input line hasn't changed.
-func (e *Engine) RefreshHelpers() {
-	fmt.Print(term.HideCursor)
-
-	// Go to the last line of input (displayHelpers assumes that).
-	term.MoveCursorUp(e.cursorRow)
-	term.MoveCursorDown(e.lineRows)
-
 	e.displayHelpers()
 	e.cursorHintToLineStart()
 	e.lineStartToCursorPos()
@@ -257,56 +222,14 @@ func (e *Engine) computeCoordinates(suggested bool) {
 
 	e.cursorCol, e.cursorRow = core.CoordinatesCursor(e.cursor, e.startCols)
 
-	// Get the number of rows used by the line (including inline suggestions), and the end line X pos.
-	lineForCoords := e.line
-
-	cursorAtEOL := e.cursor != nil && e.line != nil && e.cursor.Pos() == e.line.Len()
-	currentLine := string(*e.line)
-	if suggested && cursorAtEOL && e.aiSuggestion != "" && strings.HasPrefix(e.aiSuggestion, currentLine) && len(e.aiSuggestion) > len(currentLine) {
-		aiLine := core.Line([]rune(e.aiSuggestion))
-		lineForCoords = &aiLine
-	} else if suggested && e.opts.GetBool("history-autosuggest") {
-		lineForCoords = &e.suggested
+	// Get the number of rows used by the line, and the end line X pos.
+	if e.opts.GetBool("history-autosuggest") && suggested {
+		e.lineCol, e.lineRows = core.CoordinatesLine(&e.suggested, e.startCols)
+	} else {
+		e.lineCol, e.lineRows = core.CoordinatesLine(e.line, e.startCols)
 	}
-
-	e.lineCol, e.lineRows = core.CoordinatesLine(lineForCoords, e.startCols)
 
 	e.primaryPrinted = false
-}
-
-// computeCoordinatesNoCursorQuery recomputes display coordinates without querying the
-// terminal for cursor position (and without reprinting the prompt). It relies on the
-// last known prompt indentation and starting row, so it should only be used when the
-// prompt hasn't changed and the cursor is still within the current input line.
-func (e *Engine) computeCoordinatesNoCursorQuery(suggested bool) {
-	// Get the new input line and auto-suggested one.
-	e.line, e.cursor = e.completer.Line()
-	if e.completer.IsInserting() {
-		e.suggested = *e.line
-	} else {
-		e.suggested = e.histories.Suggest(e.line)
-	}
-
-	// If we don't have valid indentation coordinates, fall back to 0.
-	if e.startCols < 0 {
-		e.startCols = 0
-	}
-
-	e.cursorCol, e.cursorRow = core.CoordinatesCursor(e.cursor, e.startCols)
-
-	// Get the number of rows used by the line (including inline suggestions), and the end line X pos.
-	lineForCoords := e.line
-
-	cursorAtEOL := e.cursor != nil && e.line != nil && e.cursor.Pos() == e.line.Len()
-	currentLine := string(*e.line)
-	if suggested && cursorAtEOL && e.aiSuggestion != "" && strings.HasPrefix(e.aiSuggestion, currentLine) && len(e.aiSuggestion) > len(currentLine) {
-		aiLine := core.Line([]rune(e.aiSuggestion))
-		lineForCoords = &aiLine
-	} else if suggested && e.opts.GetBool("history-autosuggest") {
-		lineForCoords = &e.suggested
-	}
-
-	e.lineCol, e.lineRows = core.CoordinatesLine(lineForCoords, e.startCols)
 }
 
 func (e *Engine) displayLine() {
@@ -328,14 +251,8 @@ func (e *Engine) displayLine() {
 	// Apply visual selections highlighting if any
 	line = e.highlightLine([]rune(line), *e.selection)
 
-	// AI inline suggestion (fish-style, higher priority)
-	currentLine := string(*e.line)
-	cursorAtEOL := e.cursor != nil && e.line != nil && e.cursor.Pos() == e.line.Len()
-	if cursorAtEOL && e.aiSuggestion != "" && strings.HasPrefix(e.aiSuggestion, currentLine) && len(e.aiSuggestion) > len(currentLine) {
-		suffix := e.aiSuggestion[len(currentLine):]
-		line += color.Dim + color.Fmt(color.Fg+"242") + suffix + color.Reset
-	} else if len(e.suggested) > e.line.Len() && e.opts.GetBool("history-autosuggest") {
-		// Get the subset of the suggested line to print (history autosuggest)
+	// Get the subset of the suggested line to print.
+	if len(e.suggested) > e.line.Len() && e.opts.GetBool("history-autosuggest") {
 		line += color.Dim + color.Fmt(color.Fg+"242") + string(e.suggested[e.line.Len():]) + color.Reset
 	}
 
@@ -351,29 +268,6 @@ func (e *Engine) displayLine() {
 		fmt.Print(term.NewlineReturn)
 		fmt.Print(term.ClearLineAfter)
 	}
-}
-
-// RefreshLine redraws the input line and helper sections without reprinting the prompt
-// or querying the terminal for cursor position. This is useful when refreshing from
-// a background goroutine (e.g. async AI suggestions) while the main loop is waiting
-// for user input.
-func (e *Engine) RefreshLine() {
-	fmt.Print(term.HideCursor)
-
-	// Move to the input line start (just after the prompt) and clear everything below.
-	e.CursorToLineStart()
-	fmt.Print(term.ClearScreenBelow)
-
-	// Recompute coordinates based on the last known prompt offset.
-	e.computeCoordinatesNoCursorQuery(true)
-
-	// Redraw line and helpers, then restore cursor.
-	e.displayLine()
-	e.displayMultilinePrompts()
-	e.displayHelpers()
-	e.cursorHintToLineStart()
-	e.lineStartToCursorPos()
-	fmt.Print(term.ShowCursor)
 }
 
 func (e *Engine) displayMultilinePrompts() {

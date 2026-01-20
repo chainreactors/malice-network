@@ -41,16 +41,16 @@ type Keys struct {
 
 // WaitAvailableKeys waits until an input key is either read from standard input,
 // or directly returns if the key stack still/already has available keys.
-func WaitAvailableKeys(keys *Keys, cfg *inputrc.Config) bool {
+func WaitAvailableKeys(keys *Keys, cfg *inputrc.Config) {
 	keys.cfg = cfg
 
 	if len(keys.buf) > 0 && !keys.mustWait {
-		return false
+		return
 	}
 
 	// The macro engine might have fed some keys
 	if len(keys.macroKeys) > 0 {
-		return false
+		return
 	}
 
 	keys.mutex.Lock()
@@ -70,7 +70,7 @@ func WaitAvailableKeys(keys *Keys, cfg *inputrc.Config) bool {
 		// send by ourselves, because we pause reading.
 		keyBuf, err := keys.readInputFiltered()
 		if err != nil && errors.Is(err, io.EOF) {
-			return false
+			return
 		}
 
 		if len(keyBuf) == 0 {
@@ -94,7 +94,7 @@ func WaitAvailableKeys(keys *Keys, cfg *inputrc.Config) bool {
 			keys.mutex.RUnlock()
 		}
 
-		return false
+		return
 	}
 }
 
@@ -335,14 +335,6 @@ func (k *Keys) IsReading() bool {
 	k.mutex.RLock()
 	defer k.mutex.RUnlock()
 	return k.reading
-}
-
-// IsWaiting returns true if the key reader is currently blocked waiting for
-// input (i.e. inside WaitAvailableKeys).
-func (k *Keys) IsWaiting() bool {
-	k.mutex.RLock()
-	defer k.mutex.RUnlock()
-	return k.waiting
 }
 
 func (k *Keys) extractCursorPos(keys []byte) (cursor, remain []byte) {

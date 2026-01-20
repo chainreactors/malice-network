@@ -238,13 +238,6 @@ func (rl *Shell) viAddEol() {
 
 // Move forward one character, without changing lines.
 func (rl *Shell) viForwardChar() {
-	// At end of line: accept AI suggestion if available (fish-style)
-	if rl.cursor.Pos() == rl.line.Len()-1 && rl.GetAIPrediction() != "" {
-		if rl.acceptAIPrediction() {
-			return
-		}
-	}
-
 	// Only exception where we actually don't forward a character.
 	if rl.Config.GetBool("history-autosuggest") && rl.cursor.Pos() == rl.line.Len()-1 {
 		rl.autosuggestAccept()

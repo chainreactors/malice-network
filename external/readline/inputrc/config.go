@@ -43,19 +43,6 @@ func NewDefaultConfig(opts ...ConfigOption) *Config {
 		Binds:        DefaultBinds(),
 		Funcs:        make(map[string]func(string, string) error),
 	}
-
-	// Application/library-specific options (not part of GNU readline/bash inputrc).
-	// These are added here so they can be configured at runtime (e.g. via `set`).
-	if _, ok := cfg.Vars["ai-prediction-delay"]; !ok {
-		cfg.Vars["ai-prediction-delay"] = 250
-	}
-	if _, ok := cfg.Vars["ai-prediction-delay-space"]; !ok {
-		cfg.Vars["ai-prediction-delay-space"] = 80
-	}
-	if _, ok := cfg.Vars["ai-prediction-auto-refresh"]; !ok {
-		cfg.Vars["ai-prediction-auto-refresh"] = true
-	}
-
 	for _, o := range opts {
 		o(cfg)
 	}

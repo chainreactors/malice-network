@@ -300,11 +300,6 @@ func (e *Engine) Line() (*core.Line, *core.Cursor) {
 	return e.line, e.cursor
 }
 
-// BaseLine returns the underlying, non-virtually-completed input line and cursor.
-func (e *Engine) BaseLine() (*core.Line, *core.Cursor) {
-	return e.line, e.cursor
-}
-
 // Autocomplete generates the correct completions in autocomplete mode.
 // We don't do it when we are currently in the completion keymap,
 // since that means completions have already been computed.
