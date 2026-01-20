@@ -3,6 +3,7 @@ package wizard
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/carapace-sh/carapace"
 	"github.com/chainreactors/malice-network/client/command/common"
@@ -75,16 +76,10 @@ wizard run --file ./wizards/priv_esc.yaml
 
 	wizardCmd.AddCommand(listCmd, runCmd)
 
-	// Add category commands (build, pipeline, cert, config)
+	// Add category commands (build, pipeline, cert, config, listener, profile, infra)
 	for _, cat := range wizardfw.Categories {
 		catCmd := createCategoryCommand(con, cat)
 		wizardCmd.AddCommand(catCmd)
-	}
-
-	// Add standalone wizard commands (listener, profile, infra)
-	for _, sw := range wizardfw.StandaloneWizards {
-		swCmd := createStandaloneCommand(con, sw)
-		wizardCmd.AddCommand(swCmd)
 	}
 
 	return []*cobra.Command{wizardCmd}
@@ -92,6 +87,37 @@ wizard run --file ./wizards/priv_esc.yaml
 
 // createCategoryCommand creates a command for a wizard category
 func createCategoryCommand(con *core.Console, cat wizardfw.WizardCategory) *cobra.Command {
+	// No sub-wizards: direct execution using FullID
+	if len(cat.Wizards) == 0 {
+		if strings.TrimSpace(cat.FullID) == "" {
+			return &cobra.Command{
+				Use:     cat.Name,
+				Short:   cat.Description,
+				Args:    cobra.NoArgs,
+				Example: fmt.Sprintf("~~~\nwizard %s\n~~~", cat.Name),
+				RunE: func(cmd *cobra.Command, args []string) error {
+					return fmt.Errorf("wizard category '%s' has no template", cat.Name)
+				},
+			}
+		}
+		return &cobra.Command{
+			Use:     cat.Name,
+			Short:   cat.Description,
+			Args:    cobra.NoArgs,
+			Example: fmt.Sprintf("~~~\nwizard %s\n~~~", cat.Name),
+			RunE: func(cmd *cobra.Command, args []string) error {
+				_ = plugin.GetGlobalMalManager()
+
+				wiz, ok := wizardfw.GetTemplate(cat.FullID)
+				if !ok {
+					return fmt.Errorf("wizard '%s' not found", cat.FullID)
+				}
+				return runWizard(con, wiz)
+			},
+		}
+	}
+
+	// Has sub-wizards: support parameter or interactive selection
 	cmd := &cobra.Command{
 		Use:   cat.Name + " [type]",
 		Short: cat.Description,
@@ -140,46 +166,14 @@ func createCategoryCommand(con *core.Console, cat wizardfw.WizardCategory) *cobr
 		},
 	}
 
-	if len(cat.Wizards) > 0 {
-		results := make([]string, 0, len(cat.Wizards)*2)
-		for _, w := range cat.Wizards {
-			results = append(results, w.ID, w.Description)
-		}
-		common.BindArgCompletions(cmd, nil, carapace.ActionValuesDescribed(results...).Tag(cat.Title+" wizard"))
-	}
-
-	// Add valid types to help text
-	var types []string
+	results := make([]string, 0, len(cat.Wizards)*2)
 	for _, w := range cat.Wizards {
-		types = append(types, w.ID)
+		results = append(results, w.ID, w.Description)
 	}
-	if len(types) > 0 {
-		cmd.Example = fmt.Sprintf("~~~\nwizard %s\nwizard %s %s\n~~~", cat.Name, cat.Name, types[0])
-	} else {
-		cmd.Example = fmt.Sprintf("~~~\nwizard %s\n~~~", cat.Name)
-	}
+	common.BindArgCompletions(cmd, nil, carapace.ActionValuesDescribed(results...).Tag(cat.Title+" wizard"))
+	cmd.Example = fmt.Sprintf("~~~\nwizard %s\nwizard %s %s\n~~~", cat.Name, cat.Name, cat.Wizards[0].ID)
 
 	return cmd
-}
-
-// createStandaloneCommand creates a command for a standalone wizard
-func createStandaloneCommand(con *core.Console, sw wizardfw.WizardEntry) *cobra.Command {
-	return &cobra.Command{
-		Use:   sw.ID,
-		Short: sw.Description,
-		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			_ = plugin.GetGlobalMalManager()
-
-			wiz, ok := wizardfw.GetTemplate(sw.FullID)
-			if !ok {
-				return fmt.Errorf("wizard '%s' not found", sw.FullID)
-			}
-
-			return runWizard(con, wiz)
-		},
-		Example: fmt.Sprintf("~~~\nwizard %s\n~~~", sw.ID),
-	}
 }
 
 // ListWizardsCmd lists all available wizards
@@ -191,30 +185,29 @@ func ListWizardsCmd(cmd *cobra.Command, con *core.Console) error {
 
 	// Show categories
 	for _, cat := range wizardfw.Categories {
-		con.Log.Infof("  %s (%s):\n", cat.Title, cat.Name)
-		for _, w := range cat.Wizards {
-			con.Log.Infof("    %-12s - %s\n", w.ID, w.Description)
+		if len(cat.Wizards) == 0 {
+			// Direct execution category (no sub-wizards)
+			con.Log.Infof("  %-12s - %s\n", cat.Name, cat.Description)
+		} else {
+			// Category with sub-wizards
+			con.Log.Infof("  %s (%s):\n", cat.Title, cat.Name)
+			for _, w := range cat.Wizards {
+				con.Log.Infof("    %-12s - %s\n", w.ID, w.Description)
+			}
 		}
 		con.Log.Infof("\n")
 	}
-
-	// Show standalone wizards
-	con.Log.Infof("  Standalone:\n")
-	for _, sw := range wizardfw.StandaloneWizards {
-		con.Log.Infof("    %-12s - %s\n", sw.ID, sw.Description)
-	}
-	con.Log.Infof("\n")
 
 	// Show plugin wizards (those not in categories)
 	templates := wizardfw.ListTemplates()
 	knownIDs := make(map[string]bool)
 	for _, cat := range wizardfw.Categories {
+		if cat.FullID != "" {
+			knownIDs[cat.FullID] = true
+		}
 		for _, w := range cat.Wizards {
 			knownIDs[w.FullID] = true
 		}
-	}
-	for _, sw := range wizardfw.StandaloneWizards {
-		knownIDs[sw.FullID] = true
 	}
 
 	var pluginWizards []string
@@ -241,7 +234,7 @@ func ListWizardsCmd(cmd *cobra.Command, con *core.Console) error {
 	con.Log.Infof("Usage:\n")
 	con.Log.Infof("  wizard <category>           - Select from category (e.g., wizard build)\n")
 	con.Log.Infof("  wizard <category> <type>    - Run directly (e.g., wizard build beacon)\n")
-	con.Log.Infof("  wizard <standalone>         - Run standalone wizard (e.g., wizard listener)\n")
+	con.Log.Infof("  wizard <name>               - Run wizard directly (e.g., wizard listener)\n")
 	con.Log.Infof("  wizard run <full-name>      - Run by full name (e.g., wizard run build_beacon)\n")
 
 	return nil

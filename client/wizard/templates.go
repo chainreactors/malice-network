@@ -7,10 +7,11 @@ import (
 
 // WizardCategory represents a group of related wizards
 type WizardCategory struct {
-	Name        string            // Category command name (e.g., "build")
-	Title       string            // Display title
-	Description string            // Category description
-	Wizards     []WizardEntry     // Wizards in this category
+	Name        string        // Category command name (e.g., "build")
+	Title       string        // Display title
+	Description string        // Category description
+	FullID      string        // Full template ID when Wizards is empty (direct execution)
+	Wizards     []WizardEntry // Wizards in this category (if empty, use FullID directly)
 }
 
 // WizardEntry represents a wizard within a category
@@ -62,13 +63,25 @@ var Categories = []WizardCategory{
 			{ID: "notify", FullID: "notify_config", Description: "Configure notification channels"},
 		},
 	},
-}
-
-// StandaloneWizards are wizards that don't belong to a category
-var StandaloneWizards = []WizardEntry{
-	{ID: "listener", FullID: "listener_setup", Description: "Configure a new listener"},
-	{ID: "profile", FullID: "profile_create", Description: "Create a new implant profile"},
-	{ID: "infra", FullID: "infrastructure_setup", Description: "One-stop C2 infrastructure setup"},
+	// Direct execution categories (no sub-wizards)
+	{
+		Name:        "listener",
+		Title:       "Listener",
+		Description: "Configure a new listener",
+		FullID:      "listener_setup",
+	},
+	{
+		Name:        "profile",
+		Title:       "Profile",
+		Description: "Create a new implant profile",
+		FullID:      "profile_create",
+	},
+	{
+		Name:        "infra",
+		Title:       "Infrastructure",
+		Description: "One-stop C2 infrastructure setup",
+		FullID:      "infrastructure_setup",
+	},
 }
 
 // Templates is a registry of predefined wizard templates
@@ -101,16 +114,6 @@ func GetCategory(name string) *WizardCategory {
 	for i := range Categories {
 		if Categories[i].Name == name {
 			return &Categories[i]
-		}
-	}
-	return nil
-}
-
-// GetStandaloneWizard returns a standalone wizard by ID
-func GetStandaloneWizard(id string) *WizardEntry {
-	for i := range StandaloneWizards {
-		if StandaloneWizards[i].ID == id {
-			return &StandaloneWizards[i]
 		}
 	}
 	return nil

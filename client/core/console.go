@@ -71,11 +71,6 @@ type Console struct {
 	Helpers map[string]*cobra.Command
 
 	MalManager *plugin.MalManager
-
-	// AI Completion Engine
-	aiCompletionEngine *AICompletionEngine
-	aiCache            *AICompletionCache
-	commandValidator   *CommandValidator
 }
 
 func (c *Console) NewConsole() {
@@ -94,9 +89,6 @@ func (c *Console) NewConsole() {
 	implant.Prompt().Primary = c.GetPrompt
 	implant.AddInterrupt(io.EOF, repl.ExitImplantMenu) // Ctrl-D
 	implant.AddHistorySourceFile("history", filepath.Join(assets.GetRootAppDir(), "implant_history"))
-
-	// Register AI prediction for next argument (double-tap Tab to accept)
-	iom.Shell().AIPredictNext = c.handleAIPredictNext
 
 	// Register line hook to handle '?' prefix without space (e.g., '?hello' -> '?' 'hello')
 	iom.PreCmdRunLineHooks = append(iom.PreCmdRunLineHooks, func(args []string) ([]string, error) {
@@ -126,9 +118,6 @@ func (c *Console) Start(bindCmds ...BindCmds) error {
 
 	c.App.Menu(consts.ClientMenu).Command = bindCmds[0](c)()
 	c.App.Menu(consts.ImplantMenu).Command = bindCmds[1](c)()
-
-	// Initialize AI completion components after commands are registered
-	c.initAICompletion()
 
 	// After all commands are registered, safely start MCP server and Local RPC server
 	if c.Server != nil {
@@ -346,58 +335,4 @@ func getValidAISettings() (*assets.AISettings, error) {
 	}
 
 	return settings.AI, nil
-}
-
-// initAICompletion initializes the AI completion engine
-func (c *Console) initAICompletion() {
-	settings, err := assets.GetSetting()
-	if err != nil || settings == nil || settings.AI == nil || !settings.AI.Enable {
-		return
-	}
-
-	// Initialize cache (500 entries, 30 minute TTL)
-	c.aiCache = NewAICompletionCache(500, 30*time.Minute)
-
-	// Initialize command validator from client menu
-	clientMenu := c.App.Menu(consts.ClientMenu).Command
-	if clientMenu != nil {
-		c.commandValidator = NewCommandValidatorWithMenu(clientMenu, consts.ClientMenu)
-	}
-
-	// Also add implant menu commands to validator
-	implantMenu := c.App.Menu(consts.ImplantMenu).Command
-	if implantMenu != nil && c.commandValidator != nil {
-		c.commandValidator.AddCommandsFromCobra(implantMenu, consts.ImplantMenu)
-	}
-
-	// Initialize AI client
-	aiClient := NewAIClient(settings.AI)
-
-	// Create completion engine
-	c.aiCompletionEngine = NewAICompletionEngine(aiClient, c.aiCache, c.commandValidator)
-}
-
-// handleAIPredictNext handles AI prediction for the next argument (double-tap Tab to accept)
-func (c *Console) handleAIPredictNext(line string, history []string) (string, error) {
-	// Lazy initialize if not done yet
-	if c.aiCompletionEngine == nil {
-		c.initAICompletion()
-	}
-
-	if c.aiCompletionEngine == nil {
-		return "", fmt.Errorf("AI prediction not available")
-	}
-
-	// Use 2 second timeout for fast prediction
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
-
-	activeMenu := ""
-	if c != nil && c.App != nil {
-		if m := c.App.ActiveMenu(); m != nil {
-			activeMenu = m.Name()
-		}
-	}
-
-	return c.aiCompletionEngine.PredictNextArgument(ctx, line, history, activeMenu)
 }

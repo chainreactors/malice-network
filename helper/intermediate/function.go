@@ -3,9 +3,12 @@ package intermediate
 import (
 	"errors"
 	"fmt"
+	"sync"
+
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/mals"
+	lua "github.com/yuin/gopher-lua"
 	"reflect"
 	"strings"
 )
@@ -15,6 +18,34 @@ var (
 	WarnArgsMismatch    = errors.New("arguments mismatch")
 	WarnReturnMismatch  = errors.New("return values mismatch")
 )
+
+// VMInitHook is a callback that will be called when a new Lua VM is created.
+// This allows modules to register their Lua-specific setup (metatables, functions, etc.)
+// without hardcoding in the VM creation code.
+type VMInitHook func(L *lua.LState)
+
+var (
+	vmInitHooks     []VMInitHook
+	vmInitHooksLock sync.RWMutex
+)
+
+// RegisterVMInitHook registers a hook that will be called when a new Lua VM is created.
+// This is used by modules that need to set up Lua metatables or other VM-specific state.
+func RegisterVMInitHook(hook VMInitHook) {
+	vmInitHooksLock.Lock()
+	defer vmInitHooksLock.Unlock()
+	vmInitHooks = append(vmInitHooks, hook)
+}
+
+// RunVMInitHooks runs all registered VM initialization hooks.
+// This should be called by the VM creation code after basic setup is done.
+func RunVMInitHooks(L *lua.LState) {
+	vmInitHooksLock.RLock()
+	defer vmInitHooksLock.RUnlock()
+	for _, hook := range vmInitHooks {
+		hook(L)
+	}
+}
 
 type InternalFunc struct {
 	*mals.MalFunction

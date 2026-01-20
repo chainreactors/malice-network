@@ -28,6 +28,20 @@ func SetupMetatable(L *lua.LState) {
 	L.SetField(mt, "__index", L.SetFuncs(L.NewTable(), wizardMethods))
 }
 
+// setupLuaVM sets up wizard-specific Lua state (metatable and functions)
+// This is called by the VM init hook.
+func setupLuaVM(L *lua.LState) {
+	// Setup wizard metatable
+	SetupMetatable(L)
+
+	// Register wizard Lua functions
+	wizardFns := make(map[string]lua.LGFunction)
+	RegisterLuaFunctions(wizardFns)
+	for name, fn := range wizardFns {
+		L.SetGlobal(name, L.NewFunction(fn))
+	}
+}
+
 // wizardMethods contains all methods available on wizard userdata
 var wizardMethods = map[string]lua.LGFunction{
 	"input":       wizardInput,
@@ -612,10 +626,19 @@ func convertToLuaValue(L *lua.LState, v interface{}) lua.LValue {
 
 var registerBuiltinsOnce sync.Once
 
+func init() {
+	// Ensure wizard builtins and VM hooks are registered before any Lua VM is created.
+	RegisterBuiltinFunctions()
+}
+
 // RegisterBuiltinFunctions registers wizard functions as builtin functions
-// This allows the functions to be available in all Lua VMs
+// and sets up a VM init hook for Lua-specific setup (metatables, etc.).
+// Safe to call multiple times.
 func RegisterBuiltinFunctions() {
 	registerBuiltinsOnce.Do(func() {
+		// Register VM init hook for Lua-specific setup (metatables, Lua functions)
+		intermediate.RegisterVMInitHook(setupLuaVM)
+
 		// Register wizard constructor
 		intermediate.RegisterFunction("wizard", func(id string, title string) (*Wizard, error) {
 			return NewWizard(id, title), nil

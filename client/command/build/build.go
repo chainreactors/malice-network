@@ -60,8 +60,8 @@ func parseSourceConfig(cmd *cobra.Command, con *core.Console, buildConfig *clien
 	return buildConfig, nil
 }
 
-// executeBuild 执行构建逻辑
-func executeBuild(con *core.Console, buildConfig *clientpb.BuildConfig) error {
+// ExecuteBuild 执行构建逻辑（导出供 wizard 使用）
+func ExecuteBuild(con *core.Console, buildConfig *clientpb.BuildConfig) error {
 	artifact, err := con.Rpc.Build(con.Context(), buildConfig)
 	if err != nil {
 		return fmt.Errorf("build %s failed: %w", buildConfig.BuildType, err)
@@ -77,12 +77,17 @@ func BindCmd(cmd *cobra.Command, con *core.Console) error {
 		return err
 	}
 
-	return executeBuild(con, buildConfig)
+	return ExecuteBuild(con, buildConfig)
 }
 
 // parseLibFlag sets buildConfig.Lib based on the --lib flag and validates compatibility with buildType/target.
 func parseLibFlag(cmd *cobra.Command, buildConfig *clientpb.BuildConfig) error {
 	libFlag, _ := cmd.Flags().GetBool("lib")
+	return ValidateLibFlag(buildConfig, libFlag, cmd.Flags().Changed("lib"))
+}
+
+// ValidateLibFlag validates the lib flag and sets buildConfig.Lib (导出供 wizard 使用)
+func ValidateLibFlag(buildConfig *clientpb.BuildConfig, libFlag bool, libFlagChanged bool) error {
 	target, ok := consts.GetBuildTarget(buildConfig.Target)
 	if !ok {
 		return errors.New("invalid target: " + buildConfig.Target)
@@ -90,7 +95,7 @@ func parseLibFlag(cmd *cobra.Command, buildConfig *clientpb.BuildConfig) error {
 
 	switch buildConfig.BuildType {
 	case consts.CommandBuildModules, consts.CommandBuild3rdModules:
-		if cmd.Flags().Changed("lib") && !libFlag {
+		if libFlagChanged && !libFlag {
 			return errors.New("modules build requires --lib")
 		}
 		if target.OS != consts.Windows {

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/client/wizard"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/mals"
 	lua "github.com/yuin/gopher-lua"
@@ -26,19 +25,13 @@ func NewLuaVM() *lua.LState {
 	}
 
 	// 注册所有内置函数
-	// Ensure wizard functions are part of builtin definitions/help generation.
-	wizard.RegisterBuiltinFunctions()
 	for name, fun := range intermediate.InternalFunctions.Package(intermediate.BuiltinPackage) {
 		vm.SetGlobal(name, vm.NewFunction(mals.WrapFuncForLua(fun)))
 	}
 
-	// Setup wizard metatable and functions
-	wizard.SetupMetatable(vm)
-	wizardFns := make(map[string]lua.LGFunction)
-	wizard.RegisterLuaFunctions(wizardFns)
-	for name, fn := range wizardFns {
-		vm.SetGlobal(name, vm.NewFunction(fn))
-	}
+	// 运行所有已注册的 VM 初始化 hooks
+	// 各模块（如 wizard）可以通过 intermediate.RegisterVMInitHook 注册自己的 Lua 特定设置
+	intermediate.RunVMInitHooks(vm)
 
 	return vm
 }

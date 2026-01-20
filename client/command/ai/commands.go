@@ -1,8 +1,6 @@
 package ai
 
 import (
-	"github.com/carapace-sh/carapace"
-	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/spf13/cobra"
 )
@@ -85,8 +83,6 @@ ask --no-history how to download a file
 			"static": "true",
 		},
 	}
-
-	carapace.Gen(questionCmd).PositionalAnyCompletion(common.AIQuestionCompleter(con))
 
 	analyzeCmd := &cobra.Command{
 		Use:   "analyze [error message]",

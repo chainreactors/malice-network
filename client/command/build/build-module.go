@@ -54,5 +54,5 @@ func ModulesCmd(cmd *cobra.Command, con *core.Console) error {
 		return err
 	}
 
-	return executeBuild(con, buildConfig)
+	return ExecuteBuild(con, buildConfig)
 }

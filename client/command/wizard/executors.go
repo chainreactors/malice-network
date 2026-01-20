@@ -11,6 +11,7 @@ import (
 
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/client/command/build"
 	"github.com/chainreactors/malice-network/client/core"
 	wizardfw "github.com/chainreactors/malice-network/client/wizard"
 	"github.com/chainreactors/malice-network/helper/cryptography"
@@ -493,18 +494,13 @@ func executeBuild(con *core.Console, result *wizardfw.WizardResult, buildType st
 		}
 	}
 
-	// Validate lib flag
-	if err := validateLibFlag(buildConfig); err != nil {
+	// Validate lib flag using build package function
+	if err := build.ValidateLibFlag(buildConfig, buildConfig.Lib, false); err != nil {
 		return err
 	}
 
-	artifact, err := con.Rpc.Build(con.Context(), buildConfig)
-	if err != nil {
-		return fmt.Errorf("build %s failed: %w", buildConfig.BuildType, err)
-	}
-	con.Log.Infof("Build started: %s (type: %s, target: %s, source: %s)\n",
-		artifact.Name, artifact.Type, artifact.Target, artifact.Source)
-	return nil
+	// Use build package's ExecuteBuild function
+	return build.ExecuteBuild(con, buildConfig)
 }
 
 // buildProfileFromWizard creates a ProfileConfig from wizard results
@@ -1005,30 +1001,6 @@ func applyBuildSettings(result *wizardfw.WizardResult, profile *implanttypes.Pro
 		}
 		profile.Implant.Anti.Sandbox = true
 	}
-}
-
-// validateLibFlag validates the lib flag based on build type and target
-func validateLibFlag(buildConfig *clientpb.BuildConfig) error {
-	target, ok := consts.GetBuildTarget(buildConfig.Target)
-	if !ok {
-		return fmt.Errorf("invalid target: %s", buildConfig.Target)
-	}
-
-	switch buildConfig.BuildType {
-	case consts.CommandBuildModules, consts.CommandBuild3rdModules:
-		if target.OS != consts.Windows {
-			return fmt.Errorf("modules build only supports Windows targets")
-		}
-		buildConfig.Lib = true
-	case consts.CommandBuildPrelude:
-		buildConfig.Lib = false
-	case consts.CommandBuildPulse:
-		if target.OS != consts.Windows {
-			return fmt.Errorf("pulse build only supports Windows targets")
-		}
-		buildConfig.Lib = false
-	}
-	return nil
 }
 
 // executeProfileCreate creates a new profile from wizard results

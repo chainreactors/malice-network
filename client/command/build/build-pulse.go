@@ -46,7 +46,7 @@ func PulseCmd(cmd *cobra.Command, con *core.Console) error {
 		return fmt.Errorf("failed to encode profile: %w", err)
 	}
 
-	return executeBuild(con, buildConfig)
+	return ExecuteBuild(con, buildConfig)
 }
 
 func parsePulseBuildFlags(cmd *cobra.Command) (*implanttypes.ProfileConfig, error) {
