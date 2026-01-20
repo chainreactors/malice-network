@@ -2,7 +2,6 @@ package display
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/reeflective/readline/inputrc"
 	"github.com/reeflective/readline/internal/color"
@@ -35,17 +34,16 @@ type Engine struct {
 	primaryPrinted bool
 
 	// UI components
-	keys             *core.Keys
-	line             *core.Line
-	suggested        core.Line
-	cursor           *core.Cursor
-	inlineSuggestion string // Inline suggestion (fish-style gray text)
-	selection        *core.Selection
-	histories        *history.Sources
-	prompt           *ui.Prompt
-	hint             *ui.Hint
-	completer        *completion.Engine
-	opts             *inputrc.Config
+	keys      *core.Keys
+	line      *core.Line
+	suggested core.Line
+	cursor    *core.Cursor
+	selection *core.Selection
+	histories *history.Sources
+	prompt    *ui.Prompt
+	hint      *ui.Hint
+	completer *completion.Engine
+	opts      *inputrc.Config
 }
 
 // NewEngine is a required constructor for the display engine.
@@ -68,42 +66,10 @@ func Init(e *Engine, highlighter func([]rune) string) {
 	e.highlighter = highlighter
 }
 
-// SetInlineSuggestion sets the inline suggestion to display after the cursor.
-func (e *Engine) SetInlineSuggestion(suggestion string) {
-	e.inlineSuggestion = suggestion
-}
-
-// ClearInlineSuggestion clears the inline suggestion.
-func (e *Engine) ClearInlineSuggestion() {
-	e.inlineSuggestion = ""
-}
-
-// GetInlineSuggestion returns the current inline suggestion.
-func (e *Engine) GetInlineSuggestion() string {
-	return e.inlineSuggestion
-}
-
-func (e *Engine) inlineSuggestionApplies(currentLine string) bool {
-	if e.inlineSuggestion == "" {
-		return false
-	}
-
-	if e.cursor.Pos() != e.line.Len() {
-		return false
-	}
-
-	return strings.HasPrefix(e.inlineSuggestion, currentLine) && len(e.inlineSuggestion) > len(currentLine)
-}
-
 // Refresh recomputes and redisplays the entire readline interface, except
 // the first lines of the primary prompt when the latter is a multiline one.
 func (e *Engine) Refresh() {
 	fmt.Print(term.HideCursor)
-
-	// Trigger autocomplete early so that inline suggestions are ready
-	// before displayLine() is called. This ensures fish-style suggestions
-	// appear immediately as the user types.
-	e.completer.Autocomplete()
 
 	// Go back to the first column, and if the primary prompt
 	// was not printed yet, back up to the line's beginning row.
@@ -162,7 +128,6 @@ func (e *Engine) ResetHelpers() {
 // hints, completions and some right prompts, the shell will put the
 // display at the start of the line immediately following the line.
 func (e *Engine) AcceptLine() {
-	e.ClearInlineSuggestion()
 	e.CursorToLineStart()
 
 	e.computeCoordinates(false)
@@ -258,16 +223,11 @@ func (e *Engine) computeCoordinates(suggested bool) {
 	e.cursorCol, e.cursorRow = core.CoordinatesCursor(e.cursor, e.startCols)
 
 	// Get the number of rows used by the line, and the end line X pos.
-	displayLine := e.line
-	currentLine := string(*e.line)
-	if e.opts.GetBool("history-autosuggest") && suggested && len(e.suggested) > e.line.Len() {
-		displayLine = &e.suggested
-	} else if e.inlineSuggestionApplies(currentLine) {
-		inlineLine := core.Line{}
-		inlineLine.Set([]rune(e.inlineSuggestion)...)
-		displayLine = &inlineLine
+	if e.opts.GetBool("history-autosuggest") && suggested {
+		e.lineCol, e.lineRows = core.CoordinatesLine(&e.suggested, e.startCols)
+	} else {
+		e.lineCol, e.lineRows = core.CoordinatesLine(e.line, e.startCols)
 	}
-	e.lineCol, e.lineRows = core.CoordinatesLine(displayLine, e.startCols)
 
 	e.primaryPrinted = false
 }
@@ -291,21 +251,9 @@ func (e *Engine) displayLine() {
 	// Apply visual selections highlighting if any
 	line = e.highlightLine([]rune(line), *e.selection)
 
-	// Track if we added any suggestion suffix
-	suggestionAdded := false
-
-	// Get the subset of the suggested line to print (history autosuggest).
+	// Get the subset of the suggested line to print.
 	if len(e.suggested) > e.line.Len() && e.opts.GetBool("history-autosuggest") {
 		line += color.Dim + color.Fmt(color.Fg+"242") + string(e.suggested[e.line.Len():]) + color.Reset
-		suggestionAdded = true
-	}
-
-	// If no history suggestion was added, try the inline suggestion.
-	// Only show when cursor is at end of line.
-	currentLine := string(*e.line)
-	if !suggestionAdded && e.inlineSuggestionApplies(currentLine) {
-		suffix := e.inlineSuggestion[len(currentLine):]
-		line += color.Dim + color.Fmt(color.Fg+"242") + suffix + color.Reset
 	}
 
 	// Format tabs as spaces, for consistent display
@@ -349,8 +297,8 @@ func (e *Engine) displayMultilinePrompts() {
 func (e *Engine) displayHelpers() {
 	fmt.Print(term.NewlineReturn)
 
-	// Note: Autocomplete() is now called at the beginning of Refresh()
-	// to ensure inline suggestions are ready before displayLine().
+	// Recompute completions and hints if autocompletion is on.
+	e.completer.Autocomplete()
 
 	// Display hint and completions.
 	ui.DisplayHint(e.hint)
