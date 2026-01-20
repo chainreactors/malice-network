@@ -243,6 +243,7 @@ func (c *Console) setupShell() {
 	// are quite neceessary for efficient console use.
 	cfg.Set("skip-completed-text", true)
 	cfg.Set("menu-complete-display-prefix", true)
+	cfg.Set("autocomplete", true) // Enable as-you-type completion for inline suggestions
 }
 
 func (c *Console) activeMenu() *Menu {
@@ -254,16 +255,4 @@ func (c *Console) activeMenu() *Menu {
 
 	// Else return the default menu.
 	return c.menus[""]
-}
-
-// AICommandGenerator is the callback function type for AI-powered command generation.
-// It receives the current input line (natural language) and command history,
-// and returns a generated command string.
-type AICommandGenerator func(line string, history []string) (string, error)
-
-// SetAICommandGenerator sets the AI command generation callback function.
-// When Alt+A is pressed, this callback will be invoked to convert
-// natural language input to a command.
-func (c *Console) SetAICommandGenerator(fn AICommandGenerator) {
-	c.shell.AIGenerateCommand = fn
 }

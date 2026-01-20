@@ -24,14 +24,17 @@ func rootCmd(con *core.Console) (*cobra.Command, error) {
 	cmd.PersistentFlags().String("mcp", "", "enable MCP server with address (e.g., 127.0.0.1:5005)")
 	// Add --rpc flag
 	cmd.PersistentFlags().String("rpc", "", "enable local gRPC server with address (e.g., 127.0.0.1:15004)")
-	// Add global --wizard flag
-	command.RegisterWizardFlag(cmd)
-
 	bind := command.MakeBind(cmd, con, "golang")
 	command.BindCommonCommands(bind)
-	// Wrap PersistentPreRunE to support wizard mode
+	// Setup console runner
 	originalPre, originalPost := command.ConsoleRunnerCmd(con, cmd)
-	cmd.PersistentPreRunE, cmd.PersistentPostRunE = command.WrapWithWizardSupport(con, originalPre, originalPost)
+	cmd.PersistentPreRunE = func(c *cobra.Command, args []string) error {
+		if originalPre != nil {
+			return originalPre(c, args)
+		}
+		return nil
+	}
+	cmd.PersistentPostRunE = originalPost
 	cmd.AddCommand(command.ImplantCmd(con))
 	carapace.Gen(cmd)
 

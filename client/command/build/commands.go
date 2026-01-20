@@ -5,6 +5,7 @@ import (
 	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/malice-network/client/wizard"
 
 	"github.com/carapace-sh/carapace"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
@@ -149,6 +150,9 @@ build beacon --profile tcp_default --target x86_64-pc-windows-gnu --source saas
 
 // Build by GithubAction
 build beacon --profile tcp_default --target x86_64-pc-windows-gnu --source action
+
+// Use interactive wizard mode
+build beacon --wizard
 ~~~`,
 	}
 	common.BindFlag(beaconCmd,
@@ -326,6 +330,9 @@ build log artifact_name --limit 70
 	})
 	common.BindArgCompletions(logCmd, nil, common.ArtifactCompleter(con))
 
+	// Enable wizard for all build commands (except logCmd which doesn't need it)
+	common.EnableWizardForCommands(beaconCmd, bindCmd, modulesCmd, pulseCmd, preludeCmd)
+
 	buildCmd.AddCommand(beaconCmd, bindCmd, modulesCmd, pulseCmd, preludeCmd, logCmd)
 
 	artifactCmd := &cobra.Command{
@@ -458,6 +465,9 @@ artifact delete --name artifact_name
 }
 
 func Register(con *core.Console) {
+	// Register wizard providers for dynamic options and defaults
+	registerWizardProviders(con)
+
 	con.EventCallback[consts.CtrlArtifactDownload] = func(event *clientpb.Event) {
 		err := WriteOriginArtifact(con, event.Job.Name)
 		if err != nil {
@@ -629,5 +639,76 @@ func Register(con *core.Console) {
 			"artifact_bin",
 		},
 		Example: `artifact_payload("tcp_default","raw","windows","x64")`,
+	})
+}
+
+// registerWizardProviders registers dynamic option providers and default values for wizard
+func registerWizardProviders(con *core.Console) {
+	// ============ Option Providers (for select fields) ============
+
+	// Profile options
+	wizard.RegisterProvider("profile", func() []string {
+		profiles, err := con.Rpc.GetProfiles(con.Context(), &clientpb.Empty{})
+		if err != nil {
+			return nil
+		}
+		var opts []string
+		for _, p := range profiles.Profiles {
+			opts = append(opts, p.Name)
+		}
+		return opts
+	})
+
+	// Target options
+	wizard.RegisterProvider("target", func() []string {
+		return []string{
+			"x86_64-pc-windows-gnu",
+			"x86_64-pc-windows-msvc",
+			"i686-pc-windows-gnu",
+			"i686-pc-windows-msvc",
+			"x86_64-unknown-linux-gnu",
+			"i686-unknown-linux-gnu",
+		}
+	})
+
+	// Source options
+	wizard.RegisterProvider("source", func() []string {
+		return []string{"local", "docker", "action"}
+	})
+
+	// ============ Default Value Providers ============
+
+	// Default target - most common choice
+	wizard.RegisterDefaultProvider("target", func() string {
+		return "x86_64-pc-windows-gnu"
+	})
+
+	// Default source - docker is most reliable
+	wizard.RegisterDefaultProvider("source", func() string {
+		return "docker"
+	})
+
+	// Default profile - use first available profile
+	wizard.RegisterDefaultProvider("profile", func() string {
+		profiles, err := con.Rpc.GetProfiles(con.Context(), &clientpb.Empty{})
+		if err != nil || len(profiles.Profiles) == 0 {
+			return ""
+		}
+		return profiles.Profiles[0].Name
+	})
+
+	// Default jitter
+	wizard.RegisterDefaultProvider("jitter", func() string {
+		return "0.2"
+	})
+
+	// Default secure - enable by default
+	wizard.RegisterDefaultProvider("secure", func() string {
+		return "true"
+	})
+
+	// Default auto-download
+	wizard.RegisterDefaultProvider("auto-download", func() string {
+		return "true"
 	})
 }

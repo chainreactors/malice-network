@@ -29,10 +29,6 @@ func NewLuaVM() *lua.LState {
 		vm.SetGlobal(name, vm.NewFunction(mals.WrapFuncForLua(fun)))
 	}
 
-	// 运行所有已注册的 VM 初始化 hooks
-	// 各模块（如 wizard）可以通过 intermediate.RegisterVMInitHook 注册自己的 Lua 特定设置
-	intermediate.RunVMInitHooks(vm)
-
 	return vm
 }
 

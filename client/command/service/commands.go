@@ -143,6 +143,9 @@ Control the start type and error control by providing appropriate values.`,
 
 	serviceCmd.AddCommand(serviceListCmd, serviceCreateCmd, serviceStartCmd, serviceStopCmd, serviceQueryCmd, serviceDeleteCmd)
 
+	// Enable wizard for service commands that need configuration
+	common.EnableWizardForCommands(serviceCreateCmd)
+
 	return []*cobra.Command{serviceCmd}
 }
 

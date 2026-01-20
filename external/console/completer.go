@@ -82,6 +82,9 @@ func (c *Console) complete(line []rune, pos int) readline.Completions {
 	comps = comps.Prefix(prefixComp)
 	comps.PREFIX = prefixLine
 
+	// Set inline suggestion (fish-style gray text)
+	c.setInlineSuggestion(line, pos, comps)
+
 	// Finally, reset our command tree for the next call.
 	completer.ClearStorage()
 	menu.resetPreRun()
@@ -108,6 +111,121 @@ func (c *Console) justifyCommandComps(comps readline.Completions) readline.Compl
 	}
 
 	return comps
+}
+
+// setInlineSuggestion sets a fish-style inline suggestion based on completion candidates.
+func (c *Console) setInlineSuggestion(line []rune, pos int, completions readline.Completions) {
+	// Only show suggestion when cursor is at end of line
+	if pos != len(line) {
+		c.shell.ClearInlineSuggestion()
+		return
+	}
+
+	currentLine := string(line)
+
+	// No completions, clear suggestion
+	var values []string
+	completions.EachValue(func(comp readline.Completion) readline.Completion {
+		values = append(values, comp.Value)
+		return comp
+	})
+	if len(values) == 0 {
+		c.shell.ClearInlineSuggestion()
+		return
+	}
+
+	// Get the current word prefix for matching
+	prefix := completions.PREFIX
+	if prefix == "" || !strings.HasSuffix(currentLine, prefix) {
+		// Calculate prefix from the last word
+		lastSpace := strings.LastIndexAny(currentLine, " \t")
+		if lastSpace >= 0 {
+			prefix = currentLine[lastSpace+1:]
+		} else {
+			prefix = currentLine
+		}
+	}
+
+	ignoreCase := false
+	if c.shell != nil && c.shell.Config != nil {
+		ignoreCase = c.shell.Config.GetBool("completion-ignore-case")
+	}
+
+	matchPrefix := prefix
+	if ignoreCase {
+		matchPrefix = strings.ToLower(prefix)
+	}
+
+	// Collect matching values
+	var matchingValues []string
+	for _, value := range values {
+		value = strings.TrimRightFunc(value, unicode.IsSpace)
+		if value == "" {
+			continue
+		}
+
+		matchValue := value
+		if ignoreCase {
+			matchValue = strings.ToLower(value)
+		}
+
+		if strings.HasPrefix(matchValue, matchPrefix) {
+			matchingValues = append(matchingValues, value)
+		}
+	}
+
+	if len(matchingValues) == 0 {
+		c.shell.ClearInlineSuggestion()
+		return
+	}
+
+	var suggestion string
+	if len(matchingValues) == 1 {
+		// Single candidate: use it directly
+		suggestion = matchingValues[0]
+	} else {
+		// Multiple candidates: compute common prefix
+		suggestion = longestCommonPrefix(matchingValues, ignoreCase)
+	}
+
+	// Only show if suggestion is longer than current prefix
+	if len(suggestion) <= len(prefix) {
+		c.shell.ClearInlineSuggestion()
+		return
+	}
+
+	// Build full line suggestion using the current line prefix.
+	fullSuggestion := currentLine + suggestion[len(prefix):]
+	c.shell.SetInlineSuggestion(fullSuggestion)
+}
+
+// longestCommonPrefix returns the longest common prefix of a slice of strings.
+func longestCommonPrefix(strs []string, ignoreCase bool) string {
+	if len(strs) == 0 {
+		return ""
+	}
+	prefix := []rune(strs[0])
+	comparePrefix := []rune(strs[0])
+	if ignoreCase {
+		comparePrefix = []rune(strings.ToLower(strs[0]))
+	}
+	for _, s := range strs[1:] {
+		runes := []rune(s)
+		compareRunes := runes
+		if ignoreCase {
+			compareRunes = []rune(strings.ToLower(s))
+		}
+		i := 0
+		for i < len(comparePrefix) && i < len(compareRunes) && comparePrefix[i] == compareRunes[i] {
+			i++
+		}
+		prefix = prefix[:i]
+		comparePrefix = comparePrefix[:i]
+		if len(comparePrefix) == 0 {
+			break
+		}
+	}
+	return string(prefix)
 }
 
 func (c *Console) defaultStyleConfig() {

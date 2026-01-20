@@ -207,5 +207,8 @@ rem delete rem_test
 
 	remCmd.AddCommand(listremCmd, newRemCmd, startRemCmd, stopRemCmd, deleteRemCmd)
 
+	// Enable wizard for pipeline commands
+	common.EnableWizardForCommands(tcpCmd, httpCmd, bindCmd, newRemCmd)
+
 	return []*cobra.Command{tcpCmd, httpCmd, bindCmd, remCmd}
 }

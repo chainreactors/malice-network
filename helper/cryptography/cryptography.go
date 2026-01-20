@@ -41,6 +41,13 @@ var (
 	// and we can ensure there will only ever be a single recipient,
 	// we can just ignore add/remove it at runtime to safe space.
 	agePrefix = []byte("age-encryption.org/v1\n-> X25519 ")
+	ageHeader = []byte("age-encryption.org/v1\n")
+
+	keyExchangeReplay = &sync.Map{}
+	serverKeyPairMu   sync.Mutex
+	serverKeyPair     *AgeKeyPair
+	minisignKeyMu     sync.Mutex
+	minisignKey       *minisign.PrivateKey
 )
 
 // deriveKeyFrom - Derives a key from input data using SHA256
@@ -121,7 +128,7 @@ func AgeEncrypt(recipientPublicKey string, plaintext []byte) ([]byte, error) {
 	if err := stream.Close(); err != nil {
 		return nil, err
 	}
-	return buf.Bytes(), nil
+	return bytes.TrimPrefix(buf.Bytes(), agePrefix), nil
 }
 
 // AgeDecrypt - Decrypt using Curve 25519 + ChaCha20Poly1305
@@ -132,8 +139,12 @@ func AgeDecrypt(recipientPrivateKey string, ciphertext []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	// 直接使用 ciphertext，Age 库会自动处理 grease recipients
-	buf := bytes.NewBuffer(ciphertext)
+	// Accept both trimmed payloads and full age headers.
+	payload := ciphertext
+	if !bytes.HasPrefix(ciphertext, ageHeader) {
+		payload = append(agePrefix, ciphertext...)
+	}
+	buf := bytes.NewBuffer(payload)
 	stream, err := age.Decrypt(buf, identity)
 	if err != nil {
 		// 如果解密失败，尝试添加调试信息
@@ -150,12 +161,6 @@ func AgeDecrypt(recipientPrivateKey string, ciphertext []byte) ([]byte, error) {
 
 // AgeKeyPairFromImplant - Decrypt the session key from an implant
 func AgeKeyExFromImplant(serverPrivateKey string, implantPrivateKey string, ciphertext []byte) ([]byte, error) {
-	// TODO - Store the hash of the implant's key exchange to prevent replay attacks
-	// Check for replay attacks
-	//if err := db.CheckKeyExReplay(ciphertext); err != nil {
-	//	return nil, ErrDecryptFailed
-	//}
-
 	// Decrypt the message
 	plaintext, err := AgeDecrypt(serverPrivateKey, ciphertext)
 	if err != nil {
@@ -175,6 +180,9 @@ func AgeKeyExFromImplant(serverPrivateKey string, implantPrivateKey string, ciph
 	// Constant-time comparison of the HMACs
 	if !hmac.Equal(mac.Sum(nil), plaintext[:sha256Size]) {
 		return nil, ErrDecryptFailed
+	}
+	if err := recordKeyExchange(ciphertext); err != nil {
+		return nil, err
 	}
 	return plaintext[sha256Size:], nil
 }
@@ -272,23 +280,28 @@ func serverSignRawBuf(buf []byte) []byte {
 
 // AgeServerKeyPair - Get teh server's ECC key pair
 func AgeServerKeyPair() *AgeKeyPair {
+	serverKeyPairMu.Lock()
+	defer serverKeyPairMu.Unlock()
+	if serverKeyPair != nil {
+		return serverKeyPair
+	}
 	// TODO - get key value from db
 	//data, err := db.GetKeyValue(serverAgeKeyPairKey)
 	// test
 	data, err := json.Marshal(&AgeKeyPair{})
-	//if err == db.ErrRecordNotFound {
-	//	keyPair, err := generateServerKeyPair()
-	//	if err != nil {
-	//		panic(err)
-	//	}
-	//	return keyPair
-	//}
 	keyPair := &AgeKeyPair{}
-	err = json.Unmarshal([]byte(data), keyPair)
+	if err == nil {
+		if err := json.Unmarshal([]byte(data), keyPair); err == nil && keyPair.Public != "" && keyPair.Private != "" {
+			serverKeyPair = keyPair
+			return serverKeyPair
+		}
+	}
+	keyPair, err = generateServerKeyPair()
 	if err != nil {
 		panic(err)
 	}
-	return keyPair
+	serverKeyPair = keyPair
+	return serverKeyPair
 }
 
 func generateServerKeyPair() (*AgeKeyPair, error) {
@@ -331,28 +344,45 @@ func MinisignServerSign(message []byte) string {
 
 // MinisignServerPrivateKey - Get the server's minisign key pair
 func MinisignServerPrivateKey() *minisign.PrivateKey {
+	minisignKeyMu.Lock()
+	defer minisignKeyMu.Unlock()
+	if minisignKey != nil {
+		return minisignKey
+	}
 	// TODO - get key value from db
-	// test
-	data, err := json.Marshal(&AgeKeyPair{})
 	//data, err := db.GetKeyValue(serverMinisignPrivateKey)
-	//if err == db.ErrRecordNotFound {
-	//	privateKey, err := generateServerMinisignPrivateKey()
-	//	if err != nil {
-	//		panic(err)
-	//	}
-	//	return privateKey
-	//}
+	// test
+	data, err := json.Marshal(&minisignPrivateKey{})
 	privateKey := &minisignPrivateKey{}
-	err = json.Unmarshal([]byte(data), privateKey)
+	if err == nil {
+		if err := json.Unmarshal([]byte(data), privateKey); err == nil && len(privateKey.PrivateKey) == ed25519.PrivateKeySize {
+			rawBytes := [ed25519.PrivateKeySize]byte{}
+			copy(rawBytes[:], privateKey.PrivateKey)
+			minisignKey = &minisign.PrivateKey{
+				RawID:    privateKey.ID,
+				RawBytes: rawBytes,
+			}
+			return minisignKey
+		}
+	}
+	privateKeyValue, err := generateServerMinisignPrivateKey()
 	if err != nil {
 		panic(err)
 	}
-	rawBytes := [ed25519.PrivateKeySize]byte{}
-	copy(rawBytes[:], privateKey.PrivateKey)
-	return &minisign.PrivateKey{
-		RawID:    privateKey.ID,
-		RawBytes: rawBytes,
+	minisignKey = privateKeyValue
+	return minisignKey
+}
+
+func recordKeyExchange(ciphertext []byte) error {
+	if len(ciphertext) == 0 {
+		return ErrDecryptFailed
 	}
+	digest := sha256.Sum256(ciphertext)
+	key := base64.RawStdEncoding.EncodeToString(digest[:])
+	if _, ok := keyExchangeReplay.LoadOrStore(key, true); ok {
+		return ErrReplayAttack
+	}
+	return nil
 }
 
 func generateServerMinisignPrivateKey() (*minisign.PrivateKey, error) {

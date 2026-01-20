@@ -7,480 +7,557 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
-// skipFlags defines flags that should not appear in wizard forms
-var skipFlags = map[string]bool{
-	"help":    true,
-	"wizard":  true,
-	"version": true,
+// ============ Dynamic Providers ============
+
+// OptionProvider returns dynamic options for a flag's select menu
+type OptionProvider func() []string
+
+// DefaultProvider returns a dynamic default value for a flag
+type DefaultProvider func() string
+
+var (
+	optionProviders   = make(map[string]OptionProvider)
+	optionProvidersMu sync.RWMutex
+
+	defaultProviders   = make(map[string]DefaultProvider)
+	defaultProvidersMu sync.RWMutex
+)
+
+// RegisterProvider registers a dynamic option provider for a flag name
+func RegisterProvider(flagName string, fn OptionProvider) {
+	optionProvidersMu.Lock()
+	defer optionProvidersMu.Unlock()
+	optionProviders[flagName] = fn
 }
 
-// CobraToWizard converts a cobra.Command's flags to a Wizard
-// It supports grouping via ui:group annotations and edit mode (reading current flag values)
-func CobraToWizard(cmd *cobra.Command) *Wizard {
-	wiz := NewWizard(wizardIDFromCommand(cmd), cmd.Short)
-	if cmd.Long != "" {
-		wiz.WithDescription(cmd.Long)
+// RegisterDefaultProvider registers a default value provider for a flag name
+func RegisterDefaultProvider(flagName string, fn DefaultProvider) {
+	defaultProvidersMu.Lock()
+	defer defaultProvidersMu.Unlock()
+	defaultProviders[flagName] = fn
+}
+
+func getOptionProvider(flagName string) (OptionProvider, bool) {
+	optionProvidersMu.RLock()
+	defer optionProvidersMu.RUnlock()
+	fn, ok := optionProviders[flagName]
+	return fn, ok
+}
+
+func getDefaultProvider(flagName string) (DefaultProvider, bool) {
+	defaultProvidersMu.RLock()
+	defer defaultProvidersMu.RUnlock()
+	fn, ok := defaultProviders[flagName]
+	return fn, ok
+}
+
+// RunWizard runs an interactive wizard for the given command's flags.
+// It returns the collected values as a map, or an error if cancelled.
+func RunWizard(cmd *cobra.Command) (map[string]any, error) {
+	result := make(map[string]any)
+	groups := buildFormGroups(cmd, result)
+
+	if len(groups) == 0 {
+		return result, nil
 	}
 
-	// Collect all flags and group them
+	form := NewGroupedWizardForm(groups)
+	if err := form.Run(); err != nil {
+		return nil, err
+	}
+
+	// Finalize number fields (convert string -> int)
+	finalizeResult(result, cmd)
+
+	// Apply result back to flags
+	if err := ApplyResultToFlags(cmd, result); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+// buildFormGroups creates FormGroups from command flags
+func buildFormGroups(cmd *cobra.Command, result map[string]any) []*FormGroup {
+	// Collect flags by group
 	groups := make(map[string][]*pflag.Flag)
-	var ungroupedFlags []*pflag.Flag
+	var ungrouped []*pflag.Flag
 	groupOrder := make([]string, 0)
-	groupOrderSet := make(map[string]bool)
+	seen := make(map[string]bool)
 
 	cmd.Flags().VisitAll(func(flag *pflag.Flag) {
-		if shouldSkipFlag(flag) {
+		if skipFlag(flag) {
 			return
 		}
-
-		groupName := getFlagGroup(flag)
-		if groupName != "" {
-			groups[groupName] = append(groups[groupName], flag)
-			if !groupOrderSet[groupName] {
-				groupOrder = append(groupOrder, groupName)
-				groupOrderSet[groupName] = true
+		if g := getFlagGroup(flag); g != "" {
+			groups[g] = append(groups[g], flag)
+			if !seen[g] {
+				groupOrder = append(groupOrder, g)
+				seen[g] = true
 			}
 		} else {
-			ungroupedFlags = append(ungroupedFlags, flag)
+			ungrouped = append(ungrouped, flag)
 		}
 	})
 
-	// Sort groups by order annotation if available
+	// Sort groups by order annotation
 	sort.SliceStable(groupOrder, func(i, j int) bool {
-		orderI := getGroupOrder(groupOrder[i], groups[groupOrder[i]])
-		orderJ := getGroupOrder(groupOrder[j], groups[groupOrder[j]])
-		return orderI < orderJ
+		return getGroupOrder(groups[groupOrder[i]]) < getGroupOrder(groups[groupOrder[j]])
 	})
 
-	// If there are groups, use grouped mode
-	if len(groups) > 0 {
-		usedGroupIDs := make(map[string]bool)
+	var formGroups []*FormGroup
 
-		// Add ungrouped fields as "Basic" group first
-		if len(ungroupedFlags) > 0 {
-			sortFlagsByOrder(ungroupedFlags)
-			basicGroup := wiz.NewGroup(uniqueGroupID(usedGroupIDs, "general"), "General")
-			for _, flag := range ungroupedFlags {
-				field := flagToWizardField(flag)
-				basicGroup.AddField(field)
-			}
-		}
-
-		// Add other groups in order
-		for _, groupName := range groupOrder {
-			flags := groups[groupName]
-			group := wiz.NewGroup(uniqueGroupID(usedGroupIDs, sanitizeGroupName(groupName)), groupName)
-
-			// Sort flags within group by order annotation
-			sortFlagsByOrder(flags)
-
-			for _, flag := range flags {
-				field := flagToWizardField(flag)
-				group.AddField(field)
-			}
-		}
-	} else {
-		// Flat mode: all fields without grouping
-		sortFlagsByOrder(ungroupedFlags)
-		for _, flag := range ungroupedFlags {
-			field := flagToWizardField(flag)
-			wiz.AddField(field)
-		}
+	// Add ungrouped flags as "General" group
+	if len(ungrouped) > 0 {
+		sortByOrder(ungrouped)
+		formGroups = append(formGroups, &FormGroup{
+			Name:   "general",
+			Title:  "General",
+			Fields: flagsToFields(ungrouped, result),
+		})
 	}
 
-	return wiz
+	// Add grouped flags
+	for _, name := range groupOrder {
+		flags := groups[name]
+		sortByOrder(flags)
+		formGroups = append(formGroups, &FormGroup{
+			Name:   sanitize(name),
+			Title:  name,
+			Fields: flagsToFields(flags, result),
+		})
+	}
+
+	return formGroups
 }
 
-// shouldSkipFlag determines if a flag should be excluded from wizard
-func shouldSkipFlag(flag *pflag.Flag) bool {
-	if skipFlags[flag.Name] {
-		return true
-	}
-	// Skip hidden flags
-	if flag.Hidden {
-		return true
-	}
-	return false
-}
-
-// getFlagGroup extracts the group name from flag annotations
-func getFlagGroup(flag *pflag.Flag) string {
-	if flag.Annotations == nil {
-		return ""
-	}
-	// Check ui:group annotation
-	if groups, ok := flag.Annotations["ui:group"]; ok && len(groups) > 0 {
-		return groups[0]
-	}
-	// Check group annotation (alternative)
-	if groups, ok := flag.Annotations["group"]; ok && len(groups) > 0 {
-		return groups[0]
-	}
-	return ""
-}
-
-// sanitizeGroupName converts a display name to a valid identifier
-func sanitizeGroupName(name string) string {
-	// Replace spaces and special chars with underscores
-	result := strings.ToLower(name)
-	result = strings.ReplaceAll(result, " ", "_")
-	result = strings.ReplaceAll(result, "-", "_")
-	return result
-}
-
-func uniqueGroupID(used map[string]bool, base string) string {
-	idBase := sanitizeGroupName(strings.TrimSpace(base))
-	if idBase == "" {
-		idBase = "group"
-	}
-	id := idBase
-	if !used[id] {
-		used[id] = true
-		return id
-	}
-	for i := 2; ; i++ {
-		id = fmt.Sprintf("%s_%d", idBase, i)
-		if !used[id] {
-			used[id] = true
-			return id
-		}
-	}
-}
-
-func wizardIDFromCommand(cmd *cobra.Command) string {
-	if cmd == nil {
-		return ""
-	}
-	path := strings.TrimSpace(cmd.CommandPath())
-	if path == "" {
-		path = cmd.Name()
-	}
-	// Keep it stable + filesystem-ish.
-	id := strings.ToLower(path)
-	id = strings.ReplaceAll(id, " ", "_")
-	id = strings.ReplaceAll(id, "-", "_")
-	id = strings.ReplaceAll(id, "/", "_")
-	return id
-}
-
-// getGroupOrder returns the order value for a group (based on first flag's order)
-func getGroupOrder(groupName string, flags []*pflag.Flag) int {
-	minOrder := 9999
+// flagsToFields converts a slice of flags to FormFields
+func flagsToFields(flags []*pflag.Flag, result map[string]any) []*FormField {
+	fields := make([]*FormField, 0, len(flags))
 	for _, flag := range flags {
-		if order := getFlagOrder(flag); order < minOrder {
-			minOrder = order
-		}
+		fields = append(fields, flagToField(flag, result))
 	}
-	return minOrder
+	return fields
 }
 
-// getFlagOrder gets the order value from flag annotations
-func getFlagOrder(flag *pflag.Flag) int {
-	if flag.Annotations == nil {
-		return 9999
-	}
-	if orders, ok := flag.Annotations["ui:order"]; ok && len(orders) > 0 {
-		if order, err := strconv.Atoi(orders[0]); err == nil {
-			return order
-		}
-	}
-	return 9999
-}
-
-// sortFlagsByOrder sorts flags by their ui:order annotation
-func sortFlagsByOrder(flags []*pflag.Flag) {
-	sort.SliceStable(flags, func(i, j int) bool {
-		return getFlagOrder(flags[i]) < getFlagOrder(flags[j])
-	})
-}
-
-// flagToWizardField converts a single pflag.Flag to WizardField
-func flagToWizardField(flag *pflag.Flag) *WizardField {
-	field := &WizardField{
+// flagToField converts a single flag to a FormField
+func flagToField(flag *pflag.Flag, result map[string]any) *FormField {
+	field := &FormField{
 		Name:        flag.Name,
 		Title:       flag.Name,
 		Description: flag.Usage,
-		Required:    isFlagRequired(flag),
+		Required:    isRequired(flag),
 	}
 
-	// Get current value for edit mode support
-	currentValue := flag.Value.String()
+	// Get current/default value
+	val := flag.Value.String()
+	if v, ok := getDefaultFromAnnotation(flag); ok {
+		val = v
+	}
 
-	// Determine field type and default value based on flag type
+	// Determine field type
 	switch flag.Value.Type() {
 	case "bool":
-		field.Type = FieldConfirm
-		field.Default = currentValue == "true"
+		field.Kind = KindConfirm
+		field.ConfirmVal = val == "true"
+		result[flag.Name] = &field.ConfirmVal
+		field.Value = &field.ConfirmVal
 
-	case "int", "int8", "int16", "int32", "int64":
-		field.Type = FieldNumber
-		if val, err := strconv.ParseInt(currentValue, 10, 64); err == nil {
-			field.Default = int(val)
-		} else {
-			field.Default = 0
-		}
-
-	case "uint", "uint8", "uint16", "uint32", "uint64":
-		field.Type = FieldNumber
-		if val, err := strconv.ParseUint(currentValue, 10, 64); err == nil {
-			field.Default = int(val)
-		} else {
-			field.Default = 0
-		}
+	case "int", "int8", "int16", "int32", "int64", "uint", "uint8", "uint16", "uint32", "uint64":
+		field.Kind = KindNumber
+		field.InputValue = val
+		field.Validate = intValidator(flag.Value.Type())
+		result[flag.Name] = &field.InputValue
+		field.Value = &field.InputValue
 
 	case "float32", "float64":
-		// Wizard "number" currently supports ints only; treat floats as string input with float validation.
-		field.Type = FieldInput
-		field.Default = currentValue
-		field.Validate = floatValidatorFromFlag(flag)
+		field.Kind = KindInput
+		field.InputValue = val
+		field.Validate = floatValidator(flag)
+		result[flag.Name] = &field.InputValue
+		field.Value = &field.InputValue
 
 	default:
-		// pflag slice types stringify as "[...]" and Set() may append when already-changed.
-		// Treat slices as comma-separated string input and apply via SliceValue.Replace.
+		// Check for slice type
 		if sv, ok := flag.Value.(pflag.SliceValue); ok {
-			field.Type = FieldInput
-			field.Default = formatCSV(sv.GetSlice())
-			field.Description = flag.Usage + " (comma-separated values)"
-			field.Validate = csvListValidator()
+			field.Kind = KindInput
+			field.InputValue = formatCSV(sv.GetSlice())
+			field.Description = flag.Usage + " (comma-separated)"
+			result[flag.Name] = &field.InputValue
+			field.Value = &field.InputValue
 			break
 		}
 
-		field.Type = FieldInput
-		field.Default = currentValue
+		field.Kind = KindInput
+		field.InputValue = val
+		result[flag.Name] = &field.InputValue
+		field.Value = &field.InputValue
 
-		// Check if should use textarea
-		if widget := getFlagWidget(flag); widget == "textarea" {
-			field.Type = FieldText
+		// Check for textarea widget
+		if getWidget(flag) == "textarea" {
+			// Still KindInput, just noted
 		}
 	}
 
-	// Check for enum options (converts to Select)
-	if options := getFlagOptions(flag); len(options) > 0 {
-		field.Type = FieldSelect
-		field.Options = options
-		// Auto-select first non-empty option if current value is empty
-		if currentValue == "" || currentValue == "(empty)" {
-			for _, opt := range options {
-				if opt != "" && opt != "(empty)" {
-					field.Default = opt
+	// Check for enum options -> convert to Select
+	if opts := getOptions(flag); len(opts) > 0 {
+		field.Kind = KindSelect
+		field.Options = opts
+
+		// Find selected index
+		selected := 0
+		found := false
+		for i, opt := range opts {
+			if opt == val {
+				selected = i
+				found = true
+				break
+			}
+		}
+		// Preserve empty defaults if the options include an empty placeholder.
+		if !found && (val == "" || val == "(empty)") {
+			for i, opt := range opts {
+				if opt == "" || opt == "(empty)" {
+					selected = i
+					found = true
 					break
 				}
 			}
-		} else {
-			field.Default = currentValue
 		}
+		// If empty and no empty option exists, select first non-empty.
+		if !found && (val == "" || val == "(empty)") {
+			for i, opt := range opts {
+				if opt != "" && opt != "(empty)" {
+					selected = i
+					break
+				}
+			}
+		}
+		field.Selected = selected
+
+		// Store as string pointer
+		strVal := opts[selected]
+		result[flag.Name] = &strVal
+		field.Value = &strVal
 	}
 
 	return field
 }
 
-// isFlagRequired determines if a flag is required
-func isFlagRequired(flag *pflag.Flag) bool {
-	if flag.Annotations == nil {
-		return false
-	}
+// ApplyResultToFlags applies wizard results back to command flags
+func ApplyResultToFlags(cmd *cobra.Command, result map[string]any) error {
+	for name, value := range result {
+		flag := cmd.Flags().Lookup(name)
+		if flag == nil {
+			flag = cmd.PersistentFlags().Lookup(name)
+		}
+		if flag == nil {
+			continue
+		}
 
-	// Check ui:required annotation
-	if required, ok := flag.Annotations["ui:required"]; ok && len(required) > 0 {
-		return required[0] == "true"
-	}
+		strVal := toString(value)
+		currentVal := flag.Value.String()
 
-	// Check cobra's required flag annotation (set by MarkFlagRequired)
-	if required, ok := flag.Annotations["cobra_annotation_bash_completion_one_required_flag"]; ok {
-		return len(required) > 0
-	}
+		// Handle slice flags specially
+		if sv, ok := flag.Value.(pflag.SliceValue); ok {
+			desired, err := parseCSV(strVal)
+			if err != nil {
+				return fmt.Errorf("invalid value for %s: %w", name, err)
+			}
+			if !sliceEqual(sv.GetSlice(), desired) {
+				if err := sv.Replace(desired); err != nil {
+					return fmt.Errorf("failed to set %s: %w", name, err)
+				}
+				flag.Changed = true
+			}
+			continue
+		}
 
-	return false
+		// Skip if value unchanged
+		if currentVal == strVal {
+			continue
+		}
+
+		if err := flag.Value.Set(strVal); err != nil {
+			return fmt.Errorf("failed to set %s: %w", name, err)
+		}
+		flag.Changed = true
+	}
+	return nil
 }
 
-// getFlagWidget gets the widget type from flag annotations
-func getFlagWidget(flag *pflag.Flag) string {
+// finalizeResult converts number string values to int
+func finalizeResult(result map[string]any, cmd *cobra.Command) {
+	cmd.Flags().VisitAll(func(flag *pflag.Flag) {
+		switch flag.Value.Type() {
+		case "int", "int8", "int16", "int32", "int64", "uint", "uint8", "uint16", "uint32", "uint64":
+			if ptr, ok := result[flag.Name].(*string); ok && ptr != nil {
+				s := strings.TrimSpace(*ptr)
+				if s == "" {
+					return
+				}
+				if parsed, ok := parseNumber(flag.Value.Type(), s); ok {
+					result[flag.Name] = parsed
+				}
+			}
+		}
+	})
+}
+
+// ============ Helpers ============
+
+var skipFlags = map[string]bool{"help": true, "wizard": true, "version": true}
+
+func skipFlag(flag *pflag.Flag) bool {
+	return skipFlags[flag.Name] || flag.Hidden
+}
+
+func getFlagGroup(flag *pflag.Flag) string {
 	if flag.Annotations == nil {
 		return ""
 	}
-	if widget, ok := flag.Annotations["ui:widget"]; ok && len(widget) > 0 {
-		return widget[0]
+	if g, ok := flag.Annotations["ui:group"]; ok && len(g) > 0 {
+		return g[0]
+	}
+	if g, ok := flag.Annotations["group"]; ok && len(g) > 0 {
+		return g[0]
 	}
 	return ""
 }
 
-// getFlagOptions gets the options list from flag annotations
-func getFlagOptions(flag *pflag.Flag) []string {
-	if flag.Annotations == nil {
-		return nil
+func getGroupOrder(flags []*pflag.Flag) int {
+	min := 9999
+	for _, f := range flags {
+		if o := getFlagOrder(f); o < min {
+			min = o
+		}
 	}
-	if options, ok := flag.Annotations["ui:options"]; ok && len(options) > 0 {
-		return options
+	return min
+}
+
+func getFlagOrder(flag *pflag.Flag) int {
+	if flag.Annotations == nil {
+		return 9999
+	}
+	if o, ok := flag.Annotations["ui:order"]; ok && len(o) > 0 {
+		if n, err := strconv.Atoi(o[0]); err == nil {
+			return n
+		}
+	}
+	return 9999
+}
+
+func sortByOrder(flags []*pflag.Flag) {
+	sort.SliceStable(flags, func(i, j int) bool {
+		return getFlagOrder(flags[i]) < getFlagOrder(flags[j])
+	})
+}
+
+func sanitize(name string) string {
+	s := strings.ToLower(name)
+	s = strings.ReplaceAll(s, " ", "_")
+	s = strings.ReplaceAll(s, "-", "_")
+	return s
+}
+
+func isRequired(flag *pflag.Flag) bool {
+	if flag.Annotations == nil {
+		return false
+	}
+	if r, ok := flag.Annotations["ui:required"]; ok && len(r) > 0 {
+		return r[0] == "true"
+	}
+	if _, ok := flag.Annotations["cobra_annotation_bash_completion_one_required_flag"]; ok {
+		return true
+	}
+	return false
+}
+
+func getDefaultFromAnnotation(flag *pflag.Flag) (string, bool) {
+	// 1. Check dynamic provider first
+	if provider, ok := getDefaultProvider(flag.Name); ok {
+		if val := provider(); val != "" {
+			return val, true
+		}
+	}
+	// 2. Check static annotation
+	if flag.Annotations != nil {
+		if d, ok := flag.Annotations["ui:default"]; ok && len(d) > 0 {
+			return d[0], true
+		}
+	}
+	return "", false
+}
+
+func getWidget(flag *pflag.Flag) string {
+	if flag.Annotations == nil {
+		return ""
+	}
+	if w, ok := flag.Annotations["ui:widget"]; ok && len(w) > 0 {
+		return w[0]
+	}
+	return ""
+}
+
+func getOptions(flag *pflag.Flag) []string {
+	// 1. Check dynamic provider first
+	if provider, ok := getOptionProvider(flag.Name); ok {
+		if opts := provider(); len(opts) > 0 {
+			return opts
+		}
+	}
+	// 2. Check static annotation
+	if flag.Annotations != nil {
+		if o, ok := flag.Annotations["ui:options"]; ok && len(o) > 0 {
+			return o
+		}
 	}
 	return nil
 }
 
-func csvListValidator() func(string) error {
+func floatValidator(flag *pflag.Flag) func(string) error {
 	return func(s string) error {
-		_, err := parseCSVList(s)
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-}
-
-func floatValidatorFromFlag(flag *pflag.Flag) func(string) error {
-	min, max, ok := getFlagFloatRange(flag)
-	if ok {
-		return ValidateFloat(min, max)
-	}
-	return func(val string) error {
-		if strings.TrimSpace(val) == "" {
+		s = strings.TrimSpace(s)
+		if s == "" {
 			return nil
 		}
-		if _, err := strconv.ParseFloat(val, 64); err != nil {
-			return fmt.Errorf("invalid number: %s", val)
+		if _, err := strconv.ParseFloat(s, 64); err != nil {
+			return fmt.Errorf("invalid number")
 		}
 		return nil
 	}
 }
 
-func getFlagFloatRange(flag *pflag.Flag) (min, max float64, ok bool) {
-	if flag == nil || flag.Annotations == nil {
-		return 0, 0, false
-	}
-	mins, okMin := flag.Annotations["ui:min"]
-	maxs, okMax := flag.Annotations["ui:max"]
-	if !okMin || !okMax || len(mins) == 0 || len(maxs) == 0 {
-		return 0, 0, false
-	}
-	min, err1 := strconv.ParseFloat(strings.TrimSpace(mins[0]), 64)
-	max, err2 := strconv.ParseFloat(strings.TrimSpace(maxs[0]), 64)
-	if err1 != nil || err2 != nil {
-		return 0, 0, false
-	}
-	return min, max, true
-}
-
-func formatCSV(vals []string) string {
-	b := &bytes.Buffer{}
-	w := csv.NewWriter(b)
-	_ = w.Write(vals)
-	w.Flush()
-	return strings.TrimSuffix(b.String(), "\n")
-}
-
-func parseCSVList(s string) ([]string, error) {
-	s = strings.TrimSpace(s)
-	if strings.HasPrefix(s, "[") && strings.HasSuffix(s, "]") && len(s) >= 2 {
-		s = strings.TrimSpace(s[1 : len(s)-1])
-	}
-	if s == "" {
-		return []string{}, nil
-	}
-	r := csv.NewReader(strings.NewReader(s))
-	r.FieldsPerRecord = -1
-	records, err := r.Read()
-	if err != nil {
-		return nil, err
-	}
-	return records, nil
-}
-
-// ApplyWizardResultToFlags applies wizard results back to cobra.Command flags
-func ApplyWizardResultToFlags(cmd *cobra.Command, result *WizardResult) error {
-	for name, value := range result.ToMap() {
-		// Look up flag in command flags
-		flag := cmd.Flags().Lookup(name)
-		if flag == nil {
-			// If flags were not merged (e.g., helper calls outside cobra execution), try persistent flags too.
-			flag = cmd.PersistentFlags().Lookup(name)
-		}
-		if flag == nil {
-			// Skip unknown fields
-			continue
-		}
-
-		changed, err := applyWizardValueToFlag(flag, value)
+func parseNumber(typeName, s string) (any, bool) {
+	switch typeName {
+	case "int":
+		n, err := strconv.ParseInt(s, 10, strconv.IntSize)
 		if err != nil {
-			return fmt.Errorf("failed to set flag %s: %w", name, err)
+			return nil, false
 		}
-		if changed {
-			flag.Changed = true
-		}
-	}
-	return nil
-}
-
-func applyWizardValueToFlag(flag *pflag.Flag, value any) (bool, error) {
-	// Slice flags: always replace, never Set() (Set() may append when already-changed).
-	if sv, ok := flag.Value.(pflag.SliceValue); ok {
-		desired, err := coerceStringSlice(value)
+		return int(n), true
+	case "int8":
+		n, err := strconv.ParseInt(s, 10, 8)
 		if err != nil {
-			return false, err
+			return nil, false
 		}
-		if stringSliceEqual(sv.GetSlice(), desired) {
-			return false, nil
+		return int8(n), true
+	case "int16":
+		n, err := strconv.ParseInt(s, 10, 16)
+		if err != nil {
+			return nil, false
 		}
-		if err := sv.Replace(desired); err != nil {
-			return false, err
+		return int16(n), true
+	case "int32":
+		n, err := strconv.ParseInt(s, 10, 32)
+		if err != nil {
+			return nil, false
 		}
-		return true, nil
-	}
-
-	desiredStr := coerceString(value)
-
-	// Best-effort semantic equality to avoid flipping Flag.Changed when user accepted defaults.
-	switch flag.Value.Type() {
-	case "bool":
-		cur, err1 := strconv.ParseBool(flag.Value.String())
-		des, err2 := strconv.ParseBool(desiredStr)
-		if err1 == nil && err2 == nil && cur == des {
-			return false, nil
+		return int32(n), true
+	case "int64":
+		n, err := strconv.ParseInt(s, 10, 64)
+		if err != nil {
+			return nil, false
 		}
-	case "int", "int8", "int16", "int32", "int64":
-		cur, err1 := strconv.ParseInt(flag.Value.String(), 10, 64)
-		des, err2 := strconv.ParseInt(strings.TrimSpace(desiredStr), 10, 64)
-		if err1 == nil && err2 == nil && cur == des {
-			return false, nil
+		return n, true
+	case "uint":
+		n, err := strconv.ParseUint(s, 10, strconv.IntSize)
+		if err != nil {
+			return nil, false
 		}
-	case "uint", "uint8", "uint16", "uint32", "uint64":
-		cur, err1 := strconv.ParseUint(flag.Value.String(), 10, 64)
-		des, err2 := strconv.ParseUint(strings.TrimSpace(desiredStr), 10, 64)
-		if err1 == nil && err2 == nil && cur == des {
-			return false, nil
+		return uint(n), true
+	case "uint8":
+		n, err := strconv.ParseUint(s, 10, 8)
+		if err != nil {
+			return nil, false
 		}
-	case "float32", "float64":
-		cur, err1 := strconv.ParseFloat(flag.Value.String(), 64)
-		des, err2 := strconv.ParseFloat(strings.TrimSpace(desiredStr), 64)
-		if err1 == nil && err2 == nil && cur == des {
-			return false, nil
+		return uint8(n), true
+	case "uint16":
+		n, err := strconv.ParseUint(s, 10, 16)
+		if err != nil {
+			return nil, false
 		}
+		return uint16(n), true
+	case "uint32":
+		n, err := strconv.ParseUint(s, 10, 32)
+		if err != nil {
+			return nil, false
+		}
+		return uint32(n), true
+	case "uint64":
+		n, err := strconv.ParseUint(s, 10, 64)
+		if err != nil {
+			return nil, false
+		}
+		return n, true
 	default:
-		if flag.Value.String() == desiredStr {
-			return false, nil
-		}
+		return nil, false
 	}
-
-	if err := flag.Value.Set(desiredStr); err != nil {
-		return false, err
-	}
-	return true, nil
 }
 
-func coerceString(v any) string {
+func intValidator(typeName string) func(string) error {
+	return func(s string) error {
+		s = strings.TrimSpace(s)
+		if s == "" {
+			return nil
+		}
+		var err error
+		switch typeName {
+		case "int":
+			_, err = strconv.ParseInt(s, 10, strconv.IntSize)
+		case "int8":
+			_, err = strconv.ParseInt(s, 10, 8)
+		case "int16":
+			_, err = strconv.ParseInt(s, 10, 16)
+		case "int32":
+			_, err = strconv.ParseInt(s, 10, 32)
+		case "int64":
+			_, err = strconv.ParseInt(s, 10, 64)
+		case "uint":
+			_, err = strconv.ParseUint(s, 10, strconv.IntSize)
+		case "uint8":
+			_, err = strconv.ParseUint(s, 10, 8)
+		case "uint16":
+			_, err = strconv.ParseUint(s, 10, 16)
+		case "uint32":
+			_, err = strconv.ParseUint(s, 10, 32)
+		case "uint64":
+			_, err = strconv.ParseUint(s, 10, 64)
+		}
+		if err != nil {
+			return fmt.Errorf("please enter a valid number")
+		}
+		return nil
+	}
+}
+
+func toString(v any) string {
 	switch val := v.(type) {
-	case bool:
-		return strconv.FormatBool(val)
+	case *string:
+		if val == nil {
+			return ""
+		}
+		return *val
+	case *bool:
+		if val == nil {
+			return "false"
+		}
+		return strconv.FormatBool(*val)
+	case *int:
+		if val == nil {
+			return "0"
+		}
+		return strconv.Itoa(*val)
 	case int:
 		return strconv.Itoa(val)
-	case int64:
-		return strconv.FormatInt(val, 10)
-	case float64:
-		return strconv.FormatFloat(val, 'f', -1, 64)
-	case []string:
-		return strings.Join(val, ",")
+	case bool:
+		return strconv.FormatBool(val)
 	case string:
 		return val
 	default:
@@ -488,20 +565,31 @@ func coerceString(v any) string {
 	}
 }
 
-func coerceStringSlice(v any) ([]string, error) {
-	switch val := v.(type) {
-	case []string:
-		out := make([]string, len(val))
-		copy(out, val)
-		return out, nil
-	case string:
-		return parseCSVList(val)
-	default:
-		return parseCSVList(coerceString(v))
+func formatCSV(vals []string) string {
+	if len(vals) == 0 {
+		return ""
 	}
+	b := &bytes.Buffer{}
+	w := csv.NewWriter(b)
+	_ = w.Write(vals)
+	w.Flush()
+	return strings.TrimSuffix(b.String(), "\n")
 }
 
-func stringSliceEqual(a, b []string) bool {
+func parseCSV(s string) ([]string, error) {
+	s = strings.TrimSpace(s)
+	if strings.HasPrefix(s, "[") && strings.HasSuffix(s, "]") {
+		s = strings.TrimSpace(s[1 : len(s)-1])
+	}
+	if s == "" {
+		return []string{}, nil
+	}
+	r := csv.NewReader(strings.NewReader(s))
+	r.FieldsPerRecord = -1
+	return r.Read()
+}
+
+func sliceEqual(a, b []string) bool {
 	if len(a) != len(b) {
 		return false
 	}

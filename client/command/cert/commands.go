@@ -143,6 +143,9 @@ cert download cert-name -o cert_path
 	common.BindFlag(downloadCmd, func(f *pflag.FlagSet) {
 		f.StringP("output", "o", "", "cert save path")
 	})
+	// Enable wizard for cert commands that need configuration
+	common.EnableWizardForCommands(importCmd, selfSignCmd, updateCmd)
+
 	certCmd.AddCommand(importCmd, selfSignCmd, delCmd, updateCmd, downloadCmd)
 	//certCmd.AddCommand(importCmd, selfSignCmd, acmeCmd, delCmd, updateCmd, downloadCmd)
 	return []*cobra.Command{

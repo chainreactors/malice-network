@@ -26,14 +26,12 @@ import (
 	"github.com/chainreactors/malice-network/client/command/pipeline"
 	"github.com/chainreactors/malice-network/client/command/sessions"
 	"github.com/chainreactors/malice-network/client/command/website"
-	"github.com/chainreactors/malice-network/client/command/wizard"
 )
 
 func BindCommonCommands(bind BindFunc) {
 	bind(consts.GenericGroup,
 		generic.Commands,
-		ai.Commands,
-		wizard.Commands)
+		ai.Commands)
 
 	bind(consts.ManageGroup,
 		sessions.Commands,
@@ -92,13 +90,6 @@ func BindClientsCommands(con *core.Console) console.Commands {
 			CompletionOptions: cobra.CompletionOptions{
 				HiddenDefaultCmd: true,
 			},
-		}
-
-		// Register global --wizard flag
-		RegisterWizardFlag(client)
-		// Wrap PersistentPreRunE to support wizard mode
-		client.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
-			return HandleWizardFlag(cmd, con)
 		}
 
 		bind := MakeBind(client, con, "golang")

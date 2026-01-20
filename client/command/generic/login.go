@@ -30,13 +30,13 @@ func LoginCmd(cmd *cobra.Command, con *core.Console) error {
 	}
 
 	// Prefer explicit --auth flag to avoid misinterpreting subcommand arguments
-	// (e.g. `wizard build beacon`) as an auth file.
+	// (e.g. `build beacon`) as an auth file.
 	if filename, _ := cmd.Flags().GetString("auth"); filename != "" {
 		return Login(con, filename)
 	}
 
 	// Only check Arg(0) as auth file for root command or login command
-	// Avoid treating subcommand arguments (e.g., 'beacon' in 'wizard build beacon') as auth file
+	// Avoid treating subcommand arguments (e.g., 'beacon' in 'build beacon') as auth file
 	if cmd.Parent() == nil || cmd.Use == "client" || cmd.Use == "login" {
 		if filename := cmd.Flags().Arg(0); strings.HasSuffix(filename, ".auth") {
 			return Login(con, filename)

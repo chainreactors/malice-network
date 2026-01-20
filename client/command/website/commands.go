@@ -203,6 +203,9 @@ website list-content web_test
 	common.BindArgCompletions(websiteListContentCmd, nil,
 		common.WebsiteCompleter(con))
 
+	// Enable wizard for website commands that need configuration
+	common.EnableWizardForCommands(websiteCmd, websiteAddContentCmd, websiteUpdateContentCmd)
+
 	websiteCmd.AddCommand(websiteListCmd, websiteStartCmd, websiteStopCmd,
 		websiteAddContentCmd, websiteUpdateContentCmd, websiteRemoveContentCmd, websiteListContentCmd)
 

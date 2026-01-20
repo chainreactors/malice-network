@@ -916,11 +916,14 @@ func (f *GroupedWizardForm) validateField(field *FormField) error {
 			}
 			return nil
 		}
+		if field.Validate != nil {
+			if err := field.Validate(s); err != nil {
+				return err
+			}
+			return nil
+		}
 		if _, err := strconv.Atoi(s); err != nil {
 			return fmt.Errorf("please enter a valid number")
-		}
-		if field.Validate != nil {
-			return field.Validate(s)
 		}
 		return nil
 
@@ -953,6 +956,7 @@ func (f *GroupedWizardForm) Run() error {
 		for fi := range f.groups[gi].Fields {
 			f.groupIndex = gi
 			f.fieldIndex = fi
+			f.initCursorForField()
 			f.saveCurrentField()
 		}
 	}

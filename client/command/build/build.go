@@ -60,7 +60,7 @@ func parseSourceConfig(cmd *cobra.Command, con *core.Console, buildConfig *clien
 	return buildConfig, nil
 }
 
-// ExecuteBuild 执行构建逻辑（导出供 wizard 使用）
+// ExecuteBuild executes the build logic.
 func ExecuteBuild(con *core.Console, buildConfig *clientpb.BuildConfig) error {
 	artifact, err := con.Rpc.Build(con.Context(), buildConfig)
 	if err != nil {
@@ -86,7 +86,7 @@ func parseLibFlag(cmd *cobra.Command, buildConfig *clientpb.BuildConfig) error {
 	return ValidateLibFlag(buildConfig, libFlag, cmd.Flags().Changed("lib"))
 }
 
-// ValidateLibFlag validates the lib flag and sets buildConfig.Lib (导出供 wizard 使用)
+// ValidateLibFlag validates the lib flag and sets buildConfig.Lib.
 func ValidateLibFlag(buildConfig *clientpb.BuildConfig, libFlag bool, libFlagChanged bool) error {
 	target, ok := consts.GetBuildTarget(buildConfig.Target)
 	if !ok {
