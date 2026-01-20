@@ -501,6 +501,18 @@ func getOptions(cmd *cobra.Command, flag *pflag.Flag) []string {
 	return nil
 }
 
+func ensureOptionValue(opts []string, val string) []string {
+	if val == "" || val == "(empty)" {
+		return opts
+	}
+	for _, opt := range opts {
+		if opt == val {
+			return opts
+		}
+	}
+	return append(opts, val)
+}
+
 func floatValidator(flag *pflag.Flag) func(string) error {
 	return func(s string) error {
 		s = strings.TrimSpace(s)
