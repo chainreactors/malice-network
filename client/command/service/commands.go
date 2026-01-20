@@ -5,6 +5,7 @@ import (
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/malice-network/client/wizard"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -146,7 +147,34 @@ Control the start type and error control by providing appropriate values.`,
 	// Enable wizard for service commands that need configuration
 	common.EnableWizardForCommands(serviceCreateCmd)
 
+	// Register wizard providers for dynamic options
+	registerWizardProviders(serviceCreateCmd)
+
 	return []*cobra.Command{serviceCmd}
+}
+
+// registerWizardProviders registers dynamic option providers for wizard.
+func registerWizardProviders(cmd *cobra.Command) {
+	// Service start type options
+	wizard.RegisterProviderForCommand(cmd, "start_type", func() []string {
+		return []string{
+			"AutoStart",
+			"BootStart",
+			"SystemStart",
+			"DemandStart",
+			"Disabled",
+		}
+	})
+
+	// Service error control options
+	wizard.RegisterProviderForCommand(cmd, "error", func() []string {
+		return []string{
+			"Normal",
+			"Ignore",
+			"Severe",
+			"Critical",
+		}
+	})
 }
 
 func Register(con *core.Console) {
