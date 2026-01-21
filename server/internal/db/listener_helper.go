@@ -233,7 +233,7 @@ func SaveCertificate(certificate *models.Certificate) error {
 	return nil
 }
 
-func SaveCertFromTLS(tls *clientpb.TLS, pipeline string) (*models.Certificate, error) {
+func SaveCertFromTLS(tls *clientpb.TLS, pipelineName, listenerID string) (*models.Certificate, error) {
 	certModel := &models.Certificate{
 		CertPEM: tls.Cert.Cert,
 		KeyPEM:  tls.Cert.Key,
@@ -258,8 +258,14 @@ func SaveCertFromTLS(tls *clientpb.TLS, pipeline string) (*models.Certificate, e
 	if err != nil {
 		return certModel, err
 	}
-	if pipeline != "" {
-		findPipeline, err := FindPipeline(pipeline)
+	if pipelineName != "" {
+		var findPipeline *models.Pipeline
+		var err error
+		if listenerID != "" {
+			findPipeline, err = FindPipelineByListener(pipelineName, listenerID)
+		} else {
+			findPipeline, err = FindPipeline(pipelineName)
+		}
 		if err != nil {
 			return nil, err
 		}

@@ -31,7 +31,7 @@ func (rpc *Server) GenerateSelfCert(ctx context.Context, req *clientpb.Pipeline)
 	}
 
 	if req.Tls.Cert != nil && req.Tls.Cert.Cert != "" {
-		certModel, err := db.SaveCertFromTLS(req.Tls, req.Name)
+		certModel, err := db.SaveCertFromTLS(req.Tls, req.Name, req.ListenerId)
 		if err != nil {
 			return nil, err
 		}
@@ -53,7 +53,7 @@ func (rpc *Server) GenerateSelfCert(ctx context.Context, req *clientpb.Pipeline)
 	}
 	req.Tls = tls
 
-	certModel, err = db.SaveCertFromTLS(req.Tls, req.Name)
+	certModel, err = db.SaveCertFromTLS(req.Tls, req.Name, req.ListenerId)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +114,7 @@ func (rpc *Server) DownloadCertificate(ctx context.Context, req *clientpb.Cert) 
 }
 
 func (rpc *Server) SaveAcmeCert(ctx context.Context, req *clientpb.Pipeline) (*clientpb.Empty, error) {
-	certModel, err := db.SaveCertFromTLS(req.Tls, req.Name)
+	certModel, err := db.SaveCertFromTLS(req.Tls, req.Name, req.ListenerId)
 	if err != nil {
 		return nil, err
 	}
