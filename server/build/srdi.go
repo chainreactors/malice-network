@@ -48,7 +48,7 @@ func ObjcopyPulse(path, platform, arch string) ([]byte, error) {
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf("objcopy failed to extract shellcode %s")
+		return nil, fmt.Errorf("objcopy failed to extract shellcode: %w", err)
 	}
 
 	// Read the extracted binary shellcode

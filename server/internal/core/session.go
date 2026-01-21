@@ -170,6 +170,7 @@ func RecoverSession(sess *models.Session) (*Session, error) {
 	// 无论如何都初始化 SecureManager，使用SessionContext中的KeyPair
 	err = s.initializeSecureManager(&clientpb.RegisterSession{
 		PipelineId:   sess.PipelineID,
+		ListenerId:   sess.ListenerID,
 		RegisterData: &implantpb.Register{Secure: s.Secure},
 	})
 	if err != nil {
@@ -661,7 +662,19 @@ func (s *sessions) Remove(sessionID string) {
 
 // initializePipelineKeyPair 从pipeline获取预分发的密钥对
 func (s *Session) initializeSecureManager(req *clientpb.RegisterSession) error {
-	pipeline, ok := Listeners.Find(req.PipelineId)
+	var (
+		pipeline *clientpb.Pipeline
+		ok       bool
+	)
+
+	if req.ListenerId != "" {
+		pipeline, ok = Listeners.FindByListener(req.ListenerId, req.PipelineId)
+	} else if s.ListenerID != "" {
+		pipeline, ok = Listeners.FindByListener(s.ListenerID, req.PipelineId)
+	} else {
+		pipeline, ok = Listeners.Find(req.PipelineId)
+	}
+
 	if !ok {
 		return fmt.Errorf("failed to get pipeline")
 	}

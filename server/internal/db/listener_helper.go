@@ -41,6 +41,24 @@ func FindPipeline(name string) (*models.Pipeline, error) {
 	return pipeline, nil
 }
 
+func FindPipelineByListener(name, listenerID string) (*models.Pipeline, error) {
+	var pipeline *models.Pipeline
+	result := Session().Where("name = ? AND listener_id = ?", name, listenerID).First(&pipeline)
+	if result.Error != nil {
+		return pipeline, result.Error
+	}
+	if pipeline.CertName != "" {
+		certificate, err := FindCertificate(pipeline.CertName)
+		if err != nil && !errors.Is(err, ErrRecordNotFound) {
+			logs.Log.Errorf("failed to find cert %s", err)
+		}
+		if certificate != nil {
+			pipeline.Tls = implanttypes.FromTls(certificate.ToProtobuf())
+		}
+	}
+	return pipeline, nil
+}
+
 func UpdatePipelineCert(certName string, pipeline *models.Pipeline) (*models.Pipeline, error) {
 	var cert *models.Certificate
 	if certName != "" {
@@ -88,6 +106,11 @@ func DeletePipeline(name string) error {
 	return result.Error
 }
 
+func DeletePipelineByListener(name, listenerID string) error {
+	result := Session().Where("name = ? AND listener_id = ?", name, listenerID).Delete(&models.Pipeline{})
+	return result.Error
+}
+
 func EnablePipeline(pid string) error {
 	pipeline, err := FindPipeline(pid)
 	if err != nil {
@@ -97,8 +120,26 @@ func EnablePipeline(pid string) error {
 	return Save(pipeline)
 }
 
+func EnablePipelineByListener(pid, listenerID string) error {
+	pipeline, err := FindPipelineByListener(pid, listenerID)
+	if err != nil {
+		return err
+	}
+	pipeline.Enable = true
+	return Save(pipeline)
+}
+
 func DisablePipeline(pid string) error {
 	pipeline, err := FindPipeline(pid)
+	if err != nil {
+		return err
+	}
+	pipeline.Enable = false
+	return Save(pipeline)
+}
+
+func DisablePipelineByListener(pid, listenerID string) error {
+	pipeline, err := FindPipelineByListener(pid, listenerID)
 	if err != nil {
 		return err
 	}

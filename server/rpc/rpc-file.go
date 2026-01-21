@@ -255,7 +255,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 			chunkFile := filepath.Join(tempDir, fmt.Sprintf("%d.chunk", downloadResp.Cur))
 			err = os.WriteFile(chunkFile, downloadResp.Content, 0644)
 			if err != nil {
-				logs.Log.Errorf("failed to save chunk %d: %w", downloadResp.Cur, err)
+				logs.Log.Errorf("failed to save chunk %d: %v", downloadResp.Cur, err)
 				return
 			}
 			if checksum, _ := fileutils.CalculateSHA256Checksum(chunkFile); checksum != downloadResp.Checksum {

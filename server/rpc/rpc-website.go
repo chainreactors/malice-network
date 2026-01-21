@@ -45,7 +45,7 @@ func (rpc *Server) ListWebContent(ctx context.Context, req *clientpb.Website) (*
 
 // WebsiteAddContent - Add content to a website, the website is created if `name` does not exist
 func (rpc *Server) AddWebsiteContent(ctx context.Context, req *clientpb.Website) (*clientpb.WebContent, error) {
-	job, err := core.Jobs.Get(req.Name)
+	job, err := core.Jobs.GetByListener(req.Name, req.ListenerId)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +80,7 @@ func (rpc *Server) UpdateWebsiteContent(ctx context.Context, req *clientpb.WebCo
 		return nil, err
 	}
 
-	job, err := core.Jobs.Get(req.WebsiteId)
+	job, err := core.Jobs.GetByListener(req.WebsiteId, req.ListenerId)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +99,7 @@ func (rpc *Server) UpdateWebsiteContent(ctx context.Context, req *clientpb.WebCo
 
 // WebsiteRemoveContent - Remove specific content from a website
 func (rpc *Server) RemoveWebsiteContent(ctx context.Context, req *clientpb.WebContent) (*clientpb.Empty, error) {
-	job, err := core.Jobs.Get(req.WebsiteId)
+	job, err := core.Jobs.GetByListener(req.WebsiteId, req.ListenerId)
 	if err != nil {
 		return nil, err
 	}
@@ -203,7 +203,7 @@ func (rpc *Server) StartWebsite(ctx context.Context, req *clientpb.CtrlPipeline)
 }
 
 func (rpc *Server) StopWebsite(ctx context.Context, req *clientpb.CtrlPipeline) (*clientpb.Empty, error) {
-	job, err := core.Jobs.Get(req.Name)
+	job, err := core.Jobs.GetByListener(req.Name, req.ListenerId)
 	if err != nil {
 		return nil, err
 	}
@@ -248,7 +248,7 @@ func (rpc *Server) DeleteWebsite(ctx context.Context, req *clientpb.CtrlPipeline
 		return nil, err
 	}
 
-	job, err := core.Jobs.Get(req.Name)
+	job, err := core.Jobs.GetByListener(req.Name, req.ListenerId)
 	if err != nil {
 		return nil, err
 	}

@@ -78,8 +78,8 @@ func SaveCertificateAuthority(caType int, cert []byte, key []byte) {
 
 	// CAs get written to the filesystem since we control the names and makes them
 	// easier to move around/backup
-	certFilePath := filepath.Join(storageDir, fmt.Sprintf("%s-ca-cert.pem", caType))
-	keyFilePath := filepath.Join(storageDir, fmt.Sprintf("%s-ca-key.pem", caType))
+	certFilePath := filepath.Join(storageDir, fmt.Sprintf("%d-ca-cert.pem", caType))
+	keyFilePath := filepath.Join(storageDir, fmt.Sprintf("%d-ca-key.pem", caType))
 
 	err := ioutil.WriteFile(certFilePath, cert, 0600)
 	if err != nil {

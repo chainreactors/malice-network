@@ -17,8 +17,8 @@ import (
 type Pipeline struct {
 	ID                           uuid.UUID `gorm:"primaryKey;->;<-:create;type:uuid;"`
 	CreatedAt                    time.Time `gorm:"->;<-:create;"`
-	ListenerId                   string    `gorm:"type:string;"`
-	Name                         string    `gorm:"unique,type:string"`
+	ListenerId                   string    `gorm:"type:string;uniqueIndex:idx_pipelines_listener_name"`
+	Name                         string    `gorm:"type:string;uniqueIndex:idx_pipelines_listener_name"`
 	IP                           string    `gorm:"type:string;default:''"`
 	Host                         string    `config:"host"`
 	Port                         uint32    `config:"port"`
