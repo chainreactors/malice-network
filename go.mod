@@ -59,7 +59,7 @@ require (
 	golang.org/x/net v0.40.0 // indirect
 	golang.org/x/sync v0.14.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect
-	golang.org/x/term v0.29.0 // indirect
+	golang.org/x/term v0.29.0
 	golang.org/x/text v0.22.0
 	golang.org/x/time v0.9.0 // indirect
 	google.golang.org/grpc v1.57.2
@@ -125,7 +125,6 @@ require (
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/mattn/go-sqlite3 v1.14.24 // indirect
 	github.com/microcosm-cc/bluemonday v1.0.27 // indirect
-	github.com/miekg/dns v1.1.67 // indirect
 	github.com/mitchellh/hashstructure/v2 v2.0.2 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/moby/term v0.5.0 // indirect
@@ -161,8 +160,6 @@ require (
 	github.com/yuin/gluamapper v0.0.0-20150323120927-d836955830e7 // indirect
 	github.com/yuin/goldmark v1.7.4 // indirect
 	github.com/yuin/goldmark-emoji v1.0.3 // indirect
-	golang.org/x/mod v0.24.0 // indirect
-	golang.org/x/tools v0.33.0 // indirect
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230530153820-e85fd2cbaebc // indirect
 	gotest.tools/v3 v3.5.1 // indirect
@@ -171,8 +168,8 @@ require (
 )
 
 replace (
-	dario.cat/mergo => github.com/imdario/mergo v0.3.16
 	github.com/charmbracelet/huh => github.com/charmbracelet/huh v0.6.0
+	github.com/imdario/mergo => dario.cat/mergo v1.0.0
 	github.com/miekg/dns => github.com/miekg/dns v1.1.58
 	golang.org/x/crypto => golang.org/x/crypto v0.24.0
 	golang.org/x/mod => golang.org/x/mod v0.17.0
