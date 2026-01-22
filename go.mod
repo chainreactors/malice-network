@@ -1,8 +1,6 @@
 module github.com/chainreactors/malice-network
 
-go 1.21
-
-toolchain go1.22.2
+go 1.20
 
 require (
 	filippo.io/age v1.2.1
