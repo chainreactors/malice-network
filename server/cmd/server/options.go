@@ -276,10 +276,12 @@ func (opt *Options) Handler() error {
 
 	signal.Stop(c)
 
-	for _, session := range core.Sessions.All() {
-		err := session.Cache.Save()
-		if err != nil {
-			return err
+	if core.Sessions != nil {
+		for _, session := range core.Sessions.All() {
+			err := session.Cache.Save()
+			if err != nil {
+				return err
+			}
 		}
 	}
 	//pprof.StopCPUProfile()
@@ -430,7 +432,7 @@ func RecoverPipelines(listenerID string) error {
 
 		status := lns.WaitCtrl(ctrlID)
 		if status == nil || status.Status != consts.CtrlStatusSuccess {
-			_ = db.DisablePipeline(pipeline.Name)
+			_ = db.DisablePipelineByListener(pipeline.Name, listenerID)
 			if status != nil && status.Error != "" {
 				logs.Log.Warnf("recover pipeline %s failed: %s", pipeline.Name, status.Error)
 			} else {
@@ -454,16 +456,20 @@ func StartListener(opt *configs.ListenerConfig, serverEnable bool) error {
 		}
 	}
 
-	// Recover websites from database after listener is started
-	err := RecoverWebsites()
-	if err != nil {
-		logs.Log.Errorf("failed to recover websites: %s", err.Error())
-		// Don't return error, just log it - website recovery failure shouldn't prevent listener from starting
-	}
+	// DB-backed recovery only makes sense when the local server is running.
+	// In listener-only mode (remote listener), the DB is not initialized in this process.
+	if serverEnable {
+		// Recover websites from database after listener is started
+		err := RecoverWebsites()
+		if err != nil {
+			logs.Log.Errorf("failed to recover websites: %s", err.Error())
+			// Don't return error, just log it - website recovery failure shouldn't prevent listener from starting
+		}
 
-	// Recover enabled pipelines from DB after listener is started
-	if err := RecoverPipelines(opt.Name); err != nil {
-		logs.Log.Errorf("failed to recover pipelines: %s", err.Error())
+		// Recover enabled pipelines from DB after listener is started
+		if err := RecoverPipelines(opt.Name); err != nil {
+			logs.Log.Errorf("failed to recover pipelines: %s", err.Error())
+		}
 	}
 
 	return nil

@@ -5,13 +5,14 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"io"
+	"net"
+
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/listenerrpc"
 	"github.com/chainreactors/IoM-go/types"
-	"io"
-	"net"
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
@@ -173,7 +174,7 @@ func (pipeline *TCPPipeline) startAcceptLoop(ln net.Listener, logPrefix string) 
 func (pipeline *TCPPipeline) HandleConnection(conn net.Conn) {
 	peekConn, err := pipeline.WrapConn(conn)
 	if err != nil {
-		logs.Log.Errorf("wrap conn error: %v", err)
+		logs.Log.Errorf("%s wrap conn error: %v", pipeline.Name, err)
 		return
 	}
 

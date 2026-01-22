@@ -277,7 +277,6 @@ func (t *TlsConfig) ReadCert() (*implanttypes.TlsConfig, error) {
 	tls := &implanttypes.TlsConfig{
 		Enable:  t.Enable,
 		Subject: t.ToPkix(),
-		Cert:    &implanttypes.CertConfig{},
 	}
 	// 如果没有证书文件，直接返回基础配置
 	if t.CertFile == "" || t.KeyFile == "" {

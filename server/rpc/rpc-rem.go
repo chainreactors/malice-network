@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"fmt"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
@@ -21,7 +22,7 @@ func (rpc *Server) RegisterRem(ctx context.Context, req *clientpb.Pipeline) (*cl
 	}
 	req.Ip = lns.IP
 
-	_, err = db.FindPipeline(req.Name)
+	_, err = db.FindPipelineByListener(req.Name, req.ListenerId)
 	if err != nil {
 		if req.GetRem().Console == "" {
 			req.GetRem().Console = "tcp://127.0.0.1:12345"
@@ -60,16 +61,24 @@ func (rpc *Server) ListRems(ctx context.Context, req *clientpb.Listener) (*clien
 }
 
 func (rpc *Server) StartRem(ctx context.Context, req *clientpb.CtrlPipeline) (*clientpb.Empty, error) {
-	remDB, err := db.FindPipeline(req.Name)
+	listenerID := req.GetListenerId()
+	if listenerID == "" && req.Pipeline != nil {
+		listenerID = req.Pipeline.ListenerId
+	}
+	if listenerID == "" {
+		return nil, fmt.Errorf("listener_id required")
+	}
+
+	remDB, err := db.FindPipelineByListener(req.Name, listenerID)
 	if err != nil {
 		return nil, err
 	}
-	err = db.EnablePipeline(remDB.Name)
+	err = db.EnablePipelineByListener(remDB.Name, listenerID)
 	if err != nil {
 		return nil, err
 	}
 	rem := remDB.ToProtobuf()
-	lns, err := core.Listeners.Get(remDB.ListenerId)
+	lns, err := core.Listeners.Get(listenerID)
 	if err != nil {
 		return nil, err
 	}
@@ -87,16 +96,42 @@ func (rpc *Server) StartRem(ctx context.Context, req *clientpb.CtrlPipeline) (*c
 }
 
 func (rpc *Server) StopRem(ctx context.Context, req *clientpb.CtrlPipeline) (*clientpb.Empty, error) {
-	job, err := core.Jobs.Get(req.Name)
+	listenerID := req.GetListenerId()
+	if listenerID == "" && req.Pipeline != nil {
+		listenerID = req.Pipeline.ListenerId
+	}
+	if listenerID == "" {
+		return nil, fmt.Errorf("listener_id required")
+	}
+
+	lns, err := core.Listeners.Get(listenerID)
 	if err != nil {
 		return nil, err
 	}
-	ok := core.Listeners.RemovePipeline(job.Pipeline)
-	if !ok {
-		return nil, types.ErrNotFoundListener
+
+	var pipe *clientpb.Pipeline
+	if existing := lns.GetPipeline(req.Name); existing != nil {
+		pipe = existing
+	} else {
+		remDB, err := db.FindPipelineByListener(req.Name, listenerID)
+		if err != nil {
+			return nil, err
+		}
+		pipe = remDB.ToProtobuf()
 	}
-	core.Listeners.PushCtrl(consts.CtrlRemStop, job.Pipeline)
-	err = db.DisablePipeline(job.Name)
+
+	job := &core.Job{
+		ID:       core.NextJobID(),
+		Name:     req.Name,
+		Pipeline: pipe,
+	}
+
+	lns.RemovePipeline(pipe)
+	lns.PushCtrl(&clientpb.JobCtrl{
+		Ctrl: consts.CtrlRemStop,
+		Job:  job.ToProtobuf(),
+	})
+	err = db.DisablePipelineByListener(req.Name, listenerID)
 	if err != nil {
 		return nil, err
 	}
@@ -104,26 +139,31 @@ func (rpc *Server) StopRem(ctx context.Context, req *clientpb.CtrlPipeline) (*cl
 }
 
 func (rpc *Server) DeleteRem(ctx context.Context, req *clientpb.CtrlPipeline) (*clientpb.Empty, error) {
-	remDB, err := db.FindPipeline(req.Name)
+	listenerID := req.GetListenerId()
+	if listenerID == "" && req.Pipeline != nil {
+		listenerID = req.Pipeline.ListenerId
+	}
+	if listenerID == "" {
+		return nil, fmt.Errorf("listener_id required")
+	}
+
+	remDB, err := db.FindPipelineByListener(req.Name, listenerID)
 	if err != nil {
 		return &clientpb.Empty{}, err
 	}
 	rem := remDB.ToProtobuf()
-	ok := core.Listeners.RemovePipeline(rem)
-	if !ok {
-		return nil, types.ErrNotFoundListener
-	}
-	lns, err := core.Listeners.Get(req.ListenerId)
+	lns, err := core.Listeners.Get(listenerID)
 	if err != nil {
 		return nil, err
 	}
+	lns.RemovePipeline(rem)
 	lns.PushCtrl(&clientpb.JobCtrl{
 		Ctrl: consts.CtrlRemStop,
 		Job: &clientpb.Job{
 			Pipeline: rem,
 		},
 	})
-	err = db.DeletePipeline(req.Name)
+	err = db.DeletePipelineByListener(req.Name, listenerID)
 	if err != nil {
 		return nil, err
 	}

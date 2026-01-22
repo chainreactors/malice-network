@@ -45,7 +45,7 @@ func (l *Listener) AddPipeline(pipeline *clientpb.Pipeline) {
 }
 
 func (l *Listener) RemovePipeline(pipeline *clientpb.Pipeline) {
-	Jobs.Remove(pipeline.Name)
+	Jobs.Remove(pipeline.ListenerId, pipeline.Name)
 	delete(l.Pipelines, pipeline.Name)
 }
 
@@ -105,6 +105,21 @@ func (l *listeners) Find(pid string) (*clientpb.Pipeline, bool) {
 		return pipe, true
 	}
 	return nil, false
+}
+
+func (l *listeners) FindByListener(listenerID, pid string) (*clientpb.Pipeline, bool) {
+	if listenerID == "" || pid == "" {
+		return nil, false
+	}
+	val, ok := l.Load(listenerID)
+	if !ok || val == nil {
+		return nil, false
+	}
+	pipe := val.(*Listener).GetPipeline(pid)
+	if pipe == nil {
+		return nil, false
+	}
+	return pipe, true
 }
 
 // Get - Get a Job
