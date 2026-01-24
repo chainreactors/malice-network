@@ -171,6 +171,9 @@ func Commands(con *core.Console) []*cobra.Command {
 	})
 	taskschdCmd.AddCommand(taskSchdListCmd, taskSchdCreateCmd, taskSchdStartCmd, taskSchdStopCmd, taskSchdDeleteCmd, taskSchdQueryCmd, taskSchdRunCmd)
 
+	// Enable wizard for taskschd commands that need configuration
+	common.EnableWizardForCommands(taskSchdCreateCmd)
+
 	return []*cobra.Command{taskschdCmd}
 }
 

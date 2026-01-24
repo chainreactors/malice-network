@@ -210,6 +210,9 @@ func Commands(con *core.Console) []*cobra.Command {
 	// Add subcommands to mutant parent command (excluding donut)
 	mutantCmd.AddCommand(srdiCmd, stripCmd, sigforgeCmd)
 
+	// Enable wizard for mutant commands that need configuration
+	common.EnableWizardForCommands(donutCmd, srdiCmd, stripCmd, sigforgeCmd)
+
 	// Return mutant as parent command and donut as standalone
 	return []*cobra.Command{mutantCmd, donutCmd}
 }

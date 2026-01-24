@@ -89,6 +89,19 @@ func (c *Console) NewConsole() {
 	implant.Prompt().Primary = c.GetPrompt
 	implant.AddInterrupt(io.EOF, repl.ExitImplantMenu) // Ctrl-D
 	implant.AddHistorySourceFile("history", filepath.Join(assets.GetRootAppDir(), "implant_history"))
+
+	// Register line hook to handle '?' prefix without space (e.g., '?hello' -> '?' 'hello')
+	iom.PreCmdRunLineHooks = append(iom.PreCmdRunLineHooks, func(args []string) ([]string, error) {
+		if len(args) > 0 && len(args[0]) > 1 && strings.HasPrefix(args[0], "?") {
+			// Split '?xxx' into '?' and 'xxx'
+			question := args[0][1:]
+			newArgs := make([]string, 0, len(args)+1)
+			newArgs = append(newArgs, "?", question)
+			newArgs = append(newArgs, args[1:]...)
+			return newArgs, nil
+		}
+		return args, nil
+	})
 }
 
 func (c *Console) Start(bindCmds ...BindCmds) error {
@@ -106,7 +119,7 @@ func (c *Console) Start(bindCmds ...BindCmds) error {
 	c.App.Menu(consts.ClientMenu).Command = bindCmds[0](c)()
 	c.App.Menu(consts.ImplantMenu).Command = bindCmds[1](c)()
 
-	// 所有命令注册完成后，安全地启动MCP服务器和Local RPC服务器
+	// After all commands are registered, safely start MCP server and Local RPC server
 	if c.Server != nil {
 		c.InitMCPServer()
 		c.InitLocalRPCServer()
@@ -272,4 +285,39 @@ func (c *Console) AddCommandFuncHelper(cmdName string, funcName string, example 
 			Example: example,
 		})
 	}
+}
+
+func (c *Console) GetRecentHistory(limit int) []string {
+	if limit <= 0 || c == nil || c.App == nil {
+		return nil
+	}
+
+	shell := c.App.Shell()
+	if shell == nil || shell.History == nil || shell.History.Current() == nil {
+		return nil
+	}
+
+	hist := shell.History.Current()
+	count := hist.Len()
+	start := count - limit
+	if start < 0 {
+		start = 0
+	}
+
+	capacity := limit
+	if count-start < capacity {
+		capacity = count - start
+	}
+	history := make([]string, 0, capacity)
+	for i := start; i < count; i++ {
+		if line, err := hist.GetLine(i); err == nil && line != "" {
+			history = append(history, line)
+		}
+	}
+
+	if len(history) > limit {
+		history = history[len(history)-limit:]
+	}
+
+	return history
 }

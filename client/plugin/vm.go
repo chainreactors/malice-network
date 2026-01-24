@@ -2,14 +2,15 @@ package plugin
 
 import (
 	"fmt"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/mals"
 	lua "github.com/yuin/gopher-lua"
 	"github.com/yuin/gopher-lua/parse"
-	"strings"
-	"sync"
-	"time"
 )
 
 func NewLuaVM() *lua.LState {
@@ -27,6 +28,7 @@ func NewLuaVM() *lua.LState {
 	for name, fun := range intermediate.InternalFunctions.Package(intermediate.BuiltinPackage) {
 		vm.SetGlobal(name, vm.NewFunction(mals.WrapFuncForLua(fun)))
 	}
+
 	return vm
 }
 

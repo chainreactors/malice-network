@@ -3,7 +3,9 @@ package core
 import (
 	"context"
 	"encoding/json"
+	"net"
 	"testing"
+	"time"
 
 	"github.com/chainreactors/IoM-go/proto/services/localrpc"
 	"github.com/chainreactors/malice-network/client/plugin"
@@ -18,9 +20,26 @@ const (
 
 // setupRPCClient creates a gRPC client connection to the test RPC server
 func setupRPCClient(t *testing.T) (localrpc.CommandServiceClient, *grpc.ClientConn) {
-	conn, err := grpc.Dial(testRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	t.Helper()
+
+	// These are integration tests; skip when no local RPC server is running.
+	if c, err := net.DialTimeout("tcp", testRPCAddr, 250*time.Millisecond); err != nil {
+		t.Skipf("Skipping: local RPC server not reachable at %s: %v", testRPCAddr, err)
+	} else {
+		_ = c.Close()
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	conn, err := grpc.DialContext(
+		ctx,
+		testRPCAddr,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithBlock(),
+	)
 	if err != nil {
-		t.Fatalf("Failed to connect to RPC server at %s: %v", testRPCAddr, err)
+		t.Skipf("Skipping: failed to connect to RPC server at %s: %v", testRPCAddr, err)
 	}
 
 	client := localrpc.NewCommandServiceClient(conn)

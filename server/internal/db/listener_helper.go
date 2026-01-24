@@ -262,12 +262,16 @@ func SaveCertFromTLS(tls *clientpb.TLS, pipelineName, listenerID string) (*model
 		var findPipeline *models.Pipeline
 		var err error
 		if listenerID != "" {
-			findPipeline, err = FindPipelineByListener(pipelineName, listenerID)
+			findPipeline = &models.Pipeline{}
+			result := Session().Where("name = ? AND listener_id = ?", pipelineName, listenerID).First(&findPipeline)
+			if result.Error != nil {
+				return nil, result.Error
+			}
 		} else {
 			findPipeline, err = FindPipeline(pipelineName)
-		}
-		if err != nil {
-			return nil, err
+			if err != nil {
+				return nil, err
+			}
 		}
 		_, err = UpdatePipelineCert(certModel.Name, findPipeline)
 		if err != nil {

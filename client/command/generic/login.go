@@ -3,6 +3,7 @@ package generic
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/core"
@@ -28,10 +29,18 @@ func LoginCmd(cmd *cobra.Command, con *core.Console) error {
 		con.RPCAddr = rpcAddr
 	}
 
-	if filename := cmd.Flags().Arg(0); filename != "" {
+	// Prefer explicit --auth flag to avoid misinterpreting subcommand arguments
+	// (e.g. `build beacon`) as an auth file.
+	if filename, _ := cmd.Flags().GetString("auth"); filename != "" {
 		return Login(con, filename)
-	} else if filename, _ := cmd.Flags().GetString("auth"); filename != "" {
-		return Login(con, filename)
+	}
+
+	// Only check Arg(0) as auth file for root command or login command
+	// Avoid treating subcommand arguments (e.g., 'beacon' in 'build beacon') as auth file
+	if cmd.Parent() == nil || cmd.Use == "client" || cmd.Use == "login" {
+		if filename := cmd.Flags().Arg(0); strings.HasSuffix(filename, ".auth") {
+			return Login(con, filename)
+		}
 	}
 	files, err := assets.GetConfigs()
 	if err != nil {

@@ -3,8 +3,10 @@ package pipeline
 import (
 	"github.com/carapace-sh/carapace"
 	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/malice-network/client/wizard"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -207,5 +209,47 @@ rem delete rem_test
 
 	remCmd.AddCommand(listremCmd, newRemCmd, startRemCmd, stopRemCmd, deleteRemCmd)
 
+	// Enable wizard for pipeline commands
+	common.EnableWizardForCommands(tcpCmd, httpCmd, bindCmd, newRemCmd)
+
+	// Register wizard providers for dynamic options
+	registerWizardProviders(tcpCmd, con)
+	registerWizardProviders(httpCmd, con)
+	registerWizardProviders(bindCmd, con)
+	registerWizardProviders(newRemCmd, con)
+
 	return []*cobra.Command{tcpCmd, httpCmd, bindCmd, remCmd}
+}
+
+// registerWizardProviders registers dynamic option providers for wizard.
+func registerWizardProviders(cmd *cobra.Command, con *core.Console) {
+	// Listener options - fetch from cached listeners
+	wizard.RegisterProviderForCommand(cmd, "listener", func() []string {
+		if len(con.Listeners) == 0 {
+			return nil
+		}
+		opts := make([]string, 0, len(con.Listeners))
+		for _, listener := range con.Listeners {
+			if listener.Id != "" {
+				opts = append(opts, listener.Id)
+			}
+		}
+		return opts
+	})
+
+	// Certificate name options - fetch from server
+	wizard.RegisterProviderForCommand(cmd, "cert-name", func() []string {
+		certificates, err := con.Rpc.GetAllCertificates(con.Context(), &clientpb.Empty{})
+		if err != nil || len(certificates.Certs) == 0 {
+			return nil
+		}
+		opts := make([]string, 0, len(certificates.Certs)+1)
+		opts = append(opts, "") // Allow empty option
+		for _, c := range certificates.Certs {
+			if c.Cert.Name != "" {
+				opts = append(opts, c.Cert.Name)
+			}
+		}
+		return opts
+	})
 }

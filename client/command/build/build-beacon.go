@@ -95,8 +95,7 @@ func BeaconCmd(cmd *cobra.Command, con *core.Console) error {
 	if err != nil {
 		return err
 	}
-	executeBuild(con, buildConfig)
-	return nil
+	return ExecuteBuild(con, buildConfig)
 }
 
 // prepareBuildConfig 准备标准构建配置

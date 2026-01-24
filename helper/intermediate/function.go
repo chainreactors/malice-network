@@ -3,6 +3,7 @@ package intermediate
 import (
 	"errors"
 	"fmt"
+
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/mals"
@@ -15,6 +16,7 @@ var (
 	WarnArgsMismatch    = errors.New("arguments mismatch")
 	WarnReturnMismatch  = errors.New("return values mismatch")
 )
+
 
 type InternalFunc struct {
 	*mals.MalFunction

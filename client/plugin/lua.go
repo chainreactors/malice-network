@@ -20,6 +20,7 @@ import (
 	"github.com/chainreactors/IoM-go/types"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
+	"github.com/chainreactors/malice-network/client/wizard"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/mals"
 )
@@ -414,6 +415,7 @@ func (plug *LuaPlugin) RegisterLuaFunction() {
 		}
 
 		logs.Log.Debugf("Registered Command: %s\n", cmd.Name)
+		wizard.EnableWizard(malCmd)
 		plug.CMDs.SetCommand(name, malCmd)
 		return malCmd, nil
 	}, &mals.Helper{Group: intermediate.ClientGroup})

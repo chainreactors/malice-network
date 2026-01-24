@@ -1,7 +1,9 @@
 package command
 
 import (
+	"github.com/carapace-sh/carapace"
 	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/malice-network/client/command/ai"
 	"github.com/chainreactors/malice-network/client/command/audit"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/reeflective/console"
@@ -28,7 +30,8 @@ import (
 
 func BindCommonCommands(bind BindFunc) {
 	bind(consts.GenericGroup,
-		generic.Commands)
+		generic.Commands,
+		ai.Commands)
 
 	bind(consts.ManageGroup,
 		sessions.Commands,
@@ -98,6 +101,9 @@ func BindClientsCommands(con *core.Console) console.Commands {
 		client.SetUsageFunc(help.UsageFunc)
 		client.SetHelpFunc(help.HelpFunc)
 		client.SetHelpCommandGroupID(consts.GenericGroup)
+
+		// Register carapace completion for root command (make PersistentFlags visible in subcommands)
+		carapace.Gen(client)
 
 		RegisterClientFunc(con)
 		RegisterImplantFunc(con)

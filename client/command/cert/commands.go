@@ -34,6 +34,8 @@ cert import --cert cert_file_path --key key_file_path --ca-cert ca_cert_path
 	}
 
 	common.BindFlag(importCmd, common.ImportSet)
+	_ = importCmd.MarkFlagRequired("cert")
+	_ = importCmd.MarkFlagRequired("key")
 	common.BindFlagCompletions(importCmd, func(comp carapace.ActionMap) {
 		comp["cert"] = carapace.ActionFiles().Usage("path to the cert file")
 		comp["key"] = carapace.ActionFiles().Usage("path to the key file")
@@ -141,6 +143,9 @@ cert download cert-name -o cert_path
 	common.BindFlag(downloadCmd, func(f *pflag.FlagSet) {
 		f.StringP("output", "o", "", "cert save path")
 	})
+	// Enable wizard for cert commands that need configuration
+	common.EnableWizardForCommands(importCmd, selfSignCmd, updateCmd)
+
 	certCmd.AddCommand(importCmd, selfSignCmd, delCmd, updateCmd, downloadCmd)
 	//certCmd.AddCommand(importCmd, selfSignCmd, acmeCmd, delCmd, updateCmd, downloadCmd)
 	return []*cobra.Command{

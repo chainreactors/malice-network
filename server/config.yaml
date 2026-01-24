@@ -86,6 +86,6 @@ server:
       webhook_url: null
   saas:
     enable: true
-    token: null
     url: https://build.chainreactors.red
+    token: YOUR_TOKEN_HERE
 

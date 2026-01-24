@@ -5,6 +5,7 @@ import (
 	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/malice-network/client/wizard"
 
 	"github.com/carapace-sh/carapace"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
@@ -121,6 +122,7 @@ profile delete profile_name
 	}
 
 	buildCmd.PersistentFlags().Bool("auto-download", false, "auto download artifact")
+	registerWizardProviders(buildCmd, con)
 
 	// build beacon --format/-f exe,dll,shellcode -i 1.1.1 -m load_pe
 	beaconCmd := &cobra.Command{
@@ -149,6 +151,9 @@ build beacon --profile tcp_default --target x86_64-pc-windows-gnu --source saas
 
 // Build by GithubAction
 build beacon --profile tcp_default --target x86_64-pc-windows-gnu --source action
+
+// Use interactive wizard mode
+build beacon --wizard
 ~~~`,
 	}
 	common.BindFlag(beaconCmd,
@@ -325,6 +330,9 @@ build log artifact_name --limit 70
 		f.Int("limit", 50, "limit of rows")
 	})
 	common.BindArgCompletions(logCmd, nil, common.ArtifactCompleter(con))
+
+	// Enable wizard for all build commands (except logCmd which doesn't need it)
+	common.EnableWizardForCommands(beaconCmd, bindCmd, modulesCmd, pulseCmd, preludeCmd)
 
 	buildCmd.AddCommand(beaconCmd, bindCmd, modulesCmd, pulseCmd, preludeCmd, logCmd)
 
@@ -629,5 +637,48 @@ func Register(con *core.Console) {
 			"artifact_bin",
 		},
 		Example: `artifact_payload("tcp_default","raw","windows","x64")`,
+	})
+}
+
+// registerWizardProviders registers dynamic option providers for wizard.
+func registerWizardProviders(cmd *cobra.Command, con *core.Console) {
+	// ============ Option Providers (for select fields) ============
+
+	// Profile options
+	wizard.RegisterProviderForCommand(cmd, "profile", func() []string {
+		profiles, err := con.Rpc.GetProfiles(con.Context(), &clientpb.Empty{})
+		if err != nil || len(profiles.Profiles) == 0 {
+			return nil
+		}
+		opts := make([]string, 0, len(profiles.Profiles)+1)
+		opts = append(opts, "")
+		for _, p := range profiles.Profiles {
+			if p.Name != "" {
+				opts = append(opts, p.Name)
+			}
+		}
+		return opts
+	})
+
+	// Target options
+	wizard.RegisterProviderForCommand(cmd, "target", func() []string {
+		return []string{
+			"x86_64-pc-windows-gnu",
+			"x86_64-pc-windows-msvc",
+			"i686-pc-windows-gnu",
+			"i686-pc-windows-msvc",
+			"x86_64-unknown-linux-gnu",
+			"i686-unknown-linux-gnu",
+		}
+	})
+
+	// Source options
+	wizard.RegisterProviderForCommand(cmd, "source", func() []string {
+		return []string{
+			"",
+			consts.ArtifactFromDocker,
+			consts.ArtifactFromGithubAction,
+			consts.ArtifactFromSaas,
+		}
 	})
 }

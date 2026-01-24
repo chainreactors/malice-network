@@ -68,6 +68,9 @@ func Commands(con *core.Console) []*cobra.Command {
 
 	notifyCmd.AddCommand(notifyUpdateCmd)
 
+	// Enable wizard for config commands that need configuration
+	common.EnableWizardForCommands(githubUpdateCmd, notifyUpdateCmd)
+
 	configCmd.AddCommand(configRefreshCmd, githubCmd, notifyCmd)
 	return []*cobra.Command{configCmd}
 }

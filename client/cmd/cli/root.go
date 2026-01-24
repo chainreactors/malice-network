@@ -20,14 +20,26 @@ func rootCmd(con *core.Console) (*cobra.Command, error) {
 	}
 	cmd.TraverseChildren = true
 
-	// 添加 --mcp flag
+	// Add --mcp flag
 	cmd.PersistentFlags().String("mcp", "", "enable MCP server with address (e.g., 127.0.0.1:5005)")
-	// 添加 --rpc flag
+	// Add --rpc flag
 	cmd.PersistentFlags().String("rpc", "", "enable local gRPC server with address (e.g., 127.0.0.1:15004)")
-
 	bind := command.MakeBind(cmd, con, "golang")
 	command.BindCommonCommands(bind)
-	cmd.PersistentPreRunE, cmd.PersistentPostRunE = command.ConsoleRunnerCmd(con, cmd)
+	// Setup console runner
+	originalPre, originalPost := command.ConsoleRunnerCmd(con, cmd)
+	cmd.PersistentPreRunE = func(c *cobra.Command, args []string) error {
+		if originalPre != nil {
+			return originalPre(c, args)
+		}
+		return nil
+	}
+	cmd.PersistentPostRunE = func(c *cobra.Command, args []string) error {
+		if originalPost != nil {
+			return originalPost(c, args)
+		}
+		return nil
+	}
 	cmd.AddCommand(command.ImplantCmd(con))
 	carapace.Gen(cmd)
 
