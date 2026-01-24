@@ -59,7 +59,15 @@ func (rpc *Server) ListPipelines(ctx context.Context, req *clientpb.Listener) (*
 }
 
 func (rpc *Server) StartPipeline(ctx context.Context, req *clientpb.CtrlPipeline) (*clientpb.Empty, error) {
-	pipelineDB, err := db.FindPipeline(req.Name)
+	listenerID := req.GetListenerId()
+	if listenerID == "" && req.Pipeline != nil {
+		listenerID = req.Pipeline.ListenerId
+	}
+	if listenerID == "" {
+		return nil, fmt.Errorf("listener_id required")
+	}
+
+	pipelineDB, err := db.FindPipelineByListener(req.Name, listenerID)
 	if err != nil {
 		return nil, err
 	}
@@ -80,13 +88,13 @@ func (rpc *Server) StartPipeline(ctx context.Context, req *clientpb.CtrlPipeline
 			pipelineDB.PipelineParams.Tls = implanttypes.FromTls(req.Pipeline.Tls)
 		}
 	}
-	lns, err := core.Listeners.Get(pipelineDB.ListenerId)
+	lns, err := core.Listeners.Get(listenerID)
 	if err != nil {
 		return nil, err
 	}
 
 	if existing := lns.GetPipeline(req.Name); existing != nil && existing.Enable {
-		_ = db.EnablePipeline(req.Name)
+		_ = db.EnablePipelineByListener(req.Name, listenerID)
 		return &clientpb.Empty{}, nil
 	}
 
@@ -103,7 +111,7 @@ func (rpc *Server) StartPipeline(ctx context.Context, req *clientpb.CtrlPipeline
 
 	status := lns.WaitCtrl(ctrlID)
 	if status == nil || status.Status != consts.CtrlStatusSuccess {
-		_ = db.DisablePipeline(pipelineDB.Name)
+		_ = db.DisablePipelineByListener(pipelineDB.Name, listenerID)
 		if status != nil && status.Error != "" {
 			return nil, fmt.Errorf("start pipeline %s failed: %s", req.Name, status.Error)
 		}
@@ -111,27 +119,48 @@ func (rpc *Server) StartPipeline(ctx context.Context, req *clientpb.CtrlPipeline
 	}
 
 	pipeline := pipelineDB.ToProtobuf()
-	if err := db.EnablePipeline(pipeline.Name); err != nil {
+	if err := db.EnablePipelineByListener(pipeline.Name, listenerID); err != nil {
 		return nil, err
 	}
 	return &clientpb.Empty{}, nil
 }
 
 func (rpc *Server) StopPipeline(ctx context.Context, req *clientpb.CtrlPipeline) (*clientpb.Empty, error) {
-	job, err := core.Jobs.Get(req.Name)
+	listenerID := req.GetListenerId()
+	if listenerID == "" && req.Pipeline != nil {
+		listenerID = req.Pipeline.ListenerId
+	}
+	if listenerID == "" {
+		return nil, fmt.Errorf("listener_id required")
+	}
+
+	lns, err := core.Listeners.Get(listenerID)
 	if err != nil {
 		return nil, err
 	}
-	lns, err := core.Listeners.Get(job.Pipeline.ListenerId)
-	if err != nil {
-		return nil, err
+
+	var pipe *clientpb.Pipeline
+	if existing := lns.GetPipeline(req.Name); existing != nil {
+		pipe = existing
+	} else {
+		pipelineDB, err := db.FindPipelineByListener(req.Name, listenerID)
+		if err != nil {
+			return nil, err
+		}
+		pipe = pipelineDB.ToProtobuf()
 	}
-	lns.RemovePipeline(job.Pipeline)
+
+	job := &core.Job{
+		ID:       core.NextJobID(),
+		Name:     req.Name,
+		Pipeline: pipe,
+	}
+	lns.RemovePipeline(pipe)
 	lns.PushCtrl(&clientpb.JobCtrl{
 		Ctrl: consts.CtrlPipelineStop,
 		Job:  job.ToProtobuf(),
 	})
-	err = db.DisablePipeline(job.Pipeline.Name)
+	err = db.DisablePipelineByListener(req.Name, listenerID)
 	if err != nil {
 		return nil, err
 	}
@@ -139,12 +168,20 @@ func (rpc *Server) StopPipeline(ctx context.Context, req *clientpb.CtrlPipeline)
 }
 
 func (rpc *Server) DeletePipeline(ctx context.Context, req *clientpb.CtrlPipeline) (*clientpb.Empty, error) {
-	pipelineDB, err := db.FindPipeline(req.Name)
+	listenerID := req.GetListenerId()
+	if listenerID == "" && req.Pipeline != nil {
+		listenerID = req.Pipeline.ListenerId
+	}
+	if listenerID == "" {
+		return nil, fmt.Errorf("listener_id required")
+	}
+
+	pipelineDB, err := db.FindPipelineByListener(req.Name, listenerID)
 	if err != nil {
 		return nil, err
 	}
 	pipeline := pipelineDB.ToProtobuf()
-	lns, err := core.Listeners.Get(pipelineDB.ListenerId)
+	lns, err := core.Listeners.Get(listenerID)
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +192,7 @@ func (rpc *Server) DeletePipeline(ctx context.Context, req *clientpb.CtrlPipelin
 			Pipeline: pipeline,
 		},
 	})
-	err = db.DeletePipeline(req.Name)
+	err = db.DeletePipelineByListener(req.Name, listenerID)
 	if err != nil {
 		return nil, err
 	}
