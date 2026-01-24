@@ -11,7 +11,7 @@ require (
 	github.com/chainreactors/mals v0.0.0-20250717185731-227f71a931fa
 	github.com/chainreactors/parsers v0.0.0-20250225073555-ab576124d61f
 	github.com/chainreactors/rem v0.2.4
-	github.com/chainreactors/tui v0.0.0-20250825071101-9e61744e554f
+	github.com/chainreactors/tui v0.1.0
 	github.com/chainreactors/utils v0.0.0-20241209140746-65867d2f78b2
 	github.com/charmbracelet/bubbletea v1.3.4
 	github.com/charmbracelet/glamour v0.8.0
