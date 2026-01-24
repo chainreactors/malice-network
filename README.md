@@ -12,11 +12,11 @@ blog posts:
 
 IoM 是一个复杂而强大的基础设施, 包含了大量组件。 
 
-introduce: https://chainreactors.github.io/wiki/IoM/index/
+introduce: https://wiki.chainreactors.red/IoM/
 
 基本使用: https://chainreactors.github.io/wiki/IoM/quickstart/
 
-GUI 安装: https://chainreactors.github.io/wiki/IoM/manual/manual/GUI/
+VScode GUI 安装: https://wiki.chainreactors.red/IoM/guideline/deploy/#%E5%AE%89%E8%A3%85gui
 
 插件编写 quickstart: https://chainreactors.github.io/wiki/IoM/manual/mal/quickstart/
 
@@ -30,7 +30,7 @@ https://chainreactors.github.io/wiki/IoM/roadmap/
 
 ## Showcases
 
-### GUI
+### VScode GUI
 <summary>session</summary>
 <img src="https://github.com/chainreactors/wiki/blob/master/docs/IoM/assets/session_gui.jpg"/>
 
