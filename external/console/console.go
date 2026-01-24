@@ -243,6 +243,7 @@ func (c *Console) setupShell() {
 	// are quite neceessary for efficient console use.
 	cfg.Set("skip-completed-text", true)
 	cfg.Set("menu-complete-display-prefix", true)
+	cfg.Set("autocomplete", true) // Enable as-you-type completion for inline suggestions
 }
 
 func (c *Console) activeMenu() *Menu {
