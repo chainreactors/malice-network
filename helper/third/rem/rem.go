@@ -82,9 +82,9 @@ func NewRemServer(conURL string, ip string) (*RemConsole, error) {
 	var option remrunner.Options
 	var args []string
 	if ip == "" {
-		args = []string{"rem", "-c", conURL}
+		args = []string{"rem", "-s", conURL}
 	} else {
-		args = []string{"rem", "-c", conURL, "-i", ip}
+		args = []string{"rem", "-s", conURL, "-i", ip}
 	}
 	err := option.ParseArgs(args)
 	if err != nil {
