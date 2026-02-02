@@ -166,7 +166,6 @@ require (
 )
 
 replace (
-	github.com/charmbracelet/huh => github.com/charmbracelet/huh v0.6.0
 	github.com/imdario/mergo => dario.cat/mergo v1.0.0
 	github.com/miekg/dns => github.com/miekg/dns v1.1.58
 	golang.org/x/crypto => golang.org/x/crypto v0.24.0
@@ -181,6 +180,7 @@ replace (
 	github.com/chainreactors/IoM-go => ./external/IoM-go
 	github.com/chainreactors/proxyclient => github.com/chainreactors/proxyclient v1.0.3
 	//github.com/chainreactors/rem => github.com/chainreactors/rem-community v0.2.4
+	github.com/charmbracelet/huh => github.com/charmbracelet/huh v0.5.3
 	github.com/mark3labs/mcp-go => ./external/mcp-go
 	github.com/reeflective/console => ./external/console
 	github.com/reeflective/readline => ./external/readline

@@ -7,3 +7,5 @@ helper/intl/professional/
 helper/intl/custom/
 *.bin
 *.so
+.gomodcache/
+.gocache/
