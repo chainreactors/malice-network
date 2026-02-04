@@ -210,44 +210,59 @@ func (d *DockerBuilder) Execute() error {
 		)
 	}
 	d.containerName = "malefic_" + cryptography.RandomString(8)
+	// 1. 创建容器
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
-		Env: []string{
-			//"PATH=" + PATH_ENV,
-		},
 		Image: GetImage(d.config.Target),
 		Cmd:   []string{"bash", "-c", buildCommand},
 	}, &container.HostConfig{
 		AutoRemove: true,
 		Binds:      d.volumes,
 	}, nil, nil, d.containerName)
+
 	if err != nil {
-		return err
+		db.UpdateBuilderStatus(d.artifact.ID, consts.BuildStatusFailure)
+		return fmt.Errorf("failed to create container: %w", err)
 	}
 	d.containerID = resp.ID
+
+	// 2. 启动容器
 	if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
 		db.UpdateBuilderStatus(d.artifact.ID, consts.BuildStatusFailure)
+		return fmt.Errorf("failed to start container: %w", err)
 	}
+
+	// 只有启动成功后，才标记为 Running
 	db.UpdateBuilderStatus(d.artifact.ID, consts.BuildStatusRunning)
 	logs.Log.Infof("Container %s started successfully.", resp.ID)
 
-	err = catchLogs(cli, resp.ID, d.config.BuildName)
-	if err != nil {
-		return err
-	}
+	// 3. 异步捕获日志
+	go func() {
+		if err := catchLogs(cli, resp.ID, d.config.BuildName); err != nil {
+			logs.Log.Errorf("Error catching logs: %v", err)
+		}
+	}()
 
+	// 4. 等待容器结束并检查退出状态
 	statusCh, errCh := cli.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
+
 	select {
 	case err := <-errCh:
-		if err != nil {
-			if strings.Contains(err.Error(), "No such container") {
-				return nil
-			}
+		if err != nil && !strings.Contains(err.Error(), "No such container") {
 			db.UpdateBuilderStatus(d.artifact.ID, consts.BuildStatusFailure)
 			return err
 		}
-	case <-statusCh:
-		logs.Log.Infof("Container %s has stopped and will be automatically removed.", resp.ID)
+	case status := <-statusCh:
+		if status.StatusCode != 0 {
+			logs.Log.Errorf("Container exited with non-zero status: %d", status.StatusCode)
+			db.UpdateBuilderStatus(d.artifact.ID, consts.BuildStatusFailure)
+			return fmt.Errorf("container exited with code %d", status.StatusCode)
+		}
+
+		// 只有 ExitCode 为 0 才视为成功
+		db.UpdateBuilderStatus(d.artifact.ID, consts.BuildStatusCompleted)
+		logs.Log.Infof("Container %s finished successfully.", resp.ID)
 	}
+
 	return nil
 }
 
