@@ -53,7 +53,14 @@ func (e *Engine) TrimSuffix() {
 		return
 	}
 
-	suf := (*e.line)[e.cursor.Pos()-1]
+	pos := e.cursor.Pos()
+	lineLen := e.line.Len()
+	if lineLen == 0 || pos == 0 || pos-1 >= lineLen {
+		e.sm = SuffixMatcher{}
+		return
+	}
+
+	suf := (*e.line)[pos-1]
 	keys := e.keys.Caller()
 	if len(keys) == 0 {
 		return
