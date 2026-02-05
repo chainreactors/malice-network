@@ -2,6 +2,10 @@ package rem
 
 import (
 	"fmt"
+	"net"
+	"net/url"
+	"strconv"
+
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/cryptography"
@@ -9,9 +13,6 @@ import (
 	rem "github.com/chainreactors/rem/protocol/core"
 	remrunner "github.com/chainreactors/rem/runner"
 	"github.com/chainreactors/rem/x/utils"
-	"net"
-	"net/url"
-	"strconv"
 )
 
 func init() {
@@ -88,7 +89,16 @@ func NewRemServer(conURL string, ip string) (*RemConsole, error) {
 	}
 	err := option.ParseArgs(args)
 	if err != nil {
-		return nil, err
+		// Fallback to -c for old version
+		if ip == "" {
+			args = []string{"rem", "-c", conURL}
+		} else {
+			args = []string{"rem", "-c", conURL, "-i", ip}
+		}
+		err = option.ParseArgs(args)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	remRunner, err := option.Prepare()
