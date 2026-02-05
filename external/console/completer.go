@@ -18,8 +18,17 @@ import (
 	"github.com/reeflective/readline"
 )
 
-func (c *Console) complete(line []rune, pos int) readline.Completions {
+func (c *Console) complete(line []rune, pos int) (comps readline.Completions) {
 	menu := c.activeMenu()
+	// NOTE: Cobra command parsing state is mutable and can leak across
+	// completion invocations (e.g., ArgsLenAtDash). If carapace panics,
+	// we recover to avoid taking down the whole interactive shell.
+	defer func() {
+		if r := recover(); r != nil {
+			comps = readline.CompleteMessage(fmt.Sprintf("completion error: %v", r))
+			menu.resetPreRun()
+		}
+	}()
 
 	// Ensure the carapace library is called so that the function
 	// completer.Complete() variable is correctly initialized before use.
@@ -35,6 +44,11 @@ func (c *Console) complete(line []rune, pos int) readline.Completions {
 
 	// Call the completer with our current command context.
 	completions, err := completer.Complete(menu.Command, args...)
+	if err != nil {
+		// If carapace/cobra state got into a bad state, reset the menu commands so
+		// subsequent completion attempts do not keep failing.
+		menu.resetPreRun()
+	}
 
 	// The completions are never nil: fill out our own object
 	// with everything it contains, regardless of errors.
@@ -57,7 +71,7 @@ func (c *Console) complete(line []rune, pos int) readline.Completions {
 	}
 
 	// Assign both completions and command/flags/args usage strings.
-	comps := readline.CompleteRaw(raw)
+	comps = readline.CompleteRaw(raw)
 	comps = comps.Usage("%s", completions.Usage)
 	comps = c.justifyCommandComps(comps)
 
