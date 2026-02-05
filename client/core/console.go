@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/carapace-sh/carapace/pkg/x"
 	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/malice-network/client/repl"
@@ -74,7 +73,6 @@ type Console struct {
 }
 
 func (c *Console) NewConsole() {
-	x.ClearStorage = func() {}
 	iom := console.New("IoM")
 	c.App = iom
 

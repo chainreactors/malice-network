@@ -14,6 +14,8 @@ import (
 	"github.com/carapace-sh/carapace/pkg/style"
 	completer "github.com/carapace-sh/carapace/pkg/x"
 	"github.com/carapace-sh/carapace/pkg/xdg"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	"github.com/reeflective/readline"
 )
@@ -37,6 +39,20 @@ func (c *Console) complete(line []rune, pos int) (comps readline.Completions) {
 	// Split the line as shell words, only using
 	// what the right buffer (up to the cursor)
 	args, prefixComp, prefixLine := splitArgs(line, pos)
+
+	// Cobra/pflag parsing state is mutable: both real command executions and
+	// carapace completion parsing will mark flags as Changed and record dash state.
+	//
+	// If we keep reusing the same cobra command tree, this state can leak into
+	// subsequent completion calls and make the UI appear "stale" (e.g., some flags
+	// disappear because they are considered already set). Reset the state for the
+	// current command path before completing.
+	resetFlagParsingState(menu.Command, args)
+
+	// pflag doesn't reset ArgsLenAtDash between parses, so a prior execution with a bare
+	// `--` can permanently break flag completion (carapace will think it's after `--`).
+	// Reset the flag parsing dash state for the current command path before completing.
+	resetArgsLenAtDash(menu.Command, args)
 
 	// Prepare arguments for the carapace completer
 	// (we currently need those two dummies for avoiding a panic).
@@ -99,12 +115,81 @@ func (c *Console) complete(line []rune, pos int) (comps readline.Completions) {
 	// Set inline suggestion (fish-style gray text)
 	c.setInlineSuggestion(line, pos, comps)
 
-	// Finally, reset our command tree for the next call.
-	completer.ClearStorage()
+	// Reset state for the next call.
+	//
+	// Only clear carapace storage when commands are regenerated per completion
+	// invocation (menu.SetCommands). If the command tree is reused, clearing the
+	// global carapace storage would drop all registered completions.
+	if menu.cmds != nil {
+		completer.ClearStorage()
+	}
 	menu.resetPreRun()
 	menu.hideFilteredCommands(menu.Command)
 
 	return comps
+}
+
+func resetFlagParsingState(root *cobra.Command, args []string) {
+	if root == nil {
+		return
+	}
+
+	target := findCompletionTarget(root, args)
+
+	// Ensure persistent flags are merged so we reset the full flag set (local + parents).
+	_ = target.LocalFlags()
+
+	resetFlagsDefaults(target)
+}
+
+func resetArgsLenAtDash(root *cobra.Command, args []string) {
+	if root == nil {
+		return
+	}
+
+	target := findCompletionTarget(root, args)
+
+	// Reset along the parent chain because persistent flags can live on parents.
+	for cmd := target; cmd != nil; cmd = cmd.Parent() {
+		resetFlagSetArgsLenAtDash(cmd.Flags(), cmd.DisplayName())
+		resetFlagSetArgsLenAtDash(cmd.PersistentFlags(), cmd.DisplayName())
+	}
+}
+
+func resetFlagSetArgsLenAtDash(fs *pflag.FlagSet, name string) {
+	if fs == nil {
+		return
+	}
+	fs.Init(name, pflag.ContinueOnError)
+}
+
+func findCompletionTarget(root *cobra.Command, args []string) *cobra.Command {
+	cmd := root
+	for _, arg := range args {
+		// Stop at flags (including the `--` terminator): command path is complete.
+		if arg == "--" || strings.HasPrefix(arg, "-") {
+			break
+		}
+
+		next := findSubcommand(cmd, arg)
+		if next == nil {
+			break
+		}
+		cmd = next
+	}
+	return cmd
+}
+
+func findSubcommand(cmd *cobra.Command, name string) *cobra.Command {
+	if cmd == nil {
+		return nil
+	}
+	for _, sub := range cmd.Commands() {
+		if sub.Name() == name || sub.HasAlias(name) {
+			return sub
+		}
+	}
+	return nil
 }
 
 func (c *Console) justifyCommandComps(comps readline.Completions) readline.Completions {
