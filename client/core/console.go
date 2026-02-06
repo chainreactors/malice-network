@@ -5,16 +5,21 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/reeflective/console"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
+	"golang.org/x/term"
 	"google.golang.org/grpc/metadata"
 
 	"github.com/chainreactors/malice-network/client/assets"
@@ -123,16 +128,27 @@ func (c *Console) Start(bindCmds ...BindCmds) error {
 		c.InitLocalRPCServer()
 	}
 
+	// Initialize active menu BEFORE headless check.
+	// MCP/LocalRPC depend on ActiveMenu() returning the correct menu
+	// (RunCommand calls con.App.Execute(ctx, con.App.ActiveMenu(), args, false)).
 	if c.Session == nil {
 		c.App.SwitchMenu(consts.ClientMenu)
 	} else {
 		c.SwitchImplant(c.GetInteractive(), consts.CalleeCMD)
 	}
-	err := c.App.Start()
-	if err != nil {
-		return err
+
+	// Headless mode: stdin is not a terminal (e.g., launched by GUI with /dev/null).
+	// Skip readline loop to avoid busy-spin on MakeRaw(ENOTTY), block on signal instead.
+	if !term.IsTerminal(int(os.Stdin.Fd())) {
+		logs.Log.Importantf("running in headless mode (no terminal detected), waiting for signal...")
+		sig := make(chan os.Signal, 1)
+		signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
+		<-sig
+		logs.Log.Importantf("received exit signal, shutting down")
+		return nil
 	}
-	return nil
+
+	return c.App.Start()
 }
 
 func (c *Console) Context() context.Context {
