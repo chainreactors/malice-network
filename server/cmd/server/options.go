@@ -53,8 +53,14 @@ type Options struct {
 }
 
 func (opt *Options) Validate() error {
+	if opt.Server == nil {
+		return errors.New("config section 'server' is missing or invalid, check config.yaml format")
+	}
+	if opt.Listeners == nil {
+		return errors.New("config section 'listeners' is missing or invalid, check config.yaml format")
+	}
 	if !opt.Server.Enable && !opt.Listeners.Enable {
-		return errors.New("must enable one of server/listener ")
+		return errors.New("must enable one of server/listener")
 	}
 	return nil
 }
