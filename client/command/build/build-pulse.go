@@ -15,7 +15,8 @@ func PulseFlagSet(f *pflag.FlagSet) {
 	f.String("address", "", "Only support single address")
 	f.String("path", "/pulse", "")
 	f.String("user-agent", "", "HTTP User-Agent string")
-	f.Uint32("beacon_artifact_id", 0, "beacon's artifact_id")
+	f.Uint32("artifact-id", 0, "pulse artifact id")
+	f.Uint32("beacon-artifact-id", 0, "beacon artifact id used by pulse relink")
 }
 
 func PulseCmd(cmd *cobra.Command, con *core.Console) error {
@@ -37,6 +38,10 @@ func PulseCmd(cmd *cobra.Command, con *core.Console) error {
 	if err != nil {
 		return err
 	}
+
+	pulseArtifactID, _ := cmd.Flags().GetUint32("artifact-id")
+	buildConfig.ArtifactId = pulseArtifactID
+
 	profile, err := parsePulseBuildFlags(cmd)
 	if err != nil {
 		return fmt.Errorf("failed to parse pulse's build flags: %w", err)
@@ -77,8 +82,8 @@ func parsePulseBuildFlags(cmd *cobra.Command) (*implanttypes.ProfileConfig, erro
 			newProfile.Pulse.Target = address
 		}
 	}
-	beacon_artifact_id, _ := cmd.Flags().GetUint32("beacon_artifact_id")
-	newProfile.Pulse.Flags.ArtifactID = beacon_artifact_id
+	beaconArtifactID, _ := cmd.Flags().GetUint32("beacon-artifact-id")
+	newProfile.Pulse.Flags.ArtifactID = beaconArtifactID
 	if cmd.Flags().Changed("user-agent") {
 		ua, _ := cmd.Flags().GetString("user-agent")
 		newProfile.Pulse.Http.Headers["User-Agent"] = ua

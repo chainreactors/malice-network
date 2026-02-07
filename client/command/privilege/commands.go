@@ -22,7 +22,7 @@ func Commands(con *core.Console) []*cobra.Command {
 		},
 		Example: `Run a program as a different user:
   ~~~
-  sys runas --username admin --domain EXAMPLE --password admin123 --path /path/to/program --args "arg1 arg2" --use-profile --use-env
+  runas --username admin --domain EXAMPLE --password admin123 --path /path/to/program --args "arg1 arg2" --use-profile --use-env
   ~~~`,
 	}
 
@@ -52,7 +52,7 @@ func Commands(con *core.Console) []*cobra.Command {
 		},
 		Example: `List available privileges:
   ~~~
-  sys privs
+  privs
   ~~~`,
 	}
 
@@ -84,7 +84,7 @@ func Commands(con *core.Console) []*cobra.Command {
 		},
 		Example: `Revert to the original token:
   ~~~
-  sys rev2self
+  rev2self
   ~~~`,
 	}
 

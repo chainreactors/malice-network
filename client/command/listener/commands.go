@@ -104,8 +104,9 @@ pipeline list listener_id
 	}
 
 	deletePipeCmd := &cobra.Command{
-		Use:   consts.CommandPipelineDelete,
+		Use:   consts.CommandPipelineDelete + " [pipeline]",
 		Short: "Delete a pipeline",
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return DeletePipelineCmd(cmd, con)
 		},

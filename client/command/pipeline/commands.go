@@ -25,10 +25,10 @@ func Commands(con *core.Console) []*cobra.Command {
 tcp --listener listener
 
 // Register a TCP pipeline with a custom name, host, and port
-tcp --name tcp_test --listener listener --host 192.168.0.43 --port 5003
+tcp tcp_test --listener listener --host 192.168.0.43 --port 5003
 
 // Register a TCP pipeline with TLS enabled and specify certificate and key paths
-tcp --listener listener --tls --cert_path /path/to/cert --key_path /path/to/key
+tcp --listener listener --tls --cert /path/to/cert --key /path/to/key
 ~~~`,
 	}
 	common.BindFlag(tcpCmd, common.PipelineFlagSet, common.TlsCertFlagSet, common.SecureFlagSet, common.EncryptionFlagSet)
@@ -58,10 +58,10 @@ tcp --listener listener --tls --cert_path /path/to/cert --key_path /path/to/key
 http --listener listener
 
 // Register an HTTP pipeline with custom headers and error page
-http --name http_test --listener listener --host 192.168.0.43 --port 8080 --headers "Content-Type=text/html" --error-page /path/to/error.html
+http http_test --listener listener --host 192.168.0.43 --port 8080 --headers "Content-Type=text/html" --error-page /path/to/error.html
 
 // Register an HTTP pipeline with TLS enabled
-http --listener listener --tls --cert_path /path/to/cert --key_path /path/to/key
+http --listener listener --tls --cert /path/to/cert --key /path/to/key
 ~~~`,
 	}
 
@@ -127,7 +127,7 @@ rem
 			return ListRemCmd(cmd, con)
 		},
 		Example: `~~~
-rem
+rem list [listener]
 ~~~`,
 	}
 	common.BindArgCompletions(listremCmd, nil, common.ListenerIDCompleter(con))

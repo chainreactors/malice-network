@@ -175,7 +175,7 @@ Load CLR assembly in sacrifice process (with donut)
 			"depend": consts.ModuleExecuteShellcode,
 		},
 		Example: `~~~
-execute-assembly potato.exe "whoami" 
+execute_assembly potato.exe "whoami" 
 ~~~
 `,
 	}
@@ -196,11 +196,11 @@ if return 0x80004005, please use --amsi bypass.`,
 		Example: `
 inline execute a .NET assembly
 ~~~
-inline-assembly --amsi potato.exe "whoami" 
+inline_assembly --amsi potato.exe "whoami" 
 ~~~
 Execute a .NET assembly with "-" arguments, you need add "--" before the arguments
 ~~~
-inline-assembly --amsi potato.exe -- cmd /c whoami
+inline_assembly --amsi potato.exe -- cmd /c whoami
 ~~~
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {

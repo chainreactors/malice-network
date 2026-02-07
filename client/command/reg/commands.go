@@ -34,7 +34,7 @@ func Commands(con *core.Console) []*cobra.Command {
 	}
 
 	regQueryCmd := &cobra.Command{
-		Use:   consts.SubCommandName(consts.ModuleRegQuery) + " --hive [hive] --path [path] --key [key]",
+		Use:   consts.SubCommandName(consts.ModuleRegQuery) + " [path] [key]",
 		Short: "Query a registry key",
 		Long:  "Retrieve the value associated with a specific registry key.",
 		Args:  cobra.ExactArgs(2),
@@ -87,7 +87,7 @@ func Commands(con *core.Console) []*cobra.Command {
 	})
 
 	regDeleteCmd := &cobra.Command{
-		Use:   consts.SubCommandName(consts.ModuleRegDelete) + " --hive [hive] --path [path] --key [key]",
+		Use:   consts.SubCommandName(consts.ModuleRegDelete) + " [path] [key]",
 		Short: "Delete a registry key",
 		Long:  "Remove a specific registry key.",
 		Args:  cobra.ExactArgs(2),
@@ -100,12 +100,12 @@ func Commands(con *core.Console) []*cobra.Command {
 		},
 		Example: `Delete a registry key:
   ~~~
-  reg delete HKEY_LOCAL_MACHINE\\SOFTWARE\\Example TestKey
+  reg delete HKEY_LOCAL_MACHINE\SOFTWARE\Example TestKey
   ~~~`,
 	}
 
 	regListKeyCmd := &cobra.Command{
-		Use:   consts.SubCommandName(consts.ModuleRegListKey) + " --hive [hive] --path [path]",
+		Use:   consts.SubCommandName(consts.ModuleRegListKey) + " [path]",
 		Short: "List subkeys in a registry path",
 		Long:  "Retrieve a list of all subkeys under a specified registry path.",
 		Args:  cobra.ExactArgs(1),
@@ -123,7 +123,7 @@ func Commands(con *core.Console) []*cobra.Command {
 	}
 
 	regListValueCmd := &cobra.Command{
-		Use:   consts.SubCommandName(consts.ModuleRegListValue) + " --hive [hive] --path [path]",
+		Use:   consts.SubCommandName(consts.ModuleRegListValue) + " [path]",
 		Short: "List values in a registry path",
 		Long:  "Retrieve a list of all values under a specified registry path.",
 		Args:  cobra.ExactArgs(1),

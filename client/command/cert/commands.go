@@ -50,10 +50,10 @@ cert import --cert cert_file_path --key key_file_path --ca-cert ca_cert_path
 		},
 		Example: `~~~
 // generate a self-signed cert without using certificate information
-cert selfSign
+cert self_signed
 
 // generate a self-signed cert using certificate information
-cert selfSign --CN commonName --O "Example Organization" --C US --L "San Francisco" --OU "IT Department" --ST California --validity 365
+cert self_signed --CN commonName --O "Example Organization" --C US --L "San Francisco" --OU "IT Department" --ST California --validity 365
 ~~~`,
 	}
 	common.BindFlag(selfSignCmd, common.SelfSignedFlagSet)

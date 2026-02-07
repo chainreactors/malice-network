@@ -14,7 +14,19 @@ import (
 
 func ExecuteAddonCmd(cmd *cobra.Command, con *core.Console) {
 	session := con.GetInteractive()
-	args := cmd.Flags().Args()
+	cmdArgs := cmd.Flags().Args()
+	addonName := cmd.Name()
+	execArgs := cmdArgs
+
+	if cmd.Name() == consts.ModuleExecuteAddon {
+		if len(cmdArgs) == 0 {
+			con.Log.Errorf("addon name is required\n")
+			return
+		}
+		addonName = cmdArgs[0]
+		execArgs = cmdArgs[1:]
+	}
+
 	timeout, _ := cmd.Flags().GetUint32("timeout")
 	quiet, _ := cmd.Flags().GetBool("quiet")
 	arch, _ := cmd.Flags().GetString("arch")
@@ -23,18 +35,18 @@ func ExecuteAddonCmd(cmd *cobra.Command, con *core.Console) {
 		arch = session.Os.Arch
 	}
 
-	if !session.HasAddon(cmd.Name()) {
-		con.Log.Errorf("addon %s not found in %s\n", cmd.Name(), session.SessionId)
+	if !session.HasAddon(addonName) {
+		con.Log.Errorf("addon %s not found in %s\n", addonName, session.SessionId)
 		return
 	}
 
-	addon := session.GetAddon(cmd.Name())
+	addon := session.GetAddon(addonName)
 	var sac *implantpb.SacrificeProcess
 	if slices.Contains(consts.SacrificeModules, addon.Depend) {
 		sac = common.ParseSacrificeFlags(cmd)
 	}
 
-	task, err := ExecuteAddon(con.Rpc, session, cmd.Name(), args, !quiet, timeout, arch, process, sac)
+	task, err := ExecuteAddon(con.Rpc, session, addonName, execArgs, !quiet, timeout, arch, process, sac)
 	session.Console(task, string(*con.App.Shell().Line()))
 	if err != nil {
 		con.Log.Errorf("%s\n", err)

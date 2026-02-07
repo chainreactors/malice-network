@@ -30,17 +30,17 @@ Use Ctrl+C to exit the shell.`,
 		},
 		Example: `Start a bash shell (Linux/macOS):
 ~~~
-pty
+interactive
 ~~~
 
 Start a PowerShell session (Windows):
 ~~~
-pty --shell powershell
+interactive --shell powershell
 ~~~
 
 Start with custom session ID:
 ~~~
-pty --session-id my_session --shell /bin/zsh
+interactive --session-id my_session --shell /bin/zsh
 ~~~`,
 	}
 

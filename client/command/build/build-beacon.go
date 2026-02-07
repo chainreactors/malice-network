@@ -27,7 +27,7 @@ func GuardrailFlagSet(f *pflag.FlagSet) {
 func ProxyFlagSet(f *pflag.FlagSet) {
 	// Proxy flags
 	f.Bool("proxy-use-env", false, "Use environment proxy settings")
-	f.String("proxy", "", "proxy URL")
+	f.String("proxy-url", "", "proxy URL")
 	common.SetFlagSetGroup(f, "proxy")
 }
 
@@ -103,7 +103,7 @@ func prepareBuildConfig(cmd *cobra.Command, con *core.Console, buildType string)
 	var err error
 	profileName, _ := cmd.Flags().GetString("profile")
 	target, _ := cmd.Flags().GetString("target")
-	artifactId, _ := cmd.Flags().GetUint32("artifact_id")
+	artifactId, _ := cmd.Flags().GetUint32("artifact-id")
 
 	if target == "" {
 		return nil, errors.New("require build target")
@@ -206,24 +206,28 @@ func parseBuildFlags(cmd *cobra.Command, profile *implanttypes.ProfileConfig) (*
 		profile.Basic.Key = key
 	}
 
-	// secure
-	secureEnable, _ := cmd.Flags().GetBool("secure-enable")
-	securePrivateKey, _ := cmd.Flags().GetString("secure-private-key")
-	securePublicKey, _ := cmd.Flags().GetString("secure-public-key")
-	if securePrivateKey != "" && securePublicKey != "" {
-		profile.Basic.Secure = &implanttypes.SecureProfile{
-			Enable:            secureEnable,
-			ImplantPrivateKey: securePrivateKey,
-			ServerPublicKey:   securePublicKey,
+	// secure flags - only override if explicitly provided
+	if cmd.Flags().Changed("secure") {
+		secureEnable, _ := cmd.Flags().GetBool("secure")
+		if profile.Basic.Secure == nil {
+			profile.Basic.Secure = &implanttypes.SecureProfile{}
 		}
+		profile.Basic.Secure.Enable = secureEnable
 	}
 	// proxy flags - only create if explicitly provided
 	if cmd.Flags().Changed("proxy-url") || cmd.Flags().Changed("proxy-use-env") {
-		proxy, _ := cmd.Flags().GetString("proxy-url")
-		use_env_proxy, _ := cmd.Flags().GetBool("proxy-use-env")
-		profile.Basic.Proxy = &implanttypes.ProxyProfile{
-			UseEnvProxy: use_env_proxy,
-			URL:         proxy,
+		if profile.Basic.Proxy == nil {
+			profile.Basic.Proxy = &implanttypes.ProxyProfile{}
+		}
+
+		if cmd.Flags().Changed("proxy-url") {
+			proxy, _ := cmd.Flags().GetString("proxy-url")
+			profile.Basic.Proxy.URL = proxy
+		}
+
+		if cmd.Flags().Changed("proxy-use-env") {
+			useEnvProxy, _ := cmd.Flags().GetBool("proxy-use-env")
+			profile.Basic.Proxy.UseEnvProxy = useEnvProxy
 		}
 	}
 	// guardrail flags

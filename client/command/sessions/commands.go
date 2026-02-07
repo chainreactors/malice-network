@@ -163,10 +163,10 @@ use 08d6c05a21512a79a1dfeb9d2a8f262f
 		},
 		Example: `~~~
 // List all observers
-observe -l
+obverse -l
 
 // Remove observer
-observe -r
+obverse -r
 ~~~`,
 	}
 

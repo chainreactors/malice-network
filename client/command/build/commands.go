@@ -257,7 +257,7 @@ build prelude --target x86_64-pc-windows-gnu --profile tcp_default --autorun /pa
 		},
 		Example: `~~~
 // Compile all modules for the Windows platform
-build modules --target x86_64-pc-windows-gnu --profile tcp_default
+build modules --target x86_64-pc-windows-gnu --modules nano
 
 // Compile a predefined feature set of modules (nano)
 build modules --target x86_64-pc-windows-gnu --profile tcp_default --modules nano
@@ -297,8 +297,11 @@ build modules --target x86_64-pc-windows-gnu --profile tcp_default --source saas
 // Build a pulse payload
 build pulse --target x86_64-pc-windows-gnu --profile tcp_default
 
-// Build a pulse payload by specifying artifact
+// Build a pulse payload by specifying pulse artifact id
 build pulse --target x86_64-pc-windows-gnu --profile tcp_default --artifact-id 1
+
+// Build a pulse payload and point to a beacon artifact for relink
+build pulse --target x86_64-pc-windows-gnu --profile tcp_default --artifact-id 1 --beacon-artifact-id 42
 ~~~
 `,
 	}
@@ -427,7 +430,7 @@ artifact show artifact_name --profile
 artifact upload /path/to/artifact
 
 // Upload an artifact with a specific stage and alias name
-artifact upload /path/to/artifact --stage production --name my_artifact
+artifact upload /path/to/artifact --comment production --name my_artifact
 
 // Upload an artifact and specify its type
 artifact upload /path/to/artifact --type DLL
@@ -453,7 +456,7 @@ artifact upload /path/to/artifact --type DLL
 		},
 		Example: `
 ~~~
-artifact delete --name artifact_name
+artifact delete artifact_name
 ~~~
 `}
 

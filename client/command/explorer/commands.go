@@ -21,8 +21,8 @@ func Commands(con *core.Console) []*cobra.Command {
 			"thirdParty": "true",
 		},
 		Example: `~~~
-reg_explorer HKLM\\SOFTWARE
-reg_explorer HKEY_CURRENT_USER\\Software
+reg_explorer HKLM\SOFTWARE
+reg_explorer HKEY_CURRENT_USER\Software
 ~~~`,
 	}
 

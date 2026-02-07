@@ -61,7 +61,7 @@ website web_test --listener tcp_default --root /webtest --tls --cert /path/to/ce
 			return ListWebsitesCmd(cmd, con)
 		},
 		Example: `~~~
-website [listener]
+website list [listener]
 ~~~`,
 	}
 
