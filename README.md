@@ -30,6 +30,26 @@ https://chainreactors.github.io/wiki/IoM/roadmap/
 
 ## Showcases
 
+### WEBUI
+<summary>Dashboard</summary>
+<img src="https://github.com/chainreactors/wiki/blob/master/docs/IoM/assets/WEBUI/dashboard.png"/>
+
+<summary>sessions</summary>
+<img src="https://github.com/chainreactors/wiki/blob/master/docs/IoM/assets/WEBUI/sessions.png"/>
+
+<summary>listeners</summary>
+<img src="https://github.com/chainreactors/wiki/blob/master/docs/IoM/assets/WEBUI/listeners.png"/>
+
+<summary>Interactive</summary>
+<img src="https://github.com/chainreactors/wiki/blob/master/docs/IoM/assets/WEBUI/interactive.png"/>
+
+<summary>artifacts</summary>
+<img src="https://github.com/chainreactors/wiki/blob/master/docs/IoM/assets/WEBUI/artifacts.png"/>
+
+<summary>settings</summary>
+<img src="https://github.com/chainreactors/wiki/blob/master/docs/IoM/assets/WEBUI/settings.png"/>
+
+
 ### VScode GUI
 <summary>session</summary>
 <img src="https://github.com/chainreactors/wiki/blob/master/docs/IoM/assets/session_gui.jpg"/>
