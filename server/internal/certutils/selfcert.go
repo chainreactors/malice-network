@@ -148,7 +148,7 @@ func GenerateSelfTLS(name string, certsSubject *clientpb.CertificateSubject) (*c
 	if err != nil {
 		return nil, err
 	}
-	certByte, keyByte, err := certs.GenerateChildCert(name, true, caCert, caKey, certs.ListenerNamespace)
+	certByte, keyByte, err := certs.GenerateChildCert(name, false, caCert, caKey, "")
 	if err != nil {
 		return nil, err
 	}
