@@ -8,12 +8,7 @@ git:
 before:
   hooks:
     - go mod tidy
-    - curl -L https://github.com/EgeBalci/sgn/releases/download/v2.0.1/sgn_linux_amd64_2.0.1.zip -o sgn_linux.zip
-    - unzip -o sgn_linux.zip -d server/assets/linux
-    - curl -L https://github.com/EgeBalci/sgn/releases/download/v2.0.1/sgn_windows_amd64_2.0.1.zip -o sgn_windows.zip
-    - unzip -o sgn_windows.zip -d server/assets/windows
-    - cp helper/consts/professional/malefic-mutant server/assets/linux/
-    - cp helper/consts/professional/malefic-mutant.exe server/assets/windows/
+    - go run scripts/pre_install.go --professional
 
 builds:
   -
@@ -54,10 +49,10 @@ builds:
       - amd64
       - arm64
     ldflags: |
-      -s -w 
-      -X github.com/chainreactors/malice-network/helper/consts.Ver={{.Env.VERSION}} 
-      -X github.com/chainreactors/malice-network/helper/consts.Commit={{.Env.COMMIT}}.{{.Env.LICENSE_ID}} 
-      -X github.com/chainreactors/malice-network/helper/consts.Buildstamp={{.Timestamp}}"
+      -s -w
+      -X github.com/chainreactors/malice-network/helper/consts.Ver={{.Env.VERSION}}
+      -X github.com/chainreactors/malice-network/helper/consts.Commit={{.Env.COMMIT}}.{{.Env.LICENSE_ID}}
+      -X github.com/chainreactors/malice-network/helper/consts.Buildstamp={{.Timestamp}}
     asmflags:
       - all=-trimpath={{.Env.GOPATH}}
     gcflags:
@@ -76,7 +71,7 @@ upx:
 archives:
   -
     name_template: "{{ .Binary }}"
-    format: binary
+    formats: [binary]
 
 checksum:
   name_template: "{{ .ProjectName }}_checksums.txt"
@@ -93,4 +88,3 @@ release:
     owner: chainreactors
     name: malice-network
   draft: true
-
