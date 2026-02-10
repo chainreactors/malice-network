@@ -3,31 +3,37 @@ package plugin
 import (
 	"fmt"
 	"path/filepath"
+	"sort"
 	"sync"
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/helper/intl"
 	"github.com/chainreactors/mals/m"
+	"github.com/spf13/cobra"
 )
 
 var (
 	globalMalManager *MalManager = &MalManager{
-		embeddedPlugins: make(map[string]*EmbedPlugin),
-		externalPlugins: make(map[string]Plugin),
-		globalPlugins:   make([]*DefaultPlugin, 0),
-		loadedCommands:  make(Commands)}
+		embeddedPlugins:      make(map[string]*EmbedPlugin),
+		embeddedLevelPlugins: make(map[MalLevel][]*EmbedPlugin),
+		loadedLevelCommands:  make(map[MalLevel]Commands),
+		externalPlugins:      make(map[string]Plugin),
+		globalPlugins:        make([]*DefaultPlugin, 0),
+		loadedCommands:       make(Commands)}
 )
 
 // MalManager 统一的mal插件管理器，分别管理嵌入式和外部插件
 type MalManager struct {
-	mu              sync.RWMutex
-	embeddedPlugins map[string]*EmbedPlugin // 嵌入式插件
-	externalPlugins map[string]Plugin       // 外部插件
-	globalPlugins   []*DefaultPlugin        // 全局库插件（Lib: true的插件）
-	loadedCommands  Commands                // 所有已加载的嵌入式命令
-	luaVMPool       *LuaVMPool              // 共享的 Lua VM Pool，用于执行临时脚本
-	initialized     bool                    // 是否已初始化
+	mu                   sync.RWMutex
+	embeddedPlugins      map[string]*EmbedPlugin     // 以插件名索引的嵌入式插件
+	embeddedLevelPlugins map[MalLevel][]*EmbedPlugin // 按级别分组的嵌入式插件
+	loadedLevelCommands  map[MalLevel]Commands       // 按级别分组的已注册命令
+	externalPlugins      map[string]Plugin           // 外部插件
+	globalPlugins        []*DefaultPlugin            // 全局库插件（Lib: true的插件）
+	loadedCommands       Commands                    // 所有已加载的嵌入式命令
+	luaVMPool            *LuaVMPool                  // 共享的 Lua VM Pool，用于执行临时脚本
+	initialized          bool                        // 是否已初始化
 }
 
 // GetGlobalMalManager 获取全局mal管理器（单例）
@@ -64,43 +70,104 @@ func (mm *MalManager) initialize() {
 
 // loadEmbeddedMals 直接加载嵌入式mal插件
 func (mm *MalManager) loadEmbeddedMals() {
-	// 按优先级顺序加载每个级别的mal包
+	mm.embeddedLevelPlugins = make(map[MalLevel][]*EmbedPlugin)
+	mm.loadedLevelCommands = make(map[MalLevel]Commands)
+
+	// 按级别加载多插件目录
 	for _, level := range levelOrder {
 		levelName := level.String()
-
-		// 检查mal.yaml是否存在
-		manifestPath := levelName + "/mal.yaml"
-		if _, err := intl.UnifiedFS.ReadFile(manifestPath); err != nil {
-			logs.Log.Debugf("No mal.yaml found for level %s, skipping\n", levelName)
-			continue
-		}
-
-		// 创建嵌入式插件
-		embedPlugin, err := NewEmbedPlugin(levelName, levelName, level)
+		pluginNames, err := intl.ListLevelPlugins(levelName)
 		if err != nil {
-			logs.Log.Errorf("Failed to create embedded plugin %s: %v\n", levelName, err)
+			logs.Log.Errorf("Failed to list embedded plugins for level %s: %v\n", levelName, err)
 			continue
 		}
 
-		// 运行插件
-		if err := embedPlugin.Run(); err != nil {
-			logs.Log.Errorf("Failed to run embedded plugin %s: %v\n", levelName, err)
+		if len(pluginNames) == 0 {
+			logs.Log.Debugf("No embedded plugins found for level %s\n", levelName)
 			continue
 		}
 
-		mm.embeddedPlugins[levelName] = embedPlugin
+		for _, pluginName := range pluginNames {
+			malPath := levelName + "/" + pluginName
+
+			embedPlugin, err := NewEmbedPlugin(malPath, pluginName, level)
+			if err != nil {
+				logs.Log.Errorf("Failed to create embedded plugin %s/%s: %v\n", levelName, pluginName, err)
+				continue
+			}
+
+			if err := embedPlugin.Run(); err != nil {
+				logs.Log.Errorf("Failed to run embedded plugin %s/%s: %v\n", levelName, pluginName, err)
+				continue
+			}
+
+			if _, exists := mm.embeddedPlugins[pluginName]; exists {
+				logs.Log.Warnf("Duplicate embedded plugin name '%s', skip %s/%s\n", pluginName, levelName, pluginName)
+				continue
+			}
+
+			mm.embeddedPlugins[pluginName] = embedPlugin
+			mm.embeddedLevelPlugins[level] = append(mm.embeddedLevelPlugins[level], embedPlugin)
+		}
 	}
+	mm.registerEmbeddedCommands()
+}
 
-	for _, levelName := range levelOrder {
-		if plugin, exists := mm.embeddedPlugins[levelName.String()]; exists {
-			// 添加插件的命令到Commands中，后加载的会覆盖先加载的
+func (mm *MalManager) registerEmbeddedCommands() {
+	mm.loadedCommands = make(Commands)
+
+	for _, level := range levelOrder {
+		plugins := mm.embeddedLevelPlugins[level]
+		if len(plugins) == 0 {
+			continue
+		}
+
+		if _, exists := mm.loadedLevelCommands[level]; !exists {
+			mm.loadedLevelCommands[level] = make(Commands)
+		}
+
+		sort.Slice(plugins, func(i, j int) bool {
+			return plugins[i].Name < plugins[j].Name
+		})
+
+		for _, plugin := range plugins {
 			for _, cmd := range plugin.Commands() {
 				cmdName := cmd.Command.Name()
+				mm.loadedLevelCommands[level].SetCommand(cmdName, cmd.Command)
 				mm.loadedCommands.SetCommand(cmdName, cmd.Command)
-				logs.Log.Debugf("Added/Updated embedded command '%s' from %s\n", cmdName, levelName)
+				logs.Log.Debugf("Added/Updated embedded command '%s' from %s/%s\n", cmdName, level.String(), plugin.Name)
 			}
 		}
 	}
+}
+
+func (mm *MalManager) GetEmbeddedPluginsByLevel(level MalLevel) []*EmbedPlugin {
+	mm.mu.RLock()
+	defer mm.mu.RUnlock()
+
+	plugins := mm.embeddedLevelPlugins[level]
+	result := make([]*EmbedPlugin, len(plugins))
+	copy(result, plugins)
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].Name < result[j].Name
+	})
+	return result
+}
+
+func (mm *MalManager) GetEmbeddedCommandsByLevel(level MalLevel) []*cobra.Command {
+	mm.mu.RLock()
+	defer mm.mu.RUnlock()
+
+	commands, exists := mm.loadedLevelCommands[level]
+	if !exists {
+		return nil
+	}
+
+	result := commands.Commands()
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].Name() < result[j].Name()
+	})
+	return result
 }
 
 func (mm *MalManager) loadExternalMals() {

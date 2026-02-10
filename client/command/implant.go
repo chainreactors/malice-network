@@ -287,8 +287,19 @@ func BindImplantCommands(con *core.Console) console.Commands {
 
 		// 注册嵌入式插件命令
 		embeddedBind := MakeBind(implant, con, "mal")
-		for _, plug := range con.MalManager.GetAllEmbeddedPlugins() {
-			embeddedBind(plug.Name, BindCommand(plug.Commands().Commands()))
+		customCommands := con.MalManager.GetEmbeddedCommandsByLevel(plugin.CustomLevel)
+		if len(customCommands) > 0 {
+			embeddedBind(plugin.CustomLevel.String(), BindCommand(customCommands))
+		}
+
+		communityCommands := con.MalManager.GetEmbeddedCommandsByLevel(plugin.CommunityLevel)
+		if len(communityCommands) > 0 {
+			embeddedBind(plugin.CommunityLevel.String(), BindCommand(communityCommands))
+		}
+
+		professionalCommands := con.MalManager.GetEmbeddedCommandsByLevel(plugin.ProfessionalLevel)
+		if len(professionalCommands) > 0 {
+			embeddedBind(plugin.ProfessionalLevel.String(), BindCommand(professionalCommands))
 		}
 
 		// 注册外部插件命令

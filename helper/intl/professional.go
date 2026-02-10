@@ -7,12 +7,7 @@ import (
 	"embed"
 )
 
-//go:embed community/main.lua
-//go:embed community/mal.yaml
-//go:embed community/modules
-//go:embed community/resources
-//go:embed professional/main.lua
-//go:embed professional/mal.yaml
-//go:embed professional/modules
-//go:embed professional/resources
+//go:embed community
+//go:embed all:professional
+//go:embed all:custom
 var UnifiedFS embed.FS

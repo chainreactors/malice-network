@@ -1,8 +1,10 @@
 package intl
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
+	"sort"
 	"strings"
 )
 
@@ -24,6 +26,32 @@ func FileExists(filename string) bool {
 // ReadDir 读取嵌入式目录内容
 func ReadDir(dirname string) ([]fs.DirEntry, error) {
 	return UnifiedFS.ReadDir(dirname)
+}
+
+// ListLevelPlugins 列出指定级别下的多插件目录（包含 mal.yaml 的一级子目录）
+func ListLevelPlugins(levelName string) ([]string, error) {
+	entries, err := ReadDir(levelName)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	pluginNames := make([]string, 0)
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		manifestPath := levelName + "/" + entry.Name() + "/mal.yaml"
+		if _, err := UnifiedFS.Open(manifestPath); err == nil {
+			pluginNames = append(pluginNames, entry.Name())
+		}
+	}
+
+	sort.Strings(pluginNames)
+	return pluginNames, nil
 }
 
 // FindResource 查找嵌入式资源文件，支持架构特定查找
@@ -80,7 +108,7 @@ func ReadEmbedResource(embedPath string) ([]byte, error) {
 	return GetFileContent(fullPath)
 }
 
-// ListLevels 列出所有可用的级别（community, professional, custom）
+// ListLevels 列出所有可用的级别（community, professional）
 func ListLevels() ([]string, error) {
 	entries, err := ReadDir(".")
 	if err != nil {
