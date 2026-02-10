@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -24,6 +23,7 @@ import (
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/utils"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
@@ -42,7 +42,10 @@ var (
 )
 
 func createSessionDirs(sessionID string) (string, error) {
-	contextDir := filepath.Join(configs.ContextPath, sessionID)
+	contextDir, err := fileutils.SafeJoin(configs.ContextPath, sessionID)
+	if err != nil {
+		return "", err
+	}
 	cacheDir := filepath.Join(contextDir, consts.CachePath)
 	downloadDir := filepath.Join(contextDir, consts.DownloadPath)
 	keyLoggerDir := filepath.Join(contextDir, consts.KeyLoggerPath)
@@ -52,8 +55,8 @@ func createSessionDirs(sessionID string) (string, error) {
 
 	dirs := []string{cacheDir, downloadDir, keyLoggerDir, screenShotDir, taskDir, requestDir}
 	for _, dir := range dirs {
-		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
-			logs.Log.Errorf("cannot create directory %s, %s", dir, err.Error())
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			return "", fmt.Errorf("cannot create directory %s: %w", dir, err)
 		}
 	}
 
@@ -132,19 +135,42 @@ func RegisterSession(req *clientpb.RegisterSession) (*Session, error) {
 }
 
 func RecoverSession(sess *models.Session) (*Session, error) {
-	cache := NewCache(path.Join(configs.ContextPath, sess.SessionID, consts.CachePath, CacheName))
-	err := cache.Load()
+	cachePath, err := fileutils.SafeJoin(configs.ContextPath, filepath.Join(sess.SessionID, consts.CachePath, CacheName))
+	if err != nil {
+		return nil, err
+	}
+	cache := NewCache(cachePath)
+	err = cache.Load()
 	if err != nil {
 		return nil, err
 	}
 
-	// 安全地处理SessionContext
-	var sessionContext *client.SessionContext
-	if sess.DataString != "" {
-		sessionContext, _ = client.RecoverSessionContext(sess.DataString)
+	sessionContext := sess.Data
+	if sessionContext == nil && sess.DataString != "" {
+		recovered, err := client.RecoverSessionContext(sess.DataString)
+		if err != nil {
+			logs.Log.Warnf("failed to recover session context %s: %v", sess.SessionID, err)
+		} else {
+			sessionContext = recovered
+		}
 	}
 	if sessionContext == nil {
 		sessionContext = &client.SessionContext{}
+	}
+	if sessionContext.SessionInfo == nil {
+		sessionContext.SessionInfo = &client.SessionInfo{}
+	}
+	if sessionContext.Os == nil {
+		sessionContext.Os = &implantpb.Os{}
+	}
+	if sessionContext.Process == nil {
+		sessionContext.Process = &implantpb.Process{}
+	}
+	if sessionContext.Argue == nil {
+		sessionContext.Argue = map[string]string{}
+	}
+	if sessionContext.Any == nil {
+		sessionContext.Any = map[string]interface{}{}
 	}
 
 	s := &Session{
@@ -274,8 +300,14 @@ func (s *Session) TaskLog(task *Task, spite *implantpb.Spite) error {
 	if err != nil {
 		return err
 	}
-	filePath := filepath.Join(configs.ContextPath, s.ID, consts.TaskPath, fmt.Sprintf("%d_%d", task.Id, task.Cur))
-	f, err := os.OpenFile(filePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	filePath, err := fileutils.SafeJoin(configs.ContextPath, filepath.Join(s.ID, consts.TaskPath, fmt.Sprintf("%d_%d", task.Id, task.Cur)))
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(filePath), 0o700); err != nil {
+		return err
+	}
+	f, err := os.OpenFile(filePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
 	if err != nil {
 		return err
 	}
@@ -301,7 +333,11 @@ func (s *Session) Recover() error {
 }
 
 func (s *Session) RecoverTaskIDByLog() (int, error) {
-	files, err := os.ReadDir(filepath.Join(configs.ContextPath, s.ID, consts.TaskPath))
+	taskDir, err := fileutils.SafeJoin(configs.ContextPath, filepath.Join(s.ID, consts.TaskPath))
+	if err != nil {
+		return 0, err
+	}
+	files, err := os.ReadDir(taskDir)
 	if err != nil {
 		return 0, err
 	}

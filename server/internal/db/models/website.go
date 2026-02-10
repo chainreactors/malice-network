@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/gofrs/uuid"
 	"gorm.io/gorm"
@@ -42,7 +43,10 @@ func (wc *WebsiteContent) BeforeCreate(tx *gorm.DB) (err error) {
 func (wc *WebsiteContent) ToProtobuf(read bool) *clientpb.WebContent {
 	var data []byte
 	if read && wc.Type == "raw" {
-		data, _ = os.ReadFile(filepath.Join(configs.WebsitePath, wc.PipelineID, wc.ID.String()))
+		contentPath, err := fileutils.SafeJoin(configs.WebsitePath, filepath.Join(wc.PipelineID, wc.ID.String()))
+		if err == nil {
+			data, _ = os.ReadFile(contentPath)
+		}
 	}
 
 	return &clientpb.WebContent{
@@ -59,10 +63,10 @@ func (wc *WebsiteContent) ToProtobuf(read bool) *clientpb.WebContent {
 }
 
 func (wc *WebsiteContent) URL() string {
-	if wc.Pipeline.Tls != nil {
-		return fmt.Sprintf("http://%s:%d%s%s", wc.Pipeline.IP, wc.Pipeline.Port, wc.Pipeline.WebPath, wc.Path)
+	if wc.Pipeline.Tls != nil && wc.Pipeline.Tls.Enable {
+		return fmt.Sprintf("https://%s:%d%s%s", wc.Pipeline.IP, wc.Pipeline.Port, wc.Pipeline.WebPath, wc.Path)
 	}
-	return fmt.Sprintf("https://%s:%d%s%s", wc.Pipeline.IP, wc.Pipeline.Port, wc.Pipeline.WebPath, wc.Path)
+	return fmt.Sprintf("http://%s:%d%s%s", wc.Pipeline.IP, wc.Pipeline.Port, wc.Pipeline.WebPath, wc.Path)
 }
 
 func FromWebContentPb(content *clientpb.WebContent) *WebsiteContent {

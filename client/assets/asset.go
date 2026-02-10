@@ -35,7 +35,7 @@ func GetConfigDir() string {
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		err = os.MkdirAll(dir, 0700)
 		if err != nil {
-			logs.Log.Errorf(err.Error())
+			logs.Log.Errorf("%v", err)
 		}
 	}
 	return dir

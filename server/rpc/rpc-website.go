@@ -6,6 +6,7 @@ import (
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
@@ -13,7 +14,6 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"os"
 	"path"
-	"path/filepath"
 )
 
 func MapContents(webpipe *clientpb.Pipeline) error {
@@ -127,7 +127,16 @@ func (rpc *Server) RegisterWebsite(ctx context.Context, req *clientpb.Pipeline) 
 	req.Ip = lns.IP
 	pipelineModel := models.FromPipelinePb(req)
 	_, err = db.SavePipeline(pipelineModel)
-	_ = os.Mkdir(filepath.Join(configs.WebsitePath, req.Name), os.ModePerm)
+	if err != nil {
+		return nil, err
+	}
+	websiteDir, err := fileutils.SafeJoin(configs.WebsitePath, req.Name)
+	if err != nil {
+		return nil, err
+	}
+	if err := os.MkdirAll(websiteDir, 0o700); err != nil {
+		return nil, err
+	}
 	for _, content := range req.GetWeb().Contents {
 		content.WebsiteId = req.Name
 		_, err = db.AddContent(content)

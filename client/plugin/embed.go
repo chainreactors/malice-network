@@ -25,6 +25,8 @@ func (l MalLevel) String() string {
 		return "community"
 	case ProfessionalLevel:
 		return "professional"
+	case CustomLevel:
+		return "custom"
 	default:
 		return "unknown"
 	}
@@ -37,7 +39,7 @@ const (
 )
 
 var (
-	levelOrder = []MalLevel{CommunityLevel, ProfessionalLevel, CustomLevel}
+	levelOrder = []MalLevel{CustomLevel, ProfessionalLevel, CommunityLevel}
 )
 
 // EmbedPlugin 嵌入式Lua插件，直接实现Plugin接口
@@ -51,9 +53,10 @@ type EmbedPlugin struct {
 
 // NewEmbedPlugin 创建嵌入式插件
 func NewEmbedPlugin(malPath, malName string, level MalLevel) (*EmbedPlugin, error) {
+	pluginFS := intl.UnifiedFS
 	// 读取manifest文件
 	manifestPath := malPath + "/mal.yaml"
-	manifestData, err := intl.UnifiedFS.ReadFile(manifestPath)
+	manifestData, err := pluginFS.ReadFile(manifestPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read manifest: %w", err)
 	}
@@ -71,7 +74,7 @@ func NewEmbedPlugin(malPath, malName string, level MalLevel) (*EmbedPlugin, erro
 	var content []byte
 	if manifest.EntryFile != "" {
 		entryPath := malPath + "/" + manifest.EntryFile
-		content, err = intl.UnifiedFS.ReadFile(entryPath)
+		content, err = pluginFS.ReadFile(entryPath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read entry file %s: %w", manifest.EntryFile, err)
 		}
@@ -96,7 +99,7 @@ func NewEmbedPlugin(malPath, malName string, level MalLevel) (*EmbedPlugin, erro
 	embedPlugin := &EmbedPlugin{
 		LuaPlugin: luaPlugin,
 		Level:     level,
-		FS:        intl.UnifiedFS,
+		FS:        pluginFS,
 		RootPath:  malPath,
 	}
 
@@ -168,13 +171,11 @@ func (plug *EmbedPlugin) registerEmbedResourceFunctions() {
 	plug.registerFunction("global_resource", func(filename string) (string, error) {
 		// 从全局管理器查找
 		if globalManager := GetGlobalMalManager(); globalManager != nil {
-			reverseLevelOrder := []string{"custom", "professional", "community"}
-
-			for _, levelName := range reverseLevelOrder {
-				if plugin, exists := globalManager.GetEmbedPlugin(levelName); exists {
+			for _, level := range []MalLevel{CustomLevel, ProfessionalLevel, CommunityLevel} {
+				for _, levelPlugin := range globalManager.GetEmbeddedPluginsByLevel(level) {
 					resourcePath := "resources/" + filename
-					if _, fileExists := plugin.GetFileContent(resourcePath); fileExists {
-						return fmt.Sprintf("embed://%s/%s", levelName, resourcePath), nil
+					if _, fileExists := levelPlugin.GetFileContent(resourcePath); fileExists {
+						return fmt.Sprintf("embed://%s/%s", levelPlugin.Name, resourcePath), nil
 					}
 				}
 			}
@@ -203,13 +204,11 @@ func (plug *EmbedPlugin) registerEmbedResourceFunctions() {
 		filename := fmt.Sprintf("%s.%s.%s", base, sess.Os.Arch, ext)
 
 		if globalManager := GetGlobalMalManager(); globalManager != nil {
-			reverseLevelOrder := []string{"custom", "professional", "community"}
-
-			for _, levelName := range reverseLevelOrder {
-				if plugin, exists := globalManager.GetEmbedPlugin(levelName); exists {
+			for _, level := range []MalLevel{CustomLevel, ProfessionalLevel, CommunityLevel} {
+				for _, levelPlugin := range globalManager.GetEmbeddedPluginsByLevel(level) {
 					resourcePath := "resources/" + filename
-					if _, fileExists := plugin.GetFileContent(resourcePath); fileExists {
-						return fmt.Sprintf("embed://%s/%s", levelName, resourcePath), nil
+					if _, fileExists := levelPlugin.GetFileContent(resourcePath); fileExists {
+						return fmt.Sprintf("embed://%s/%s", levelPlugin.Name, resourcePath), nil
 					}
 				}
 			}
@@ -241,13 +240,10 @@ func (plug *EmbedPlugin) registerEmbedResourceFunctions() {
 	plug.registerFunction("read_global_resource", func(filename string) (string, error) {
 		// 从plugin包获取全局嵌入式mal管理器
 		if globalManager := GetGlobalMalManager(); globalManager != nil {
-			// 按优先级顺序查找：custom -> professional -> community
-			reverseLevelOrder := []string{"custom", "professional", "community"}
-
-			for _, levelName := range reverseLevelOrder {
-				if plugin, exists := globalManager.GetEmbedPlugin(levelName); exists {
+			for _, level := range []MalLevel{CustomLevel, ProfessionalLevel, CommunityLevel} {
+				for _, levelPlugin := range globalManager.GetEmbeddedPluginsByLevel(level) {
 					resourcePath := "resources/" + filename
-					if content, fileExists := plugin.GetFileContent(resourcePath); fileExists {
+					if content, fileExists := levelPlugin.GetFileContent(resourcePath); fileExists {
 						return string(content), nil
 					}
 				}

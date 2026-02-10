@@ -19,6 +19,11 @@ import (
 	"time"
 )
 
+const (
+	contextDirPerm  = 0o700
+	contextFilePerm = 0o600
+)
+
 func PushContextEvent(Op string, ctx *models.Context) {
 	EventBroker.Publish(Event{
 		EventType: consts.EventContext,
@@ -30,15 +35,32 @@ func PushContextEvent(Op string, ctx *models.Context) {
 }
 
 func HandleScreenshot(data []byte, task *Task) error {
+	if task == nil || task.Session == nil {
+		return errors.New("task session is nil")
+	}
+	if len(data) < 4 {
+		return fmt.Errorf("invalid screenshot payload: %d bytes", len(data))
+	}
+
 	t := time.Now()
 	filename := fmt.Sprintf("%d.jpg", t.Unix())
-	savePath := filepath.Join(configs.ContextPath, task.SessionId, consts.ScreenShotPath, filename)
-
-	if err := os.MkdirAll(filepath.Dir(savePath), os.ModePerm); err != nil {
+	sessionID := task.Session.ID
+	if sessionID == "" {
+		sessionID = task.SessionId
+	}
+	if sessionID == "" {
+		return errors.New("session id is empty")
+	}
+	savePath, err := fileutils.SafeJoin(configs.ContextPath, filepath.Join(sessionID, consts.ScreenShotPath, filename))
+	if err != nil {
 		return err
 	}
 
-	if err := os.WriteFile(savePath, data[4:], 0644); err != nil {
+	if err := os.MkdirAll(filepath.Dir(savePath), contextDirPerm); err != nil {
+		return err
+	}
+
+	if err := os.WriteFile(savePath, data[4:], contextFilePerm); err != nil {
 		return err
 	}
 
@@ -66,24 +88,49 @@ func getFileExtKey(fileId uint32) string {
 }
 
 func HandleFileOperations(op string, data []byte, task *Task) error {
+	if task == nil || task.Session == nil {
+		return errors.New("task session is nil")
+	}
+	if len(data) < 4 {
+		return fmt.Errorf("invalid file operation payload: %d bytes", len(data))
+	}
 	fileId := binary.LittleEndian.Uint32(data[:4])
 	sess := task.Session
-	dirPath := filepath.Join(configs.ContextPath, sess.ID, consts.DownloadPath)
+	dirPath, err := fileutils.SafeJoin(configs.ContextPath, filepath.Join(sess.ID, consts.DownloadPath))
+	if err != nil {
+		return err
+	}
 
 	switch op {
 	case "open":
+		if len(data) < 8 {
+			return fmt.Errorf("invalid file open payload: %d bytes", len(data))
+		}
 		originalName := string(data[8:])
-		if err := os.MkdirAll(dirPath, os.ModePerm); err != nil {
+		fileName, err := fileutils.SanitizeBasename(originalName)
+		if err != nil {
+			return err
+		}
+		if err := os.MkdirAll(dirPath, contextDirPerm); err != nil {
 			return fmt.Errorf("create directory failed: %w", err)
 		}
 
-		savePath := filepath.Join(dirPath, originalName)
-		file, err := os.OpenFile(savePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		savePath, err := fileutils.SafeJoin(dirPath, fileName)
+		if err != nil {
+			return err
+		}
+		file, err := os.OpenFile(savePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, contextFilePerm)
 		if err != nil {
 			return fmt.Errorf("open file failed: %w", err)
 		}
 		defer file.Close()
 
+		if sess.SessionContext == nil {
+			return errors.New("session context is nil")
+		}
+		if sess.Any == nil {
+			sess.Any = map[string]interface{}{}
+		}
 		sess.Any[getFileExtKey(fileId)] = savePath
 		EventBroker.Publish(Event{
 			EventType: consts.EventContext,
@@ -94,12 +141,21 @@ func HandleFileOperations(op string, data []byte, task *Task) error {
 		return nil
 
 	case "write":
+		if sess.SessionContext == nil {
+			return errors.New("session context is nil")
+		}
+		if sess.Any == nil {
+			return errors.New("session context storage is nil")
+		}
 		savePath, ok := sess.Any[getFileExtKey(fileId)].(string)
 		if !ok {
 			return fmt.Errorf("no file found for ID: %d", fileId)
 		}
+		if len(data) < 4 {
+			return fmt.Errorf("invalid file write payload: %d bytes", len(data))
+		}
 
-		file, err := os.OpenFile(savePath, os.O_APPEND|os.O_WRONLY, 0644)
+		file, err := os.OpenFile(savePath, os.O_APPEND|os.O_WRONLY, contextFilePerm)
 		if err != nil {
 			return fmt.Errorf("open file failed: %w", err)
 		}
@@ -117,6 +173,12 @@ func HandleFileOperations(op string, data []byte, task *Task) error {
 		return nil
 
 	case "close":
+		if sess.SessionContext == nil {
+			return errors.New("session context is nil")
+		}
+		if sess.Any == nil {
+			return errors.New("session context storage is nil")
+		}
 		savePath, ok := sess.Any[getFileExtKey(fileId)].(string)
 		if !ok {
 			return fmt.Errorf("no file found for ID: %d", fileId)
@@ -148,6 +210,12 @@ func HandleFileOperations(op string, data []byte, task *Task) error {
 }
 
 func SaveContext(ctx output.Context, task *Task) (*models.Context, error) {
+	if ctx == nil {
+		return nil, errors.New("context is nil")
+	}
+	if task == nil || task.Session == nil {
+		return nil, errors.New("task session is nil")
+	}
 	value, err := json.Marshal(ctx)
 	if err != nil {
 		return nil, err
@@ -257,6 +325,9 @@ func deterministicContextID(sessionID, identifier, nonce, contextType string) st
 }
 
 func HandleKeylogger(data []byte, task *Task, identifier string, filename string, nonce string) error {
+	if task == nil || task.Session == nil {
+		return errors.New("task session is nil")
+	}
 	if len(data) == 0 {
 		return nil
 	}
@@ -273,13 +344,19 @@ func HandleKeylogger(data []byte, task *Task, identifier string, filename string
 		name = fmt.Sprintf("%s.log", identifier)
 	}
 
-	dir := filepath.Join(configs.ContextPath, task.SessionId, consts.KeyLoggerPath)
-	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+	dir, err := fileutils.SafeJoin(configs.ContextPath, filepath.Join(task.SessionId, consts.KeyLoggerPath))
+	if err != nil {
 		return err
 	}
-	savePath := filepath.Join(dir, name)
+	if err := os.MkdirAll(dir, contextDirPerm); err != nil {
+		return err
+	}
+	savePath, err := fileutils.SafeJoin(dir, name)
+	if err != nil {
+		return err
+	}
 
-	file, err := os.OpenFile(savePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	file, err := os.OpenFile(savePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, contextFilePerm)
 	if err != nil {
 		return err
 	}
@@ -337,6 +414,9 @@ func HandleKeylogger(data []byte, task *Task, identifier string, filename string
 }
 
 func HandleMediaChunk(task *Task, nonce, identifier, filename, mediaKind string, data []byte) error {
+	if task == nil || task.Session == nil {
+		return errors.New("task session is nil")
+	}
 	if len(data) == 0 {
 		return nil
 	}
@@ -350,13 +430,19 @@ func HandleMediaChunk(task *Task, nonce, identifier, filename, mediaKind string,
 	}
 
 	saveName := sanitizeFileName(filename, sanitizedID+".bin")
-	dir := filepath.Join(configs.ContextPath, task.SessionId, consts.MediaPath)
-	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+	dir, err := fileutils.SafeJoin(configs.ContextPath, filepath.Join(task.SessionId, consts.MediaPath))
+	if err != nil {
 		return err
 	}
-	savePath := filepath.Join(dir, saveName)
+	if err := os.MkdirAll(dir, contextDirPerm); err != nil {
+		return err
+	}
+	savePath, err := fileutils.SafeJoin(dir, saveName)
+	if err != nil {
+		return err
+	}
 
-	file, err := os.OpenFile(savePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	file, err := os.OpenFile(savePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, contextFilePerm)
 	if err != nil {
 		return err
 	}

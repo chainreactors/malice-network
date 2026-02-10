@@ -7,8 +7,6 @@ import (
 	"embed"
 )
 
-//go:embed community/main.lua
-//go:embed community/mal.yaml
-//go:embed community/modules
-//go:embed community/resources
+//go:embed community
+//go:embed all:custom
 var UnifiedFS embed.FS

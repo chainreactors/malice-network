@@ -3,8 +3,10 @@ bin/
 dist/
 .malice/
 go.sum
-helper/intl/professional/
-helper/intl/custom/
+helper/intl/professional/*
+!helper/intl/professional/.gitkeep
+helper/intl/custom/*
+!helper/intl/custom/.gitkeep
 *.bin
 *.so
 .gomodcache/

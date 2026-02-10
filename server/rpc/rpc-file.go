@@ -193,7 +193,15 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 		downloadAbs := resp.GetDownloadResponse()
 		greq.Task.Total = total
 
-		finalPath := filepath.Join(configs.ContextPath, greq.Session.ID, consts.DownloadPath, downloadAbs.Checksum)
+		finalPath, err := fileutils.SafeJoin(configs.ContextPath, filepath.Join(greq.Session.ID, consts.DownloadPath, downloadAbs.Checksum))
+		if err != nil {
+			greq.Task.Panic(buildErrorEvent(greq.Task, err))
+			return
+		}
+		if err := os.MkdirAll(filepath.Dir(finalPath), 0o700); err != nil {
+			greq.Task.Panic(buildErrorEvent(greq.Task, err))
+			return
+		}
 		if _, err := os.Stat(finalPath); err == nil {
 			if actualChecksum, err := fileutils.CalculateSHA256Checksum(finalPath); err == nil && actualChecksum == downloadAbs.Checksum {
 				greq.Task.Finish(resp, "file already exists and verified")

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"mime"
 	"os"
@@ -292,8 +293,11 @@ func DeleteWebsite(name string) error {
 	if result.Error != nil {
 		return result.Error
 	}
-	err := os.RemoveAll(filepath.Join(configs.WebsitePath, website.Name))
+	websiteDir, err := fileutils.SafeJoin(configs.WebsitePath, website.Name)
 	if err != nil {
+		return err
+	}
+	if err := os.RemoveAll(websiteDir); err != nil {
 		return err
 	}
 	result = Session().Delete(&website)
@@ -356,6 +360,10 @@ func FindWebContentsByWebsite(website string) ([]*models.WebsiteContent, error) 
 
 // AddContent - Add content to website
 func AddContent(content *clientpb.WebContent) (*models.WebsiteContent, error) {
+	if content == nil {
+		return nil, errors.New("content is nil")
+	}
+
 	switch content.Type {
 	case "", "raw", "default":
 		content.Type = "raw"
@@ -385,10 +393,18 @@ func AddContent(content *clientpb.WebContent) (*models.WebsiteContent, error) {
 				return nil, err
 			}
 		}
+	} else {
+		return nil, err
 	}
 	if content.Type == "raw" {
-		err = os.WriteFile(filepath.Join(configs.WebsitePath, content.WebsiteId, webModel.ID.String()), content.Content, os.ModePerm)
+		contentPath, err := fileutils.SafeJoin(configs.WebsitePath, filepath.Join(content.WebsiteId, webModel.ID.String()))
 		if err != nil {
+			return nil, err
+		}
+		if err := os.MkdirAll(filepath.Dir(contentPath), 0o700); err != nil {
+			return nil, err
+		}
+		if err := os.WriteFile(contentPath, content.Content, 0o600); err != nil {
 			return nil, err
 		}
 	}

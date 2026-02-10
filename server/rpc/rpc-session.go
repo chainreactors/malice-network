@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -128,7 +129,10 @@ func (rpc *Server) GetSessionHistory(ctx context.Context, req *clientpb.Int) (*c
 		Contexts: make([]*clientpb.TaskContext, 0),
 	}
 
-	taskDir := filepath.Join(configs.ContextPath, sid, consts.TaskPath)
+	taskDir, err := fileutils.SafeJoin(configs.ContextPath, filepath.Join(sid, consts.TaskPath))
+	if err != nil {
+		return nil, err
+	}
 	session, err := core.Sessions.Get(sid)
 	if err != nil {
 		_, taskId, err := db.FindTaskAndMaxTasksID(sid)
