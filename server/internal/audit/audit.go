@@ -5,6 +5,7 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/gookit/config/v2"
@@ -15,8 +16,14 @@ import (
 )
 
 func AuditTaskLog(sessionID string) (*clientpb.Audits, error) {
-	taskDir := filepath.Join(configs.ContextPath, sessionID, consts.TaskPath)
-	requestDir := filepath.Join(configs.ContextPath, sessionID, consts.RequestPath)
+	taskDir, err := fileutils.SafeJoin(configs.ContextPath, filepath.Join(sessionID, consts.TaskPath))
+	if err != nil {
+		return nil, err
+	}
+	requestDir, err := fileutils.SafeJoin(configs.ContextPath, filepath.Join(sessionID, consts.RequestPath))
+	if err != nil {
+		return nil, err
+	}
 	re := regexp.MustCompile(`^([0-9]+)_([0-9]+)$`)
 	files, err := os.ReadDir(taskDir)
 	if err != nil {

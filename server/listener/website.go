@@ -196,11 +196,22 @@ func (w *Website) websiteContentHandler(resp http.ResponseWriter, req *http.Requ
 }
 
 func (w *Website) AddContent(content *clientpb.WebContent) error {
-	contentPath := filepath.Join(configs.WebsitePath, content.WebsiteId, content.Id)
+	if content == nil {
+		return errors.New("content is nil")
+	}
+	if content.WebsiteId == "" || content.Id == "" {
+		return errors.New("website_id and id are required")
+	}
+
+	contentPath, err := fileutils.SafeJoin(configs.WebsitePath, filepath.Join(content.WebsiteId, content.Id))
+	if err != nil {
+		return err
+	}
 	if !fileutils.Exist(contentPath) {
-		os.MkdirAll(filepath.Join(configs.WebsitePath, content.WebsiteId), 0644)
-		err := os.WriteFile(contentPath, content.Content, 0644)
-		if err != nil {
+		if err := os.MkdirAll(filepath.Dir(contentPath), 0o700); err != nil {
+			return err
+		}
+		if err := os.WriteFile(contentPath, content.Content, 0o600); err != nil {
 			return err
 		}
 	}

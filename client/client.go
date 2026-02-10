@@ -8,7 +8,7 @@ import (
 func main() {
 	err := cli.Start()
 	if err != nil {
-		logs.Log.Errorf(err.Error())
+		logs.Log.Errorf("%v", err)
 		return
 	}
 }

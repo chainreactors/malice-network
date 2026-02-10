@@ -111,9 +111,9 @@ func makeRunners(implantCmd *cobra.Command, con *core.Console) (pre, post func(c
 		}
 
 		var session *client.Session
-		var ok bool
-
-		if session, ok = con.GetLocalSession(sid); !ok {
+		var err error
+		session, err = con.GetOrUpdateSession(sid)
+		if err != nil || session == nil {
 			if con.ActiveTarget != nil && con.ActiveTarget.Get() != nil && con.ActiveTarget.Get().SessionId == sid {
 				session = con.ActiveTarget.Get()
 			} else {

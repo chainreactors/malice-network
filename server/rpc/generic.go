@@ -7,6 +7,7 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	types "github.com/chainreactors/IoM-go/types"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"net"
 	"os"
@@ -89,7 +90,15 @@ func (r *GenericRequest) InitSpite(ctx context.Context) (*implantpb.Spite, error
 	if err != nil {
 		return nil, err
 	}
-	err = os.WriteFile(filepath.Join(configs.ContextPath, r.Task.SessionId, consts.RequestPath, strconv.Itoa(int(r.Task.Id))), spiteBytes, 0644)
+
+	requestPath, err := fileutils.SafeJoin(configs.ContextPath, filepath.Join(r.Task.SessionId, consts.RequestPath, strconv.Itoa(int(r.Task.Id))))
+	if err != nil {
+		return nil, err
+	}
+	if err := os.MkdirAll(filepath.Dir(requestPath), 0o700); err != nil {
+		return nil, err
+	}
+	err = os.WriteFile(requestPath, spiteBytes, 0o600)
 	if err != nil {
 		return nil, err
 	}

@@ -176,7 +176,7 @@ func (pipeline *HTTPPipeline) handlePulse(resp http.ResponseWriter, req *http.Re
 	p := conn.Parser
 	magic, artifactId, err := p.ReadHeader(conn)
 	if err != nil {
-		logs.Log.Errorf(err.Error())
+		logs.Log.Errorf("%v", err)
 		return
 	}
 

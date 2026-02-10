@@ -38,7 +38,7 @@ func StartClientListener(address string) (*grpc.Server, net.Listener, error) {
 	creds := credentials.NewTLS(tlsConfig)
 	ln, err := net.Listen("tcp", address)
 	if err != nil {
-		logs.Log.Errorf(err.Error())
+		logs.Log.Errorf("%v", err)
 		return nil, nil, err
 	}
 	options := []grpc.ServerOption{

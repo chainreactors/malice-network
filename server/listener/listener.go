@@ -5,13 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/chainreactors/IoM-go/consts"
 	mtls "github.com/chainreactors/IoM-go/mtls"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/services/listenerrpc"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 
 	"github.com/chainreactors/logs"
@@ -508,10 +508,49 @@ func (lns *listener) handleStopWebsite(job *clientpb.Job) error {
 }
 
 func (lns *listener) handleRegisterWebsite(job *clientpb.Job) error {
-	webContents := job.GetPipeline().GetWeb().Contents
-	for _, content := range webContents {
-		filePath := filepath.Join(configs.WebsitePath, content.File)
-		if err := os.WriteFile(filePath, content.Content, os.ModePerm); err != nil {
+	pipe := job.GetPipeline()
+	if pipe == nil {
+		return errors.New("pipeline is nil")
+	}
+	web := pipe.GetWeb()
+	if web == nil {
+		return errors.New("website is nil")
+	}
+
+	websiteDir, err := fileutils.SafeJoin(configs.WebsitePath, pipe.Name)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(websiteDir, 0o700); err != nil {
+		return err
+	}
+
+	for _, content := range web.Contents {
+		if content == nil {
+			continue
+		}
+
+		nameHint := content.File
+		if nameHint == "" {
+			switch {
+			case content.Id != "":
+				nameHint = content.Id
+			case content.Path != "":
+				nameHint = content.Path
+			default:
+				return errors.New("web content missing file/path/id")
+			}
+		}
+
+		fileName, err := fileutils.SanitizeBasename(nameHint)
+		if err != nil {
+			return err
+		}
+		filePath, err := fileutils.SafeJoin(websiteDir, fileName)
+		if err != nil {
+			return err
+		}
+		if err := os.WriteFile(filePath, content.Content, 0o600); err != nil {
 			return err
 		}
 	}
@@ -524,7 +563,9 @@ func (lns *listener) handleWebContentAdd(job *clientpb.JobCtrl) error {
 	if w == nil {
 		return errors.New("website not found")
 	}
-	w.AddContent(job.Content)
+	if err := w.AddContent(job.Content); err != nil {
+		return err
+	}
 	job.Job.Contents = map[string]*clientpb.WebContent{
 		job.Content.Path: &clientpb.WebContent{
 			Id:   job.Content.Path,
