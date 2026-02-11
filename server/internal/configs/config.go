@@ -3,6 +3,7 @@ package configs
 import (
 	"github.com/chainreactors/files"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/utils/configutil"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/gookit/config/v2"
 	"os"
@@ -122,7 +123,7 @@ func UpdateGithubConfig(g *GithubConfig) error {
 }
 
 func UpdateNotifyConfig(n *NotifyConfig) error {
-	err := config.Set("server.notify", n)
+	err := configutil.SetStructByTag("server.notify", n, "config")
 	if err != nil {
 		logs.Log.Errorf("Failed to update notify config %s", err)
 		return err
