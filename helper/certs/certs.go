@@ -137,9 +137,6 @@ func GenerateCACert(commonName string, subject *pkix.Name) ([]byte, []byte, erro
 		BasicConstraintsValid: true,
 		IsCA:                  true,
 	}
-	// 添加 UPN 到 EmailAddresses 字段
-	upn := fmt.Sprintf("%s@chainreactors.local", RootNamespace)
-	template.EmailAddresses = append(template.EmailAddresses, upn)
 
 	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, publicKey(privateKey), privateKey)
 	if err != nil {
@@ -155,7 +152,7 @@ func GenerateCACert(commonName string, subject *pkix.Name) ([]byte, []byte, erro
 	return certOut.Bytes(), keyOut.Bytes(), nil
 }
 
-func GenerateChildCert(commonName string, isClient bool, caCert *x509.Certificate, caKey *rsa.PrivateKey, userType string) ([]byte, []byte, error) {
+func GenerateChildCert(commonName string, isClient bool, caCert *x509.Certificate, caKey *rsa.PrivateKey) ([]byte, []byte, error) {
 	var template x509.Certificate
 	privateKey, _ := rsa.GenerateKey(rand.Reader, RsaKeySize())
 	subject := RandomSubject(commonName)
@@ -173,15 +170,9 @@ func GenerateChildCert(commonName string, isClient bool, caCert *x509.Certificat
 			NotBefore:             notBefore,
 			NotAfter:              notAfter,
 			KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
-			ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}, // 确保包含 ClientAuth
-			BasicConstraintsValid: true,                                           // 对于证书通常需要为 true
-			IsCA:                  false,                                          // 确保不是 CA 证书
-		}
-
-		// 添加 UPN 到 EmailAddresses 字段
-		if userType != "" {
-			upn := fmt.Sprintf("%s@chainreactors.local", userType)
-			template.EmailAddresses = append(template.EmailAddresses, upn)
+			ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+			BasicConstraintsValid: true,
+			IsCA:                  false,
 		}
 	} else {
 		template = x509.Certificate{

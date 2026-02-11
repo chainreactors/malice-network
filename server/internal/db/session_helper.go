@@ -12,6 +12,7 @@ import (
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/utils/output"
+	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"github.com/gofrs/uuid"
 	"gorm.io/gorm"
@@ -50,7 +51,7 @@ func CreateOperator(client *models.Operator) error {
 
 func ListClients() ([]*models.Operator, error) {
 	var operators []*models.Operator
-	err := Session().Find(&operators).Where("type = ?", mtls.Client).Error
+	err := Session().Where("type = ?", mtls.Client).Find(&operators).Error
 	if err != nil {
 		return nil, err
 	}
@@ -60,8 +61,71 @@ func ListClients() ([]*models.Operator, error) {
 
 func ListListeners() ([]*models.Operator, error) {
 	var listeners []*models.Operator
-	err := Session().Find(&listeners).Where("type = ?", mtls.Listener).Error
+	err := Session().Where("type = ?", mtls.Listener).Find(&listeners).Error
 	return listeners, err
+}
+
+// FindOperatorByFingerprint looks up an active operator by certificate SHA-256 fingerprint.
+func FindOperatorByFingerprint(fingerprint string) (*models.Operator, error) {
+	var op models.Operator
+	err := Session().Where("fingerprint = ?", fingerprint).First(&op).Error
+	if err != nil {
+		return nil, err
+	}
+	return &op, nil
+}
+
+// FindOperatorByName looks up an operator by name.
+func FindOperatorByName(name string) (*models.Operator, error) {
+	var op models.Operator
+	err := Session().Where("name = ?", name).First(&op).Error
+	if err != nil {
+		return nil, err
+	}
+	return &op, nil
+}
+
+// RevokeOperator sets the revoked flag on an operator.
+func RevokeOperator(name string) error {
+	return Session().Model(&models.Operator{}).Where("name = ?", name).Update("revoked", true).Error
+}
+
+// BackfillOperatorFingerprints computes and stores fingerprints for operators
+// that were created before the fingerprint column existed.
+func BackfillOperatorFingerprints() error {
+	var operators []*models.Operator
+	err := Session().Where("fingerprint = '' OR fingerprint IS NULL").Find(&operators).Error
+	if err != nil {
+		return err
+	}
+	for _, op := range operators {
+		if op.CertificatePEM == "" {
+			continue
+		}
+		fp, err := certutils.CertFingerprint([]byte(op.CertificatePEM))
+		if err != nil {
+			logs.Log.Warnf("failed to compute fingerprint for operator %s: %v", op.Name, err)
+			continue
+		}
+
+		// Infer role from Type if not set
+		role := op.Role
+		if role == "" {
+			switch op.Type {
+			case mtls.Listener:
+				role = models.RoleListener
+			default:
+				role = models.RoleOperator
+			}
+		}
+
+		Session().Model(op).Updates(map[string]interface{}{
+			"fingerprint": fp,
+			"role":        role,
+		})
+		logs.Log.Infof("backfilled fingerprint for operator %s (role=%s)", op.Name, role)
+	}
+	return nil
 }
 
 // ============================================

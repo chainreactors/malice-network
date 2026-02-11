@@ -52,9 +52,15 @@ func StartClientListener(address string) (*grpc.Server, net.Listener, error) {
 	//rootOptions := buildOptions(options, authInterceptor()...)
 	grpcServer := grpc.NewServer(buildOptions(
 		options,
-		logInterceptor(rpcLog),
-		auditInterceptor(),
-		authInterceptor(rpcLog))...)
+		[]grpc.UnaryServerInterceptor{
+			logInterceptor(rpcLog),
+			auditInterceptor(),
+			authInterceptor(authLog),
+		},
+		[]grpc.StreamServerInterceptor{
+			authStreamInterceptor(authLog),
+		},
+	)...)
 	clientrpc.RegisterMaliceRPCServer(grpcServer, NewServer())
 	clientrpc.RegisterRootRPCServer(grpcServer, NewServer())
 	listenerrpc.RegisterListenerRPCServer(grpcServer, NewServer())

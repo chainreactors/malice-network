@@ -65,7 +65,7 @@ type ServerConfig struct {
 	MiscConfig    *MiscConfig   `config:"config"`
 	NotifyConfig  *NotifyConfig `config:"notify"`
 	GithubConfig  *GithubConfig `config:"github"`
-	SassConfig    *SaasConfig   `config:"saas"`
+	SassConfig   *SaasConfig   `config:"saas"`
 }
 
 func (c *ServerConfig) Address() string {

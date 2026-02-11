@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 
@@ -13,12 +14,14 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/client/rootpb"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/certs"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/utils/configutil"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
+	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"github.com/chainreactors/malice-network/server/internal/saas"
 	"github.com/chainreactors/malice-network/server/listener"
 	"github.com/chainreactors/malice-network/server/root"
@@ -105,18 +108,37 @@ func (opt *Options) InitUser() error {
 		return nil
 	}
 
-	client, err := root.NewRootClient(fmt.Sprintf("127.0.0.1:%d", opt.Server.GRPCPort))
+	name := "admin"
+	cfg := configs.GetServerConfig()
+	clientConf, fingerprint, err := certutils.GenerateClientCert(cfg.IP, name, int(cfg.GRPCPort))
 	if err != nil {
-		return err
+		return fmt.Errorf("generate client cert: %w", err)
 	}
-	err = client.Execute(&opt.UserCmd, &rootpb.Operator{
-		Name: "user",
-		Op:   "add",
-		Args: []string{"admin"},
-	})
+
+	op := &models.Operator{
+		Name:             name,
+		Type:             mtls.Client,
+		Role:             models.RoleAdmin,
+		Fingerprint:      fingerprint,
+		CAType:           certs.OperatorCA,
+		KeyType:          certs.RSAKey,
+		CaCertificatePEM: clientConf.CACertificate,
+		CertificatePEM:   clientConf.Certificate,
+		PrivateKeyPEM:    clientConf.PrivateKey,
+	}
+	if err := db.CreateOperator(op); err != nil {
+		return fmt.Errorf("create admin operator: %w", err)
+	}
+
+	data, err := yaml.Marshal(clientConf)
 	if err != nil {
-		return err
+		return fmt.Errorf("marshal client config: %w", err)
 	}
+	authPath := filepath.Join(configs.GetWorkDir(), fmt.Sprintf("%s_%s.auth", name, cfg.IP))
+	if err := os.WriteFile(authPath, data, 0600); err != nil {
+		return fmt.Errorf("write auth file: %w", err)
+	}
+	logs.Log.Importantf("client auth file written to %s", authPath)
 	return nil
 }
 
@@ -127,18 +149,37 @@ func (opt *Options) InitListener() error {
 		return nil
 	}
 
-	client, err := root.NewRootClient(fmt.Sprintf("127.0.0.1:%d", opt.Server.GRPCPort))
+	name := "listener"
+	cfg := configs.GetServerConfig()
+	listenerConf, fingerprint, err := certutils.GenerateListenerCert(cfg.IP, name, int(cfg.GRPCPort))
 	if err != nil {
-		return err
+		return fmt.Errorf("generate listener cert: %w", err)
 	}
-	err = client.Execute(&opt.ListenerCmd, &rootpb.Operator{
-		Name: "listener",
-		Op:   "add",
-		Args: []string{"listener"},
-	})
+
+	op := &models.Operator{
+		Name:             name,
+		Type:             mtls.Listener,
+		Role:             models.RoleListener,
+		Fingerprint:      fingerprint,
+		CAType:           certs.ListenerCA,
+		KeyType:          certs.RSAKey,
+		CaCertificatePEM: listenerConf.CACertificate,
+		CertificatePEM:   listenerConf.Certificate,
+		PrivateKeyPEM:    listenerConf.PrivateKey,
+	}
+	if err := db.CreateOperator(op); err != nil {
+		return fmt.Errorf("create listener operator: %w", err)
+	}
+
+	data, err := yaml.Marshal(listenerConf)
 	if err != nil {
-		return err
+		return fmt.Errorf("marshal listener config: %w", err)
 	}
+	authPath := filepath.Join(configs.GetWorkDir(), fmt.Sprintf("%s.auth", name))
+	if err := os.WriteFile(authPath, data, 0600); err != nil {
+		return fmt.Errorf("write auth file: %w", err)
+	}
+	logs.Log.Importantf("listener auth file written to %s", authPath)
 	return nil
 }
 
@@ -212,6 +253,17 @@ func (opt *Options) PrepareConfig(defaultConfig []byte) error {
 
 func (opt *Options) PrepareServer() error {
 	db.Client = db.NewDBClient()
+
+	// Backfill fingerprints for operators created before the fingerprint column existed
+	if err := db.BackfillOperatorFingerprints(); err != nil {
+		logs.Log.Warnf("failed to backfill operator fingerprints: %v", err)
+	}
+
+	// Seed default authorization rules if the table is empty
+	if err := db.SeedDefaultAuthzRules(); err != nil {
+		logs.Log.Warnf("failed to seed default authz rules: %v", err)
+	}
+
 	err := saas.RegisterLicense()
 	if err != nil {
 		logs.Log.Warnf("register community license error %v", err)

@@ -32,6 +32,7 @@ func NewDBClient() *gorm.DB {
 		&models.Operator{},
 		&models.Certificate{},
 		&models.Context{},
+		&models.AuthzRule{},
 	)
 	if dbClient == nil {
 		logs.Log.Errorf("Failed to initialize database")

@@ -1,10 +1,13 @@
 package certutils
 
 import (
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/hex"
 	"encoding/pem"
+	"fmt"
 	"github.com/chainreactors/IoM-go/mtls"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/logs"
@@ -15,6 +18,20 @@ import (
 )
 
 var certsLog = logs.Log
+
+// CertFingerprint computes SHA-256 hex fingerprint from PEM-encoded certificate.
+func CertFingerprint(certPEM []byte) (string, error) {
+	block, _ := pem.Decode(certPEM)
+	if block == nil {
+		return "", fmt.Errorf("failed to decode certificate PEM")
+	}
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse certificate: %w", err)
+	}
+	hash := sha256.Sum256(cert.Raw)
+	return hex.EncodeToString(hash[:]), nil
+}
 
 // --------------------------------
 //  Generic Certificate Functions
@@ -80,7 +97,7 @@ func GenerateServerCert(name string) ([]byte, []byte, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	cert, key, err := certs.GenerateChildCert(name, false, ca, caKey, certs.RootNamespace)
+	cert, key, err := certs.GenerateChildCert(name, false, ca, caKey)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -95,15 +112,19 @@ func GenerateServerCert(name string) ([]byte, []byte, error) {
 	return cert, key, nil
 }
 
-func GenerateClientCert(host, name string, port int) (*mtls.ClientConfig, error) {
+func GenerateClientCert(host, name string, port int) (*mtls.ClientConfig, string, error) {
 	ca, caKey, err := GetCertificateAuthority()
 	caCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ca.Raw})
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
-	cert, key, err := certs.GenerateChildCert(name, true, ca, caKey, certs.ClientNamespace)
+	cert, key, err := certs.GenerateChildCert(name, true, ca, caKey)
 	if err != nil {
-		return nil, err
+		return nil, "", err
+	}
+	fp, err := CertFingerprint(cert)
+	if err != nil {
+		return nil, "", err
 	}
 	return &mtls.ClientConfig{
 		Operator:      name,
@@ -113,19 +134,23 @@ func GenerateClientCert(host, name string, port int) (*mtls.ClientConfig, error)
 		CACertificate: string(caCert),
 		PrivateKey:    string(key),
 		Certificate:   string(cert),
-	}, nil
+	}, fp, nil
 }
 
-func GenerateListenerCert(host, name string, port int) (*mtls.ClientConfig, error) {
+func GenerateListenerCert(host, name string, port int) (*mtls.ClientConfig, string, error) {
 	var cert, key []byte
 	ca, caKey, err := GetCertificateAuthority()
 	caCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ca.Raw})
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
-	cert, key, err = certs.GenerateChildCert(host, true, ca, caKey, certs.ListenerNamespace)
+	cert, key, err = certs.GenerateChildCert(host, true, ca, caKey)
 	if err != nil {
-		return nil, err
+		return nil, "", err
+	}
+	fp, err := CertFingerprint(cert)
+	if err != nil {
+		return nil, "", err
 	}
 	return &mtls.ClientConfig{
 		Operator:      name,
@@ -135,7 +160,7 @@ func GenerateListenerCert(host, name string, port int) (*mtls.ClientConfig, erro
 		CACertificate: string(caCert),
 		PrivateKey:    string(key),
 		Certificate:   string(cert),
-	}, nil
+	}, fp, nil
 }
 
 func GenerateSelfTLS(name string, certsSubject *clientpb.CertificateSubject) (*clientpb.TLS, error) {
@@ -148,7 +173,7 @@ func GenerateSelfTLS(name string, certsSubject *clientpb.CertificateSubject) (*c
 	if err != nil {
 		return nil, err
 	}
-	certByte, keyByte, err := certs.GenerateChildCert(name, false, caCert, caKey, "")
+	certByte, keyByte, err := certs.GenerateChildCert(name, false, caCert, caKey)
 	if err != nil {
 		return nil, err
 	}

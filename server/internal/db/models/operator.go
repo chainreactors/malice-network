@@ -8,13 +8,26 @@ import (
 	"gorm.io/gorm"
 )
 
-// Operator - Colletions of content to serve from HTTP(S)
+// Role constants for operator authorization
+const (
+	RoleAdmin    = "admin"    // Full access, can manage operators and rules
+	RoleOperator = "operator" // Access to MaliceRPC (implant operations)
+	RoleListener = "listener" // Access to ListenerRPC only
+)
+
+// ValidRoles is the set of recognized role values.
+var ValidRoles = []string{RoleAdmin, RoleOperator, RoleListener}
+
+// Operator represents a registered client or listener identity.
 type Operator struct {
 	ID               uuid.UUID `gorm:"primaryKey;->;<-:create;type:uuid;"`
 	CreatedAt        time.Time `gorm:"->;<-:create;"`
 	Name             string    `gorm:"uniqueIndex"`
 	Remote           string    `gorm:"type:string;"`
 	Type             string    `gorm:"type:string;"`
+	Role             string    `gorm:"type:string;default:'operator'"`
+	Fingerprint      string    `gorm:"uniqueIndex;type:string;"`
+	Revoked          bool      `gorm:"default:false"`
 	CAType           int
 	KeyType          string
 	CaCertificatePEM string
