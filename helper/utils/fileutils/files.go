@@ -122,7 +122,7 @@ func MoveFile(sourcePath, destPath string) error {
 	if err != nil {
 		return err
 	}
-	sourceFile.Close()
+	defer sourceFile.Close()
 
 	destFile, err := os.Create(destPath)
 	if err != nil {
