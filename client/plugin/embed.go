@@ -153,13 +153,20 @@ func (plug *EmbedPlugin) GetLevel() MalLevel {
 	return plug.Level
 }
 
+// EmbedURI 构建当前嵌入式插件的规范资源URI
+func (plug *EmbedPlugin) EmbedURI(resourcePath string) string {
+	rootPath := strings.Trim(plug.RootPath, "/")
+	resourcePath = strings.TrimPrefix(resourcePath, "/")
+	return fmt.Sprintf("embed://%s/%s", rootPath, resourcePath)
+}
+
 // registerEmbedResourceFunctions 注册嵌入式资源相关的Lua函数
 func (plug *EmbedPlugin) registerEmbedResourceFunctions() {
 	// 重写script_resource函数 - 返回资源文件路径
 	plug.registerFunction("script_resource", func(filename string) (string, error) {
 		resourcePath := "resources/" + filename
 		if _, exists := plug.GetFileContent(resourcePath); exists {
-			return fmt.Sprintf("embed://%s/%s", plug.Name, resourcePath), nil
+			return plug.EmbedURI(resourcePath), nil
 		}
 
 		// 回退到文件系统
@@ -175,7 +182,7 @@ func (plug *EmbedPlugin) registerEmbedResourceFunctions() {
 				for _, levelPlugin := range globalManager.GetEmbeddedPluginsByLevel(level) {
 					resourcePath := "resources/" + filename
 					if _, fileExists := levelPlugin.GetFileContent(resourcePath); fileExists {
-						return fmt.Sprintf("embed://%s/%s", levelPlugin.Name, resourcePath), nil
+						return levelPlugin.EmbedURI(resourcePath), nil
 					}
 				}
 			}
@@ -192,7 +199,7 @@ func (plug *EmbedPlugin) registerEmbedResourceFunctions() {
 
 		resourcePath := "resources/" + filename
 		if _, exists := plug.GetFileContent(resourcePath); exists {
-			return fmt.Sprintf("embed://%s/%s", plug.Name, resourcePath), nil
+			return plug.EmbedURI(resourcePath), nil
 		}
 
 		resourceFile := filepath.Join(assets.GetMalsDir(), plug.Name, "resources", filename)
@@ -208,7 +215,7 @@ func (plug *EmbedPlugin) registerEmbedResourceFunctions() {
 				for _, levelPlugin := range globalManager.GetEmbeddedPluginsByLevel(level) {
 					resourcePath := "resources/" + filename
 					if _, fileExists := levelPlugin.GetFileContent(resourcePath); fileExists {
-						return fmt.Sprintf("embed://%s/%s", levelPlugin.Name, resourcePath), nil
+						return levelPlugin.EmbedURI(resourcePath), nil
 					}
 				}
 			}
@@ -262,35 +269,11 @@ func (plug *EmbedPlugin) registerEmbedResourceFunctions() {
 	// 新增read_embed_resource函数 - 专门用于读取嵌入式资源，支持embed://路径
 	plug.registerFunction("read_embed_resource", func(resourcePath string) (string, error) {
 		if strings.HasPrefix(resourcePath, "embed://") {
-			// 解析嵌入式资源路径: embed://pluginName/resourcePath
-			parts := strings.TrimPrefix(resourcePath, "embed://")
-			pathParts := strings.SplitN(parts, "/", 2)
-			if len(pathParts) != 2 {
-				return "", fmt.Errorf("invalid embedded resource path: %s", resourcePath)
+			content, err := intl.ReadEmbedResource(resourcePath)
+			if err != nil {
+				return "", err
 			}
-
-			pluginName := pathParts[0]
-			filename := strings.TrimPrefix(pathParts[1], "resources/")
-
-			// 如果是当前插件的资源
-			if pluginName == plug.Name {
-				resourceFilePath := "resources/" + filename
-				if content, exists := plug.GetFileContent(resourceFilePath); exists {
-					return string(content), nil
-				}
-			}
-
-			// 从全局管理器查找其他插件的资源
-			if globalManager := GetGlobalMalManager(); globalManager != nil {
-				if plugin, exists := globalManager.GetEmbedPlugin(pluginName); exists {
-					resourceFilePath := "resources/" + filename
-					if content, fileExists := plugin.GetFileContent(resourceFilePath); fileExists {
-						return string(content), nil
-					}
-				}
-			}
-
-			return "", fmt.Errorf("embedded resource not found: %s", resourcePath)
+			return string(content), nil
 		}
 
 		// 如果不是embed://路径，直接从文件系统读取

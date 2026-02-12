@@ -78,34 +78,77 @@ func GetResourcePath(levelName, filename string) string {
 	return fmt.Sprintf("embed://%s/resources/%s", levelName, filename)
 }
 
-// ParseEmbedPath 解析embed://路径，返回level和文件路径
-func ParseEmbedPath(embedPath string) (levelName, filePath string, err error) {
+// ParseEmbedPath 解析embed://路径，返回命名空间和文件路径
+func ParseEmbedPath(embedPath string) (namespace, filePath string, err error) {
 	if !strings.HasPrefix(embedPath, "embed://") {
 		return "", "", fmt.Errorf("invalid embed path: %s", embedPath)
 	}
 
-	// 移除embed://前缀
-	path := strings.TrimPrefix(embedPath, "embed://")
-
-	// 分割为level和文件路径
+	path := strings.Trim(strings.TrimPrefix(embedPath, "embed://"), "/")
 	parts := strings.SplitN(path, "/", 2)
 	if len(parts) != 2 {
 		return "", "", fmt.Errorf("invalid embed path format: %s", embedPath)
 	}
 
-	return parts[0], parts[1], nil
+	return strings.TrimSpace(parts[0]), strings.TrimPrefix(parts[1], "/"), nil
+}
+
+func isKnownLevel(namespace string) bool {
+	switch namespace {
+	case "custom", "professional", "community":
+		return true
+	default:
+		return false
+	}
+}
+
+func buildFallbackEmbedCandidates(namespace, filePath string) []string {
+	levels := []string{"custom", "professional", "community"}
+	seen := make(map[string]struct{}, len(levels)+1)
+	candidates := make([]string, 0, len(levels)+1)
+
+	add := func(path string) {
+		path = strings.Trim(path, "/")
+		if path == "" {
+			return
+		}
+		if _, ok := seen[path]; ok {
+			return
+		}
+		seen[path] = struct{}{}
+		candidates = append(candidates, path)
+	}
+
+	for _, level := range levels {
+		add(level + "/" + namespace + "/" + filePath)
+	}
+
+	if isKnownLevel(namespace) {
+		add(namespace + "/" + namespace + "/" + filePath)
+	}
+
+	return candidates
 }
 
 // ReadEmbedResource 根据embed://路径读取嵌入式资源
 func ReadEmbedResource(embedPath string) ([]byte, error) {
-	levelName, filePath, err := ParseEmbedPath(embedPath)
+	namespace, filePath, err := ParseEmbedPath(embedPath)
 	if err != nil {
 		return nil, err
 	}
 
-	// 构建完整路径
-	fullPath := levelName + "/" + filePath
-	return GetFileContent(fullPath)
+	directPath := strings.Trim(strings.TrimPrefix(embedPath, "embed://"), "/")
+	if content, readErr := GetFileContent(directPath); readErr == nil {
+		return content, nil
+	}
+
+	for _, candidate := range buildFallbackEmbedCandidates(namespace, filePath) {
+		if content, readErr := GetFileContent(candidate); readErr == nil {
+			return content, nil
+		}
+	}
+
+	return nil, fmt.Errorf("embedded resource not found: %s", embedPath)
 }
 
 // ListLevels 列出所有可用的级别（community, professional）
