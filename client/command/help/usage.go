@@ -9,7 +9,6 @@ import (
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/tui"
-	"github.com/muesli/termenv"
 	"github.com/spf13/cobra"
 )
 
@@ -120,7 +119,7 @@ func RenderHelp(cmd *cobra.Command) string {
 	case opsec >= 9.0 && opsec <= 10.0:
 		return tui.GreenFg.Render(fullDescription)
 	default:
-		if termenv.HasDarkBackground() {
+		if tui.HasDarkBackground() {
 			return tui.WhiteFg.Render(fullDescription)
 		}
 		return tui.BlackFg.Render(fullDescription)

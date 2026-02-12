@@ -138,42 +138,52 @@ func IsBracket(char rune) bool {
 // Ex: `this 'quote contains "surrounded" words`. the outermost quote is the single one.
 func GetQuotedWordStart(line []rune) (unclosed bool, pos int) {
 	var (
-		single, double bool
-		spos, dpos     = -1, -1
+		inSingle, inDouble bool
+		escape             bool
+		spos, dpos         = -1, -1
 	)
 
-	for pos, char := range line {
-		switch char {
-		case '\'':
-			single = !single
-			spos = pos
-		case '"':
-			double = !double
-			dpos = pos
-		default:
+	for i, r := range line {
+		if escape {
+			escape = false
 			continue
 		}
-	}
 
-	if single && double {
-		unclosed = true
-
-		if spos < dpos {
-			pos = spos
-		} else {
-			pos = dpos
+		// Backslash escapes the next character if:
+		// - we are not in quotes
+		// - we are in double quotes
+		if r == '\\' {
+			if !inSingle {
+				escape = true
+				continue
+			}
 		}
 
-		return
+		switch r {
+		case '"':
+			if !inSingle {
+				inDouble = !inDouble
+				if inDouble {
+					dpos = i
+				}
+			}
+		case '\'':
+			if !inDouble {
+				inSingle = !inSingle
+				if inSingle {
+					spos = i
+				}
+			}
+		}
 	}
 
-	if single {
-		unclosed = true
-		pos = spos
-	} else if double {
-		unclosed = true
-		pos = dpos
+	if inDouble {
+		return true, dpos
 	}
 
-	return unclosed, pos
+	if inSingle {
+		return true, spos
+	}
+
+	return false, -1
 }

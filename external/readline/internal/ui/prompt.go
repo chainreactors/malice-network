@@ -116,10 +116,6 @@ func (p *Prompt) PrimaryPrint() {
 	// And compute coordinates
 	p.primaryRows = strings.Count(prompt, "\n")
 	p.primaryCols = strutil.RealLength(lastPrompt)
-
-	if p.primaryCols > 0 {
-		p.primaryCols--
-	}
 }
 
 // PrimaryUsed returns the number of terminal rows on which
@@ -152,9 +148,6 @@ func (p *Prompt) LastPrint() {
 	fmt.Print(prompt)
 
 	p.primaryCols = strutil.RealLength(prompt)
-	if p.primaryCols > 0 {
-		p.primaryCols--
-	}
 }
 
 // LastUsed returns the number of terminal columns used by the last
@@ -176,10 +169,6 @@ func (p *Prompt) LastUsed() int {
 
 	prompt := p.formatLastPrompt(lines[len(lines)-1])
 	p.primaryCols = strutil.RealLength(prompt)
-
-	if p.primaryCols > 0 {
-		p.primaryCols--
-	}
 
 	return p.primaryCols
 }

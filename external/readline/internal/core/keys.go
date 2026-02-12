@@ -35,6 +35,7 @@ type Keys struct {
 	cursor    chan []byte // Cursor coordinates has been read on stdin.
 	resize    chan bool   // Resize events on Windows are sent on stdin. USED IN WINDOWS
 
+	eof   bool            // EOF has been reached.
 	cfg   *inputrc.Config // Configuration file used for meta key settings
 	mutex sync.RWMutex    // Concurrency safety
 }
@@ -55,7 +56,7 @@ func WaitAvailableKeys(keys *Keys, cfg *inputrc.Config) {
 
 	keys.mutex.Lock()
 	keys.waiting = true
-	keys.cursor = make(chan []byte)
+	keys.cursor = make(chan []byte, 1)
 	keys.mutex.Unlock()
 
 	defer func() {
@@ -70,6 +71,7 @@ func WaitAvailableKeys(keys *Keys, cfg *inputrc.Config) {
 		// send by ourselves, because we pause reading.
 		keyBuf, err := keys.readInputFiltered()
 		if err != nil && errors.Is(err, io.EOF) {
+			keys.eof = true
 			return
 		}
 
@@ -89,9 +91,9 @@ func WaitAvailableKeys(keys *Keys, cfg *inputrc.Config) {
 				keyBuf = []byte(strutil.ConvertMeta([]rune(string(keyBuf))))
 			}
 
-			keys.mutex.RLock()
+			keys.mutex.Lock()
 			keys.buf = append(keys.buf, keyBuf...)
-			keys.mutex.RUnlock()
+			keys.mutex.Unlock()
 		}
 
 		return
@@ -248,15 +250,15 @@ func (k *Keys) Read() []byte {
 // returns them instead of storing them in the stack, along with
 // an indication on whether this key is an escape/abort one.
 func (k *Keys) ReadKey() (key rune, isAbort bool) {
-	k.mutex.RLock()
+	k.mutex.Lock()
 	k.keysOnce = make(chan []byte)
 	k.reading = true
-	k.mutex.RUnlock()
+	k.mutex.Unlock()
 
 	defer func() {
-		k.mutex.RLock()
+		k.mutex.Lock()
 		k.reading = false
-		k.mutex.RUnlock()
+		k.mutex.Unlock()
 	}()
 
 	switch {
@@ -335,6 +337,19 @@ func (k *Keys) IsReading() bool {
 	k.mutex.RLock()
 	defer k.mutex.RUnlock()
 	return k.reading
+}
+
+func (k *Keys) IsWaiting() bool {
+	k.mutex.RLock()
+	defer k.mutex.RUnlock()
+	return k.waiting
+}
+
+// IsEOF returns true if the input stream has reached the end.
+func (k *Keys) IsEOF() bool {
+	k.mutex.RLock()
+	defer k.mutex.RUnlock()
+	return k.eof
 }
 
 func (k *Keys) extractCursorPos(keys []byte) (cursor, remain []byte) {

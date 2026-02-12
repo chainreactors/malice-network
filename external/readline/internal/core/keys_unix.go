@@ -3,6 +3,7 @@
 package core
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -10,23 +11,37 @@ import (
 	"os/signal"
 	"strconv"
 	"syscall"
+	"time"
+
+	"golang.org/x/sys/unix"
 )
+
+const cursorPosTimeout = 200 * time.Millisecond
+
+var errCursorPosTimeout = errors.New("cursor position read timeout")
 
 // GetCursorPos returns the current cursor position in the terminal.
 // It is safe to call this function even if the shell is reading input.
 func (k *Keys) GetCursorPos() (x, y int) {
-	disable := func() (int, int) {
-		os.Stderr.WriteString("\r\ngetCursorPos() not supported by terminal emulator, disabling....\r\n")
-		return -1, -1
-	}
+	disable := func() (int, int) { return -1, -1 }
 
 	var cursor []byte
-	var match [][]string
+	var pending []byte
+
+	deadline := time.Now().Add(cursorPosTimeout)
+
+drain:
+	for {
+		select {
+		case <-k.cursor:
+		default:
+			break drain
+		}
+	}
 
 	// Echo the query and wait for the main key
 	// reading routine to send us the response back.
 	fmt.Print("\x1b[6n")
-
 	// In order not to get stuck with an input that might be user-one
 	// (like when the user typed before the shell is fully started, and yet not having
 	// queried cursor yet), we keep reading from stdin until we find the cursor response.
@@ -34,55 +49,97 @@ func (k *Keys) GetCursorPos() (x, y int) {
 	for {
 		switch {
 		case k.waiting, k.reading:
-			cursor = <-k.cursor
-		default:
-			buf := make([]byte, keyScanBufSize)
+			remaining := time.Until(deadline)
+			if remaining <= 0 {
+				return -1, -1
+			}
 
-			read, err := os.Stdin.Read(buf)
+			select {
+			case cursor = <-k.cursor:
+			case <-time.After(remaining):
+				return -1, -1
+			}
+
+			indices := rxRcvCursorPos.FindSubmatchIndex(cursor)
+			if indices == nil {
+				k.mutex.Lock()
+				k.buf = append(k.buf, cursor...)
+				k.mutex.Unlock()
+				continue
+			}
+
+			y, err := strconv.Atoi(string(cursor[indices[2]:indices[3]]))
 			if err != nil {
 				return disable()
 			}
 
-			cursor = buf[:read]
+			x, err = strconv.Atoi(string(cursor[indices[4]:indices[5]]))
+			if err != nil {
+				return disable()
+			}
+
+			return x, y
+
+		default:
+			remaining := time.Until(deadline)
+			if remaining <= 0 {
+				return -1, -1
+			}
+
+			buf := make([]byte, keyScanBufSize)
+
+			read, err := readStdinWithTimeout(buf, remaining)
+			if err != nil {
+				if errors.Is(err, errCursorPosTimeout) {
+					return -1, -1
+				}
+				return disable()
+			}
+
+			pending = append(pending, buf[:read]...)
+
+			indices := rxRcvCursorPos.FindSubmatchIndex(pending)
+			if indices != nil {
+				prefix := pending[:indices[0]]
+				suffix := pending[indices[1]:]
+				if len(prefix) > 0 || len(suffix) > 0 {
+					k.mutex.Lock()
+					k.buf = append(k.buf, prefix...)
+					k.buf = append(k.buf, suffix...)
+					k.mutex.Unlock()
+				}
+
+				y, err := strconv.Atoi(string(pending[indices[2]:indices[3]]))
+				if err != nil {
+					return disable()
+				}
+
+				x, err = strconv.Atoi(string(pending[indices[4]:indices[5]]))
+				if err != nil {
+					return disable()
+				}
+
+				return x, y
+			}
+
+			// No cursor response yet: flush anything that cannot be part of it.
+			start := bytes.LastIndex(pending, []byte{0x1b, '['})
+			switch {
+			case start == -1:
+				if len(pending) > 0 {
+					k.mutex.Lock()
+					k.buf = append(k.buf, pending...)
+					k.mutex.Unlock()
+					pending = nil
+				}
+			case start > 0:
+				k.mutex.Lock()
+				k.buf = append(k.buf, pending[:start]...)
+				k.mutex.Unlock()
+				pending = pending[start:]
+			}
 		}
-
-		// We have read (or have been passed) something.
-		if len(cursor) == 0 {
-			return disable()
-		}
-
-		// Attempt to locate cursor response in it.
-		match = rxRcvCursorPos.FindAllStringSubmatch(string(cursor), 1)
-
-		// If there is something but not cursor answer, its user input.
-		if len(match) == 0 && len(cursor) > 0 {
-			k.mutex.RLock()
-			k.buf = append(k.buf, cursor...)
-			k.mutex.RUnlock()
-
-			continue
-		}
-
-		// And if empty, then we should abort.
-		if len(match) == 0 {
-			return disable()
-		}
-
-		break
 	}
-
-	// We know that we have a cursor answer, process it.
-	y, err := strconv.Atoi(match[0][1])
-	if err != nil {
-		return disable()
-	}
-
-	x, err = strconv.Atoi(match[0][2])
-	if err != nil {
-		return disable()
-	}
-
-	return x, y
 }
 
 func (k *Keys) readInputFiltered() (keys []byte, err error) {
@@ -101,10 +158,57 @@ func (k *Keys) readInputFiltered() (keys []byte, err error) {
 	cursor, keys := k.extractCursorPos(buf[:read])
 
 	if len(cursor) > 0 {
-		k.cursor <- cursor
+		select {
+		case k.cursor <- cursor:
+		default:
+		}
 	}
 
 	return keys, nil
+}
+
+func readStdinWithTimeout(buf []byte, timeout time.Duration) (int, error) {
+	file, ok := Stdin.(*os.File)
+	if !ok {
+		return 0, errCursorPosTimeout
+	}
+
+	fds := []unix.PollFd{{
+		Fd:     int32(file.Fd()),
+		Events: unix.POLLIN,
+	}}
+
+	deadline := time.Now().Add(timeout)
+
+	for {
+		remaining := time.Until(deadline)
+		if remaining <= 0 {
+			return 0, errCursorPosTimeout
+		}
+
+		timeoutMs := int(remaining / time.Millisecond)
+		if timeoutMs <= 0 && remaining > 0 {
+			timeoutMs = 1
+		}
+
+		n, err := unix.Poll(fds, timeoutMs)
+		if err != nil {
+			if errors.Is(err, unix.EINTR) {
+				continue
+			}
+			return 0, err
+		}
+		if n == 0 {
+			return 0, errCursorPosTimeout
+		}
+
+		revents := fds[0].Revents
+		if revents&(unix.POLLIN|unix.POLLHUP|unix.POLLERR) == 0 {
+			return 0, errCursorPosTimeout
+		}
+
+		return file.Read(buf)
+	}
 }
 
 // GetTerminalResize for Unix systems using SIGWINCH signal

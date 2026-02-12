@@ -21,6 +21,7 @@ package readline
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/reeflective/readline/inputrc"
@@ -51,11 +52,13 @@ var ErrInterrupt = errors.New(os.Interrupt.String())
 func (rl *Shell) Readline() (string, error) {
 	descriptor := int(os.Stdin.Fd())
 
-	state, err := term.MakeRaw(descriptor)
-	if err != nil {
-		return "", err
+	if term.IsTerminal(descriptor) {
+		state, err := term.MakeRaw(descriptor)
+		if err != nil {
+			return "", err
+		}
+		defer term.Restore(descriptor, state)
 	}
-	defer term.Restore(descriptor, state)
 
 	// Prompts and cursor styles
 	rl.Display.PrintPrimaryPrompt()
@@ -87,6 +90,12 @@ func (rl *Shell) Readline() (string, error) {
 		// These might be read on stdin, or already available because
 		// the macro engine has fed some keys in bulk when running one.
 		core.WaitAvailableKeys(rl.Keys, rl.Config)
+
+		// If the input is closed, we must return the line
+		// and the error so that the caller can handle it.
+		if rl.Keys.IsEOF() {
+			return "", io.EOF
+		}
 
 		// 1 - Local keymap (Completion/Isearch/Vim operator pending).
 		bind, command, prefixed := keymap.MatchLocal(rl.Keymap)

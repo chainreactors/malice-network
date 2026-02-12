@@ -16,7 +16,7 @@ func WatchResize(eng *Engine) chan<- bool {
 		for {
 			select {
 			case <-resizeChannel:
-				if eng.keys != nil && !eng.keys.IsReading() {
+				if eng.keys != nil && !eng.keys.IsReading() && !eng.keys.IsWaiting() {
 					eng.completer.GenerateCached()
 					eng.Refresh()
 				}
