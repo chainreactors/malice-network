@@ -100,19 +100,19 @@ func catchLogs(cli *client.Client, containerID, name string) error {
 	stdoutPipe, stdoutWriter := io.Pipe()
 	stderrPipe, stderrWriter := io.Pipe()
 
-	go func() {
+	core.SafeGo(func() {
 		_, err := stdcopy.StdCopy(stdoutWriter, stderrWriter, logReader)
 		stdoutWriter.Close()
 		stderrWriter.Close()
 		if err != nil && err != io.EOF {
 			logs.Log.Errorf("Error demultiplexing logs for container %s: %v", containerID, err)
 		}
-	}()
+	})
 
 	var wg sync.WaitGroup
 	wg.Add(2)
 
-	go func() {
+	core.SafeGo(func() {
 		defer wg.Done()
 		scanner := bufio.NewScanner(stdoutPipe)
 		for scanner.Scan() {
@@ -121,9 +121,9 @@ func catchLogs(cli *client.Client, containerID, name string) error {
 			line = re.ReplaceAllString(line, "")
 			db.UpdateBuilderLog(name, line)
 		}
-	}()
+	})
 
-	go func() {
+	core.SafeGo(func() {
 		defer wg.Done()
 		scanner := bufio.NewScanner(stderrPipe)
 		for scanner.Scan() {
@@ -132,7 +132,7 @@ func catchLogs(cli *client.Client, containerID, name string) error {
 			line = re.ReplaceAllString(line, "")
 			db.UpdateBuilderLog(name, line)
 		}
-	}()
+	})
 
 	wg.Wait()
 	return nil

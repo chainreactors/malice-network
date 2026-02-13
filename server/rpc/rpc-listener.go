@@ -42,7 +42,7 @@ func (rpc *Server) SpiteStream(stream listenerrpc.ListenerRPC_SpiteStreamServer)
 		logs.Log.Error(err.Error())
 		return err
 	}
-	pipelinesCh[pipelineID] = stream
+	pipelinesCh.Store(pipelineID, stream)
 
 	for {
 		msg, err := stream.Recv()
@@ -64,9 +64,9 @@ func (rpc *Server) SpiteStream(stream listenerrpc.ListenerRPC_SpiteStreamServer)
 		}
 
 		if ch, ok := sess.GetResp(msg.TaskId); ok {
-			go func() {
+			core.SafeGo(func() {
 				ch <- msg.Spite
-			}()
+			})
 		}
 	}
 }
@@ -101,7 +101,7 @@ func (rpc *Server) JobStream(stream listenerrpc.ListenerRPC_JobStreamServer) err
 	if err != nil {
 		return err
 	}
-	go func() {
+	core.SafeGo(func() {
 		for {
 			select {
 			case msg := <-lns.Ctrl:
@@ -113,7 +113,7 @@ func (rpc *Server) JobStream(stream listenerrpc.ListenerRPC_JobStreamServer) err
 				}
 			}
 		}
-	}()
+	})
 
 	for {
 		msg, err := stream.Recv()
@@ -123,10 +123,10 @@ func (rpc *Server) JobStream(stream listenerrpc.ListenerRPC_JobStreamServer) err
 		_, ok := lns.CtrlJob.Load(msg.CtrlId)
 		if ok {
 			lns.CtrlJob.Store(msg.CtrlId, msg)
-			go func() {
+			core.SafeGo(func() {
 				time.Sleep(1 * time.Second)
 				lns.CtrlJob.Delete(msg.CtrlId)
-			}()
+			})
 		}
 		if msg.Ctrl == consts.CtrlPipelineSync {
 			continue

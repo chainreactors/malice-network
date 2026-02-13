@@ -6,6 +6,7 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/server/build"
+	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 )
 
@@ -19,7 +20,7 @@ func (rpc *Server) Build(ctx context.Context, req *clientpb.BuildConfig) (*clien
 		return nil, err
 	}
 
-	go func() {
+	core.SafeGo(func() {
 		if execErr := builder.Execute(); execErr != nil {
 			logs.Log.Errorf("failed to build %s: %s", artifact.Name, execErr)
 			build.SendBuildMsg(artifact, consts.BuildStatusFailure, make([]byte, 0), execErr)
@@ -34,7 +35,7 @@ func (rpc *Server) Build(ctx context.Context, req *clientpb.BuildConfig) (*clien
 		}
 		//build.SendBuildMsg(artifact, status, req.ParamsBytes, err)
 		build.SendBuildMsg(artifact, status, make([]byte, 0), err)
-	}()
+	})
 
 	return artifact, nil
 }

@@ -66,7 +66,7 @@ func (pipeline *BindPipeline) Start() error {
 	core.Forwarders.Add(forward)
 
 	logs.Log.Infof("[pipeline] starting TCP Bind pipeline")
-	go pipeline.handler()
+	core.SafeGo(func() { pipeline.handler() })
 
 	return nil
 }
@@ -83,12 +83,12 @@ func (pipeline *BindPipeline) handler() error {
 		if err != nil {
 			return err
 		}
-		go func() {
+		core.SafeGo(func() {
 			err = pipeline.handlerReq(msg)
 			if err != nil {
 				logs.Log.Errorf("[pipeline] %s", err.Error())
 			}
-		}()
+		})
 	}
 }
 

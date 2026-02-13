@@ -135,7 +135,7 @@ func (rpc *Server) Execute(ctx context.Context, req *implantpb.ExecRequest) (*cl
 			return nil, err
 		}
 
-		go greq.HandlerResponse(ch, types.MsgExec)
+		greq.HandlerResponse(ch, types.MsgExec)
 	} else {
 		greq.Count = -1
 		_, out, err := rpc.StreamGenericHandler(ctx, greq)
@@ -143,7 +143,7 @@ func (rpc *Server) Execute(ctx context.Context, req *implantpb.ExecRequest) (*cl
 			return nil, err
 		}
 
-		go func() {
+		core.SafeGoWithTask(greq.Task, func() {
 			for {
 				resp := <-out
 				exec := resp.GetExecResponse()
@@ -161,7 +161,7 @@ func (rpc *Server) Execute(ctx context.Context, req *implantpb.ExecRequest) (*cl
 					break
 				}
 			}
-		}()
+		}, greq.Task.Close)
 	}
 
 	return greq.Task.ToProtobuf(), nil
@@ -178,7 +178,7 @@ func (rpc *Server) ExecuteAssembly(ctx context.Context, req *implantpb.ExecuteBi
 	if err != nil {
 		return nil, err
 	}
-	go greq.HandlerResponse(ch, types.MsgBinaryResponse)
+	greq.HandlerResponse(ch, types.MsgBinaryResponse)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -193,7 +193,7 @@ func (rpc *Server) ExecuteShellcode(ctx context.Context, req *implantpb.ExecuteB
 	if err != nil {
 		return nil, err
 	}
-	go greq.HandlerResponse(ch, types.MsgBinaryResponse, ContextCallback(greq.Task, ctx))
+	greq.HandlerResponse(ch, types.MsgBinaryResponse, ContextCallback(greq.Task, ctx))
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -206,7 +206,7 @@ func (rpc *Server) ExecuteBof(ctx context.Context, req *implantpb.ExecuteBinary)
 	if err != nil {
 		return nil, err
 	}
-	go greq.HandlerResponse(ch, types.MsgBinaryResponse, func(spite *implantpb.Spite) {
+	greq.HandlerResponse(ch, types.MsgBinaryResponse, func(spite *implantpb.Spite) {
 		tctx := greq.TaskContext(spite)
 		bofResps, err := output.ParseBOFResponse(tctx)
 		if err != nil {
@@ -251,7 +251,7 @@ func (rpc *Server) ExecuteEXE(ctx context.Context, req *implantpb.ExecuteBinary)
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgBinaryResponse, ContextCallback(greq.Task, ctx))
+	greq.HandlerResponse(ch, types.MsgBinaryResponse, ContextCallback(greq.Task, ctx))
 
 	return greq.Task.ToProtobuf(), nil
 }
@@ -267,7 +267,7 @@ func (rpc *Server) ExecuteDll(ctx context.Context, req *implantpb.ExecuteBinary)
 	if err != nil {
 		return nil, err
 	}
-	go greq.HandlerResponse(ch, types.MsgBinaryResponse)
+	greq.HandlerResponse(ch, types.MsgBinaryResponse)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -281,7 +281,7 @@ func (rpc *Server) ExecutePowerpick(ctx context.Context, req *implantpb.ExecuteB
 	if err != nil {
 		return nil, err
 	}
-	go greq.HandlerResponse(ch, types.MsgBinaryResponse)
+	greq.HandlerResponse(ch, types.MsgBinaryResponse)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -296,7 +296,7 @@ func (rpc *Server) ExecuteArmory(ctx context.Context, req *implantpb.ExecuteBina
 	if err != nil {
 		return nil, err
 	}
-	go greq.HandlerResponse(ch, types.MsgBinaryResponse)
+	greq.HandlerResponse(ch, types.MsgBinaryResponse)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -311,7 +311,7 @@ func (rpc *Server) ExecuteLocal(ctx context.Context, req *implantpb.ExecuteBinar
 	if err != nil {
 		return nil, err
 	}
-	go greq.HandlerResponse(ch, types.MsgBinaryResponse)
+	greq.HandlerResponse(ch, types.MsgBinaryResponse)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -326,6 +326,6 @@ func (rpc *Server) InlineLocal(ctx context.Context, req *implantpb.ExecuteBinary
 	if err != nil {
 		return nil, err
 	}
-	go greq.HandlerResponse(ch, types.MsgBinaryResponse)
+	greq.HandlerResponse(ch, types.MsgBinaryResponse)
 	return greq.Task.ToProtobuf(), nil
 }

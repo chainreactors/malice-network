@@ -22,7 +22,7 @@ func (rpc *Server) Netstat(ctx context.Context, req *implantpb.Request) (*client
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgNetstat)
+	greq.HandlerResponse(ch, types.MsgNetstat)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -36,6 +36,6 @@ func (rpc *Server) Curl(ctx context.Context, req *implantpb.CurlRequest) (*clien
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgBinaryResponse)
+	greq.HandlerResponse(ch, types.MsgBinaryResponse)
 	return greq.Task.ToProtobuf(), nil
 }

@@ -113,7 +113,7 @@ func (rpc *Server) Info(ctx context.Context, req *implantpb.Request) (*clientpb.
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgSysInfo, func(spite *implantpb.Spite) {
+	greq.HandlerResponse(ch, types.MsgSysInfo, func(spite *implantpb.Spite) {
 		greq.Session.UpdateSysInfo(spite.GetSysinfo())
 	})
 	return greq.Task.ToProtobuf(), nil
@@ -217,6 +217,6 @@ func (rpc *Server) Ping(ctx context.Context, req *implantpb.Ping) (*clientpb.Tas
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgPing)
+	greq.HandlerResponse(ch, types.MsgPing)
 	return greq.Task.ToProtobuf(), nil
 }

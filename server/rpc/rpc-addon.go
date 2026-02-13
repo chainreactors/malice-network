@@ -23,7 +23,7 @@ func (rpc *Server) ListAddon(ctx context.Context, req *implantpb.Request) (*clie
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgListAddon, func(spite *implantpb.Spite) {
+	greq.HandlerResponse(ch, types.MsgListAddon, func(spite *implantpb.Spite) {
 		if exts := spite.GetAddons(); exts != nil {
 			sess, _ := getSession(ctx)
 			sess.Addons = exts.Addons
@@ -42,7 +42,7 @@ func (rpc *Server) LoadAddon(ctx context.Context, req *implantpb.LoadAddon) (*cl
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgEmpty, func(spite *implantpb.Spite) {
+	greq.HandlerResponse(ch, types.MsgEmpty, func(spite *implantpb.Spite) {
 		sess, _ := getSession(ctx)
 		sess.Addons = append(sess.Addons, &implantpb.Addon{
 			Name:   req.Name,
@@ -75,6 +75,6 @@ func (rpc *Server) ExecuteAddon(ctx context.Context, req *implantpb.ExecuteAddon
 	if err != nil {
 		return nil, err
 	}
-	go greq.HandlerResponse(ch, types.MsgBinaryResponse)
+	greq.HandlerResponse(ch, types.MsgBinaryResponse)
 	return greq.Task.ToProtobuf(), nil
 }

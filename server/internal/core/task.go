@@ -3,14 +3,12 @@ package core
 import (
 	"context"
 	"fmt"
-	"runtime/debug"
 	"sync"
 	"time"
 
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
-	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/server/internal/db"
 )
 
@@ -179,8 +177,3 @@ func (t *Task) Close() {
 	})
 }
 
-func (t *Task) Recover() {
-	if r := recover(); r != nil {
-		logs.Log.Errorf("panic in task %s: %v\n%s", t.Name(), r, debug.Stack())
-	}
-}

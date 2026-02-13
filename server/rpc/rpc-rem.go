@@ -189,7 +189,7 @@ func (rpc *Server) RemDial(ctx context.Context, req *implantpb.Request) (*client
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgResponse, func(spite *implantpb.Spite) {
+	greq.HandlerResponse(ch, types.MsgResponse, func(spite *implantpb.Spite) {
 		pipe, ok := core.Listeners.Find(pid)
 		if !ok {
 			logs.Log.Warnf("pipeline %s not found", pid)

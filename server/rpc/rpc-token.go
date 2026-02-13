@@ -18,7 +18,7 @@ func (rpc *Server) Runas(ctx context.Context, req *implantpb.RunAsRequest) (*cli
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgExec)
+	greq.HandlerResponse(ch, types.MsgExec)
 
 	return greq.Task.ToProtobuf(), nil
 }
@@ -37,7 +37,7 @@ func (rpc *Server) Rev2Self(ctx context.Context, req *implantpb.Request) (*clien
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgEmpty)
+	greq.HandlerResponse(ch, types.MsgEmpty)
 
 	return greq.Task.ToProtobuf(), nil
 }
@@ -56,7 +56,7 @@ func (rpc *Server) Privs(ctx context.Context, req *implantpb.Request) (*clientpb
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgResponse)
+	greq.HandlerResponse(ch, types.MsgResponse)
 
 	return greq.Task.ToProtobuf(), nil
 }
@@ -75,7 +75,7 @@ func (rpc *Server) GetSystem(ctx context.Context, req *implantpb.Request) (*clie
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgResponse)
+	greq.HandlerResponse(ch, types.MsgResponse)
 
 	return greq.Task.ToProtobuf(), nil
 }

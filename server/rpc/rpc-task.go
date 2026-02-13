@@ -165,7 +165,7 @@ func (rpc *Server) CancelTask(ctx context.Context, req *implantpb.TaskCtrl) (*cl
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgEmpty, func(spite *implantpb.Spite) {
+	greq.HandlerResponse(ch, types.MsgEmpty, func(spite *implantpb.Spite) {
 		core.EventBroker.Publish(core.Event{
 			EventType: consts.EventTask,
 			Op:        consts.CtrlTaskCancel,
@@ -190,7 +190,7 @@ func (rpc *Server) ListTasks(ctx context.Context, req *implantpb.Request) (*clie
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgTasks)
+	greq.HandlerResponse(ch, types.MsgTasks)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -204,6 +204,6 @@ func (rpc *Server) QueryTask(ctx context.Context, req *implantpb.TaskCtrl) (*cli
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgTask)
+	greq.HandlerResponse(ch, types.MsgTask)
 	return greq.Task.ToProtobuf(), nil
 }

@@ -19,6 +19,7 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
@@ -137,31 +138,30 @@ func (r *GenericRequest) HandlerSpite(spite *implantpb.Spite) error {
 }
 
 func (r *GenericRequest) HandlerResponse(ch chan *implantpb.Spite, typ types.MsgName, callbacks ...func(spite *implantpb.Spite)) {
-	defer r.Task.Recover()
-	defer r.Task.Close()
-	resp := <-ch
+	core.SafeGoWithTask(r.Task, func() {
+		resp := <-ch
 
-	err := types.AssertStatusAndSpite(resp, typ)
-	if err != nil {
-		logs.Log.Debug(err)
-		r.Task.Panic(buildErrorEvent(r.Task, err))
-		return
-	}
+		err := types.AssertStatusAndSpite(resp, typ)
+		if err != nil {
+			logs.Log.Debug(err)
+			r.Task.Panic(buildErrorEvent(r.Task, err))
+			return
+		}
 
-	err = r.HandlerSpite(resp)
-	if err != nil {
-		logs.Log.Errorf("handler spite error, %s", err.Error())
-		return
-	}
-	if callbacks != nil {
-		r.SetCallback(func() {
-			for _, callback := range callbacks {
-				callback(resp)
-			}
-		})
-	}
-	r.Task.Finish(resp, "")
-	return
+		err = r.HandlerSpite(resp)
+		if err != nil {
+			logs.Log.Errorf("handler spite error, %s", err.Error())
+			return
+		}
+		if callbacks != nil {
+			r.SetCallback(func() {
+				for _, callback := range callbacks {
+					callback(resp)
+				}
+			})
+		}
+		r.Task.Finish(resp, "")
+	}, r.Task.Close)
 }
 
 func buildErrorEvent(task *core.Task, err error) core.Event {
@@ -198,7 +198,7 @@ func (rpc *Server) GenericInternal(ctx context.Context, req proto.Message, expec
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, expect, callbacks...)
+	greq.HandlerResponse(ch, expect, callbacks...)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -208,12 +208,13 @@ func (rpc *Server) GenericHandler(ctx context.Context, req *GenericRequest) (cha
 		logs.Log.Errorf(err.Error())
 		return nil, err
 	}
-	if pipelinesCh[req.Session.PipelineID] == nil {
+	streamVal, ok := pipelinesCh.Load(req.Session.PipelineID)
+	if !ok || streamVal == nil {
 		return nil, types.ErrNotFoundPipeline
 	}
 	out, err := req.Session.RequestWithAsync(
 		&clientpb.SpiteRequest{Session: req.Session.ToProtobufLite(), Task: req.Task.ToProtobuf(), Spite: spite},
-		pipelinesCh[req.Session.PipelineID],
+		streamVal.(grpc.ServerStream),
 		consts.MinTimeout)
 	if err != nil {
 		return nil, err
@@ -229,12 +230,13 @@ func (rpc *Server) StreamGenericHandler(ctx context.Context, req *GenericRequest
 		logs.Log.Errorf(err.Error())
 		return nil, nil, err
 	}
-	if pipelinesCh[req.Session.PipelineID] == nil {
+	streamVal, ok := pipelinesCh.Load(req.Session.PipelineID)
+	if !ok || streamVal == nil {
 		return nil, nil, types.ErrNotFoundPipeline
 	}
 	in, out, err := req.Session.RequestWithStream(
 		&clientpb.SpiteRequest{Session: req.Session.ToProtobufLite(), Task: req.Task.ToProtobuf(), Spite: spite},
-		pipelinesCh[req.Session.PipelineID],
+		streamVal.(grpc.ServerStream),
 		consts.MinTimeout)
 	if err != nil {
 		return nil, nil, err
@@ -412,6 +414,6 @@ func Handler(ctx context.Context, rpc *Server, req proto.Message, expect types.M
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, expect, callbacks...)
+	greq.HandlerResponse(ch, expect, callbacks...)
 	return greq.Task.ToProtobuf(), nil
 }

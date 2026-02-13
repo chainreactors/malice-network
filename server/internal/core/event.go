@@ -239,7 +239,7 @@ func (broker *eventBroker) GetAll() []*Event {
 
 // Notify - Notify all third-patry services
 func (broker *eventBroker) Notify(event Event) {
-	go broker.notifier.Send(&event)
+	SafeGo(func() { broker.notifier.Send(&event) })
 }
 
 func NewBroker() *eventBroker {
@@ -255,7 +255,7 @@ func NewBroker() *eventBroker {
 		cache: NewMessageCache(eventBufSize),
 		lock:  &sync.Mutex{},
 	}
-	go broker.Start()
+	SafeGo(broker.Start)
 	ticker := GlobalTicker
 
 	publishHeartbeat := func(interval string) {

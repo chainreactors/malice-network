@@ -22,7 +22,7 @@ func (rpc *Server) TaskSchdList(ctx context.Context, req *implantpb.Request) (*c
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgTaskSchdsResponse)
+	greq.HandlerResponse(ch, types.MsgTaskSchdsResponse)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -36,7 +36,7 @@ func (rpc *Server) TaskSchdCreate(ctx context.Context, req *implantpb.TaskSchedu
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgEmpty)
+	greq.HandlerResponse(ch, types.MsgEmpty)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -50,7 +50,7 @@ func (rpc *Server) TaskSchdStart(ctx context.Context, req *implantpb.TaskSchedul
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgEmpty)
+	greq.HandlerResponse(ch, types.MsgEmpty)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -64,7 +64,7 @@ func (rpc *Server) TaskSchdStop(ctx context.Context, req *implantpb.TaskSchedule
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgEmpty)
+	greq.HandlerResponse(ch, types.MsgEmpty)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -78,7 +78,7 @@ func (rpc *Server) TaskSchdDelete(ctx context.Context, req *implantpb.TaskSchedu
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgEmpty)
+	greq.HandlerResponse(ch, types.MsgEmpty)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -92,7 +92,7 @@ func (rpc *Server) TaskSchdQuery(ctx context.Context, req *implantpb.TaskSchedul
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgTaskSchdResponse)
+	greq.HandlerResponse(ch, types.MsgTaskSchdResponse)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -106,6 +106,6 @@ func (rpc *Server) TaskSchdRun(ctx context.Context, req *implantpb.TaskScheduleR
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgEmpty)
+	greq.HandlerResponse(ch, types.MsgEmpty)
 	return greq.Task.ToProtobuf(), nil
 }

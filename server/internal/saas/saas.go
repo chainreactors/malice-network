@@ -17,6 +17,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/utils"
 	"github.com/chainreactors/malice-network/helper/utils/httputils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
+	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 )
@@ -286,17 +287,17 @@ func ReDownloadSaasArtifact() error {
 		if artifact.Status == consts.BuildStatusCompleted || artifact.Status == consts.BuildStatusFailure {
 			continue
 		}
-		go func(art *models.Artifact) {
-			statusPath := "/api/build/status/" + art.Name
-			downloadPath := "/api/build/download/" + art.Name
-			result := client.CheckAndDownloadArtifact(statusPath, downloadPath, art, 30*time.Second, 30*time.Minute)
+		core.SafeGo(func() {
+			statusPath := "/api/build/status/" + artifact.Name
+			downloadPath := "/api/build/download/" + artifact.Name
+			result := client.CheckAndDownloadArtifact(statusPath, downloadPath, artifact, 30*time.Second, 30*time.Minute)
 			if result.Err != nil {
-				logs.Log.Errorf("ReDownloadSaasArtifact: artifact %s failed: %v", art.Name, result.Err)
+				logs.Log.Errorf("ReDownloadSaasArtifact: artifact %s failed: %v", artifact.Name, result.Err)
 			}
 			if result.Status == consts.BuildStatusCompleted || result.Status == consts.BuildStatusFailure {
-				db.UpdateBuilderStatus(art.ID, result.Status)
+				db.UpdateBuilderStatus(artifact.ID, result.Status)
 			}
-		}(artifact)
+		})
 	}
 	return nil
 }

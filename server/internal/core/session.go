@@ -574,7 +574,7 @@ func (s *Session) RequestWithStream(msg *clientpb.SpiteRequest, stream grpc.Serv
 	}
 
 	in := make(chan *implantpb.Spite)
-	go func() {
+	SafeGo(func() {
 		defer close(respCh)
 		var c = 0
 		for spite := range in {
@@ -590,7 +590,7 @@ func (s *Session) RequestWithStream(msg *clientpb.SpiteRequest, stream grpc.Serv
 			logs.Log.Debugf("send message %s, %d", spite.Name, c)
 			c++
 		}
-	}()
+	})
 	return in, respCh, nil
 }
 

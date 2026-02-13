@@ -22,7 +22,7 @@ func (rpc *Server) ListDevice(ctx context.Context, req *implantpb.Request) (*cli
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgListModule, handlerModule(greq.Session))
+	greq.HandlerResponse(ch, types.MsgListModule, handlerModule(greq.Session))
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -36,6 +36,6 @@ func (rpc *Server) FFmpeg(ctx context.Context, req *implantpb.FFmpegRequest) (*c
 		return nil, err
 	}
 	greq.Task.Type = req.Action
-	go greq.HandlerResponse(ch, types.MsgResponse)
+	greq.HandlerResponse(ch, types.MsgResponse)
 	return greq.Task.ToProtobuf(), nil
 }

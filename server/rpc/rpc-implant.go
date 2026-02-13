@@ -10,6 +10,7 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/server/internal/core"
+	"google.golang.org/grpc"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"time"
 )
@@ -108,7 +109,7 @@ func (rpc *Server) Sleep(ctx context.Context, req *implantpb.Timer) (*clientpb.T
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgEmpty)
+	greq.HandlerResponse(ch, types.MsgEmpty)
 	if session, err := getSession(ctx); err == nil {
 		session.Jitter = req.Jitter
 		session.Expression = req.Expression
@@ -136,7 +137,7 @@ func (rpc *Server) Suicide(ctx context.Context, req *implantpb.Request) (*client
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgEmpty)
+	greq.HandlerResponse(ch, types.MsgEmpty)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -150,7 +151,7 @@ func (rpc *Server) Switch(ctx context.Context, req *implantpb.Switch) (*clientpb
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgEmpty)
+	greq.HandlerResponse(ch, types.MsgEmpty)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -187,7 +188,7 @@ func (rpc *Server) Polling(ctx context.Context, req *clientpb.Polling) (*clientp
 	if err != nil {
 		return nil, types.ErrNotFoundSession
 	}
-	go func() {
+	core.SafeGo(func() {
 		logs.Log.Debugf("polling:%s %s, interval %d", req.Id, sess.ID, req.Interval)
 		sess.Any[req.Id] = true
 		defer func() {
@@ -213,15 +214,19 @@ func (rpc *Server) Polling(ctx context.Context, req *clientpb.Polling) (*clientp
 					break
 				}
 			}
+			streamVal, ok := pipelinesCh.Load(sess.PipelineID)
+			if !ok || streamVal == nil {
+				return
+			}
 			err = sess.Request(
 				&clientpb.SpiteRequest{Session: sess.ToProtobufLite(), Task: nil, Spite: types.BuildPingSpite()},
-				pipelinesCh[sess.PipelineID])
+				streamVal.(grpc.ServerStream))
 			if err != nil {
 				return
 			}
 			time.Sleep(time.Duration(req.Interval))
 		}
-	}()
+	})
 	return &clientpb.Empty{}, err
 }
 

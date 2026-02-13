@@ -23,7 +23,7 @@ func (rpc *Server) Pwd(ctx context.Context, req *implantpb.Request) (*clientpb.T
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgResponse)
+	greq.HandlerResponse(ch, types.MsgResponse)
 
 	return greq.Task.ToProtobuf(), nil
 }
@@ -42,7 +42,7 @@ func (rpc *Server) Ls(ctx context.Context, req *implantpb.Request) (*clientpb.Ta
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgLs)
+	greq.HandlerResponse(ch, types.MsgLs)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -60,7 +60,7 @@ func (rpc *Server) Cd(ctx context.Context, req *implantpb.Request) (*clientpb.Ta
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgResponse)
+	greq.HandlerResponse(ch, types.MsgResponse)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -78,7 +78,7 @@ func (rpc *Server) Mkdir(ctx context.Context, req *implantpb.Request) (*clientpb
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgEmpty)
+	greq.HandlerResponse(ch, types.MsgEmpty)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -96,7 +96,7 @@ func (rpc *Server) Rm(ctx context.Context, req *implantpb.Request) (*clientpb.Ta
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgEmpty)
+	greq.HandlerResponse(ch, types.MsgEmpty)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -114,7 +114,7 @@ func (rpc *Server) Cat(ctx context.Context, req *implantpb.Request) (*clientpb.T
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgBinaryResponse)
+	greq.HandlerResponse(ch, types.MsgBinaryResponse)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -132,7 +132,7 @@ func (rpc *Server) Mv(ctx context.Context, req *implantpb.Request) (*clientpb.Ta
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgEmpty)
+	greq.HandlerResponse(ch, types.MsgEmpty)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -150,7 +150,7 @@ func (rpc *Server) Cp(ctx context.Context, req *implantpb.Request) (*clientpb.Ta
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgEmpty)
+	greq.HandlerResponse(ch, types.MsgEmpty)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -168,7 +168,7 @@ func (rpc *Server) Chmod(ctx context.Context, req *implantpb.Request) (*clientpb
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgEmpty)
+	greq.HandlerResponse(ch, types.MsgEmpty)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -182,7 +182,7 @@ func (rpc *Server) Chown(ctx context.Context, req *implantpb.ChownRequest) (*cli
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgResponse)
+	greq.HandlerResponse(ch, types.MsgResponse)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -200,6 +200,6 @@ func (rpc *Server) EnumDrivers(ctx context.Context, req *implantpb.Request) (*cl
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgEnumDrivers)
+	greq.HandlerResponse(ch, types.MsgEnumDrivers)
 	return greq.Task.ToProtobuf(), nil
 }

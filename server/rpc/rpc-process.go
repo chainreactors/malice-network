@@ -22,7 +22,7 @@ func (rpc *Server) Kill(ctx context.Context, req *implantpb.Request) (*clientpb.
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgEmpty)
+	greq.HandlerResponse(ch, types.MsgEmpty)
 
 	return greq.Task.ToProtobuf(), nil
 }
@@ -41,7 +41,7 @@ func (rpc *Server) Ps(ctx context.Context, req *implantpb.Request) (*clientpb.Ta
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgPs)
+	greq.HandlerResponse(ch, types.MsgPs)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -59,7 +59,7 @@ func (rpc *Server) Env(ctx context.Context, req *implantpb.Request) (*clientpb.T
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgResponse)
+	greq.HandlerResponse(ch, types.MsgResponse)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -77,7 +77,7 @@ func (rpc *Server) SetEnv(ctx context.Context, req *implantpb.Request) (*clientp
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgEmpty)
+	greq.HandlerResponse(ch, types.MsgEmpty)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -95,7 +95,7 @@ func (rpc *Server) UnsetEnv(ctx context.Context, req *implantpb.Request) (*clien
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgEmpty)
+	greq.HandlerResponse(ch, types.MsgEmpty)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -113,7 +113,7 @@ func (rpc *Server) Whoami(ctx context.Context, req *implantpb.Request) (*clientp
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgResponse)
+	greq.HandlerResponse(ch, types.MsgResponse)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -127,6 +127,6 @@ func (rpc *Server) Bypass(ctx context.Context, req *implantpb.BypassRequest) (*c
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgEmpty)
+	greq.HandlerResponse(ch, types.MsgEmpty)
 	return greq.Task.ToProtobuf(), nil
 }

@@ -82,7 +82,7 @@ func NewForward(rpc listenerrpc.ListenerRPCClient, pipeline Pipeline) (*Forward,
 		return nil, err
 	}
 
-	go forward.Handler()
+	SafeGo(forward.Handler)
 
 	return forward, nil
 }
@@ -158,7 +158,7 @@ func (f *Forward) Handler() {
 					logs.Log.Debugf("[listener.%s] receive spite %s %d bytes", msg.SessionID, spite.Name, size)
 				}
 				spite := spite
-				go func() {
+				SafeGo(func() {
 					err := f.Stream.Send(&clientpb.SpiteResponse{
 						ListenerId: f.ID(),
 						SessionId:  msg.SessionID,
@@ -168,7 +168,7 @@ func (f *Forward) Handler() {
 					if err != nil {
 						return
 					}
-				}()
+				})
 			}
 		}
 	}

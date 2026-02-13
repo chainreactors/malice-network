@@ -18,6 +18,7 @@ import (
 	selfType "github.com/chainreactors/malice-network/helper/implanttypes"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
+	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"github.com/docker/docker/api/types"
@@ -236,11 +237,11 @@ func (d *DockerBuilder) Execute() error {
 	logs.Log.Infof("Container %s started successfully.", resp.ID)
 
 	// 3. 异步捕获日志
-	go func() {
+	core.SafeGo(func() {
 		if err := catchLogs(cli, resp.ID, d.config.BuildName); err != nil {
 			logs.Log.Errorf("Error catching logs: %v", err)
 		}
-	}()
+	})
 
 	// 4. 等待容器结束并检查退出状态
 	statusCh, errCh := cli.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)

@@ -6,6 +6,7 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/types"
+	"github.com/chainreactors/malice-network/server/internal/core"
 	"strings"
 )
 
@@ -28,7 +29,7 @@ func (rpc *Server) PtyRequest(ctx context.Context, req *implantpb.PtyRequest) (*
 			return nil, err
 		}
 
-		go func() {
+		core.SafeGoWithTask(greq.Task, func() {
 			for {
 				resp := <-out
 				err := types.AssertSpite(resp, types.MsgPtyResponse)
@@ -51,7 +52,7 @@ func (rpc *Server) PtyRequest(ctx context.Context, req *implantpb.PtyRequest) (*
 					break
 				}
 			}
-		}()
+		}, greq.Task.Close)
 
 	default:
 		// 默认处理
@@ -59,7 +60,7 @@ func (rpc *Server) PtyRequest(ctx context.Context, req *implantpb.PtyRequest) (*
 		if err != nil {
 			return nil, err
 		}
-		go greq.HandlerResponse(ch, types.MsgPtyResponse)
+		greq.HandlerResponse(ch, types.MsgPtyResponse)
 	}
 
 	return greq.Task.ToProtobuf(), nil

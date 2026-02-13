@@ -95,9 +95,7 @@ func (pipeline *TCPPipeline) Start() error {
 	}
 	forward.ListenerId = pipeline.ListenerID
 	core.Forwarders.Add(forward)
-	go func() {
-		// recv message from server and send to implant
-		defer logs.Log.Errorf("forwarder stream exit!!!")
+	core.SafeGo(func() {
 		for {
 			msg, err := forward.Stream.Recv()
 			if err != nil {
@@ -110,7 +108,7 @@ func (pipeline *TCPPipeline) Start() error {
 			}
 			connect.C <- msg
 		}
-	}()
+	}, func() { logs.Log.Errorf("forwarder stream exit!!!") })
 
 	pipeline.ln, err = pipeline.handler()
 	if err != nil {
@@ -134,7 +132,7 @@ func (pipeline *TCPPipeline) handler() (net.Listener, error) {
 	}
 
 	// 非 TLS 模式，使用原有逻辑
-	go pipeline.startAcceptLoop(ln, "tcp pipeline")
+	core.SafeGo(func() { pipeline.startAcceptLoop(ln, "tcp pipeline") })
 	return ln, nil
 }
 
@@ -166,7 +164,7 @@ func (pipeline *TCPPipeline) startAcceptLoop(ln net.Listener, logPrefix string) 
 				continue
 			}
 		}
-		go pipeline.HandleConnection(conn)
+		core.SafeGo(func() { pipeline.HandleConnection(conn) })
 	}
 }
 

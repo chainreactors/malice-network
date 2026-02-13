@@ -7,15 +7,16 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
+	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/gookit/config/v2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"net"
-	"runtime/debug"
+	"sync"
 )
 
 var (
-	pipelinesCh     = make(map[string]grpc.ServerStream)
+	pipelinesCh     sync.Map
 	authLog, rpcLog *logs.Logger
 )
 
@@ -57,19 +58,11 @@ func StartClientListener(address string) (*grpc.Server, net.Listener, error) {
 	clientrpc.RegisterMaliceRPCServer(grpcServer, NewServer())
 	clientrpc.RegisterRootRPCServer(grpcServer, NewServer())
 	listenerrpc.RegisterListenerRPCServer(grpcServer, NewServer())
-	go func() {
-		panicked := true
-		defer func() {
-			if panicked {
-				logs.Log.Errorf("stacktrace from panic: %s", string(debug.Stack()))
-			}
-		}()
+	core.SafeGo(func() {
 		if err := grpcServer.Serve(ln); err != nil {
 			logs.Log.Warnf("gRPC server exited with error: %v", err)
-		} else {
-			panicked = false
 		}
-	}()
+	})
 	return grpcServer, ln, nil
 }
 

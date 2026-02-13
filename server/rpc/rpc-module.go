@@ -34,7 +34,7 @@ func (rpc *Server) ListModule(ctx context.Context, req *implantpb.Request) (*cli
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgListModule, handlerModule(greq.Session))
+	greq.HandlerResponse(ch, types.MsgListModule, handlerModule(greq.Session))
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -48,7 +48,7 @@ func (rpc *Server) LoadModule(ctx context.Context, req *implantpb.LoadModule) (*
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgListModule, func(spite *implantpb.Spite) {
+	greq.HandlerResponse(ch, types.MsgListModule, func(spite *implantpb.Spite) {
 		greq.Session.Modules = append(greq.Session.Modules, spite.GetModules().Modules...)
 		greq.Session.PushUpdate("")
 	})
@@ -69,7 +69,7 @@ func (rpc *Server) RefreshModule(ctx context.Context, req *implantpb.Request) (*
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgListModule, handlerModule(greq.Session))
+	greq.HandlerResponse(ch, types.MsgListModule, handlerModule(greq.Session))
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -87,7 +87,7 @@ func (rpc *Server) Clear(ctx context.Context, req *implantpb.Request) (*clientpb
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgEmpty)
+	greq.HandlerResponse(ch, types.MsgEmpty)
 	return greq.Task.ToProtobuf(), nil
 }
 

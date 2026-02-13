@@ -107,8 +107,7 @@ func (pipeline *HTTPPipeline) Start() error {
 	}
 	forward.ListenerId = pipeline.ListenerID
 	core.Forwarders.Add(forward)
-	go func() {
-		defer logs.Log.Errorf("forwarder stream exit!!!")
+	core.SafeGo(func() {
 		for {
 			msg, err := forward.Stream.Recv()
 			if err != nil {
@@ -121,7 +120,7 @@ func (pipeline *HTTPPipeline) Start() error {
 			}
 			connect.C <- msg
 		}
-	}()
+	}, func() { logs.Log.Errorf("forwarder stream exit!!!") })
 
 	ln, err := net.Listen("tcp", fmt.Sprintf("%s:%d", pipeline.Host, pipeline.Port))
 	if err != nil {
@@ -140,11 +139,11 @@ func (pipeline *HTTPPipeline) Start() error {
 		// 非 TLS 模式，使用原有逻辑
 		pipeline.srv = ln
 		server := NewHTTPServer(mux)
-		go func() {
+		core.SafeGo(func() {
 			if err := server.Serve(ln); err != nil && err != http.ErrServerClosed {
 				logs.Log.Errorf("HTTP server error: %v", err)
 			}
-		}()
+		})
 	}
 
 	logs.Log.Infof("[pipeline] starting HTTP pipeline on %s:%d, parser: %s, tls: %t",

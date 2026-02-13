@@ -31,7 +31,7 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 		if err != nil {
 			return nil, err
 		}
-		go greq.HandlerResponse(ch, types.MsgAck, func(spite *implantpb.Spite) {
+		greq.HandlerResponse(ch, types.MsgAck, func(spite *implantpb.Spite) {
 			v := &output.UploadContext{
 				FileDescriptor: &output.FileDescriptor{
 					Name:       req.Name,
@@ -68,9 +68,7 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 			return nil, err
 		}
 		var blockId = 0
-		go func() {
-			defer greq.Task.Recover()
-			defer greq.Task.Close()
+		core.SafeGoWithTask(greq.Task, func() {
 			stat := <-out
 			err := types.HandleMaleficError(stat)
 			if err != nil {
@@ -133,8 +131,7 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 					}
 				}
 			}
-			close(in)
-		}()
+		}, greq.Task.Close, func() { close(in) })
 		return greq.Task.ToProtobuf(), nil
 	}
 }
@@ -178,10 +175,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 		logs.Log.Debugf("stream generate error: %s", err)
 		return nil, err
 	}
-	go func() {
-		defer greq.Task.Recover()
-		defer greq.Task.Close()
-		defer close(in)
+	core.SafeGoWithTask(greq.Task, func() {
 		resp := <-out
 		err := types.AssertStatusAndSpite(resp, types.MsgDownload)
 		if err != nil {
@@ -337,7 +331,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 
 		core.PushContextEvent(consts.ContextDownload, ictx)
 		greq.Task.Finish(resp, "sync id "+ictx.ID.String())
-	}()
+	}, greq.Task.Close, func() { close(in) })
 
 	return greq.Task.ToProtobuf(), nil
 }

@@ -65,7 +65,7 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig, ser
 	if err != nil {
 		return err
 	}
-	go lns.Handler()
+	core.SafeGo(lns.Handler)
 	Listener = lns
 
 	for _, tcpPipeline := range cfg.TcpPipelines {
@@ -692,14 +692,7 @@ func (lns *listener) handlerAcme(job *clientpb.Job) error {
 	}
 
 	certutils.GetACMEManager().RegisterDomain(pipeline.Tls.Domain)
-	go func() {
-		//defer func() {
-		//	if website != nil {
-		//		website.Close()
-		//		delete(lns.websites, websiteName)
-		//	}
-		//}()
-
+	core.SafeGo(func() {
 		tls, err := certutils.GetAcmeTls(pipeline.GetTls())
 		if err != nil {
 			return
@@ -709,7 +702,7 @@ func (lns *listener) handlerAcme(job *clientpb.Job) error {
 		if err != nil {
 			return
 		}
-	}()
+	})
 
 	return nil
 }

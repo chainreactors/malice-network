@@ -17,7 +17,7 @@ func (rpc *Server) WmiQuery(ctx context.Context, req *implantpb.WmiQueryRequest)
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgResponse)
+	greq.HandlerResponse(ch, types.MsgResponse)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -31,6 +31,6 @@ func (rpc *Server) WmiExecute(ctx context.Context, req *implantpb.WmiMethodReque
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgResponse)
+	greq.HandlerResponse(ch, types.MsgResponse)
 	return greq.Task.ToProtobuf(), nil
 }

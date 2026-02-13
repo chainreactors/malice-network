@@ -8,6 +8,7 @@ import (
 	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	types "github.com/chainreactors/IoM-go/types"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/parser"
 	"github.com/gookit/config/v2"
 )
@@ -22,7 +23,7 @@ func (rpc *Server) PipeClose(ctx context.Context, req *implantpb.PipeRequest) (*
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgEmpty)
+	greq.HandlerResponse(ch, types.MsgEmpty)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -35,7 +36,7 @@ func (rpc *Server) PipeRead(ctx context.Context, req *implantpb.PipeRequest) (*c
 	if err != nil {
 		return nil, err
 	}
-	go greq.HandlerResponse(ch, types.MsgBinaryResponse, ContextCallback(greq.Task, ctx))
+	greq.HandlerResponse(ch, types.MsgBinaryResponse, ContextCallback(greq.Task, ctx))
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -49,7 +50,7 @@ func (rpc *Server) PipeServer(ctx context.Context, req *implantpb.PipeRequest) (
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgResponse)
+	greq.HandlerResponse(ch, types.MsgResponse)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -65,7 +66,7 @@ func (rpc *Server) PipeUpload(ctx context.Context, pipe *implantpb.PipeRequest) 
 		if err != nil {
 			return nil, err
 		}
-		go greq.HandlerResponse(ch, types.MsgAck)
+		greq.HandlerResponse(ch, types.MsgAck)
 		return greq.Task.ToProtobuf(), nil
 	} else {
 		greq, err := newGenericRequest(ctx, &implantpb.PipeRequest{
@@ -80,9 +81,7 @@ func (rpc *Server) PipeUpload(ctx context.Context, pipe *implantpb.PipeRequest) 
 			return nil, err
 		}
 		var blockId = 0
-		go func() {
-			defer greq.Task.Recover()
-			defer greq.Task.Close()
+		core.SafeGoWithTask(greq.Task, func() {
 			stat := <-out
 			err := types.HandleMaleficError(stat)
 			if err != nil {
@@ -123,8 +122,7 @@ func (rpc *Server) PipeUpload(ctx context.Context, pipe *implantpb.PipeRequest) 
 					}
 				}
 			}
-			close(in)
-		}()
+		}, greq.Task.Close, func() { close(in) })
 		return greq.Task.ToProtobuf(), nil
 	}
 }

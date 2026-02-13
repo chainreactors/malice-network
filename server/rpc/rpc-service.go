@@ -22,7 +22,7 @@ func (rpc *Server) ServiceList(ctx context.Context, req *implantpb.Request) (*cl
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgServicesResponse)
+	greq.HandlerResponse(ch, types.MsgServicesResponse)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -36,7 +36,7 @@ func (rpc *Server) ServiceStart(ctx context.Context, req *implantpb.ServiceReque
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgEmpty)
+	greq.HandlerResponse(ch, types.MsgEmpty)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -50,7 +50,7 @@ func (rpc *Server) ServiceStop(ctx context.Context, req *implantpb.ServiceReques
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgEmpty)
+	greq.HandlerResponse(ch, types.MsgEmpty)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -64,7 +64,7 @@ func (rpc *Server) ServiceQuery(ctx context.Context, req *implantpb.ServiceReque
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgServiceResponse)
+	greq.HandlerResponse(ch, types.MsgServiceResponse)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -78,7 +78,7 @@ func (rpc *Server) ServiceCreate(ctx context.Context, req *implantpb.ServiceRequ
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgEmpty)
+	greq.HandlerResponse(ch, types.MsgEmpty)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -92,6 +92,6 @@ func (rpc *Server) ServiceDelete(ctx context.Context, req *implantpb.ServiceRequ
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgEmpty)
+	greq.HandlerResponse(ch, types.MsgEmpty)
 	return greq.Task.ToProtobuf(), nil
 }

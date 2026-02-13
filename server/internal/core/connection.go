@@ -122,7 +122,7 @@ func NewConnection(p *parser.MessageParser, sid uint32, pipelineID string, keyPa
 		Parser:      p,
 	}
 
-	go func() {
+	SafeGo(func() {
 		for {
 			select {
 			case req := <-conn.C:
@@ -130,9 +130,9 @@ func NewConnection(p *parser.MessageParser, sid uint32, pipelineID string, keyPa
 				conn.cache.Append(req.Spite)
 			}
 		}
-	}()
+	})
 
-	go func() {
+	SafeGo(func() {
 		for {
 			if conn.cache.Len() == 0 {
 				time.Sleep(100 * time.Millisecond)
@@ -142,7 +142,7 @@ func NewConnection(p *parser.MessageParser, sid uint32, pipelineID string, keyPa
 			case conn.Sender <- conn.cache.Build():
 			}
 		}
-	}()
+	})
 	return conn
 }
 
@@ -206,7 +206,7 @@ func (c *Connection) Handler(ctx context.Context, conn *cryptostream.Conn) error
 	if err != nil {
 		return fmt.Errorf("error reading header:%s %w", conn.RemoteAddr(), err)
 	}
-	go c.Send(ctx, conn)
+	SafeGo(func() { c.Send(ctx, conn) })
 
 	return c.buildResponse(conn, length)
 }
@@ -264,5 +264,7 @@ func (c *connections) Add(connect *Connection) *Connection {
 
 func (c *connections) Remove(sessionID string) {
 	conn := c.Get(sessionID)
-	conn.Alive = false
+	if conn != nil {
+		conn.Alive = false
+	}
 }

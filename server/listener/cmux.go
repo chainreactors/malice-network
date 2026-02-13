@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/http"
 
+	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/soheilhy/cmux"
 )
 
@@ -31,29 +32,29 @@ func StartCmuxTCPListener(ln net.Listener, tlsConfig *tls.Config, handleConn fun
 	}
 
 	// 启动 TLS 连接处理
-	go func() {
+	core.SafeGo(func() {
 		for {
 			conn, err := tlsL.Accept()
 			if err != nil {
 				continue
 			}
-			go handleConn(conn)
+			core.SafeGo(func() { handleConn(conn) })
 		}
-	}()
+	})
 
 	// 启动非 TLS 连接处理
-	go func() {
+	core.SafeGo(func() {
 		for {
 			conn, err := plainL.Accept()
 			if err != nil {
 				continue
 			}
-			go handleConn(conn)
+			core.SafeGo(func() { handleConn(conn) })
 		}
-	}()
+	})
 
 	// 启动 cmux
-	go m.Serve()
+	core.SafeGo(func() { m.Serve() })
 
 	return ln, nil
 }
@@ -71,12 +72,12 @@ func StartCmuxHTTPListener(ln net.Listener, tlsConfig *tls.Config, handler http.
 	}
 
 	// 对于 HTTPS，使用包装后的 TLS listener
-	go httpsServer.Serve(tlsL)
+	core.SafeGo(func() { httpsServer.Serve(tlsL) })
 
 	// 对于 HTTP，使用普通 listener
-	go httpServer.Serve(httpL)
+	core.SafeGo(func() { httpServer.Serve(httpL) })
 
-	go m.Serve()
+	core.SafeGo(func() { m.Serve() })
 
 	return ln, nil
 }

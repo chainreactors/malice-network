@@ -17,7 +17,7 @@ func (rpc *Server) RegQuery(ctx context.Context, req *implantpb.RegistryRequest)
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgResponse)
+	greq.HandlerResponse(ch, types.MsgResponse)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -31,7 +31,7 @@ func (rpc *Server) RegAdd(ctx context.Context, req *implantpb.RegistryWriteReque
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgEmpty)
+	greq.HandlerResponse(ch, types.MsgEmpty)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -45,7 +45,7 @@ func (rpc *Server) RegDelete(ctx context.Context, req *implantpb.RegistryRequest
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgEmpty)
+	greq.HandlerResponse(ch, types.MsgEmpty)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -59,7 +59,7 @@ func (rpc *Server) RegListKey(ctx context.Context, req *implantpb.RegistryReques
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgResponse)
+	greq.HandlerResponse(ch, types.MsgResponse)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -73,6 +73,6 @@ func (rpc *Server) RegListValue(ctx context.Context, req *implantpb.RegistryRequ
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgResponse)
+	greq.HandlerResponse(ch, types.MsgResponse)
 	return greq.Task.ToProtobuf(), nil
 }

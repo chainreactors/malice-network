@@ -11,6 +11,7 @@ import (
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/third/rem"
+	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/rem/agent"
 )
 
@@ -61,7 +62,7 @@ func (rem *REM) Start() error {
 	}
 	rem.Enable = true
 	logs.Log.Important(rem.con.Link())
-	go func() {
+	core.SafeGo(func() {
 		for rem.Enable {
 			agent, err := rem.con.Accept()
 			if err != nil {
@@ -69,11 +70,11 @@ func (rem *REM) Start() error {
 				continue
 			}
 
-			go rem.con.Handler(agent)
+			core.SafeGo(func() { rem.con.Handler(agent) })
 		}
-	}()
+	})
 
-	go func() {
+	core.SafeGo(func() {
 		for rem.Enable {
 			_, err := rem.rpc.HealthCheckRem(context.Background(), rem.ToProtobuf())
 			if err != nil {
@@ -82,7 +83,7 @@ func (rem *REM) Start() error {
 
 			time.Sleep(30 * time.Second)
 		}
-	}()
+	})
 	return nil
 }
 
