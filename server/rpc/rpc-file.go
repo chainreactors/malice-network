@@ -213,7 +213,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 		tempDir := filepath.Join(configs.TempPath, "downloads", resp.GetDownloadResponse().Checksum)
 		var current_cur int32 = 1
 		if _, err := os.Stat(tempDir); err == nil {
-			greq.Task.Finish(resp, "file already exists")
+			greq.Task.Done(resp, "resuming download")
 			for i := 1; i <= total; i++ {
 				chunkFile := filepath.Join(tempDir, fmt.Sprintf("%d.chunk", i))
 				if _, err := os.Stat(chunkFile); err != nil {
