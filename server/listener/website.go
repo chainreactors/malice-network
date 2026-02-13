@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
@@ -30,6 +31,7 @@ type Website struct {
 	Enable   bool
 	CertName string
 	*core.PipelineConfig
+	mu       sync.RWMutex
 	Content  map[string]*clientpb.WebContent
 	Artifact map[string]*clientpb.WebContent
 }
@@ -154,7 +156,9 @@ func (w *Website) websiteContentHandler(resp http.ResponseWriter, req *http.Requ
 	if len(parts) == 2 {
 		formatted = parts[1]
 	}
+	w.mu.RLock()
 	_, ok := w.Artifact[artifactName]
+	w.mu.RUnlock()
 	if ok {
 		name, err := output.Decode(artifactName)
 		if err != nil {
@@ -178,7 +182,9 @@ func (w *Website) websiteContentHandler(resp http.ResponseWriter, req *http.Requ
 			resp.Write(artifact.Bin)
 		}
 	} else {
+		w.mu.RLock()
 		content, ok := w.Content[strings.Trim(contentPath, "/")]
+		w.mu.RUnlock()
 		if !ok {
 			logs.Log.Debugf("%s failed to get content ", req.URL)
 			return
@@ -215,11 +221,13 @@ func (w *Website) AddContent(content *clientpb.WebContent) error {
 			return err
 		}
 	}
+	w.mu.Lock()
 	w.Content[strings.Trim(content.Path, "/")] = &clientpb.WebContent{
 		Path:        content.Path,
 		File:        contentPath,
 		ContentType: content.ContentType,
 	}
+	w.mu.Unlock()
 	return nil
 }
 

@@ -52,7 +52,7 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig, ser
 		Rpc:       listenerrpc.NewListenerRPCClient(conn),
 		Name:      cfg.Name,
 		IP:        cfg.IP,
-		pipelines: make(core.Pipelines),
+		pipelines: core.NewPipelines(),
 		conn:      conn,
 		cfg:       cfg,
 		websites:  make(map[string]*Website),
@@ -463,7 +463,7 @@ func (lns *listener) handlerStop(job *clientpb.Job) error {
 	if err := p.Close(); err != nil {
 		return err
 	}
-	delete(lns.pipelines, p.ID())
+	lns.pipelines.Delete(p.ID())
 	return nil
 }
 
@@ -584,9 +584,11 @@ func (lns *listener) handleAmountArtifact(job *clientpb.JobCtrl) error {
 
 	en := output.Encode(job.Content.Path)
 
+	w.mu.Lock()
 	w.Artifact[en] = &clientpb.WebContent{
 		Path: job.Content.Path,
 	}
+	w.mu.Unlock()
 
 	job.Job.Contents = map[string]*clientpb.WebContent{
 		job.Content.Path: &clientpb.WebContent{
@@ -614,9 +616,11 @@ func (lns *listener) handleWebContentRemove(job *clientpb.Job) error {
 	if w == nil {
 		return errors.New("website not found")
 	}
+	w.mu.Lock()
 	for path := range web.Contents {
 		delete(w.Content, path)
 	}
+	w.mu.Unlock()
 	return nil
 }
 

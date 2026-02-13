@@ -77,6 +77,8 @@ func (cc *clients) Remove(clientID int) {
 }
 
 func (cc *clients) ActiveClients() []*Client {
+	cc.mutex.Lock()
+	defer cc.mutex.Unlock()
 	var cs []*Client
 	for _, c := range cc.active {
 		if c.Online {

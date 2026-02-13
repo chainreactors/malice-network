@@ -9,7 +9,6 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"google.golang.org/protobuf/proto"
-	"sync"
 	"time"
 )
 
@@ -19,14 +18,7 @@ func (rpc *Server) GetListeners(ctx context.Context, req *clientpb.Empty) (*clie
 
 func (rpc *Server) RegisterListener(ctx context.Context, req *clientpb.RegisterListener) (*clientpb.Empty, error) {
 	//ip := getRemoteIp(ctx)
-	core.Listeners.Add(&core.Listener{
-		Name:      req.Name,
-		IP:        req.Host,
-		Active:    true,
-		Pipelines: make(map[string]*clientpb.Pipeline),
-		Ctrl:      make(chan *clientpb.JobCtrl),
-		CtrlJob:   &sync.Map{},
-	})
+	core.Listeners.Add(core.NewListener(req.Name, req.Host))
 	core.EventBroker.Notify(core.Event{
 		EventType: consts.EventListener,
 		Op:        consts.CtrlListenerStart,

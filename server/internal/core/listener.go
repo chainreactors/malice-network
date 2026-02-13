@@ -15,12 +15,24 @@ var (
 )
 
 type Listener struct {
-	Name      string
-	IP        string
-	Active    bool
-	Pipelines map[string]*clientpb.Pipeline
-	Ctrl      chan *clientpb.JobCtrl
-	CtrlJob   *sync.Map
+	Name       string
+	IP         string
+	Active     bool
+	pipelines  map[string]*clientpb.Pipeline
+	pipelineMu sync.RWMutex
+	Ctrl       chan *clientpb.JobCtrl
+	CtrlJob    *sync.Map
+}
+
+func NewListener(name, ip string) *Listener {
+	return &Listener{
+		Name:      name,
+		IP:        ip,
+		Active:    true,
+		pipelines: make(map[string]*clientpb.Pipeline),
+		Ctrl:      make(chan *clientpb.JobCtrl),
+		CtrlJob:   &sync.Map{},
+	}
 }
 
 func (l *Listener) PushCtrl(ctrl *clientpb.JobCtrl) uint32 {
@@ -41,21 +53,29 @@ func (l *Listener) WaitCtrl(i uint32) *clientpb.JobStatus {
 
 func (l *Listener) AddPipeline(pipeline *clientpb.Pipeline) {
 	pipeline.Ip = l.IP
-	l.Pipelines[pipeline.Name] = pipeline
+	l.pipelineMu.Lock()
+	l.pipelines[pipeline.Name] = pipeline
+	l.pipelineMu.Unlock()
 }
 
 func (l *Listener) RemovePipeline(pipeline *clientpb.Pipeline) {
 	Jobs.Remove(pipeline.ListenerId, pipeline.Name)
-	delete(l.Pipelines, pipeline.Name)
+	l.pipelineMu.Lock()
+	delete(l.pipelines, pipeline.Name)
+	l.pipelineMu.Unlock()
 }
 
 func (l *Listener) GetPipeline(name string) *clientpb.Pipeline {
-	return l.Pipelines[name]
+	l.pipelineMu.RLock()
+	defer l.pipelineMu.RUnlock()
+	return l.pipelines[name]
 }
 
 func (l *Listener) AllPipelines() []*clientpb.Pipeline {
-	pipelines := []*clientpb.Pipeline{}
-	for _, pipeline := range l.Pipelines {
+	l.pipelineMu.RLock()
+	defer l.pipelineMu.RUnlock()
+	pipelines := make([]*clientpb.Pipeline, 0, len(l.pipelines))
+	for _, pipeline := range l.pipelines {
 		pipelines = append(pipelines, pipeline)
 	}
 	return pipelines

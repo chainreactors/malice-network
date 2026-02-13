@@ -2,6 +2,7 @@ package core
 
 import (
 	"io"
+	"sync"
 
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/implanttypes"
@@ -16,21 +17,40 @@ type Pipeline interface {
 	ToProtobuf() *clientpb.Pipeline
 }
 
-type Pipelines map[string]Pipeline
-
-func (ps Pipelines) Add(p Pipeline) {
-	ps[p.ID()] = p
+type Pipelines struct {
+	mu sync.RWMutex
+	m  map[string]Pipeline
 }
 
-func (ps Pipelines) Get(id string) Pipeline {
-	return ps[id]
+func NewPipelines() Pipelines {
+	return Pipelines{m: make(map[string]Pipeline)}
 }
 
-func (ps Pipelines) ToProtobuf() *clientpb.Pipelines {
+func (ps *Pipelines) Add(p Pipeline) {
+	ps.mu.Lock()
+	ps.m[p.ID()] = p
+	ps.mu.Unlock()
+}
+
+func (ps *Pipelines) Get(id string) Pipeline {
+	ps.mu.RLock()
+	defer ps.mu.RUnlock()
+	return ps.m[id]
+}
+
+func (ps *Pipelines) Delete(id string) {
+	ps.mu.Lock()
+	delete(ps.m, id)
+	ps.mu.Unlock()
+}
+
+func (ps *Pipelines) ToProtobuf() *clientpb.Pipelines {
+	ps.mu.RLock()
+	defer ps.mu.RUnlock()
 	var pls = &clientpb.Pipelines{
-		Pipelines: make([]*clientpb.Pipeline, 0),
+		Pipelines: make([]*clientpb.Pipeline, 0, len(ps.m)),
 	}
-	for _, p := range ps {
+	for _, p := range ps.m {
 		pls.Pipelines = append(pls.Pipelines, p.ToProtobuf())
 	}
 	return pls
