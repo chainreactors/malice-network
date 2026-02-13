@@ -378,9 +378,9 @@ func PrintArmoryPackages(aliases []*alias.AliasManifest, exts []*extension.Exten
 		table.NewColumn("Armory", "Armory", 10),
 		table.NewColumn("Command Name", "Command Name", 15),
 		table.NewColumn("Version", "Version", 10),
-		table.NewColumn("Type", "Type", 15),
-		table.NewColumn("Help", "Help", 40),
-		table.NewColumn("URL", "URL", 40),
+		table.NewColumn("Type", "Type", 10),
+		table.NewFlexColumn("Help", "Help", 2),
+		table.NewFlexColumn("URL", "URL", 2),
 	}, false)
 
 	type pkgInfo struct {
@@ -488,8 +488,8 @@ func PrintArmoryBundles(bundles []*ArmoryBundle, con *core.Console) {
 	var row table.Row
 
 	tableModel := tui.NewTable([]table.Column{
-		table.NewColumn("Name", "Name", 20),
-		table.NewColumn("Contains", "Contains", 30),
+		table.NewFlexColumn("Name", "Name", 1),
+		table.NewFlexColumn("Contains", "Contains", 3),
 	}, true)
 	for _, bundle := range bundles {
 		if len(bundle.Packages) < 1 {

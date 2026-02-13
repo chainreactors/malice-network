@@ -7,3 +7,6 @@
 [submodule "helper/intl/community/community"]
 	path = helper/intl/community/community
 	url = https://github.com/chainreactors/mal-intl
+[submodule "external/tui"]
+	path = external/tui
+	url = https://github.com/chainreactors/tui

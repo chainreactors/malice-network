@@ -211,10 +211,10 @@ func displayAvailableUpdates(updateKeys []UpdateIdentifier,
 	)
 
 	tableModel := tui.NewTable([]table.Column{
-		table.NewColumn("Package Name", "Package Name", 20),
+		table.NewFlexColumn("Package Name", "Package Name", 1),
 		table.NewColumn("Package Type", "Package Type", 15),
 		table.NewColumn("Installed Version", "Installed Version", 20),
-		table.NewColumn("Available Version", "Available Version", 20),
+		table.NewFlexColumn("Available Version", "Available Version", 1),
 	}, true)
 
 	tableModel.Title = fmt.Sprintf(title, len(aliasUpdates), aliasSuffix, len(extensionUpdates), extensionSuffix)

@@ -22,7 +22,7 @@ func ListJobsCmd(cmd *cobra.Command, con *core.Console) error {
 	var rowEntries []table.Row
 	var row table.Row
 	tableModel := tui.NewTable([]table.Column{
-		table.NewColumn("Name", "Name", 20),
+		table.NewFlexColumn("Name", "Name", 1),
 		table.NewColumn("Listener", "Listener", 15),
 		table.NewColumn("IP", "IP", 16),
 		table.NewColumn("Port", "Port", 7),

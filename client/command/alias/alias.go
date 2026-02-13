@@ -39,10 +39,10 @@ func PrintAliases(con *core.Console, isStatic bool) {
 		table.NewColumn("Platforms", "Platforms", 10),
 		table.NewColumn("Version", "Version", 10),
 		table.NewColumn("Installed", "Installed", 10),
-		table.NewColumn(".NET Assembly", ".NET Assembly", 15),
+		table.NewColumn(".NET Assembly", ".NET Assembly", 10),
 		table.NewColumn("Reflective", "Reflective", 10),
-		table.NewColumn("Tool Author", "Tool Author", 20),
-		table.NewColumn("Repository", "Repository", 20),
+		table.NewFlexColumn("Tool Author", "Tool Author", 1),
+		table.NewFlexColumn("Repository", "Repository", 1),
 	}, true)
 
 	installedManifests := getInstalledManifests()

@@ -65,12 +65,12 @@ func RegisterPsFunc(con *core.Console) {
 			var row table.Row
 			tableModel := tui.NewTable([]table.Column{
 				table.NewColumn("Name", "Name", 15),
-				table.NewColumn("PID", "PID", 5),
-				table.NewColumn("PPID", "PPID", 5),
-				table.NewColumn("Arch", "Arch", 5),
+				table.NewColumn("PID", "PID", 6),
+				table.NewColumn("PPID", "PPID", 6),
+				table.NewColumn("Arch", "Arch", 6),
 				table.NewColumn("Owner", "Owner", 20),
-				table.NewColumn("Path", "Path", 64),
-				table.NewColumn("Args", "Args", 100),
+				table.NewFlexColumn("Path", "Path", 2),
+				table.NewFlexColumn("Args", "Args", 2),
 			}, true)
 			for _, process := range resp.GetProcesses() {
 				row = table.NewRow(

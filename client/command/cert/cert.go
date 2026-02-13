@@ -149,13 +149,13 @@ func printCert(cert *clientpb.TLS) {
 func printCerts(certs *clientpb.Certs, con *core.Console) {
 	var rowEntries []table.Row
 	tableModel := tui.NewTable([]table.Column{
-		table.NewColumn("Name", "Name", 20),
+		table.NewFlexColumn("Name", "Name", 1),
 		table.NewColumn("Type", "Type", 11),
-		table.NewColumn("Organization", "Organization", 20),
-		table.NewColumn("Country", "Country", 20),
-		table.NewColumn("Locality", "Locality", 20),
-		table.NewColumn("OrganizationalUnit", "OrganizationalUnit", 30),
-		table.NewColumn("StreetAddress", "StreetAddress", 20),
+		table.NewFlexColumn("Organization", "Organization", 1),
+		table.NewColumn("Country", "Country", 10),
+		table.NewColumn("Locality", "Locality", 10),
+		table.NewFlexColumn("OrganizationalUnit", "OrganizationalUnit", 1),
+		table.NewFlexColumn("StreetAddress", "StreetAddress", 1),
 		table.NewColumn("Expire", "Expire", 25),
 	}, true)
 

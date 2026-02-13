@@ -107,10 +107,10 @@ func ListMalManifest(con *core.Console) {
 
 	rows := []table.Row{}
 	tableModel := tui.NewTable([]table.Column{
-		table.NewColumn("Name", "Name", 25),
+		table.NewFlexColumn("Name", "Name", 1),
 		table.NewColumn("Type", "Type", 8),
 		table.NewColumn("Version", "Version", 7),
-		table.NewColumn("Author", "Author", 20),
+		table.NewFlexColumn("Author", "Author", 1),
 		table.NewColumn("Source", "Source", 10),
 	}, true)
 

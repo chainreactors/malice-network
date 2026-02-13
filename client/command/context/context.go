@@ -27,9 +27,9 @@ func ListContexts(cmd *cobra.Command, con *core.Console) error {
 	}
 
 	tableModel := tui.NewTable([]table.Column{
-		table.NewColumn("ID", "ID", 36),
-		table.NewColumn("Session", "Session", 8),
-		table.NewColumn("Task", "Task", 8),
+		table.NewFlexColumn("ID", "ID", 1),
+		table.NewColumn("Session", "Session", 10),
+		table.NewColumn("Task", "Task", 6),
 		table.NewColumn("Type", "Type", 12),
 		table.NewColumn("CreatedAt", "CreatedAt", 20),
 	}, true)

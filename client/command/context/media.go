@@ -35,12 +35,12 @@ func GetMediaCmd(cmd *cobra.Command, con *core.Console) error {
 	}
 
 	model := tui.NewTable([]table.Column{
-		table.NewColumn("ID", "ID", 36),
-		table.NewColumn("Session", "Session", 16),
-		table.NewColumn("Task", "Task", 8),
+		table.NewFlexColumn("ID", "ID", 1),
+		table.NewColumn("Session", "Session", 10),
+		table.NewColumn("Task", "Task", 6),
 		table.NewColumn("Kind", "Kind", 12),
 		table.NewColumn("Name", "Name", 20),
-		table.NewColumn("Path", "Path", 40),
+		table.NewFlexColumn("Path", "Path", 2),
 		table.NewColumn("Size", "Size", 12),
 	}, true)
 	model.SetRows(rows)

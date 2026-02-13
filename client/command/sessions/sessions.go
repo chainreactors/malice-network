@@ -73,18 +73,6 @@ func PrintSessions(sessions map[string]*client.Session, con *core.Console, isAll
 	//var colorIndex = 1
 	var rowEntries []table.Row
 	var row table.Row
-	maxLengths := map[string]int{
-		"ID":             8,
-		"Group/Note":     16,
-		"Pipeline":       14,
-		"Remote Address": 22,
-		"UserName":       20,
-		"System":         16,
-		"Sleep":          24,
-		"Last":           8,
-		"CreatedAt":      16,
-	}
-
 	// Convert map to slice for sorting
 	var sessionList []*client.Session
 	for _, session := range sessions {
@@ -124,15 +112,15 @@ func PrintSessions(sessions map[string]*client.Session, con *core.Console, isAll
 
 	// Use tui.NewTable's isStatic parameter to control static mode
 	tableModel := tui.NewTable([]table.Column{
-		table.NewColumn("ID", "ID", maxLengths["ID"]),
-		table.NewColumn("Group/Note", "Group/Note", maxLengths["Group/Note"]),
-		table.NewColumn("Pipeline", "Pipeline", maxLengths["Pipeline"]),
-		table.NewColumn("Remote Address", "Remote Address", maxLengths["Remote Address"]),
-		table.NewColumn("UserName", "UserName", maxLengths["UserName"]),
-		table.NewColumn("System", "System", maxLengths["System"]),
-		table.NewColumn("Sleep", "Sleep", maxLengths["Sleep"]),
-		table.NewColumn("Last", "Last", maxLengths["Last"]),
-		table.NewColumn("CreatedAt", "CreatedAt", maxLengths["CreatedAt"]),
+		table.NewColumn("ID", "ID", 10),
+		table.NewFlexColumn("Group/Note", "Group/Note", 1),
+		table.NewFlexColumn("Pipeline", "Pipeline", 1),
+		table.NewFlexColumn("Remote Address", "Remote Address", 1),
+		table.NewFlexColumn("UserName", "UserName", 1),
+		table.NewFlexColumn("System", "System", 1),
+		table.NewColumn("Sleep", "Sleep", 12),
+		table.NewColumn("Last", "Last", 8),
+		table.NewColumn("CreatedAt", "CreatedAt", 16),
 	}, isStatic)
 	tableModel.SetAscSort("Last")
 	tableModel.SetRows(rowEntries)

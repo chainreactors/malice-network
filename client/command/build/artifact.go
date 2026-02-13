@@ -4,7 +4,6 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"strconv"
 	"time"
 
 	"github.com/chainreactors/IoM-go/consts"
@@ -45,30 +44,8 @@ func PrintArtifacts(artifacts *clientpb.Artifacts, con *core.Console) error {
 	var rowEntries []table.Row
 	var row table.Row
 
-	defaultLengths := map[string]int{
-		"ID":       6,
-		"Name":     24,
-		"Pipeline": 16,
-		"Target":   22,
-		"Type":     8,
-		"Source":   7,
-		//"Modules":   8,
-		"CreatedAt": 20,
-		"Profile":   18,
-		"Status":    10,
-	}
-
 	for _, artifact := range artifacts.Artifacts {
 		formattedTime := time.Unix(artifact.CreatedAt, 0).Format("2006-01-02 15:04:05")
-		updateMaxLength(&defaultLengths, "ID", len(strconv.Itoa(int(artifact.Id))))
-		updateMaxLength(&defaultLengths, "Name", len(artifact.Name))
-		updateMaxLength(&defaultLengths, "Target", len(artifact.Target))
-		updateMaxLength(&defaultLengths, "Type", len(artifact.Type))
-		updateMaxLength(&defaultLengths, "Source", len(artifact.Source))
-		//updateMaxLength(&defaultLengths, "Modules", len(artifact.))
-		updateMaxLength(&defaultLengths, "Profile", len(artifact.Profile))
-		updateMaxLength(&defaultLengths, "Pipeline", len(artifact.Pipeline))
-		// updateMaxLength(&defaultLengths, "Time", len(formattedTime))
 		pipelineDisplay := artifact.Pipeline
 		if len(pipelineDisplay) > 16 {
 			pipelineDisplay = pipelineDisplay[:13] + "..."
@@ -99,17 +76,17 @@ func PrintArtifacts(artifacts *clientpb.Artifacts, con *core.Console) error {
 	}
 
 	tableModel := tui.NewTable([]table.Column{
-		table.NewColumn("ID", "ID", defaultLengths["ID"]),
-		table.NewColumn("Name", "Name", defaultLengths["Name"]),
-		table.NewColumn("Type", "Type", defaultLengths["Type"]),
-		table.NewColumn("Pipeline", "Pipeline", defaultLengths["Pipeline"]),
-		table.NewColumn("Target", "Target", defaultLengths["Target"]),
-		table.NewColumn("Source", "Source", defaultLengths["Source"]),
+		table.NewColumn("ID", "ID", 6),
+		table.NewFlexColumn("Name", "Name", 1),
+		table.NewColumn("Type", "Type", 10),
+		table.NewFlexColumn("Pipeline", "Pipeline", 1),
+		table.NewColumn("Target", "Target", 20),
+		table.NewColumn("Source", "Source", 10),
 		//table.NewColumn("Stager", "Stager", 10),
 		//table.NewColumn("Modules", "Modules", defaultLengths["Modules"]),
-		table.NewColumn("Profile", "Profile", defaultLengths["Profile"]),
-		table.NewColumn("Status", "Status", defaultLengths["Status"]),
-		table.NewColumn("CreatedAt", "CreatedAt", defaultLengths["CreatedAt"]),
+		table.NewColumn("Profile", "Profile", 12),
+		table.NewColumn("Status", "Status", 10),
+		table.NewColumn("CreatedAt", "CreatedAt", 16),
 	}, false)
 	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)

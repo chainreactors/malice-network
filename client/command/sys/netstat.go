@@ -59,9 +59,9 @@ func RegisterNetstatFunc(con *core.Console) {
 			var rowEntries []table.Row
 			var row table.Row
 			tableModel := tui.NewTable([]table.Column{
-				table.NewColumn("LocalAddr", "LocalAddr", 30),
-				table.NewColumn("RemoteAddr", "RemoteAddr", 30),
-				table.NewColumn("SkState", "SkState", 20),
+				table.NewFlexColumn("LocalAddr", "LocalAddr", 1),
+				table.NewFlexColumn("RemoteAddr", "RemoteAddr", 1),
+				table.NewColumn("SkState", "SkState", 15),
 				table.NewColumn("Pid", "Pid", 7),
 				table.NewColumn("Protocol", "Protocol", 10),
 			}, true)

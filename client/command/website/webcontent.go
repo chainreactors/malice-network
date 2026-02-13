@@ -140,9 +140,9 @@ func ListWebContentCmd(cmd *cobra.Command, con *core.Console) error {
 		table.NewColumn("ID", "ID", 8),
 		table.NewColumn("WebsiteName", "WebsiteName", 15),
 		table.NewColumn("ListenerID", "ListenerID", 15),
-		table.NewColumn("Path", "Path", 20),
+		table.NewFlexColumn("Path", "Path", 1),
 		table.NewColumn("Size", "Size", 8),
-		table.NewColumn("ContentType", "ContentType", 30),
+		table.NewFlexColumn("ContentType", "ContentType", 1),
 	}, true)
 
 	for _, content := range contents.Contents {

@@ -48,13 +48,13 @@ func RegisterServiceListFunc(con *core.Console) {
 			}
 
 			tableModel := tui.NewTable([]table.Column{
-				table.NewColumn("Name", "Name", 20),
-				table.NewColumn("Display Name", "Display Name", 25),
-				table.NewColumn("Executable Path", "Executable Path", 40),
+				table.NewFlexColumn("Name", "Name", 1),
+				table.NewFlexColumn("Display Name", "Display Name", 1),
+				table.NewFlexColumn("Executable Path", "Executable Path", 2),
 				table.NewColumn("Start Type", "Start Type", 10),
 				table.NewColumn("Error Control", "Error Control", 10),
-				table.NewColumn("Account Name", "Account Name", 20),
-				table.NewColumn("Current State", "Current State", 15),
+				table.NewFlexColumn("Account Name", "Account Name", 1),
+				table.NewColumn("Current State", "Current State", 13),
 				table.NewColumn("Process ID", "Process ID", 10),
 				table.NewColumn("Exit Code", "Exit Code", 10),
 				table.NewColumn("Checkpoint", "Checkpoint", 12),

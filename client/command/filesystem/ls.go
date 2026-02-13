@@ -79,15 +79,11 @@ func RegisterLsFunc(con *core.Console) {
 			var rowEntries []table.Row
 			var row table.Row
 			tableModel := tui.NewTable([]table.Column{
-				table.NewColumn("Name", "Name", 25),
+				table.NewFlexColumn("Name", "Name", 2),
 				table.NewColumn("Size", "Size", 10),
 				table.NewColumn("Mode", "Mode", 10),
 				table.NewColumn("Time", "Time", 16),
-				table.NewColumn("Link", "Link", 15),
-				//{Title: "name", Width: 25},
-				//{Title: "size", Width: 10},
-				//{Title: "mod", Width: 16},
-				//{Title: "link", Width: 15},
+				table.NewFlexColumn("Link", "Link", 1),
 			}, true)
 			for _, f := range resp.GetFiles() {
 				var size string

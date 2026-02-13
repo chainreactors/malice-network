@@ -112,12 +112,9 @@ func Register(con *core.Console) {
 			var rowEntries []table.Row
 			var row table.Row
 			tableModel := tui.NewTable([]table.Column{
-				table.NewColumn("Name", "Name", 25),
+				table.NewFlexColumn("Name", "Name", 1),
 				table.NewColumn("Type", "Type", 10),
-				table.NewColumn("Depend", "Depend", 35),
-				//{Title: "Name", Width: 25},
-				//{Title: "Type", Width: 10},
-				//{Title: "Depend", Width: 35},
+				table.NewFlexColumn("Depend", "Depend", 2),
 			},
 				true)
 			for _, ext := range exts.Addons {

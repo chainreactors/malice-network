@@ -29,13 +29,13 @@ func ListPipelineCmd(cmd *cobra.Command, con *core.Console) error {
 	var rowEntries []table.Row
 	var row table.Row
 	tableModel := tui.NewTable([]table.Column{
-		table.NewColumn("Name", "Name", 20),
+		table.NewFlexColumn("Name", "Name", 1),
 		table.NewColumn("Enable", "Enable", 7),
 		table.NewColumn("Type", "Type", 6),
 		table.NewColumn("ListenerID", "ListenerID", 11),
-		table.NewColumn("Address", "Address", 32),
+		table.NewFlexColumn("Address", "Address", 1),
 		table.NewColumn("Parser", "Parser", 7),
-		table.NewColumn("Encryption", "Encryption", 20),
+		table.NewColumn("Encryption", "Encryption", 12),
 		table.NewColumn("TLS", "TLS", 6),
 	}, true)
 	for _, pipeline := range pipelines.GetPipelines() {

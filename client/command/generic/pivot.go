@@ -62,8 +62,8 @@ func PrintPivots(pivots []*output.PivotingContext, con *core.Console, all bool) 
 		table.NewColumn("Listener", "Listener", 10),
 		table.NewColumn("Pipeline", "Pipeline", 10),
 		table.NewColumn("RemAgentID", "RemAgentID", 10),
-		table.NewColumn("LocalURL", "LocalURL", 50),
-		table.NewColumn("RemoteURL", "RemoteURL", 50),
+		table.NewFlexColumn("LocalURL", "LocalURL", 1),
+		table.NewFlexColumn("RemoteURL", "RemoteURL", 1),
 		table.NewColumn("Mod", "Mod", 10),
 	}, true)
 

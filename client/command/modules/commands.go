@@ -108,8 +108,8 @@ func Register(con *core.Console) {
 			var rowEntries []table.Row
 			var row table.Row
 			tableModel := tui.NewTable([]table.Column{
-				table.NewColumn("Module", "Module", 20),
-				table.NewColumn("Help", "Help", 30),
+				table.NewFlexColumn("Module", "Module", 1),
+				table.NewFlexColumn("Help", "Help", 2),
 			}, true)
 			for _, module := range modules.GetModules() {
 				var short string

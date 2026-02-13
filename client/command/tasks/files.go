@@ -31,22 +31,7 @@ func ListFiles(cmd *cobra.Command, con *core.Console) error {
 func printFiles(files *clientpb.Files, con *core.Console) {
 	var rowEntries []table.Row
 	var row table.Row
-	maxLengths := map[string]int{
-		"FileID":     6,
-		"Name":       16,
-		"Checksum":   64,
-		"Type":       12,
-		"LocalName":  16,
-		"RemotePath": 16,
-	}
-
 	for _, file := range files.Files {
-		updateMaxLength(&maxLengths, "FileID", 4)
-		updateMaxLength(&maxLengths, "Name", len(file.Name))
-		//updateMaxLength(&maxLengths, "Checksum", len(file.TempId[:8]))
-		updateMaxLength(&maxLengths, "Type", len(file.Op))
-		updateMaxLength(&maxLengths, "LocalName", len(file.Local))
-		updateMaxLength(&maxLengths, "RemotePath", len(file.Remote))
 		row = table.NewRow(
 			table.RowData{
 				"FileID":     file.TaskId,
@@ -59,11 +44,11 @@ func printFiles(files *clientpb.Files, con *core.Console) {
 		rowEntries = append(rowEntries, row)
 	}
 	tableModel := tui.NewTable([]table.Column{
-		table.NewColumn("FileID", "FileID", maxLengths["FileID"]),
-		table.NewColumn("Name", "Name", maxLengths["Name"]),
-		table.NewColumn("Type", "Type", maxLengths["Type"]),
-		table.NewColumn("LocalName", "LocalName", maxLengths["LocalName"]),
-		table.NewColumn("RemotePath", "RemotePath", maxLengths["RemotePath"]),
+		table.NewColumn("FileID", "FileID", 8),
+		table.NewFlexColumn("Name", "Name", 1),
+		table.NewColumn("Type", "Type", 10),
+		table.NewFlexColumn("LocalName", "LocalName", 1),
+		table.NewFlexColumn("RemotePath", "RemotePath", 2),
 		//table.NewColumn("Checksum", "Checksum", maxLengths["Checksum"]),
 	}, true)
 	tableModel.SetMultiline()

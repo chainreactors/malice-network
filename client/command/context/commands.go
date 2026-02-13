@@ -80,6 +80,23 @@ func Commands(con *core.Console) []*cobra.Command {
 		},
 	}
 
+	deleteCmd := &cobra.Command{
+		Use:   "delete [context_id]",
+		Short: "Delete a context",
+		Long:  "Delete a context and its associated files from the server",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return DeleteContextCmd(cmd, con)
+		},
+		Example: `~~~
+context delete [context_id]
+context delete [context_id] --yes
+~~~`,
+	}
+	deleteCmd.Flags().BoolP("yes", "y", false, "Skip confirmation prompt")
+	common.BindArgCompletions(deleteCmd, nil,
+		common.SyncCompleter(con))
+
 	contextCmd.AddCommand(
 		downloadCmd,
 		uploadCmd,
@@ -88,6 +105,7 @@ func Commands(con *core.Console) []*cobra.Command {
 		screenshotCmd,
 		keyloggerCmd,
 		mediaCmd,
+		deleteCmd,
 	)
 	syncCmd := &cobra.Command{
 		Use:   consts.CommandSync + " [context_id]",

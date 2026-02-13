@@ -33,9 +33,9 @@ func PrintExtensions(con *core.Console) {
 		table.NewColumn("Platforms", "Platforms", 7),
 		table.NewColumn("Version", "Version", 7),
 		table.NewColumn("Installed", "Installed", 4),
-		table.NewColumn("Extension Author", "Extension Author", 10),
-		table.NewColumn("Original Author", "Original Author", 10),
-		table.NewColumn("Repository", "Repository", 20),
+		table.NewFlexColumn("Extension Author", "Extension Author", 1),
+		table.NewFlexColumn("Original Author", "Original Author", 1),
+		table.NewFlexColumn("Repository", "Repository", 1),
 	}, true)
 
 	installedManifests := getInstalledManifests()

@@ -23,7 +23,7 @@ func printListeners(con *core.Console, listeners *clientpb.Listeners) {
 	var row table.Row
 	tableModel := tui.NewTable([]table.Column{
 		table.NewColumn("ID", "ID", 10),
-		table.NewColumn("Addr", "Addr", 15),
+		table.NewFlexColumn("Addr", "Addr", 1),
 		table.NewColumn("Active", "Active", 7),
 	}, true)
 	for _, listener := range listeners.GetListeners() {

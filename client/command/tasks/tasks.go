@@ -30,7 +30,7 @@ func printTasks(tasks []*clientpb.Task, con *core.Console, isAll bool) {
 	var row table.Row
 	tableModel := tui.NewTable([]table.Column{
 		table.NewColumn("ID", "ID", 4),
-		table.NewColumn("Type", "Type", 20),
+		table.NewFlexColumn("Type", "Type", 1),
 		table.NewColumn("Status", "Status", 15),
 		table.NewColumn("cur", "cur", 5),
 		table.NewColumn("total", "total", 5),
