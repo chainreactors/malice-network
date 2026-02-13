@@ -503,14 +503,6 @@ func (s *Session) GetResp(taskId uint32) (chan *implantpb.Spite, bool) {
 	return msg.(chan *implantpb.Spite), true
 }
 
-// RemoveResp removes the response channel from the map without closing it.
-// This prevents new producers from finding the channel, while existing
-// producer goroutines that already hold a reference can still safely send
-// into the buffer without panicking on a closed channel.
-func (s *Session) RemoveResp(taskId uint32) {
-	s.responses.Delete(taskId)
-}
-
 func (s *Session) DeleteResp(taskId uint32) {
 	ch, ok := s.GetResp(taskId)
 	if ok {

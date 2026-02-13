@@ -68,8 +68,6 @@ func (rpc *Server) PipeUpload(ctx context.Context, pipe *implantpb.PipeRequest) 
 		}
 		var blockId = 0
 		go func() {
-			defer greq.Task.Recover()
-			defer greq.Task.Close()
 			stat := <-out
 			err := handler.HandleMaleficError(stat)
 			if err != nil {

@@ -73,8 +73,6 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 		}
 		var blockId = 0
 		go func() {
-			defer greq.Task.Recover()
-			defer greq.Task.Close()
 			stat := <-out
 			err := handler.HandleMaleficError(stat)
 			if err != nil {
@@ -159,9 +157,6 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 	}
 
 	go func() {
-		defer greq.Task.Recover()
-		defer greq.Task.Close()
-		defer close(in)
 		resp := <-out
 		err := handler.AssertStatusAndSpite(resp, types.MsgDownload)
 		if err != nil {
@@ -252,7 +247,6 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 				}
 				core.PushContextEvent(consts.ContextUpload, ictx)
 				greq.Task.Finish(resp, "sync id "+checksum)
-				return
 			}
 		}
 	}()
