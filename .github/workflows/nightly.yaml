@@ -72,7 +72,10 @@ jobs:
           tag_name: nightly
           prerelease: true
           files: |
-            dist/**/*
+            dist/iom_*
+            dist/malice_network_*
+            dist/malice_checksums.txt
+            dist/vsix/iom.vsix
           body: |
             🌙 Nightly build 
 

@@ -69,7 +69,10 @@ jobs:
           tag_name: ${{ steps.version.outputs.new_tag }}
           draft: true
           files: |
-            dist/**/*
+            dist/iom_*
+            dist/malice_network_*
+            dist/malice_checksums.txt
+            dist/vsix/iom.vsix
         env:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
 
