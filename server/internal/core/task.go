@@ -3,11 +3,14 @@ package core
 import (
 	"context"
 	"fmt"
+	"runtime/debug"
+	"sync"
+	"time"
+
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"sync"
-	"time"
 )
 
 func NewTasks() *Tasks {
@@ -82,6 +85,7 @@ type Task struct {
 	Closed    bool
 	Deadline  time.Time
 	CallBy    string
+	closeOnce sync.Once
 }
 
 func (t *Task) TaskID() string {
@@ -141,7 +145,6 @@ func (t *Task) Finish(spite *implantpb.Spite, msg string) {
 	if t.Callback != nil {
 		t.Callback()
 	}
-	t.Close()
 }
 
 func (t *Task) Finished() bool {
@@ -154,11 +157,21 @@ func (t *Task) Timeout() bool {
 
 func (t *Task) Panic(event Event) {
 	EventBroker.Publish(event)
-	t.Close()
 }
 
 func (t *Task) Close() {
-	t.Cancel()
-	close(t.DoneCh)
-	t.Closed = true
+	t.closeOnce.Do(func() {
+		t.Cancel()
+		close(t.DoneCh)
+		t.Closed = true
+		if t.Session != nil {
+			t.Session.RemoveResp(t.Id)
+		}
+	})
+}
+
+func (t *Task) Recover() {
+	if r := recover(); r != nil {
+		logs.Log.Errorf("panic in task %s: %v\n%s", t.Name(), r, debug.Stack())
+	}
 }
