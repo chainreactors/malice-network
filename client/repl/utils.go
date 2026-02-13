@@ -1,9 +1,6 @@
 package repl
 
 import (
-	"fmt"
-	"github.com/chainreactors/IoM-go/client"
-	"github.com/muesli/termenv"
 	"github.com/spf13/cobra"
 )
 
@@ -24,17 +21,6 @@ func GetCmd(cmd *cobra.Command, name string) *cobra.Command {
 	}
 	return nil
 
-}
-
-func NewSessionColor(prePrompt, sId string) string {
-	var sessionPrompt string
-	runes := []rune(sId)
-	if termenv.HasDarkBackground() {
-		sessionPrompt = fmt.Sprintf("%s [%s]> ", client.GroupStyle.Render(prePrompt), client.NameStyle.Render(string(runes)))
-	} else {
-		sessionPrompt = fmt.Sprintf("%s [%s]> ", client.GroupStyle.Render(prePrompt), client.NameStyle.Render(string(runes)))
-	}
-	return sessionPrompt
 }
 
 // From the x/exp source code - gets a slice of keys for a map
