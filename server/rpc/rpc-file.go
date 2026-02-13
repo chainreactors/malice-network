@@ -69,6 +69,8 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 		}
 		var blockId = 0
 		go func() {
+			defer greq.Task.Recover()
+			defer greq.Task.Close()
 			stat := <-out
 			err := types.HandleMaleficError(stat)
 			if err != nil {
@@ -177,6 +179,9 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 		return nil, err
 	}
 	go func() {
+		defer greq.Task.Recover()
+		defer greq.Task.Close()
+		defer close(in)
 		resp := <-out
 		err := types.AssertStatusAndSpite(resp, types.MsgDownload)
 		if err != nil {

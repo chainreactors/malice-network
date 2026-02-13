@@ -3,12 +3,15 @@ package core
 import (
 	"context"
 	"fmt"
+	"runtime/debug"
+	"sync"
+	"time"
+
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/server/internal/db"
-	"sync"
-	"time"
 )
 
 func NewTasks() *Tasks {
@@ -85,6 +88,7 @@ type Task struct {
 	CallBy     string
 	CreatedAt  time.Time
 	FinishedAt time.Time
+	closeOnce  sync.Once
 }
 
 func (t *Task) TaskID() string {
@@ -150,7 +154,6 @@ func (t *Task) Finish(spite *implantpb.Spite, msg string) {
 		t.Callback()
 	}
 	db.UpdateTaskFinish(t.TaskID())
-	t.Close()
 }
 
 func (t *Task) Finished() bool {
@@ -163,11 +166,21 @@ func (t *Task) Timeout() bool {
 
 func (t *Task) Panic(event Event) {
 	EventBroker.Publish(event)
-	t.Close()
 }
 
 func (t *Task) Close() {
-	t.Cancel()
-	close(t.DoneCh)
-	t.Closed = true
+	t.closeOnce.Do(func() {
+		t.Cancel()
+		close(t.DoneCh)
+		t.Closed = true
+		if t.Session != nil {
+			t.Session.RemoveResp(t.Id)
+		}
+	})
+}
+
+func (t *Task) Recover() {
+	if r := recover(); r != nil {
+		logs.Log.Errorf("panic in task %s: %v\n%s", t.Name(), r, debug.Stack())
+	}
 }
