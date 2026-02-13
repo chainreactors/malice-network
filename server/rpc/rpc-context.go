@@ -3,6 +3,8 @@ package rpc
 import (
 	"context"
 	"fmt"
+	"os"
+
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	errs "github.com/chainreactors/IoM-go/types"
@@ -154,6 +156,39 @@ func (rpc *Server) AddPort(ctx context.Context, req *clientpb.Context) (*clientp
 		return nil, err
 	}
 	core.PushContextEvent(consts.CtrlContextCred, dctx)
+	return &clientpb.Empty{}, nil
+}
+
+func (rpc *Server) DeleteContext(ctx context.Context, req *clientpb.Context) (*clientpb.Empty, error) {
+	if req.Id == "" {
+		return nil, fmt.Errorf("context id is required")
+	}
+
+	ictx, err := db.FindContext(req.Id)
+	if err != nil {
+		return nil, fmt.Errorf("context not found: %w", err)
+	}
+
+	// delete associated file if exists
+	if ictx.Context != nil {
+		switch c := ictx.Context.(type) {
+		case *output.ScreenShotContext:
+			os.Remove(c.FilePath)
+		case *output.DownloadContext:
+			os.Remove(c.FilePath)
+		case *output.KeyLoggerContext:
+			os.Remove(c.FilePath)
+		case *output.UploadContext:
+			os.Remove(c.FilePath)
+		case *output.MediaContext:
+			os.Remove(c.FilePath)
+		}
+	}
+
+	if err := db.DeleteContext(ictx.ID.String()); err != nil {
+		return nil, fmt.Errorf("failed to delete context: %w", err)
+	}
+
 	return &clientpb.Empty{}, nil
 }
 

@@ -56,8 +56,8 @@ require (
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
 	golang.org/x/net v0.40.0 // indirect
 	golang.org/x/sync v0.15.0 // indirect
-	golang.org/x/sys v0.36.0 // indirect
-	golang.org/x/term v0.29.0
+	golang.org/x/sys v0.41.0 // indirect
+	golang.org/x/term v0.40.0
 	golang.org/x/text v0.23.0
 	golang.org/x/time v0.9.0 // indirect
 	google.golang.org/grpc v1.57.2
@@ -179,6 +179,7 @@ replace (
 replace (
 	github.com/chainreactors/IoM-go => ./external/IoM-go
 	github.com/chainreactors/proxyclient => github.com/chainreactors/proxyclient v1.0.3
+	github.com/chainreactors/tui => ./external/tui
 	//github.com/chainreactors/rem => github.com/chainreactors/rem-community v0.2.4
 	github.com/mark3labs/mcp-go => ./external/mcp-go
 	github.com/reeflective/console => ./external/console

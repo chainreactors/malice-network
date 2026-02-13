@@ -2,6 +2,7 @@ package db
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -325,13 +326,29 @@ func UpdateTaskDescription(taskID, Description string) error {
 // Context Operations
 // ============================================
 
-func FindContext(taskID string) (*models.Context, error) {
-	var task *models.Context
-	if err := Session().Where("id = ?", taskID).First(&task).Error; err != nil {
-		return nil, err
+func FindContext(contextID string) (*models.Context, error) {
+	var ctx *models.Context
+	// full UUID exact match
+	if len(contextID) == 36 {
+		if err := Session().Where("id = ?", contextID).First(&ctx).Error; err != nil {
+			return nil, err
+		}
+		return ctx, nil
 	}
 
-	return task, nil
+	// prefix match for short IDs
+	var contexts []*models.Context
+	if err := Session().Where("CAST(id AS TEXT) LIKE ?", contextID+"%").Find(&contexts).Error; err != nil {
+		return nil, err
+	}
+	switch len(contexts) {
+	case 0:
+		return nil, fmt.Errorf("context not found with prefix: %s", contextID)
+	case 1:
+		return contexts[0], nil
+	default:
+		return nil, fmt.Errorf("ambiguous context prefix '%s', matched %d records", contextID, len(contexts))
+	}
 }
 
 func GetContextFilesBySessionID(sessionID string, fileTypes []string) ([]*models.Context, error) {
