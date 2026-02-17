@@ -143,7 +143,7 @@ func printCert(cert *clientpb.TLS) {
 		"Expire":             expireStr,
 	}
 	orderedKeys := []string{"Name", "Type", "Organization", "Country", "Locality", "OrganizationalUnit", "StreetAddress", "Expire"}
-	tui.RenderKV(certMap, orderedKeys)
+	tui.RenderKVWithOptions(certMap, orderedKeys, tui.KVOptions{ShowHeader: true})
 }
 
 func printCerts(certs *clientpb.Certs, con *core.Console) {

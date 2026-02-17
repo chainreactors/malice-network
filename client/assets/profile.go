@@ -120,7 +120,7 @@ func PrintProfileSettings() {
 	orderedKeys := []string{"MCP Enable", "MCP Address", "LocalRPC Enable", "LocalRPC Address", "Max Server Log Size", "Opsec Threshold"}
 
 	// 使用tui.RenderKV显示配置
-	tui.RenderKV(settingsMap, orderedKeys)
+	tui.RenderKVWithOptions(settingsMap, orderedKeys, tui.KVOptions{ShowHeader: false})
 }
 
 // formatBool 格式化布尔值

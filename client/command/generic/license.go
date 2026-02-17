@@ -32,5 +32,5 @@ func printLicense(license *clientpb.LicenseInfo) {
 		"MaxBuilds":     license.MaxBuilds,
 	}
 	orderedKeys := []string{"Type", "ExpireAt", "ProBuildCount", "MaxBuilds"}
-	tui.RenderKV(licenseMap, orderedKeys)
+	tui.RenderKVWithOptions(licenseMap, orderedKeys, tui.KVOptions{ShowHeader: true})
 }

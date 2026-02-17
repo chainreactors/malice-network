@@ -147,7 +147,7 @@ func printArtifact(artifact *clientpb.Artifact) {
 		"Comment":  artifact.Comment,
 	}
 	orderedKeys := []string{"ID", "Name", "Type", "Target", "Profile", "Pipeline", "Size", "Comment"}
-	tui.RenderKV(art, orderedKeys)
+	tui.RenderKVWithOptions(art, orderedKeys, tui.KVOptions{ShowHeader: true})
 }
 
 // Some optimization is needed.

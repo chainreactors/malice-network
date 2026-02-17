@@ -141,7 +141,7 @@ func HandlerTask(sess *client.Session, log *client.Logger, ctx *clientpb.TaskCon
 		ctx.Task.Progress(),
 		message))
 
-	if callee != consts.CalleePty {
+	if callee != consts.CalleePty && callee != consts.CalleeGui {
 		log.Importantf(s)
 	}
 
@@ -279,11 +279,15 @@ func (s *Server) handlerTask(event *clientpb.Event) {
 	case consts.CtrlTaskFinish:
 		s.triggerTaskFinish(event)
 	case consts.CtrlTaskCancel:
-		log := s.ObserverLog(event.Task.SessionId)
-		log.Importantf("[%s.%d] task canceled\n", event.Task.SessionId, event.Task.TaskId)
+		if event.Callee != consts.CalleeGui {
+			log := s.ObserverLog(event.Task.SessionId)
+			log.Importantf("[%s.%d] task canceled\n", event.Task.SessionId, event.Task.TaskId)
+		}
 	case consts.CtrlTaskError:
-		log := s.ObserverLog(event.Task.SessionId)
-		log.Errorf("[%s.%d] %s\n", event.Task.SessionId, event.Task.TaskId, event.Err)
+		if event.Callee != consts.CalleeGui {
+			log := s.ObserverLog(event.Task.SessionId)
+			log.Errorf("[%s.%d] %s\n", event.Task.SessionId, event.Task.TaskId, event.Err)
+		}
 	}
 }
 
