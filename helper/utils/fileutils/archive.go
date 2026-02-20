@@ -13,6 +13,45 @@ import (
 	"strings"
 )
 
+// ArchiveFormat represents a supported archive type.
+type ArchiveFormat int
+
+const (
+	ArchiveUnknown ArchiveFormat = iota
+	ArchiveTarGz
+	ArchiveZip
+)
+
+// DetectArchiveFormat detects archive format by extension first, then magic bytes.
+func DetectArchiveFormat(path string) (ArchiveFormat, error) {
+	lower := strings.ToLower(path)
+	switch {
+	case strings.HasSuffix(lower, ".tar.gz"), strings.HasSuffix(lower, ".tgz"):
+		return ArchiveTarGz, nil
+	case strings.HasSuffix(lower, ".zip"):
+		return ArchiveZip, nil
+	}
+
+	f, err := os.Open(path)
+	if err != nil {
+		return ArchiveUnknown, err
+	}
+	defer f.Close()
+
+	var magic [4]byte
+	if _, err := io.ReadFull(f, magic[:]); err != nil {
+		return ArchiveUnknown, fmt.Errorf("unsupported archive format: %s", path)
+	}
+
+	switch {
+	case magic[0] == 0x1f && magic[1] == 0x8b:
+		return ArchiveTarGz, nil
+	case magic[0] == 0x50 && magic[1] == 0x4b && magic[2] == 0x03 && magic[3] == 0x04:
+		return ArchiveZip, nil
+	}
+	return ArchiveUnknown, fmt.Errorf("unsupported archive format: %s", path)
+}
+
 // ReadFileFromTarGz - Read a file from a tar.gz file in-memory
 func ReadFileFromTarGz(tarGzFile string, tarPath string) ([]byte, error) {
 	f, err := os.Open(tarGzFile)
@@ -95,6 +134,40 @@ func ExtractTarGz(gzipPath string, dest string) error {
 	}
 
 	return nil
+}
+
+// ReadFileFromZip reads a single file from a zip archive by path
+func ReadFileFromZip(zipFile string, targetPath string) ([]byte, error) {
+	data, err := os.ReadFile(zipFile)
+	if err != nil {
+		return nil, err
+	}
+	zipReader, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
+	if err != nil {
+		return nil, err
+	}
+	targetPath = filepath.ToSlash(targetPath)
+	for _, f := range zipReader.File {
+		name := strings.TrimPrefix(filepath.ToSlash(f.Name), "./")
+		if name == targetPath {
+			rc, err := f.Open()
+			if err != nil {
+				return nil, err
+			}
+			defer rc.Close()
+			return io.ReadAll(rc)
+		}
+	}
+	return nil, nil
+}
+
+// ExtractZipFromFile extracts a zip file from disk to the destination directory
+func ExtractZipFromFile(zipPath string, dest string) error {
+	data, err := os.ReadFile(zipPath)
+	if err != nil {
+		return err
+	}
+	return ExtractZip(data, dest)
 }
 
 // ZIP 相关功能

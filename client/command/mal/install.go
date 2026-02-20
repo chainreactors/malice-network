@@ -70,9 +70,19 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *core.Conso
 	var manifestData []byte
 	var err error
 
-	manifestData, err = fileutils.ReadFileFromTarGz(extLocalPath, m.ManifestFileName)
+	format, err := fileutils.DetectArchiveFormat(extLocalPath)
 	if err != nil {
-		con.Log.Errorf("Error reading %s from tar.gz: %s\n", m.ManifestFileName, err)
+		con.Log.Errorf("Error detecting archive format: %s\n", err)
+		return false
+	}
+	switch format {
+	case fileutils.ArchiveZip:
+		manifestData, err = fileutils.ReadFileFromZip(extLocalPath, m.ManifestFileName)
+	default:
+		manifestData, err = fileutils.ReadFileFromTarGz(extLocalPath, m.ManifestFileName)
+	}
+	if err != nil {
+		con.Log.Errorf("Error reading %s from archive: %s\n", m.ManifestFileName, err)
 		return false
 	}
 	manifest, err := plugin.ParseMalManifest(manifestData)
@@ -111,9 +121,14 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *core.Conso
 		con.Log.Errorf("\nError creating mal directory: %s\n", err)
 		return false
 	}
-	err = fileutils.ExtractTarGz(extLocalPath, installPath)
+	switch format {
+	case fileutils.ArchiveZip:
+		err = fileutils.ExtractZipFromFile(extLocalPath, installPath)
+	default:
+		err = fileutils.ExtractTarGz(extLocalPath, installPath)
+	}
 	if err != nil {
-		con.Log.Errorf("\nFailed to extract tar.gz to %s: %s\n", installPath, err)
+		con.Log.Errorf("\nFailed to extract archive to %s: %s\n", installPath, err)
 		fileutils.ForceRemoveAll(installPath)
 		return false
 	}
