@@ -44,6 +44,7 @@ type Options struct {
 	Daemon       bool                 `long:"daemon" description:"Run as a daemon"`
 	Opsec        bool                 `long:"opsec" description:"Path to opsec file"`
 	Debug        bool                 `long:"debug" description:"Debug mode" config:"debug"`
+	Quickstart   bool                 `long:"quickstart" description:"Interactive configuration wizard"`
 	UserCmd      root.UserCommand     `command:"user" description:"User commands" `
 	ListenerCmd  root.ListenerCommand `command:"listener" description:"Listener commands" `
 	License      root.LicenseCmd      `command:"license" description:"License management"`

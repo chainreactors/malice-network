@@ -39,6 +39,12 @@ func Start(defaultConfig []byte) error {
 		}
 		return nil
 	}
+	if opt.Quickstart {
+		if err := RunQuickstart(&opt); err != nil {
+			return fmt.Errorf("quickstart failed: %w", err)
+		}
+	}
+
 	err = opt.PrepareConfig(defaultConfig)
 	if err != nil {
 		return err
