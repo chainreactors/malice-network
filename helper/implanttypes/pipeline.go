@@ -132,8 +132,8 @@ func FromEncryptions(es []*clientpb.Encryption) EncryptionsConfig {
 }
 
 type EncryptionConfig struct {
-	Type string `json:"type" config:"type"`
-	Key  string `json:"key" config:"key"`
+	Type string `json:"type" config:"type" yaml:"type"`
+	Key  string `json:"key" config:"key" yaml:"key"`
 }
 
 func (encryption *EncryptionConfig) ToProtobuf() *clientpb.Encryption {
@@ -147,11 +147,11 @@ func (encryption *EncryptionConfig) ToProtobuf() *clientpb.Encryption {
 }
 
 type SecureConfig struct {
-	Enable            bool   `json:"enable" config:"enable" default:"false"`
-	ServerPublicKey   string `json:"server_public_key" config:"server_public_key"`     // Age 服务端公钥
-	ServerPrivateKey  string `json:"server_private_key" config:"server_private_key"`   // Age 服务端私钥
-	ImplantPublicKey  string `json:"implant_public_key" config:"implant_public_key"`   // Age Implant公钥
-	ImplantPrivateKey string `json:"implant_private_key" config:"implant_private_key"` // Age Implant私钥
+	Enable            bool   `json:"enable" config:"enable" default:"false" yaml:"enable"`
+	ServerPublicKey   string `json:"server_public_key" config:"server_public_key" yaml:"server_public_key"`     // Age 服务端公钥
+	ServerPrivateKey  string `json:"server_private_key" config:"server_private_key" yaml:"server_private_key"`   // Age 服务端私钥
+	ImplantPublicKey  string `json:"implant_public_key" config:"implant_public_key" yaml:"implant_public_key"`   // Age Implant公钥
+	ImplantPrivateKey string `json:"implant_private_key" config:"implant_private_key" yaml:"implant_private_key"` // Age Implant私钥
 }
 
 // ServerKeypair 返回服务端密钥对的 protobuf 结构

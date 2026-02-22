@@ -55,17 +55,17 @@ func NewDebugLog(filename string) *logs.Logger {
 }
 
 type ServerConfig struct {
-	Enable        bool          `config:"enable" default:"true"`
-	GRPCPort      uint16        `config:"grpc_port" default:"5004"`
-	GRPCHost      string        `config:"grpc_host" default:"0.0.0.0"`
-	IP            string        `config:"ip" default:""`
-	DaemonConfig  bool          `config:"daemon" default:"false"`
-	EncryptionKey string        `config:"encryption_key" default:"maliceofinternal"`
-	LogConfig     *LogConfig    `config:"log"`
-	MiscConfig    *MiscConfig   `config:"config"`
-	NotifyConfig  *NotifyConfig `config:"notify"`
-	GithubConfig  *GithubConfig `config:"github"`
-	SassConfig   *SaasConfig   `config:"saas"`
+	Enable        bool          `config:"enable" default:"true" yaml:"enable"`
+	GRPCPort      uint16        `config:"grpc_port" default:"5004" yaml:"grpc_port"`
+	GRPCHost      string        `config:"grpc_host" default:"0.0.0.0" yaml:"grpc_host"`
+	IP            string        `config:"ip" default:"" yaml:"ip"`
+	DaemonConfig  bool          `config:"daemon" default:"false" yaml:"daemon"`
+	EncryptionKey string        `config:"encryption_key" default:"maliceofinternal" yaml:"encryption_key"`
+	LogConfig     *LogConfig    `config:"log" yaml:"log"`
+	MiscConfig    *MiscConfig   `config:"config" yaml:"config"`
+	NotifyConfig  *NotifyConfig `config:"notify" yaml:"notify"`
+	GithubConfig  *GithubConfig `config:"github" yaml:"github"`
+	SaasConfig    *SaasConfig   `config:"saas" yaml:"saas"`
 }
 
 func (c *ServerConfig) Address() string {
@@ -95,16 +95,16 @@ func GetRandomID() string {
 
 // LogConfig - Server logging config
 type LogConfig struct {
-	Level int `json:"level" default:"20" config:"level"`
+	Level int `json:"level" default:"20" config:"level" yaml:"level"`
 	//GRPCUnaryPayloads  bool `json:"grpc_unary_payloads"`
 	//GRPCStreamPayloads bool `json:"grpc_stream_payloads"`
 	//TLSKeyLogger       bool `json:"tls_key_logger"`
 }
 
 type MiscConfig struct {
-	PacketLength int    `config:"packet_length" default:"4194304"`
-	Certificate  string `config:"cert" default:""`
-	PrivateKey   string `config:"key" default:""`
+	PacketLength int    `config:"packet_length" default:"4194304" yaml:"packet_length"`
+	Certificate  string `config:"cert" default:"" yaml:"cert"`
+	PrivateKey   string `config:"key" default:"" yaml:"key"`
 }
 
 func LoadMiscConfig() ([]byte, []byte, error) {
@@ -123,48 +123,48 @@ func LoadMiscConfig() ([]byte, []byte, error) {
 }
 
 type NotifyConfig struct {
-	Enable     bool              `config:"enable" default:"true"`
-	Telegram   *TelegramConfig   `config:"telegram"`
-	DingTalk   *DingTalkConfig   `config:"dingtalk"`
-	Lark       *LarkConfig       `config:"lark"`
-	ServerChan *ServerChanConfig `config:"serverchan"`
-	PushPlus   *PushPlusConfig   `config:"pushplus"`
+	Enable     bool              `config:"enable" default:"true" yaml:"enable"`
+	Telegram   *TelegramConfig   `config:"telegram" yaml:"telegram"`
+	DingTalk   *DingTalkConfig   `config:"dingtalk" yaml:"dingtalk"`
+	Lark       *LarkConfig       `config:"lark" yaml:"lark"`
+	ServerChan *ServerChanConfig `config:"serverchan" yaml:"serverchan"`
+	PushPlus   *PushPlusConfig   `config:"pushplus" yaml:"pushplus"`
 }
 
 type TelegramConfig struct {
-	Enable bool   `config:"enable" default:"false"`
-	APIKey string `config:"api_key"`
-	ChatID int64  `config:"chat_id"`
+	Enable bool   `config:"enable" default:"false" yaml:"enable"`
+	APIKey string `config:"api_key" yaml:"api_key"`
+	ChatID int64  `config:"chat_id" yaml:"chat_id"`
 }
 
 type DingTalkConfig struct {
-	Enable bool   `config:"enable" default:"false"`
-	Secret string `config:"secret"`
-	Token  string `config:"token"`
+	Enable bool   `config:"enable" default:"false" yaml:"enable"`
+	Secret string `config:"secret" yaml:"secret"`
+	Token  string `config:"token" yaml:"token"`
 }
 
 type LarkConfig struct {
-	Enable     bool   `config:"enable" default:"false"`
-	WebHookUrl string `config:"webhook_url"`
+	Enable     bool   `config:"enable" default:"false" yaml:"enable"`
+	WebHookUrl string `config:"webhook_url" yaml:"webhook_url"`
 }
 
 type ServerChanConfig struct {
-	Enable bool   `config:"enable" default:"false"`
-	URL    string `config:"url"`
+	Enable bool   `config:"enable" default:"false" yaml:"enable"`
+	URL    string `config:"url" yaml:"url"`
 }
 
 type PushPlusConfig struct {
-	Enable  bool   `config:"enable" default:"false"`
-	Token   string `config:"token"`
-	Topic   string `config:"topic"`
-	Channel string `config:"channel"`
+	Enable  bool   `config:"enable" default:"false" yaml:"enable"`
+	Token   string `config:"token" yaml:"token"`
+	Topic   string `config:"topic" yaml:"topic"`
+	Channel string `config:"channel" yaml:"channel"`
 }
 
 type GithubConfig struct {
-	Repo     string `config:"repo" default:"malefic"`
-	Owner    string `config:"owner" default:""`
-	Token    string `config:"token" default:""`
-	Workflow string `config:"workflow" default:"generate.yaml"`
+	Repo     string `config:"repo" default:"malefic" yaml:"repo"`
+	Owner    string `config:"owner" default:"" yaml:"owner"`
+	Token    string `config:"token" default:"" yaml:"token"`
+	Workflow string `config:"workflow" default:"generate.yaml" yaml:"workflow"`
 }
 
 func (g *GithubConfig) ToProtobuf() *clientpb.GithubActionBuildConfig {
@@ -177,7 +177,7 @@ func (g *GithubConfig) ToProtobuf() *clientpb.GithubActionBuildConfig {
 }
 
 type SaasConfig struct {
-	Enable bool   `config:"enable"`
-	Url    string `config:"url" default:""`
-	Token  string `config:"token" default:""`
+	Enable bool   `config:"enable" yaml:"enable"`
+	Url    string `config:"url" default:"" yaml:"url"`
+	Token  string `config:"token" default:"" yaml:"token"`
 }

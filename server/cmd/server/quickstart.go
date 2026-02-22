@@ -207,7 +207,7 @@ func RunQuickstart(opt *Options) error {
 		EncryptionKey: encryptionKey,
 		NotifyConfig:  notifyConfig,
 		GithubConfig:  &configs.GithubConfig{Repo: "malefic", Workflow: "generate.yml"},
-		SassConfig:    &configs.SaasConfig{Enable: true, Url: "https://build.chainreactors.red"},
+		SaasConfig:    &configs.SaasConfig{Enable: true, Url: "https://build.chainreactors.red"},
 		MiscConfig:    &configs.MiscConfig{PacketLength: 10485760},
 	}
 

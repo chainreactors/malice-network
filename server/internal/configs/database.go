@@ -28,19 +28,19 @@ var (
 
 // DatabaseConfig - Server config
 type DatabaseConfig struct {
-	Dialect  string `json:"dialect"`
-	Database string `json:"database"`
-	Username string `json:"username"`
-	Password string `json:"password"`
-	Host     string `json:"host"`
-	Port     uint16 `json:"port"`
+	Dialect  string `json:"dialect" yaml:"dialect"`
+	Database string `json:"database" yaml:"database"`
+	Username string `json:"username" yaml:"username"`
+	Password string `json:"password" yaml:"password"`
+	Host     string `json:"host" yaml:"host"`
+	Port     uint16 `json:"port" yaml:"port"`
 
-	Params map[string]string `json:"params"`
+	Params map[string]string `json:"params" yaml:"params"`
 
-	MaxIdleConns int `json:"max_idle_conns"`
-	MaxOpenConns int `json:"max_open_conns"`
+	MaxIdleConns int `json:"max_idle_conns" yaml:"max_idle_conns"`
+	MaxOpenConns int `json:"max_open_conns" yaml:"max_open_conns"`
 
-	LogLevel string `json:"log_level"`
+	LogLevel string `json:"log_level" yaml:"log_level"`
 }
 
 // DSN - Get the db connections string

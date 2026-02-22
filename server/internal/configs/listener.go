@@ -16,35 +16,35 @@ import (
 var ListenerConfigFileName = "listener.yaml"
 
 type ListenerConfig struct {
-	Enable bool   `config:"enable" default:"true"`
-	Name   string `config:"name" default:"listener"`
-	Auth   string `config:"auth" default:"listener.auth"`
+	Enable bool   `config:"enable" default:"true" yaml:"enable"`
+	Name   string `config:"name" default:"listener" yaml:"name"`
+	Auth   string `config:"auth" default:"listener.auth" yaml:"auth"`
 	//Server             string                `config:"server" default:"127.0.0.1"`
-	IP                 string                `config:"ip"`
-	TcpPipelines       []*TcpPipelineConfig  `config:"tcp" `
-	BindPipelineConfig []*BindPipelineConfig `config:"bind"`
-	HttpPipelines      []*HttpPipelineConfig `config:"http"`
-	Websites           []*WebsiteConfig      `config:"website"`
-	REMs               []*REMConfig          `config:"rem"`
-	AutoBuildConfig    *AutoBuildConfig      `config:"auto_build"`
+	IP                 string                `config:"ip" yaml:"ip"`
+	TcpPipelines       []*TcpPipelineConfig  `config:"tcp" yaml:"tcp"`
+	BindPipelineConfig []*BindPipelineConfig `config:"bind" yaml:"bind"`
+	HttpPipelines      []*HttpPipelineConfig `config:"http" yaml:"http"`
+	Websites           []*WebsiteConfig      `config:"website" yaml:"website"`
+	REMs               []*REMConfig          `config:"rem" yaml:"rem"`
+	AutoBuildConfig    *AutoBuildConfig      `config:"auto_build" yaml:"auto_build"`
 }
 
 type TcpPipelineConfig struct {
-	Enable           bool                           `config:"enable" default:"true"`
-	Name             string                         `config:"name" default:"tcp"`
-	Host             string                         `config:"host" default:"0.0.0.0"`
-	Port             uint16                         `config:"port" default:"5001"`
-	Parser           string                         `config:"parser" default:"malefic"`
-	TlsConfig        *TlsConfig                     `config:"tls"`
-	EncryptionConfig implanttypes.EncryptionsConfig `config:"encryption"`
-	SecureConfig     *implanttypes.SecureConfig     `config:"secure"` // Age 密码学安全配置
+	Enable           bool                           `config:"enable" default:"true" yaml:"enable"`
+	Name             string                         `config:"name" default:"tcp" yaml:"name"`
+	Host             string                         `config:"host" default:"0.0.0.0" yaml:"host"`
+	Port             uint16                         `config:"port" default:"5001" yaml:"port"`
+	Parser           string                         `config:"parser" default:"malefic" yaml:"parser"`
+	TlsConfig        *TlsConfig                     `config:"tls" yaml:"tls"`
+	EncryptionConfig implanttypes.EncryptionsConfig `config:"encryption" yaml:"encryption"`
+	SecureConfig     *implanttypes.SecureConfig     `config:"secure" yaml:"secure"` // Age 密码学安全配置
 }
 
 type AutoBuildConfig struct {
-	Enable     bool     `config:"enable" default:"false"`
-	BuildPulse bool     `config:"build_pulse" default:"false"`
-	Target     []string `config:"target" default:""`
-	Pipeline   []string `config:"pipeline" default:""`
+	Enable     bool     `config:"enable" default:"false" yaml:"enable"`
+	BuildPulse bool     `config:"build_pulse" default:"false" yaml:"build_pulse"`
+	Target     []string `config:"target" default:"" yaml:"target"`
+	Pipeline   []string `config:"pipeline" default:"" yaml:"pipeline"`
 }
 
 func (tcp *TcpPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, error) {
@@ -71,10 +71,10 @@ func (tcp *TcpPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, erro
 }
 
 type BindPipelineConfig struct {
-	Enable           bool                           `config:"enable" default:"true"`
-	Name             string                         `config:"name" default:"bind"`
-	TlsConfig        *TlsConfig                     `config:"tls"`
-	EncryptionConfig implanttypes.EncryptionsConfig `config:"encryption"`
+	Enable           bool                           `config:"enable" default:"true" yaml:"enable"`
+	Name             string                         `config:"name" default:"bind" yaml:"name"`
+	TlsConfig        *TlsConfig                     `config:"tls" yaml:"tls"`
+	EncryptionConfig implanttypes.EncryptionsConfig `config:"encryption" yaml:"encryption"`
 }
 
 func (pipeline *BindPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, error) {
@@ -96,18 +96,18 @@ func (pipeline *BindPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline
 }
 
 type HttpPipelineConfig struct {
-	Enable           bool                           `config:"enable" default:"true"`
-	Name             string                         `config:"name" default:"http"`
-	Host             string                         `config:"host" default:"0.0.0.0"`
-	Port             uint16                         `config:"port" default:"8080"`
-	Parser           string                         `config:"parser" default:"malefic"`
-	TlsConfig        *TlsConfig                     `config:"tls"`
-	EncryptionConfig implanttypes.EncryptionsConfig `config:"encryption"`
-	SecureConfig     *implanttypes.SecureConfig     `config:"secure"` // Age 密码学安全配置
-	Headers          map[string][]string            `config:"headers"`
-	ErrorPage        string                         `config:"error_page"`
-	BodyPrefix       string                         `config:"body_prefix"`
-	BodySuffix       string                         `config:"body_suffix"`
+	Enable           bool                           `config:"enable" default:"true" yaml:"enable"`
+	Name             string                         `config:"name" default:"http" yaml:"name"`
+	Host             string                         `config:"host" default:"0.0.0.0" yaml:"host"`
+	Port             uint16                         `config:"port" default:"8080" yaml:"port"`
+	Parser           string                         `config:"parser" default:"malefic" yaml:"parser"`
+	TlsConfig        *TlsConfig                     `config:"tls" yaml:"tls"`
+	EncryptionConfig implanttypes.EncryptionsConfig `config:"encryption" yaml:"encryption"`
+	SecureConfig     *implanttypes.SecureConfig     `config:"secure" yaml:"secure"` // Age 密码学安全配置
+	Headers          map[string][]string            `config:"headers" yaml:"headers"`
+	ErrorPage        string                         `config:"error_page" yaml:"error_page"`
+	BodyPrefix       string                         `config:"body_prefix" yaml:"body_prefix"`
+	BodySuffix       string                         `config:"body_suffix" yaml:"body_suffix"`
 }
 
 func (http *HttpPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, error) {
@@ -153,9 +153,9 @@ func (http *HttpPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, er
 }
 
 type REMConfig struct {
-	Enable  bool   `config:"enable" default:"false"`
-	Name    string `config:"name" default:"default-rem"`
-	Console string `config:"console" default:""`
+	Enable  bool   `config:"enable" default:"false" yaml:"enable"`
+	Name    string `config:"name" default:"default-rem" yaml:"name"`
+	Console string `config:"console" default:"" yaml:"console"`
 }
 
 func (r *REMConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, error) {
@@ -173,18 +173,18 @@ func (r *REMConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, error) {
 }
 
 type WebsiteConfig struct {
-	Enable      bool          `config:"enable" default:"false"`
-	RootPath    string        `config:"root" default:"."`
-	WebsiteName string        `config:"name" default:"web"`
-	Port        uint16        `config:"port" default:"443"`
-	WebContents []*WebContent `config:"content" default:""`
-	TlsConfig   *TlsConfig    `config:"tls" `
+	Enable      bool          `config:"enable" default:"false" yaml:"enable"`
+	RootPath    string        `config:"root" default:"." yaml:"root"`
+	WebsiteName string        `config:"name" default:"web" yaml:"name"`
+	Port        uint16        `config:"port" default:"443" yaml:"port"`
+	WebContents []*WebContent `config:"content" default:"" yaml:"content"`
+	TlsConfig   *TlsConfig    `config:"tls" yaml:"tls"`
 }
 
 type WebContent struct {
-	File string `config:"file"`
-	Path string `config:"path"`
-	Type string `config:"type" default:"raw"`
+	File string `config:"file" yaml:"file"`
+	Path string `config:"path" yaml:"path"`
+	Type string `config:"type" default:"raw" yaml:"type"`
 	//EncryptionConfig *EncryptionConfig `config:"encryption"`
 }
 
@@ -238,19 +238,19 @@ func (t *CertConfig) ToProtobuf() *clientpb.TLS {
 }
 
 type TlsConfig struct {
-	Enable   bool   `config:"enable"`
-	CertFile string `config:"cert_file"`
-	KeyFile  string `config:"key_file"`
-	CAFile   string `config:"ca_file"`
+	Enable   bool   `config:"enable" yaml:"enable"`
+	CertFile string `config:"cert_file" yaml:"cert_file"`
+	KeyFile  string `config:"key_file" yaml:"key_file"`
+	CAFile   string `config:"ca_file" yaml:"ca_file"`
 	//Acme     bool   `config:"acme"`
 	//Domain   string `config:"domain"`
 	//Name     string `config:"name"`
-	CN string `config:"CN"`
-	O  string `config:"O"`
-	C  string `config:"C"`
-	L  string `config:"L"`
-	OU string `config:"OU"`
-	ST string `config:"ST"`
+	CN string `config:"CN" yaml:"CN"`
+	O  string `config:"O" yaml:"O"`
+	C  string `config:"C" yaml:"C"`
+	L  string `config:"L" yaml:"L"`
+	OU string `config:"OU" yaml:"OU"`
+	ST string `config:"ST" yaml:"ST"`
 	//Validity string `config:"validity"`
 }
 
