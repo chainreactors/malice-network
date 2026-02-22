@@ -561,6 +561,30 @@ func Register(con *core.Console) {
 			},
 		})
 
+	con.RegisterServerFunc("artifact_bin",
+		func(con *core.Console, sess *client.Session, name string) (string, error) {
+			artifact := &clientpb.Artifact{
+				Name: name,
+			}
+			artifact, err := con.Rpc.FindArtifact(sess.Context(), artifact)
+			if err != nil {
+				return "", err
+			}
+			return string(artifact.Bin), nil
+		},
+		&mals.Helper{
+			Group: intermediate.ArtifactGroup,
+			Short: "get artifact binary content by name",
+			Input: []string{
+				"sess: session",
+				"name: artifact name",
+			},
+			Output: []string{
+				"artifact_content",
+			},
+			Example: `artifact_bin(active(), "MAGIC_TOOL")`,
+		})
+
 	con.RegisterServerFunc("self_stager",
 		func(con *core.Console, sess *client.Session) (string, error) {
 			artifact, err := SearchArtifact(con, sess.PipelineId, "pulse", "raw", sess.Os.Name, sess.Os.Arch)
