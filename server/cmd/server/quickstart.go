@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net"
+	"net/url"
 	"os"
 	"strconv"
 
@@ -25,7 +26,7 @@ func RunQuickstart(opt *Options) error {
 	serverIP := detectLocalIP()
 	grpcHost := "0.0.0.0"
 	grpcPort := "5004"
-	encryptionKey := randomHex(16)
+	encryptionKey := "maliceofinternal"
 
 	err := huh.NewForm(
 		huh.NewGroup(
@@ -112,32 +113,25 @@ func RunQuickstart(opt *Options) error {
 
 	// Step 4: Auto-build
 	enableAutoBuild := true
-	buildPulse := true
-	var buildTargets []string
-	var buildPipelines []string
-
-	// build pipeline options from selected pipelines
-	var pipelineOpts []huh.Option[string]
-	for _, p := range selectedPipelines {
-		switch p {
-		case "tcp":
-			for _, tc := range tcpPipelines {
-				pipelineOpts = append(pipelineOpts, huh.NewOption(tc.Name, tc.Name).Selected(true))
-			}
-		case "http":
-			for _, hc := range httpPipelines {
-				pipelineOpts = append(pipelineOpts, huh.NewOption(hc.Name, hc.Name).Selected(true))
-			}
-		case "rem":
-			for _, rc := range remConfigs {
-				pipelineOpts = append(pipelineOpts, huh.NewOption(rc.Name, rc.Name).Selected(true))
-			}
-		}
-	}
-
 	err = huh.NewForm(
 		huh.NewGroup(
 			huh.NewConfirm().Title("Enable Auto-Build?").Value(&enableAutoBuild),
+		).Title("Auto-Build Configuration"),
+	).Run()
+	if err != nil {
+		return err
+	}
+
+	var autoBuild *configs.AutoBuildConfig
+	if enableAutoBuild {
+		buildPulse := true
+		var buildTargets []string
+		var buildPipelines []string
+
+		// build pipeline options from selected pipelines
+		pipelineOpts := buildPipelineOptions(selectedPipelines, tcpPipelines, httpPipelines, remConfigs)
+
+		formFields := []huh.Field{
 			huh.NewConfirm().Title("Build Pulse?").Value(&buildPulse),
 			huh.NewMultiSelect[string]().
 				Title("Build Targets").
@@ -150,52 +144,42 @@ func RunQuickstart(opt *Options) error {
 					huh.NewOption("aarch64-unknown-linux-musl", "aarch64-unknown-linux-musl"),
 				).
 				Value(&buildTargets),
-			huh.NewMultiSelect[string]().
-				Title("Auto-Build Pipelines").
-				Options(pipelineOpts...).
-				Value(&buildPipelines),
-		).Title("Auto-Build Configuration"),
-	).Run()
-	if err != nil {
-		return err
-	}
+		}
 
-	// Step 5: Notify (optional)
-	enableNotify := false
-	var notifyType string
-	var webhookURL string
+		if len(pipelineOpts) > 0 {
+			formFields = append(formFields,
+				huh.NewMultiSelect[string]().
+					Title("Auto-Build Pipelines").
+					Options(pipelineOpts...).
+					Value(&buildPipelines),
+			)
+		}
 
-	err = huh.NewForm(
-		huh.NewGroup(
-			huh.NewConfirm().Title("Enable Notifications?").Value(&enableNotify),
-		).Title("Notification Configuration"),
-	).Run()
-	if err != nil {
-		return err
-	}
-
-	var notifyConfig *configs.NotifyConfig
-	if enableNotify {
-		notifyType = "lark"
 		err = huh.NewForm(
-			huh.NewGroup(
-				huh.NewSelect[string]().
-					Title("Notification Service").
-					Options(
-						huh.NewOption("Lark", "lark"),
-						huh.NewOption("Telegram", "telegram"),
-						huh.NewOption("DingTalk", "dingtalk"),
-						huh.NewOption("ServerChan", "serverchan"),
-						huh.NewOption("PushPlus", "pushplus"),
-					).
-					Value(&notifyType),
-				huh.NewInput().Title("Webhook URL / Token").Value(&webhookURL),
-			).Title("Notification Details"),
+			huh.NewGroup(formFields...).Title("Auto-Build Details"),
 		).Run()
 		if err != nil {
 			return err
 		}
-		notifyConfig = buildNotifyConfig(notifyType, webhookURL)
+
+		autoBuild = &configs.AutoBuildConfig{
+			Enable:     true,
+			BuildPulse: buildPulse,
+			Target:     buildTargets,
+			Pipeline:   buildPipelines,
+		}
+	}
+
+	// Step 5: Build source config (SaaS / GitHub)
+	githubConfig, saasConfig, err := configureBuildSource()
+	if err != nil {
+		return err
+	}
+
+	// Step 6: Notify (optional)
+	notifyConfig, err := configureNotify()
+	if err != nil {
+		return err
 	}
 
 	// Assemble configs
@@ -206,19 +190,9 @@ func RunQuickstart(opt *Options) error {
 		IP:            serverIP,
 		EncryptionKey: encryptionKey,
 		NotifyConfig:  notifyConfig,
-		GithubConfig:  &configs.GithubConfig{Repo: "malefic", Workflow: "generate.yml"},
-		SaasConfig:    &configs.SaasConfig{Enable: true, Url: "https://build.chainreactors.red"},
+		GithubConfig:  githubConfig,
+		SaasConfig:    saasConfig,
 		MiscConfig:    &configs.MiscConfig{PacketLength: 10485760},
-	}
-
-	var autoBuild *configs.AutoBuildConfig
-	if enableAutoBuild {
-		autoBuild = &configs.AutoBuildConfig{
-			Enable:     true,
-			BuildPulse: buildPulse,
-			Target:     buildTargets,
-			Pipeline:   buildPipelines,
-		}
 	}
 
 	opt.Listeners = &configs.ListenerConfig{
@@ -238,6 +212,231 @@ func RunQuickstart(opt *Options) error {
 
 	logs.Log.Importantf("quickstart config saved to %s", opt.Config)
 	return nil
+}
+
+func buildPipelineOptions(
+	selectedPipelines []string,
+	tcpPipelines []*configs.TcpPipelineConfig,
+	httpPipelines []*configs.HttpPipelineConfig,
+	remConfigs []*configs.REMConfig,
+) []huh.Option[string] {
+	var opts []huh.Option[string]
+	for _, p := range selectedPipelines {
+		switch p {
+		case "tcp":
+			for _, tc := range tcpPipelines {
+				opts = append(opts, huh.NewOption(tc.Name, tc.Name).Selected(true))
+			}
+		case "http":
+			for _, hc := range httpPipelines {
+				opts = append(opts, huh.NewOption(hc.Name, hc.Name).Selected(true))
+			}
+		case "rem":
+			for _, rc := range remConfigs {
+				opts = append(opts, huh.NewOption(rc.Name, rc.Name).Selected(true))
+			}
+		}
+	}
+	return opts
+}
+
+func configureBuildSource() (*configs.GithubConfig, *configs.SaasConfig, error) {
+	var selectedSources []string
+	err := huh.NewForm(
+		huh.NewGroup(
+			huh.NewMultiSelect[string]().
+				Title("Select Build Sources").
+				Options(
+					huh.NewOption("SaaS (cloud build service)", "saas").Selected(true),
+					huh.NewOption("GitHub Actions", "github"),
+				).
+				Value(&selectedSources),
+		).Title("Build Source Configuration"),
+	).Run()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	saasConfig := &configs.SaasConfig{Enable: false}
+	githubConfig := &configs.GithubConfig{Repo: "malefic", Workflow: "generate.yml"}
+
+	for _, src := range selectedSources {
+		switch src {
+		case "saas":
+			saasUrl := "https://build.chainreactors.red"
+			saasToken := ""
+			err := huh.NewForm(
+				huh.NewGroup(
+					huh.NewInput().Title("SaaS Build URL").Value(&saasUrl).
+						Validate(validateURL),
+					huh.NewInput().Title("SaaS Token (leave empty to auto-register)").Value(&saasToken),
+				).Title("SaaS Configuration"),
+			).Run()
+			if err != nil {
+				return nil, nil, err
+			}
+			saasConfig = &configs.SaasConfig{
+				Enable: true,
+				Url:    saasUrl,
+				Token:  saasToken,
+			}
+		case "github":
+			owner := ""
+			repo := "malefic"
+			token := ""
+			workflow := "generate.yml"
+			err := huh.NewForm(
+				huh.NewGroup(
+					huh.NewInput().Title("GitHub Owner").Value(&owner).
+						Validate(validateNotEmpty("GitHub Owner")),
+					huh.NewInput().Title("GitHub Repo").Value(&repo),
+					huh.NewInput().Title("GitHub Token").Value(&token).
+						Validate(validateNotEmpty("GitHub Token")),
+					huh.NewInput().Title("GitHub Workflow").Value(&workflow),
+				).Title("GitHub Actions Configuration"),
+			).Run()
+			if err != nil {
+				return nil, nil, err
+			}
+			githubConfig = &configs.GithubConfig{
+				Owner:    owner,
+				Repo:     repo,
+				Token:    token,
+				Workflow: workflow,
+			}
+		}
+	}
+
+	return githubConfig, saasConfig, nil
+}
+
+func configureNotify() (*configs.NotifyConfig, error) {
+	enableNotify := false
+	err := huh.NewForm(
+		huh.NewGroup(
+			huh.NewConfirm().Title("Enable Notifications?").Value(&enableNotify),
+		).Title("Notification Configuration"),
+	).Run()
+	if err != nil {
+		return nil, err
+	}
+
+	if !enableNotify {
+		return nil, nil
+	}
+
+	notifyType := "lark"
+	err = huh.NewForm(
+		huh.NewGroup(
+			huh.NewSelect[string]().
+				Title("Notification Service").
+				Options(
+					huh.NewOption("Lark", "lark"),
+					huh.NewOption("Telegram", "telegram"),
+					huh.NewOption("DingTalk", "dingtalk"),
+					huh.NewOption("ServerChan", "serverchan"),
+					huh.NewOption("PushPlus", "pushplus"),
+				).
+				Value(&notifyType),
+		).Title("Notification Service"),
+	).Run()
+	if err != nil {
+		return nil, err
+	}
+
+	return collectNotifyParams(notifyType)
+}
+
+func collectNotifyParams(notifyType string) (*configs.NotifyConfig, error) {
+	cfg := &configs.NotifyConfig{Enable: true}
+
+	switch notifyType {
+	case "lark":
+		webhookURL := ""
+		err := huh.NewForm(
+			huh.NewGroup(
+				huh.NewInput().Title("Lark Webhook URL").Value(&webhookURL).
+					Validate(validateURL),
+			).Title("Lark Configuration"),
+		).Run()
+		if err != nil {
+			return nil, err
+		}
+		cfg.Lark = &configs.LarkConfig{Enable: true, WebHookUrl: webhookURL}
+
+	case "telegram":
+		apiKey := ""
+		chatIDStr := ""
+		err := huh.NewForm(
+			huh.NewGroup(
+				huh.NewInput().Title("Telegram API Key").Value(&apiKey).
+					Validate(validateNotEmpty("Telegram API Key")),
+				huh.NewInput().Title("Telegram Chat ID").Value(&chatIDStr).
+					Validate(func(s string) error {
+						if s == "" {
+							return fmt.Errorf("Chat ID is required")
+						}
+						if _, err := strconv.ParseInt(s, 10, 64); err != nil {
+							return fmt.Errorf("Chat ID must be a number")
+						}
+						return nil
+					}),
+			).Title("Telegram Configuration"),
+		).Run()
+		if err != nil {
+			return nil, err
+		}
+		chatID, _ := strconv.ParseInt(chatIDStr, 10, 64)
+		cfg.Telegram = &configs.TelegramConfig{Enable: true, APIKey: apiKey, ChatID: chatID}
+
+	case "dingtalk":
+		token := ""
+		secret := ""
+		err := huh.NewForm(
+			huh.NewGroup(
+				huh.NewInput().Title("DingTalk Token").Value(&token).
+					Validate(validateNotEmpty("DingTalk Token")),
+				huh.NewInput().Title("DingTalk Secret").Value(&secret).
+					Validate(validateNotEmpty("DingTalk Secret")),
+			).Title("DingTalk Configuration"),
+		).Run()
+		if err != nil {
+			return nil, err
+		}
+		cfg.DingTalk = &configs.DingTalkConfig{Enable: true, Token: token, Secret: secret}
+
+	case "serverchan":
+		scURL := ""
+		err := huh.NewForm(
+			huh.NewGroup(
+				huh.NewInput().Title("ServerChan URL").Value(&scURL).
+					Validate(validateURL),
+			).Title("ServerChan Configuration"),
+		).Run()
+		if err != nil {
+			return nil, err
+		}
+		cfg.ServerChan = &configs.ServerChanConfig{Enable: true, URL: scURL}
+
+	case "pushplus":
+		token := ""
+		topic := ""
+		channel := "wechat"
+		err := huh.NewForm(
+			huh.NewGroup(
+				huh.NewInput().Title("PushPlus Token").Value(&token).
+					Validate(validateNotEmpty("PushPlus Token")),
+				huh.NewInput().Title("PushPlus Topic (optional)").Value(&topic),
+				huh.NewInput().Title("PushPlus Channel").Value(&channel),
+			).Title("PushPlus Configuration"),
+		).Run()
+		if err != nil {
+			return nil, err
+		}
+		cfg.PushPlus = &configs.PushPlusConfig{Enable: true, Token: token, Topic: topic, Channel: channel}
+	}
+
+	return cfg, nil
 }
 
 func configureTcpPipeline(encKey string) (*configs.TcpPipelineConfig, error) {
@@ -325,19 +524,20 @@ func defaultEncryption(key string) implanttypes.EncryptionsConfig {
 	}
 }
 
-func buildNotifyConfig(notifyType, value string) *configs.NotifyConfig {
+func buildNotifyConfig(notifyType string, params map[string]string) *configs.NotifyConfig {
 	cfg := &configs.NotifyConfig{Enable: true}
 	switch notifyType {
 	case "lark":
-		cfg.Lark = &configs.LarkConfig{Enable: true, WebHookUrl: value}
+		cfg.Lark = &configs.LarkConfig{Enable: true, WebHookUrl: params["webhook_url"]}
 	case "telegram":
-		cfg.Telegram = &configs.TelegramConfig{Enable: true, APIKey: value}
+		chatID, _ := strconv.ParseInt(params["chat_id"], 10, 64)
+		cfg.Telegram = &configs.TelegramConfig{Enable: true, APIKey: params["api_key"], ChatID: chatID}
 	case "dingtalk":
-		cfg.DingTalk = &configs.DingTalkConfig{Enable: true, Token: value}
+		cfg.DingTalk = &configs.DingTalkConfig{Enable: true, Token: params["token"], Secret: params["secret"]}
 	case "serverchan":
-		cfg.ServerChan = &configs.ServerChanConfig{Enable: true, URL: value}
+		cfg.ServerChan = &configs.ServerChanConfig{Enable: true, URL: params["url"]}
 	case "pushplus":
-		cfg.PushPlus = &configs.PushPlusConfig{Enable: true, Token: value}
+		cfg.PushPlus = &configs.PushPlusConfig{Enable: true, Token: params["token"], Topic: params["topic"], Channel: params["channel"]}
 	}
 	return cfg
 }
@@ -371,6 +571,32 @@ func validateIP(s string) error {
 		return fmt.Errorf("invalid IP address: %s", s)
 	}
 	return nil
+}
+
+func validateURL(s string) error {
+	if s == "" {
+		return fmt.Errorf("URL is required")
+	}
+	u, err := url.Parse(s)
+	if err != nil {
+		return fmt.Errorf("invalid URL: %s", err)
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return fmt.Errorf("URL must start with http:// or https://")
+	}
+	if u.Host == "" {
+		return fmt.Errorf("URL must have a host")
+	}
+	return nil
+}
+
+func validateNotEmpty(fieldName string) func(string) error {
+	return func(s string) error {
+		if s == "" {
+			return fmt.Errorf("%s is required", fieldName)
+		}
+		return nil
+	}
 }
 
 func randomHex(n int) string {
