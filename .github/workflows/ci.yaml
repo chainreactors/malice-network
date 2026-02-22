@@ -25,6 +25,9 @@ jobs:
         run: |
           git config --global url."https://${{ secrets.PAT_TOKEN }}@github.com/".insteadOf "https://github.com/"
 
+      - name: Go mod tidy
+        run: go mod tidy
+
       - name: Go vet
         run: go vet ./...
 
