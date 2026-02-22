@@ -29,6 +29,9 @@ jobs:
         run: |
           git config --global url."https://${{ secrets.PAT_TOKEN }}@github.com/".insteadOf "https://github.com/"
 
+      - name: Update submodules to latest
+        run: git submodule update --remote
+
       - name: Set Version Info
         run: |
           echo "NIGHTLY_VERSION=nightly-$(date +'%Y%m%d')" >> $GITHUB_ENV
