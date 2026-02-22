@@ -152,7 +152,8 @@ func (c *Console) Start(bindCmds ...BindCmds) error {
 }
 
 func (c *Console) Context() context.Context {
-	ctx, _ := context.WithTimeout(context.Background(), consts.DefaultTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), consts.DefaultTimeout)
+	_ = cancel
 
 	return metadata.NewOutgoingContext(ctx, metadata.Pairs(
 		"client_id", fmt.Sprintf("%s_%d", c.Client.Name, c.Client.ID)),
@@ -160,7 +161,8 @@ func (c *Console) Context() context.Context {
 }
 
 func (c *Console) SyncBuildContext() context.Context {
-	ctx, _ := context.WithTimeout(context.Background(), consts.SyncBuildTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), consts.SyncBuildTimeout)
+	_ = cancel
 
 	return metadata.NewOutgoingContext(ctx, metadata.Pairs(
 		"client_id", fmt.Sprintf("%s_%d", c.Client.Name, c.Client.ID)),

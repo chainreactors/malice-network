@@ -531,7 +531,7 @@ func makeExtensionArgCompleter(extCmd *ExtCommand, _ *cobra.Command, comps *cara
 			usage += " (optional)"
 		}
 
-		actions = append(actions, action.Usage(usage))
+		actions = append(actions, action.Usage("%s", usage))
 	}
 
 	comps.PositionalCompletion(actions...)

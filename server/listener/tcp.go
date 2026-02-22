@@ -188,7 +188,7 @@ func (pipeline *TCPPipeline) HandleConnection(conn net.Conn) {
 func (pipeline *TCPPipeline) handlePulse(conn *cryptostream.Conn) {
 	magic, artifactId, err := conn.Parser.ReadHeader(conn)
 	if err != nil {
-		logs.Log.Errorf(err.Error())
+		logs.Log.Errorf("%s", err.Error())
 		return
 	}
 	builder, err := pipeline.rpc.GetArtifact(context.Background(), &clientpb.Artifact{
@@ -197,7 +197,7 @@ func (pipeline *TCPPipeline) handlePulse(conn *cryptostream.Conn) {
 		Format:   consts.FormatRaw,
 	})
 	if err != nil {
-		logs.Log.Errorf("not found artifact %d ,%s ", artifactId, err.Error())
+		logs.Log.Errorf("not found artifact %d, %s", artifactId, err.Error())
 		return
 	} else {
 		logs.Log.Infof("send artifact %d %s", builder.Id, builder.Name)
@@ -209,7 +209,7 @@ func (pipeline *TCPPipeline) handlePulse(conn *cryptostream.Conn) {
 		},
 	}), magic)
 	if err != nil {
-		logs.Log.Errorf(err.Error())
+		logs.Log.Errorf("%s", err.Error())
 		return
 	}
 }

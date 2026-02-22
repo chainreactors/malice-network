@@ -200,13 +200,14 @@ func (pipeline *HTTPPipeline) handlePulse(resp http.ResponseWriter, req *http.Re
 		},
 	}), magic)
 	if err != nil {
-		logs.Log.Errorf(err.Error())
+		logs.Log.Errorf("%s", err.Error())
 		return
 	}
 }
 
 func (pipeline *HTTPPipeline) handleMalefic(w http.ResponseWriter, r *http.Request, conn *cryptostream.Conn) {
-	ctx, _ := context.WithCancel(r.Context())
+	ctx, cancel := context.WithCancel(r.Context())
+	defer cancel()
 	connect, err := core.GetConnection(conn, pipeline.ID(), pipeline.SecureConfig)
 	if err != nil {
 		pipeline.writeError(w, http.StatusBadRequest, "Invalid request")

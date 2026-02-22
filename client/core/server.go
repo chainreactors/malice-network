@@ -68,7 +68,7 @@ func (s *Server) triggerTaskDone(event *clientpb.Event) {
 	log := s.ObserverLog(event.Task.SessionId)
 	err = types.HandleMaleficError(event.Spite)
 	if err != nil {
-		log.Errorf(logs.RedBold(err.Error()) + "\n")
+		log.Errorf("%s\n", logs.RedBold(err.Error()))
 		return
 	}
 	taskContext := wrapToTaskContext(event)
@@ -90,7 +90,7 @@ func (s *Server) triggerTaskFinish(event *clientpb.Event) {
 	log := s.ObserverLog(event.Task.SessionId)
 	err = types.HandleMaleficError(event.Spite)
 	if err != nil {
-		log.Errorf(logs.RedBold(err.Error()) + "\n")
+		log.Errorf("%s\n", logs.RedBold(err.Error()))
 		return
 	}
 	taskContext := wrapToTaskContext(event)
@@ -142,7 +142,7 @@ func HandlerTask(sess *client.Session, log *client.Logger, ctx *clientpb.TaskCon
 		message))
 
 	if callee != consts.CalleePty && callee != consts.CalleeGui {
-		log.Importantf(s)
+		log.Importantf("%s", s)
 	}
 
 	var err error
@@ -157,7 +157,7 @@ func HandlerTask(sess *client.Session, log *client.Logger, ctx *clientpb.TaskCon
 	}
 
 	if err != nil {
-		log.Errorf(logs.RedBold(err.Error()))
+		log.Errorf("%s", logs.RedBold(err.Error()))
 		return
 	}
 

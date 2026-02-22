@@ -67,7 +67,7 @@ func ArmoryUpdateCmd(cmd *cobra.Command, con *core.Console) {
 		displayAvailableUpdates(updateKeys, aliasUpdates, extUpdates)
 		selectedUpdates, err = getUpdatesFromUser(updateKeys)
 		if err != nil {
-			con.Log.Errorf(err.Error() + "\n")
+			con.Log.Errorf("%s\n", err.Error())
 			return
 		}
 		if len(selectedUpdates) == 0 {

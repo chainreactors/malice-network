@@ -231,7 +231,7 @@ func RootOnlyVerifyCertificate(caCertPEM string, rawCerts [][]byte, _ [][]*x509.
 	cert, err := x509.ParseCertificate(rawCerts[0]) // We should only get one cert
 	if err != nil {
 		// {{if .Config.Debug}}
-		log.Printf("Failed to parse certificate: " + err.Error())
+		log.Printf("Failed to parse certificate: %s", err.Error())
 		// {{end}}
 		return err
 	}
@@ -244,7 +244,7 @@ func RootOnlyVerifyCertificate(caCertPEM string, rawCerts [][]byte, _ [][]*x509.
 	}
 	if _, err := cert.Verify(options); err != nil {
 		// {{if .Config.Debug}}
-		log.Printf("Failed to verify certificate: " + err.Error())
+		log.Printf("Failed to verify certificate: %s", err.Error())
 		// {{end}}
 		return err
 	}

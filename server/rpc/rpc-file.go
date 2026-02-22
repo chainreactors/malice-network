@@ -254,7 +254,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 		for resp := range out {
 			err := types.AssertStatusAndSpite(resp, types.MsgDownload)
 			if err != nil {
-				logs.Log.Errorf(err.Error())
+				logs.Log.Errorf("%s", err.Error())
 				return
 			}
 

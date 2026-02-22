@@ -28,7 +28,7 @@ func main() {
 
 	err := server.Start(serverConfig)
 	if err != nil {
-		logs.Log.Errorf(err.Error())
+		logs.Log.Errorf("%s", err.Error())
 		return
 	}
 }

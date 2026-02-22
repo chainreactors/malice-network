@@ -59,7 +59,7 @@ func GetResourceDir() string {
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		err = os.MkdirAll(dir, 0700)
 		if err != nil {
-			logs.Log.Errorf(err.Error())
+			logs.Log.Errorf("%s", err.Error())
 		}
 	}
 	return dir
@@ -71,7 +71,7 @@ func GetTempDir() string {
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		err = os.MkdirAll(dir, 0700)
 		if err != nil {
-			logs.Log.Errorf(err.Error())
+			logs.Log.Errorf("%s", err.Error())
 		}
 	}
 	return dir
@@ -101,7 +101,7 @@ func GetLogDir() string {
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		err = os.MkdirAll(dir, 0700)
 		if err != nil {
-			logs.Log.Errorf(err.Error())
+			logs.Log.Errorf("%s", err.Error())
 		}
 	}
 	return dir

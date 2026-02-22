@@ -38,7 +38,8 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig, ser
 	if err != nil {
 		return err
 	}
-	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 	var address = listenerCfg.Address()
 	if serverEnable && cfg.Enable {
 		address = fmt.Sprintf("%s:%d", "127.0.0.1", listenerCfg.Port)
@@ -260,7 +261,7 @@ func (lns *listener) Handler() {
 	for {
 		msg, err := stream.Recv()
 		if err != nil {
-			logs.Log.Errorf(err.Error())
+			logs.Log.Errorf("%s", err.Error())
 			continue
 		}
 
@@ -316,7 +317,7 @@ func (lns *listener) Handler() {
 			logs.Log.Importantf("[listener.%s] job ctrl %d %s %s success", lns.ID(), msg.Id, msg.Job.Name, msg.Ctrl)
 		}
 		if err := stream.Send(status); err != nil {
-			logs.Log.Errorf(err.Error())
+			logs.Log.Errorf("%s", err.Error())
 			return
 		}
 	}

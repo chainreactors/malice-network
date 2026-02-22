@@ -205,7 +205,7 @@ func (rpc *Server) GenericInternal(ctx context.Context, req proto.Message, expec
 func (rpc *Server) GenericHandler(ctx context.Context, req *GenericRequest) (chan *implantpb.Spite, error) {
 	spite, err := req.InitSpite(ctx)
 	if err != nil {
-		logs.Log.Errorf(err.Error())
+		logs.Log.Errorf("%s", err.Error())
 		return nil, err
 	}
 	streamVal, ok := pipelinesCh.Load(req.Session.PipelineID)
@@ -227,7 +227,7 @@ func (rpc *Server) GenericHandler(ctx context.Context, req *GenericRequest) (cha
 func (rpc *Server) StreamGenericHandler(ctx context.Context, req *GenericRequest) (chan *implantpb.Spite, chan *implantpb.Spite, error) {
 	spite, err := req.InitSpite(ctx)
 	if err != nil {
-		logs.Log.Errorf(err.Error())
+		logs.Log.Errorf("%s", err.Error())
 		return nil, nil, err
 	}
 	streamVal, ok := pipelinesCh.Load(req.Session.PipelineID)

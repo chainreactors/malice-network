@@ -118,7 +118,7 @@ func AliasesLoadCmd(cmd *cobra.Command, con *core.Console) {
 	}
 	err = RegisterAlias(alias, con.ImplantMenu(), con)
 	if err != nil {
-		con.Log.Errorf(err.Error() + "\n")
+		con.Log.Errorf("%s\n", err.Error())
 		return
 	}
 }

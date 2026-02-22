@@ -110,7 +110,7 @@ func GetPluginManifest() []*MalManiFest {
 	for _, malfile := range assets.GetInstalledMalManifests() {
 		manifest, err := LoadMalManiFest(malfile)
 		if err != nil {
-			logs.Log.Errorf(err.Error())
+			logs.Log.Errorf("%s", err.Error())
 			continue
 		}
 		if manifest.Lib {
@@ -126,7 +126,7 @@ func LoadGlobalLuaPlugin() []*DefaultPlugin {
 	for _, malfile := range assets.GetInstalledMalManifests() {
 		manifest, err := LoadMalManiFest(malfile)
 		if err != nil {
-			logs.Log.Errorf(err.Error())
+			logs.Log.Errorf("%s", err.Error())
 			continue
 		}
 		if !manifest.Lib {
@@ -134,7 +134,7 @@ func LoadGlobalLuaPlugin() []*DefaultPlugin {
 		}
 		plug, err := NewPlugin(manifest)
 		if err != nil {
-			logs.Log.Errorf(err.Error())
+			logs.Log.Errorf("%s", err.Error())
 			continue
 		}
 		plugins = append(plugins, plug)

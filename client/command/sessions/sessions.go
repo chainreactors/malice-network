@@ -153,7 +153,7 @@ func SessionLogin(tableModel *tui.TableModel, writer io.Writer, con *core.Consol
 
 	if session == nil {
 		return func() {
-			con.Log.Errorf(core.ErrNotFoundSession.Error())
+			con.Log.Errorf("%s", core.ErrNotFoundSession.Error())
 		}
 	}
 

@@ -584,7 +584,7 @@ func (s *Session) RequestWithStream(msg *clientpb.SpiteRequest, stream grpc.Serv
 				Spite:   spite,
 			})
 			if err != nil {
-				logs.Log.Debugf(err.Error())
+				logs.Log.Debugf("%s", err.Error())
 				return
 			}
 			logs.Log.Debugf("send message %s, %d", spite.Name, c)
