@@ -14,6 +14,7 @@ import (
 	"github.com/gookit/config/v2"
 	"google.golang.org/protobuf/proto"
 	"io"
+	"strings"
 )
 
 const (
@@ -90,12 +91,25 @@ func (parser *MaleficParser) Parse(buf []byte) (*implantpb.Spites, error) {
 	buf = buf[:length]
 
 	if parser.keyPair != nil && parser.keyPair.PrivateKey != "" {
-		decryptedBuf, decErr := cryptography.AgeDecrypt(parser.keyPair.PrivateKey, buf)
-		if decErr != nil {
+		var decErr error
+		decrypted := false
+		for _, privateKey := range strings.Split(parser.keyPair.PrivateKey, "\n") {
+			privateKey = strings.TrimSpace(privateKey)
+			if privateKey == "" {
+				continue
+			}
+			decryptedBuf, err := cryptography.AgeDecrypt(privateKey, buf)
+			if err == nil {
+				buf = decryptedBuf
+				decrypted = true
+				break
+			}
+			decErr = err
+		}
+
+		if !decrypted && decErr != nil {
 			// 兼容没有开启secure的session
 			logs.Log.Debugf("trying plaintext: %v", decErr)
-		} else {
-			buf = decryptedBuf
 		}
 	}
 

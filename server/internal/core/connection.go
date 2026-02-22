@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -83,16 +84,45 @@ func GetKeyPairForSession(sid uint32, secureConfig *implanttypes.SecureConfig) *
 	if secureConfig == nil || !secureConfig.Enable {
 		return nil
 	}
+
+	var sessionKeyPair *clientpb.KeyPair
 	if session := ListenerSessions.Get(sid); session != nil {
-		return session.KeyPair
+		sessionKeyPair = session.KeyPair
 	}
 
-	// 如果没有 session，且有 secureConfig，则使用交换密钥对
-	if secureConfig != nil {
-		return secureConfig.ExchangeKeyPair()
+	// 组装解密私钥候选：优先当前会话私钥，回退 pipeline server 私钥。
+	privateCandidates := make([]string, 0, 2)
+	appendPrivate := func(key string) {
+		key = strings.TrimSpace(key)
+		if key == "" {
+			return
+		}
+		for _, existing := range privateCandidates {
+			if existing == key {
+				return
+			}
+		}
+		privateCandidates = append(privateCandidates, key)
 	}
 
-	return nil
+	if sessionKeyPair != nil {
+		appendPrivate(sessionKeyPair.PrivateKey)
+	}
+	appendPrivate(secureConfig.ServerPrivateKey)
+
+	publicKey := secureConfig.ImplantPublicKey
+	if sessionKeyPair != nil && strings.TrimSpace(sessionKeyPair.PublicKey) != "" {
+		publicKey = strings.TrimSpace(sessionKeyPair.PublicKey)
+	}
+
+	if publicKey == "" && len(privateCandidates) == 0 {
+		return nil
+	}
+
+	return &clientpb.KeyPair{
+		PublicKey:  publicKey,
+		PrivateKey: strings.Join(privateCandidates, "\n"),
+	}
 }
 
 // Remove 移除 session

@@ -10,15 +10,17 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/server/internal/core"
-	"google.golang.org/grpc"
 	"github.com/chainreactors/malice-network/server/internal/db"
+	"google.golang.org/grpc"
 	"time"
 )
 
 func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) (*clientpb.Empty, error) {
 	var err error
+	isNewSession := false
 	sess, err := core.Sessions.Get(req.SessionId)
 	if err != nil {
+		isNewSession = true
 		sess, err = core.RegisterSession(req)
 		if err != nil {
 			return nil, err
@@ -37,8 +39,16 @@ func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) 
 		//sess.Publish(consts.CtrlSessionReborn, fmt.Sprintf("%s from %s reborn at %s", sess.Abstract(), sess.Target, sess.PipelineID), true, true)
 		core.Sessions.Add(sess)
 	}
-	// 如果启用了安全模式，自动触发密钥交换
-	if sess.SecureManager != nil {
+
+	if sess.SecureManager != nil && req.RegisterData != nil && req.RegisterData.Secure != nil {
+		publicKey := req.RegisterData.Secure.PublicKey
+		if publicKey != "" {
+			sess.UpdatePublicKey(publicKey)
+		}
+	}
+
+	// 安全模式下仅在首次注册时触发密钥交换，避免每次重连都触发轮换。
+	if isNewSession && sess.SecureManager != nil {
 		err := rpc.triggerKeyExchange(ctx, sess)
 		if err != nil {
 			return nil, err
@@ -246,8 +256,12 @@ func (rpc *Server) triggerKeyExchange(ctx context.Context, sess *core.Session) e
 	}
 	sess.SecureManager.ResetCounters()
 	_, err = rpc.GenericInternal(ctx, req, consts.ModuleKeyExchange, func(spite *implantpb.Spite) {
-		sess.UpdatePublicKey(spite.GetKeyExchangeResponse().PublicKey)
+		resp := spite.GetKeyExchangeResponse()
+		if resp == nil {
+			return
+		}
+		sess.UpdatePrivateKey(keyPair.Private)
+		sess.UpdatePublicKey(resp.PublicKey)
 	})
-	sess.UpdatePrivateKey(keyPair.Private)
 	return err
 }
