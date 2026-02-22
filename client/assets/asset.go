@@ -176,7 +176,8 @@ func MvConfig(oldPath string) error {
 
 	// Backup existing file if it exists
 	if fileutils.Exist(newPath) {
-		backupPath := newPath + ".backup"
+		timestamp := time.Now().Format("20060102_150405")
+		backupPath := fmt.Sprintf("%s.%s.backup", newPath, timestamp)
 		err := fileutils.CopyFile(newPath, backupPath)
 		if err != nil {
 			logs.Log.Warnf("failed to backup config file %s: %s", newPath, err.Error())

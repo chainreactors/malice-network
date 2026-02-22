@@ -44,7 +44,7 @@ type RootClient struct {
 }
 
 func (client *RootClient) Execute(cmd Command, msg *rootpb.Operator) error {
-	if len(msg.Args) == 0 && (msg.Op == "add" || msg.Op == "del") {
+	if len(msg.Args) == 0 && (msg.Op == "add" || msg.Op == "del" || msg.Op == "reset") {
 		fmt.Printf("Usage: %s %s <name>\n", msg.Name, msg.Op)
 		return nil
 	}
