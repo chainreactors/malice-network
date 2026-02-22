@@ -29,7 +29,6 @@ var (
 
 	gzipWriterPools = &sync.Pool{}
 
-	ageMsgPrefix        = []byte("age-encryption.org/v1\n-> X25519 ")
 	agePublicKeyPrefix  = "age1"
 	agePrivateKeyPrefix = "AGE-SECRET-KEY-1"
 )
@@ -69,7 +68,7 @@ func AgeEncrypt(recipientPublicKey string, plaintext []byte) ([]byte, error) {
 	if err := stream.Close(); err != nil {
 		return nil, err
 	}
-	return bytes.TrimPrefix(buf.Bytes(), ageMsgPrefix), nil
+	return buf.Bytes(), nil
 }
 
 // AgeDecrypt - Decrypt using Curve 25519 + ChaCha20Poly1305
@@ -84,7 +83,7 @@ func AgeDecrypt(recipientPrivateKey string, ciphertext []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	buf := bytes.NewBuffer(append(ageMsgPrefix, ciphertext...))
+	buf := bytes.NewBuffer(ciphertext)
 	stream, err := age.Decrypt(buf, identity)
 	if err != nil {
 		return nil, err

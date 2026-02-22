@@ -2,12 +2,10 @@ package cryptography
 
 import (
 	"bytes"
-	"crypto/ed25519"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"filippo.io/age"
 	"fmt"
@@ -148,13 +146,16 @@ func AgeDecrypt(recipientPrivateKey string, ciphertext []byte) ([]byte, error) {
 	return plaintext, nil
 }
 
+var keyExReplay sync.Map
+
 // AgeKeyPairFromImplant - Decrypt the session key from an implant
 func AgeKeyExFromImplant(serverPrivateKey string, implantPrivateKey string, ciphertext []byte) ([]byte, error) {
-	// TODO - Store the hash of the implant's key exchange to prevent replay attacks
-	// Check for replay attacks
-	//if err := db.CheckKeyExReplay(ciphertext); err != nil {
-	//	return nil, ErrDecryptFailed
-	//}
+	// Replay detection using sha256 digest of ciphertext
+	digest := sha256.Sum256(ciphertext)
+	b64Digest := base64.RawStdEncoding.EncodeToString(digest[:])
+	if _, loaded := keyExReplay.LoadOrStore(b64Digest, true); loaded {
+		return nil, ErrReplayAttack
+	}
 
 	// Decrypt the message
 	plaintext, err := AgeDecrypt(serverPrivateKey, ciphertext)
@@ -270,25 +271,21 @@ func serverSignRawBuf(buf []byte) []byte {
 	return rawSig[:]
 }
 
-// AgeServerKeyPair - Get teh server's ECC key pair
+var (
+	cachedServerKeyPair     *AgeKeyPair
+	cachedServerKeyPairOnce sync.Once
+)
+
+// AgeServerKeyPair - Get the server's ECC key pair
 func AgeServerKeyPair() *AgeKeyPair {
-	// TODO - get key value from db
-	//data, err := db.GetKeyValue(serverAgeKeyPairKey)
-	// test
-	data, err := json.Marshal(&AgeKeyPair{})
-	//if err == db.ErrRecordNotFound {
-	//	keyPair, err := generateServerKeyPair()
-	//	if err != nil {
-	//		panic(err)
-	//	}
-	//	return keyPair
-	//}
-	keyPair := &AgeKeyPair{}
-	err = json.Unmarshal([]byte(data), keyPair)
-	if err != nil {
-		panic(err)
-	}
-	return keyPair
+	cachedServerKeyPairOnce.Do(func() {
+		keyPair, err := generateServerKeyPair()
+		if err != nil {
+			panic(err)
+		}
+		cachedServerKeyPair = keyPair
+	})
+	return cachedServerKeyPair
 }
 
 func generateServerKeyPair() (*AgeKeyPair, error) {
@@ -296,21 +293,10 @@ func generateServerKeyPair() (*AgeKeyPair, error) {
 	if err != nil {
 		return nil, err
 	}
-	data, err := json.Marshal(keyPair)
-	// test
-	data = []byte(string(data))
-	if err != nil {
-		return nil, err
-	}
 	// TODO - set key value in db
+	// data, err := json.Marshal(keyPair)
 	// err = db.SetKeyValue(serverAgeKeyPairKey, string(data))
-	return keyPair, err
-}
-
-// minisignPrivateKey - This is here so we can marshal to/from JSON
-type minisignPrivateKey struct {
-	ID         uint64 `json:"id"`
-	PrivateKey []byte `json:"private_key"`
+	return keyPair, nil
 }
 
 // MinisignServerPublicKey - Get the server's minisign public key string
@@ -329,30 +315,21 @@ func MinisignServerSign(message []byte) string {
 	return string(minisign.Sign(*privateKey, message))
 }
 
+var (
+	cachedMinisignKey     *minisign.PrivateKey
+	cachedMinisignKeyOnce sync.Once
+)
+
 // MinisignServerPrivateKey - Get the server's minisign key pair
 func MinisignServerPrivateKey() *minisign.PrivateKey {
-	// TODO - get key value from db
-	// test
-	data, err := json.Marshal(&AgeKeyPair{})
-	//data, err := db.GetKeyValue(serverMinisignPrivateKey)
-	//if err == db.ErrRecordNotFound {
-	//	privateKey, err := generateServerMinisignPrivateKey()
-	//	if err != nil {
-	//		panic(err)
-	//	}
-	//	return privateKey
-	//}
-	privateKey := &minisignPrivateKey{}
-	err = json.Unmarshal([]byte(data), privateKey)
-	if err != nil {
-		panic(err)
-	}
-	rawBytes := [ed25519.PrivateKeySize]byte{}
-	copy(rawBytes[:], privateKey.PrivateKey)
-	return &minisign.PrivateKey{
-		RawID:    privateKey.ID,
-		RawBytes: rawBytes,
-	}
+	cachedMinisignKeyOnce.Do(func() {
+		key, err := generateServerMinisignPrivateKey()
+		if err != nil {
+			panic(err)
+		}
+		cachedMinisignKey = key
+	})
+	return cachedMinisignKey
 }
 
 func generateServerMinisignPrivateKey() (*minisign.PrivateKey, error) {
@@ -360,18 +337,13 @@ func generateServerMinisignPrivateKey() (*minisign.PrivateKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	data, _ := json.Marshal(&minisignPrivateKey{
-		ID:         privateKey.ID(),
-		PrivateKey: privateKey.Bytes(),
-	})
-	// test
-	data = []byte(data)
 	// TODO - set key value in db
-	//err = db.SetKeyValue(serverMinisignPrivateKey, string(data))
-	if err != nil {
-		return nil, err
-	}
-	return &privateKey, err
+	// data, _ := json.Marshal(&minisignPrivateKey{
+	//     ID:         privateKey.ID(),
+	//     PrivateKey: privateKey.Bytes(),
+	// })
+	// err = db.SetKeyValue(serverMinisignPrivateKey, string(data))
+	return &privateKey, nil
 }
 
 func RandomInRange(min, max uint32) uint32 {
