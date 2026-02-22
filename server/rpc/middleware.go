@@ -2,14 +2,39 @@ package rpc
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"reflect"
 	"strings"
+	"sync"
 
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
+
+// caFingerprintOnce lazily computes and caches the CA certificate fingerprint.
+// The RootClient (used by CLI commands like "user add") authenticates with the
+// CA certificate itself, whose fingerprint is not stored in the operators table.
+// This allows the localhost admin bypass to recognize it.
+var (
+	caFingerprintOnce sync.Once
+	caFingerprint     string
+)
+
+func getCAFingerprint() string {
+	caFingerprintOnce.Do(func() {
+		ca, _, err := certutils.GetCertificateAuthority()
+		if err != nil {
+			return
+		}
+		hash := sha256.Sum256(ca.Raw)
+		caFingerprint = hex.EncodeToString(hash[:])
+	})
+	return caFingerprint
+}
 
 type contextKey int
 
@@ -74,9 +99,14 @@ func authInterceptor(log *logs.Logger) grpc.UnaryServerInterceptor {
 		log.Debugf("[auth] peer: cn=%s fp=%s remote=%s",
 			identity.CommonName, identity.Fingerprint[:16], identity.RemoteAddr)
 
-		// Localhost admin bypass
+		// Localhost admin bypass: registered admin operator OR the CA certificate itself
+		// (the CLI RootClient uses the CA cert directly for local admin commands)
 		if identity.IsLoopback {
 			if op, ok := opCache.LookupByFingerprint(identity.Fingerprint); ok && op.Role == "admin" {
+				return handler(ctx, req)
+			}
+			if fp := getCAFingerprint(); fp != "" && identity.Fingerprint == fp {
+				log.Debugf("[auth] localhost CA certificate bypass for %s", info.FullMethod)
 				return handler(ctx, req)
 			}
 		}
@@ -109,9 +139,14 @@ func authStreamInterceptor(log *logs.Logger) grpc.StreamServerInterceptor {
 		log.Debugf("[auth-stream] peer: cn=%s fp=%s method=%s",
 			identity.CommonName, identity.Fingerprint[:16], info.FullMethod)
 
-		// Localhost admin bypass
+		// Localhost admin bypass: registered admin operator OR the CA certificate itself
 		if identity.IsLoopback {
 			if op, ok := opCache.LookupByFingerprint(identity.Fingerprint); ok && op.Role == "admin" {
+				wrapped := &identityServerStream{ServerStream: ss, identity: identity}
+				return handler(srv, wrapped)
+			}
+			if fp := getCAFingerprint(); fp != "" && identity.Fingerprint == fp {
+				log.Debugf("[auth-stream] localhost CA certificate bypass for %s", info.FullMethod)
 				wrapped := &identityServerStream{ServerStream: ss, identity: identity}
 				return handler(srv, wrapped)
 			}

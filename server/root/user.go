@@ -15,9 +15,9 @@ import (
 
 // UserCommand - User command
 type UserCommand struct {
-	Add  subCommand `command:"add" description:"Add a user" subcommands-optional:"true" `
-	Del  subCommand `command:"del" description:"Delete a user" subcommands-optional:"true" `
-	List subCommand `command:"list" description:"List all users"`
+	Add  subCommand `command:"add" description:"Add a client user, e.g. 'user add <name>'" subcommands-optional:"true" `
+	Del  subCommand `command:"del" description:"Delete a client user, e.g. 'user del <name>'" subcommands-optional:"true" `
+	List subCommand `command:"list" description:"List all client users"`
 }
 
 func (user *UserCommand) Name() string {

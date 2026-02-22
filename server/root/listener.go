@@ -15,8 +15,8 @@ import (
 
 // ListenerCommand - Listener command
 type ListenerCommand struct {
-	Add  subCommand `command:"add" description:"Add a listener" subcommands-optional:"true" `
-	Del  subCommand `command:"del" description:"Delete a listener" subcommands-optional:"true" `
+	Add  subCommand `command:"add" description:"Add a listener, e.g. 'listener add <name>'" subcommands-optional:"true" `
+	Del  subCommand `command:"del" description:"Delete a listener, e.g. 'listener del <name>'" subcommands-optional:"true" `
 	List subCommand `command:"list" description:"List all listeners"`
 }
 

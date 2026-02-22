@@ -16,8 +16,18 @@ import (
 )
 
 func (rpc *Server) AddClient(ctx context.Context, req *rootpb.Operator) (*rootpb.Response, error) {
+	name := req.Args[0]
+
+	// Check if operator with this name already exists
+	if existing, _ := db.FindOperatorByName(name); existing != nil {
+		return &rootpb.Response{
+			Status: 1,
+			Error:  fmt.Sprintf("client %q already exists", name),
+		}, fmt.Errorf("client %q already exists", name)
+	}
+
 	cfg := configs.GetServerConfig()
-	clientConf, fingerprint, err := certutils.GenerateClientCert(cfg.IP, req.Args[0], int(cfg.GRPCPort))
+	clientConf, fingerprint, err := certutils.GenerateClientCert(cfg.IP, name, int(cfg.GRPCPort))
 	if err != nil {
 		return &rootpb.Response{
 			Status: 1,
@@ -41,7 +51,7 @@ func (rpc *Server) AddClient(ctx context.Context, req *rootpb.Operator) (*rootpb
 	}
 
 	client := &models.Operator{
-		Name:             req.Args[0],
+		Name:             name,
 		Type:             mtls.Client,
 		Role:             role,
 		Fingerprint:      fingerprint,
@@ -102,8 +112,18 @@ func (rpc *Server) ListClients(ctx context.Context, req *rootpb.Operator) (*clie
 }
 
 func (rpc *Server) AddListener(ctx context.Context, req *rootpb.Operator) (*rootpb.Response, error) {
+	name := req.Args[0]
+
+	// Check if operator with this name already exists
+	if existing, _ := db.FindOperatorByName(name); existing != nil {
+		return &rootpb.Response{
+			Status: 1,
+			Error:  fmt.Sprintf("listener %q already exists", name),
+		}, fmt.Errorf("listener %q already exists", name)
+	}
+
 	cfg := configs.GetServerConfig()
-	clientConf, fingerprint, err := certutils.GenerateListenerCert(cfg.IP, req.Args[0], int(cfg.GRPCPort))
+	clientConf, fingerprint, err := certutils.GenerateListenerCert(cfg.IP, name, int(cfg.GRPCPort))
 	if err != nil {
 		return &rootpb.Response{
 			Status: 1,
@@ -111,7 +131,7 @@ func (rpc *Server) AddListener(ctx context.Context, req *rootpb.Operator) (*root
 		}, err
 	}
 	listener := &models.Operator{
-		Name:             req.Args[0],
+		Name:             name,
 		Type:             mtls.Listener,
 		Role:             models.RoleListener,
 		Fingerprint:      fingerprint,
