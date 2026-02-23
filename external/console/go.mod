@@ -6,8 +6,8 @@ require (
 	github.com/carapace-sh/carapace v1.7.1
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/reeflective/readline v1.1.3
-	github.com/spf13/cobra v1.8.1
-	github.com/spf13/pflag v1.0.6
+	github.com/spf13/cobra v1.9.1
+	github.com/spf13/pflag v1.0.9
 	golang.org/x/exp v0.0.0-20220827204233-334a2380cb91
 	mvdan.cc/sh/v3 v3.7.0
 )

@@ -46,6 +46,7 @@ require (
 	github.com/yuin/gopher-lua v1.1.1
 	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/gorm v1.25.4
+	layeh.com/gopher-luar v1.0.11
 )
 
 // compatibility
@@ -161,7 +162,6 @@ require (
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230530153820-e85fd2cbaebc // indirect
 	gotest.tools/v3 v3.5.1 // indirect
-	layeh.com/gopher-luar v1.0.11 // indirect
 	mvdan.cc/sh/v3 v3.7.0 // indirect
 )
 

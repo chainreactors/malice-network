@@ -10,6 +10,7 @@ import (
 	"math/rand"
 	"os"
 	"reflect"
+	"runtime"
 	"time"
 	"unsafe"
 )
@@ -61,13 +62,15 @@ func UnsafeStructToBytes(ptr any) []byte {
 		panic("need a pointer")
 	}
 
-	return *(*[]byte)(unsafe.Pointer(
-		&reflect.SliceHeader{
-			Data: v.Pointer(),
-			Len:  int(v.Elem().Type().Size()),
-			Cap:  int(v.Elem().Type().Size()),
-		},
-	))
+	size := int(v.Elem().Type().Size())
+	if size == 0 {
+		return nil
+	}
+
+	p := v.UnsafePointer()
+	b := unsafe.Slice((*byte)(p), size)
+	runtime.KeepAlive(ptr)
+	return b
 }
 
 func GetExtension(filepath string) (string, error) {

@@ -758,7 +758,8 @@ func (s *Session) UpdatePrivateKey(key string) {
 func (s *Session) UpdateKeyPairFieldsAndPushCtrl(publicKey string, privateKey string) {
 	next := &clientpb.KeyPair{}
 	if s.KeyPair != nil {
-		*next = *s.KeyPair
+		next.PublicKey = s.KeyPair.PublicKey
+		next.PrivateKey = s.KeyPair.PrivateKey
 	}
 	if publicKey != "" {
 		next.PublicKey = publicKey
