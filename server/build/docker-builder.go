@@ -50,15 +50,23 @@ func (d *DockerBuilder) Generate() (*clientpb.Artifact, error) {
 	// generate config.yaml
 	var artifact *models.Artifact
 	var err error
-	var profileByte []byte
 	//var profile *selfType.ProfileConfig
 	if d.config.BuildName == "" {
 		d.config.BuildName = codenames.GetCodename()
 	}
 	// get profile
 	if d.config.ProfileName != "" && d.config.MaleficConfig == nil {
-		profileByte, err = db.GetProfileContent(d.config.ProfileName)
-		d.config.MaleficConfig = profileByte
+		implant, prelude, resources, pErr := db.GetProfileFullConfig(d.config.ProfileName)
+		if pErr != nil {
+			return nil, fmt.Errorf("failed to get profile config: %s", pErr)
+		}
+		d.config.MaleficConfig = implant
+		if d.config.PreludeConfig == nil {
+			d.config.PreludeConfig = prelude
+		}
+		if d.config.Resources == nil {
+			d.config.Resources = resources
+		}
 	}
 	_, err = selfType.LoadProfile(d.config.MaleficConfig)
 	if err != nil {

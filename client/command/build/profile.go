@@ -63,9 +63,9 @@ func ProfileLoadCmd(cmd *cobra.Command, con *core.Console) error {
 	}
 
 	profile := &clientpb.Profile{
-		Name:       profileName,
-		PipelineId: basicPipeline,
-		Content:    content,
+		Name:          profileName,
+		PipelineId:    basicPipeline,
+		ImplantConfig: content,
 	}
 	_, err = con.Rpc.NewProfile(con.Context(), profile)
 	if err != nil {

@@ -146,6 +146,12 @@ build beacon --addresses "tcp://127.0.0.1:5001" --rem "tcp://nonenonenonenone:@1
 // Build a beacon with a profile
 build beacon --profile tcp_default --target x86_64-pc-windows-gnu
 
+// Build a beacon from archive (zip containing implant.yaml + prelude.yaml + resources/)
+build beacon --archive-path /path/to/build.zip --target x86_64-pc-windows-gnu
+
+// Build a beacon with individual config files
+build beacon --implant-path /path/to/implant.yaml --prelude-path /path/to/prelude.yaml --target x86_64-pc-windows-gnu
+
 // Build a beacon by saas
 build beacon --profile tcp_default --target x86_64-pc-windows-gnu --source saas
 
@@ -160,6 +166,7 @@ build beacon --wizard
 		common.GenerateFlagSet,
 		common.GithubFlagSet,
 		BeaconFlagSet,
+		BuildInputFlagSet,
 		ProxyFlagSet,
 		ModuleFlagSet,
 		AntiFlagSet,
@@ -172,7 +179,10 @@ build beacon --wizard
 		comp["profile"] = common.ProfileCompleter(con)
 		comp["target"] = common.BuildTargetCompleter(con)
 		comp["source"] = common.BuildResourceCompleter(con)
-		comp["autorun"] = carapace.ActionFiles().Usage("autorun zip path")
+		comp["implant-path"] = carapace.ActionFiles("yaml", "yml").Usage("implant.yaml file path")
+		comp["prelude-path"] = carapace.ActionFiles("yaml", "yml").Usage("prelude.yaml file path")
+		comp["resources-path"] = carapace.ActionDirectories().Usage("resources directory path")
+		comp["archive-path"] = carapace.ActionFiles("zip").Usage("build archive (zip) path")
 	})
 
 	bindCmd := &cobra.Command{
@@ -199,6 +209,7 @@ build bind --target x86_64-pc-windows-gnu --profile tcp_default --source saas
 		common.GenerateFlagSet,
 		common.GithubFlagSet,
 		BeaconFlagSet,
+		BuildInputFlagSet,
 		ProxyFlagSet,
 		ModuleFlagSet,
 		AntiFlagSet,
@@ -224,25 +235,32 @@ build bind --target x86_64-pc-windows-gnu --profile tcp_default --source saas
 			return PreludeCmd(cmd, con)
 		},
 		Example: `~~~
-// Build a prelude payload
-build prelude --target x86_64-pc-windows-gnu --profile tcp_default --autorun /path/to/autorun.zip
-	
+// Build a prelude payload from archive
+build prelude --target x86_64-pc-windows-gnu --archive-path /path/to/build.zip
+
+// Build a prelude payload from individual files
+build prelude --target x86_64-pc-windows-gnu --prelude-path /path/to/prelude.yaml --resources-path /path/to/resources/
+
+// Build a prelude payload from profile
+build prelude --target x86_64-pc-windows-gnu --profile my_profile
+
 // Build a prelude payload by docker
-build prelude --target x86_64-pc-windows-gnu --profile tcp_default --autorun /path/to/autorun.zip --source docker
-	
+build prelude --target x86_64-pc-windows-gnu --archive-path /path/to/build.zip --source docker
+
 // Build a prelude payload by saas
-build prelude --target x86_64-pc-windows-gnu --profile tcp_default --autorun /path/to/autorun.zip --source saas
+build prelude --target x86_64-pc-windows-gnu --profile my_profile --source saas
 ~~~`,
 	}
 
-	common.BindFlag(preludeCmd, common.GenerateFlagSet, common.GithubFlagSet, PreludeFlagSet)
+	common.BindFlag(preludeCmd, common.GenerateFlagSet, common.GithubFlagSet, PreludeInputFlagSet)
 	preludeCmd.MarkFlagRequired("target")
 	//preludeCmd.MarkFlagRequired("profile")
-	preludeCmd.MarkFlagRequired("autorun")
 	common.BindFlagCompletions(preludeCmd, func(comp carapace.ActionMap) {
 		comp["profile"] = common.ProfileCompleter(con)
 		comp["target"] = common.BuildTargetCompleter(con)
-		comp["autorun"] = carapace.ActionFiles().Usage("autorun zip path")
+		comp["prelude-path"] = carapace.ActionFiles("yaml", "yml").Usage("prelude.yaml file path")
+		comp["resources-path"] = carapace.ActionDirectories().Usage("resources directory path")
+		comp["archive-path"] = carapace.ActionFiles("zip").Usage("build archive (zip) path")
 		comp["source"] = common.BuildResourceCompleter(con)
 	})
 	common.BindArgCompletions(preludeCmd, nil, common.ProfileCompleter(con))
@@ -305,7 +323,7 @@ build pulse --target x86_64-pc-windows-gnu --profile tcp_default --artifact-id 1
 ~~~
 `,
 	}
-	common.BindFlag(pulseCmd, common.GenerateFlagSet, common.GithubFlagSet, PulseFlagSet)
+	common.BindFlag(pulseCmd, common.GenerateFlagSet, common.GithubFlagSet, PulseFlagSet, ImplantInputFlagSet)
 	pulseCmd.MarkFlagRequired("target")
 	//pulseCmd.MarkFlagRequired("address")
 	//pulseCmd.MarkFlagRequired("profile")
@@ -313,6 +331,7 @@ build pulse --target x86_64-pc-windows-gnu --profile tcp_default --artifact-id 1
 		comp["profile"] = common.ProfileCompleter(con)
 		comp["target"] = common.BuildTargetCompleter(con)
 		comp["source"] = common.BuildResourceCompleter(con)
+		comp["implant-path"] = carapace.ActionFiles("yaml", "yml").Usage("implant.yaml file path")
 	})
 
 	logCmd := &cobra.Command{

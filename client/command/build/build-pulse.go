@@ -2,10 +2,12 @@ package build
 
 import (
 	"fmt"
+	"os"
+	"strings"
+
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/implanttypes"
-	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -20,7 +22,6 @@ func PulseFlagSet(f *pflag.FlagSet) {
 }
 
 func PulseCmd(cmd *cobra.Command, con *core.Console) error {
-	//buildConfig, err := prepareBuildConfig(cmd, con, consts.CommandBuildPulse)
 	buildConfig, err := parseBasicConfig(cmd, con)
 	if err != nil {
 		return err
@@ -35,14 +36,21 @@ func PulseCmd(cmd *cobra.Command, con *core.Console) error {
 	if err := parseLibFlag(cmd, buildConfig); err != nil {
 		return err
 	}
-	if err != nil {
-		return err
-	}
 
 	pulseArtifactID, _ := cmd.Flags().GetUint32("artifact-id")
 	buildConfig.ArtifactId = pulseArtifactID
 
-	profile, err := parsePulseBuildFlags(cmd)
+	// Load implant.yaml from file if specified
+	var baseYAML []byte
+	if cmd.Flags().Changed("implant-path") {
+		implantPath, _ := cmd.Flags().GetString("implant-path")
+		baseYAML, err = os.ReadFile(implantPath)
+		if err != nil {
+			return fmt.Errorf("failed to read implant file %s: %w", implantPath, err)
+		}
+	}
+
+	profile, err := parsePulseBuildFlags(cmd, baseYAML)
 	if err != nil {
 		return fmt.Errorf("failed to parse pulse's build flags: %w", err)
 	}
@@ -54,12 +62,18 @@ func PulseCmd(cmd *cobra.Command, con *core.Console) error {
 	return ExecuteBuild(con, buildConfig)
 }
 
-func parsePulseBuildFlags(cmd *cobra.Command) (*implanttypes.ProfileConfig, error) {
-	newProfile, _ := implanttypes.LoadProfile(consts.DefaultProfile)
-	//println(string(consts.DefaultProfile))
-	//println(newProfile.Pulse.Http.Headers)
-	//newProfile.SetDefaults()
-	// Basic profile flags - only override if explicitly provided
+func parsePulseBuildFlags(cmd *cobra.Command, baseYAML []byte) (*implanttypes.ProfileConfig, error) {
+	var newProfile *implanttypes.ProfileConfig
+	var err error
+	if baseYAML != nil {
+		newProfile, err = implanttypes.LoadProfile(baseYAML)
+	} else {
+		newProfile, err = implanttypes.LoadProfile(consts.DefaultProfile)
+	}
+	if err != nil {
+		return nil, err
+	}
+
 	if cmd.Flags().Changed("address") {
 		address, _ := cmd.Flags().GetString("address")
 		if strings.Contains(address, "http://") {
@@ -88,7 +102,5 @@ func parsePulseBuildFlags(cmd *cobra.Command) (*implanttypes.ProfileConfig, erro
 		ua, _ := cmd.Flags().GetString("user-agent")
 		newProfile.Pulse.Http.Headers["User-Agent"] = ua
 	}
-	//content, _ := newProfile.ToYAML()
-	//println(string(content))
 	return newProfile, nil
 }

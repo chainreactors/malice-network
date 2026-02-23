@@ -3,6 +3,8 @@ package models
 import (
 	"encoding/json"
 	"github.com/chainreactors/malice-network/helper/implanttypes"
+	"github.com/chainreactors/malice-network/server/internal/configs"
+	"path/filepath"
 	"time"
 
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
@@ -16,28 +18,25 @@ type Profile struct {
 	// build
 	Name string `gorm:"unique"` // Ensuring Name is unique
 
-	Raw []byte
 	// params
 	Params     *implanttypes.ProfileParams `gorm:"-"`             // 使用 interface{} 使其更灵活
 	ParamsData string                      `gorm:"column:params"` // 改用更简洁的数据库字段名
 
 	// BasicPipeline 和 PulsePipeline
 	PipelineID string `gorm:"type:string;index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
-	//PulsePipelineID string `gorm:"type:string;index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
-
-	implantConfig string // raw implant config
 
 	// BasicPipeline 和 PulsePipeline
 	Pipeline *Pipeline `gorm:"foreignKey:PipelineID;references:Name;"`
-	//PulsePipeline *Pipeline `gorm:"foreignKey:PulsePipelineID;references:Name;"`
 
 	CreatedAt time.Time `gorm:"->;<-:create;"`
 }
 
 func (p *Profile) BeforeCreate(tx *gorm.DB) (err error) {
-	p.ID, err = uuid.NewV4()
-	if err != nil {
-		return err
+	if p.ID == (uuid.UUID{}) {
+		p.ID, err = uuid.NewV4()
+		if err != nil {
+			return err
+		}
 	}
 	p.CreatedAt = time.Now()
 	return nil
@@ -57,22 +56,15 @@ func (p *Profile) AfterFind(tx *gorm.DB) (err error) {
 	return nil
 }
 
-// Deserialize implantConfig (JSON string) to a struct or map
-func (p *Profile) DeserializeImplantConfig() error {
-	if p.ParamsData != "" {
-		err := json.Unmarshal([]byte(p.ParamsData), &p.Params)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+// DiskPath 返回该 profile 在磁盘上的存储目录
+func (p *Profile) DiskPath() string {
+	return filepath.Join(configs.ProfilePath, p.ID.String())
 }
 
 func (p *Profile) ToProtobuf() *clientpb.Profile {
 	return &clientpb.Profile{
 		Name:       p.Name,
 		PipelineId: p.PipelineID,
-		Content:    p.Raw,
 		Params:     p.ParamsData,
 		CreatedAt:  p.CreatedAt.Unix(),
 	}

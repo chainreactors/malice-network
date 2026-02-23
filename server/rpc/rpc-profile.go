@@ -37,11 +37,7 @@ func (rpc *Server) GetProfiles(ctx context.Context, req *clientpb.Empty) (*clien
 }
 
 func (rpc *Server) GetProfileByName(ctx context.Context, req *clientpb.Profile) (*clientpb.Profile, error) {
-	profileModel, err := db.GetProfileByName(req.Name)
-	if err != nil {
-		return nil, err
-	}
-	return profileModel.ToProtobuf(), nil
+	return db.GetProfileByNameWithConfig(req.Name)
 }
 
 func (rpc *Server) DeleteProfile(ctx context.Context, req *clientpb.Profile) (*clientpb.Empty, error) {
@@ -60,13 +56,10 @@ func (rpc *Server) UpdateProfile(ctx context.Context, req *clientpb.Profile) (*c
 	if req.Name == "" {
 		return nil, fmt.Errorf("profile name cannot be empty")
 	}
-	var err error
-	_, err = implanttypes.LoadProfile(req.Content)
-	if err != nil {
+	if _, err := implanttypes.LoadProfile(req.ImplantConfig); err != nil {
 		return nil, fmt.Errorf("failed to update profile: %w", err)
 	}
-	err = db.UpdateProfileRaw(req.Name, req.Content)
-	if err != nil {
+	if err := db.UpdateProfileDisk(req.Name, req.ImplantConfig, req.PreludeConfig, req.Resources); err != nil {
 		return nil, fmt.Errorf("failed to update profile: %w", err)
 	}
 	return &clientpb.Empty{}, nil

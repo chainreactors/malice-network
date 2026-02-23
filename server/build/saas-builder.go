@@ -42,14 +42,20 @@ func (s *SaasBuilder) Generate() (*clientpb.Artifact, error) {
 		s.config.BuildName = codenames.GetCodename()
 	}
 	//profileByte, err := GenerateProfile(s.config)
-	var profileByte []byte
 
 	// get profile
 	if s.config.ProfileName != "" {
-		profileByte, err = db.GetProfileContent(s.config.ProfileName)
-		s.config.MaleficConfig = profileByte
-	} else {
-		profileByte = s.config.MaleficConfig
+		implant, prelude, resources, pErr := db.GetProfileFullConfig(s.config.ProfileName)
+		if pErr != nil {
+			return nil, fmt.Errorf("failed to get profile config: %s", pErr)
+		}
+		s.config.MaleficConfig = implant
+		if s.config.PreludeConfig == nil {
+			s.config.PreludeConfig = prelude
+		}
+		if s.config.Resources == nil {
+			s.config.Resources = resources
+		}
 	}
 	//profile, err := types.LoadProfileFromContent(profileByte)
 	//if err != nil {

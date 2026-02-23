@@ -71,14 +71,9 @@ func BeaconFlagSet(f *pflag.FlagSet) {
 	//f.String("secure-private-key", "", "private key for secure communication")
 	//f.String("secure-public-key", "", "public key for secure communication")
 
-	f.String("autorun", "", "autorun configuration file")
-
 	// Network target flags
 	f.String("addresses", "", "Target addresses (comma-separated)")
 	//f.String("rem-link", "", "REM link configuration")
-
-	// Prelude flags
-	f.String("autorun-file", "", "Prelude configuration file path")
 
 	// Legacy flags for backward compatibility
 	//f.String("proxy", "", "Legacy proxy override (use --proxy-url instead)")
@@ -99,6 +94,7 @@ func BeaconCmd(cmd *cobra.Command, con *core.Console) error {
 }
 
 // prepareBuildConfig 准备标准构建配置
+// 分层覆盖链: defaults ← profile ← archive ← individual files ← inline flags
 func prepareBuildConfig(cmd *cobra.Command, con *core.Console, buildType string) (*clientpb.BuildConfig, error) {
 	var err error
 	profileName, _ := cmd.Flags().GetString("profile")
@@ -118,25 +114,46 @@ func prepareBuildConfig(cmd *cobra.Command, con *core.Console, buildType string)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse build config: %w", err)
 	}
-	//
-	var profile *implanttypes.ProfileConfig
+
+	// Layer 1: Load from profile (server-side)
+	var implantYAML []byte
 	if profileName != "" {
 		profilePB, err := con.Rpc.GetProfileByName(con.Context(), &clientpb.Profile{Name: profileName})
 		if err != nil {
 			return nil, fmt.Errorf("failed to get profile: %w", err)
 		}
-		profile, err = implanttypes.LoadProfile(profilePB.Content)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load profile: %w", err)
-		}
+		implantYAML = profilePB.ImplantConfig
+		buildConfig.PreludeConfig = profilePB.PreludeConfig
+		buildConfig.Resources = profilePB.Resources
+	}
+
+	// Layer 2+3: File inputs (archive < individual files)
+	fileImplant, filePrelude, fileResources, err := loadBuildInputs(cmd)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load build inputs: %w", err)
+	}
+	if fileImplant != nil {
+		implantYAML = fileImplant
+	}
+	if filePrelude != nil {
+		buildConfig.PreludeConfig = filePrelude
+	}
+	if fileResources != nil {
+		buildConfig.Resources = fileResources
+	}
+
+	// Parse implant YAML into ProfileConfig
+	var profile *implanttypes.ProfileConfig
+	if implantYAML != nil {
+		profile, err = implanttypes.LoadProfile(implantYAML)
 	} else {
 		profile, err = implanttypes.LoadProfile(consts.DefaultProfile)
 	}
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to load profile: %w", err)
 	}
-	//
+
+	// Layer 4: Inline flag overrides
 	profile, err = parseBuildFlags(cmd, profile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse build flags: %w", err)
@@ -147,23 +164,12 @@ func prepareBuildConfig(cmd *cobra.Command, con *core.Console, buildType string)
 		profile.Implant.Mod = buildType
 	}
 
-	// Handle artifact ID for pulse builds
-	//if buildType == consts.CommandBuildPulse {
-	//	if buildConfig.ArtifactId == 0 && profileParams.OriginBeaconID != 0 {
-	//		buildConfig.ArtifactId = profileParams.OriginBeaconID
-	//	}
-	//	if profileParams.RelinkBeaconID != 0 {
-	//		buildConfig.ArtifactId = profileParams.RelinkBeaconID
-	//	}
-	//}
-	//buildConfig.ParamsBytes = []byte(profileParams.String())
 	buildConfig.MaleficConfig, _ = profile.ToYAML()
 
 	if err := parseLibFlag(cmd, buildConfig); err != nil {
 		return nil, err
 	}
 
-	//println(string(buildConfig.Bin))
 	return buildConfig, nil
 }
 
@@ -375,12 +381,6 @@ func parseBuildFlags(cmd *cobra.Command, profile *implanttypes.ProfileConfig) (*
 			FCO:      true,
 			ConstEnc: true,
 		}
-	}
-
-	// autorun configuration
-	autorunFile, _ := cmd.Flags().GetString("autorun-file")
-	if autorunFile != "" {
-		profile.Implant.Prelude = autorunFile
 	}
 
 	// anti configuration

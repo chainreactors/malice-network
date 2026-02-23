@@ -18,6 +18,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
+	"github.com/gofrs/uuid"
 	"gorm.io/gorm"
 )
 
@@ -32,6 +33,70 @@ func validateProfileName(name string) error {
 	}
 	if len(name) > 100 {
 		return fmt.Errorf("profile name too long (max 100 characters)")
+	}
+	return nil
+}
+
+// readProfileDisk 从磁盘读取 profile 的全部配置文件
+func readProfileDisk(profilePath string) (implantConfig []byte, preludeConfig []byte, resources *clientpb.BuildResources, err error) {
+	implantPath := filepath.Join(profilePath, "implant.yaml")
+	implantConfig, err = os.ReadFile(implantPath)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to read implant.yaml: %w", err)
+	}
+
+	preludePath := filepath.Join(profilePath, "prelude.yaml")
+	if fileutils.Exist(preludePath) {
+		preludeConfig, _ = os.ReadFile(preludePath)
+	}
+
+	resourcesDir := filepath.Join(profilePath, "resources")
+	if fileutils.Exist(resourcesDir) {
+		entries, readErr := os.ReadDir(resourcesDir)
+		if readErr == nil {
+			var resourceEntries []*clientpb.ResourceEntry
+			for _, e := range entries {
+				if !e.IsDir() {
+					content, fErr := os.ReadFile(filepath.Join(resourcesDir, e.Name()))
+					if fErr == nil {
+						resourceEntries = append(resourceEntries, &clientpb.ResourceEntry{
+							Filename: e.Name(),
+							Content:  content,
+						})
+					}
+				}
+			}
+			if len(resourceEntries) > 0 {
+				resources = &clientpb.BuildResources{Entries: resourceEntries}
+			}
+		}
+	}
+	return
+}
+
+// writeProfileDisk 将配置文件写入磁盘目录
+func writeProfileDisk(profilePath string, implantConfig []byte, preludeConfig []byte, resources *clientpb.BuildResources) error {
+	if err := os.MkdirAll(profilePath, 0700); err != nil {
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(profilePath, "implant.yaml"), implantConfig, 0644); err != nil {
+		return err
+	}
+	if preludeConfig != nil {
+		if err := os.WriteFile(filepath.Join(profilePath, "prelude.yaml"), preludeConfig, 0644); err != nil {
+			return err
+		}
+	}
+	if resources != nil && len(resources.Entries) > 0 {
+		resourcesDir := filepath.Join(profilePath, "resources")
+		if err := os.MkdirAll(resourcesDir, 0755); err != nil {
+			return err
+		}
+		for _, entry := range resources.Entries {
+			if err := os.WriteFile(filepath.Join(resourcesDir, entry.Filename), entry.Content, 0644); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }
@@ -55,7 +120,7 @@ func NewProfile(profile *clientpb.Profile) error {
 	}
 
 	// for pipeline
-	if profile.Content == nil && profile.PipelineId != "" {
+	if profile.ImplantConfig == nil && profile.PipelineId != "" {
 		pipelineModel, err := FindPipeline(profile.PipelineId)
 		if err != nil {
 			return fmt.Errorf("pipline not found, err: %s", err)
@@ -68,7 +133,7 @@ func NewProfile(profile *clientpb.Profile) error {
 				return fmt.Errorf("pipline not found, err: %s", err)
 			}
 			profileConfig := remPipelineModel.DefaultRemProfile(pipelineModel)
-			profile.Content, err = profileConfig.ToYAML()
+			profile.ImplantConfig, err = profileConfig.ToYAML()
 			if err != nil {
 				return err
 			}
@@ -77,26 +142,31 @@ func NewProfile(profile *clientpb.Profile) error {
 			if err != nil {
 				return err
 			}
-			profile.Content, err = profileConfig.ToYAML()
+			profile.ImplantConfig, err = profileConfig.ToYAML()
 			if err != nil {
 				return err
 			}
 		}
 
 	}
-	if profile.Content == nil {
-		profile.Content = consts.DefaultProfile
+	if profile.ImplantConfig == nil {
+		profile.ImplantConfig = consts.DefaultProfile
 	}
-	// if not for pipeline
-	contentType := fileutils.DetectContentType(profile.Content)
+
+	// 先生成 UUID，用于磁盘路径
+	id, err := uuid.NewV4()
+	if err != nil {
+		return err
+	}
+	profilePath := filepath.Join(configs.ProfilePath, id.String())
+
+	// 处理 zip 上传
+	contentType := fileutils.DetectContentType(profile.ImplantConfig)
 	if contentType == "zip" {
-		profilePath := filepath.Join(configs.ProfilePath, profile.Name)
-		err := os.MkdirAll(profilePath, 0700)
-		if err != nil {
+		if err := os.MkdirAll(profilePath, 0700); err != nil {
 			return err
 		}
-		err = fileutils.DecompressBase64ToFiles(string(profile.Content), profilePath)
-		if err != nil {
+		if err := fileutils.DecompressBase64ToFiles(string(profile.ImplantConfig), profilePath); err != nil {
 			return fmt.Errorf("failed to decompress zip content: %w", err)
 		}
 
@@ -119,25 +189,47 @@ func NewProfile(profile *clientpb.Profile) error {
 			return fmt.Errorf("profile validation failed: %w", err)
 		}
 
-		profile.Content = yamlContent
-	}
+		profile.ImplantConfig = yamlContent
 
-	_, err := implanttypes.LoadProfile(profile.Content)
-	if err != nil {
-		return fmt.Errorf("profile validation failed: %w", err)
+		// ZIP 解压后，如果 proto 中单独带了 prelude/resources 则补写覆盖
+		if profile.PreludeConfig != nil {
+			if err := os.WriteFile(filepath.Join(profilePath, "prelude.yaml"), profile.PreludeConfig, 0644); err != nil {
+				return err
+			}
+		}
+		if profile.Resources != nil && len(profile.Resources.Entries) > 0 {
+			resourcesDir := filepath.Join(profilePath, "resources")
+			if err := os.MkdirAll(resourcesDir, 0755); err != nil {
+				return err
+			}
+			for _, entry := range profile.Resources.Entries {
+				if err := os.WriteFile(filepath.Join(resourcesDir, entry.Filename), entry.Content, 0644); err != nil {
+					return err
+				}
+			}
+		}
+	} else {
+		// 非 zip：验证后写磁盘
+		_, err := implanttypes.LoadProfile(profile.ImplantConfig)
+		if err != nil {
+			return fmt.Errorf("profile validation failed: %w", err)
+		}
+		if err := writeProfileDisk(profilePath, profile.ImplantConfig, profile.PreludeConfig, profile.Resources); err != nil {
+			return err
+		}
 	}
 
 	model := &models.Profile{
+		ID:         id,
 		Name:       profile.Name,
 		ParamsData: profile.Params,
 		PipelineID: profile.PipelineId,
-		Raw:        profile.Content,
 	}
 
 	return Session().Create(model).Error
 }
 
-// GetProfile recovers profile from database
+// GetProfile recovers profile from database and disk
 func GetProfile(name string) (*implanttypes.ProfileConfig, error) {
 	var profileModel *models.Profile
 
@@ -148,14 +240,14 @@ func GetProfile(name string) (*implanttypes.ProfileConfig, error) {
 	if profileModel.PipelineID != "" && profileModel.Pipeline == nil {
 		return nil, types.ErrNotFoundPipeline
 	}
-	//if profileModel.PulsePipelineID != "" && profileModel.PulsePipeline == nil {
-	//	return nil, errs.ErrNotFoundPipeline
-	//}
-	err := profileModel.DeserializeImplantConfig()
+
+	// 从磁盘读取 implant.yaml
+	implantConfig, err := os.ReadFile(filepath.Join(profileModel.DiskPath(), "implant.yaml"))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read implant.yaml from disk: %w", err)
 	}
-	profile, err := implanttypes.LoadProfile(profileModel.Raw)
+
+	profile, err := implanttypes.LoadProfile(implantConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -222,27 +314,13 @@ func GetProfile(name string) (*implanttypes.ProfileConfig, error) {
 	return profile, nil
 }
 
-// GetProfileContent GetProfile recovers profile from database
+// GetProfileContent reads implant.yaml from disk
 func GetProfileContent(profileName string) ([]byte, error) {
-	var profileModel *models.Profile
-
-	result := Session().Preload("Pipeline").Where("name = ?", profileName).First(&profileModel)
-	if result.Error != nil {
-		return nil, result.Error
+	profileModel, err := GetProfileByName(profileName)
+	if err != nil {
+		return nil, err
 	}
-	//if profileModel.PipelineID != "" && profileModel.Pipeline == nil {
-	//	return nil, errs.ErrNotFoundPipeline
-	//}
-	//if profileModel.PulsePipelineID != "" && profileModel.PulsePipeline == nil {
-	//	return nil, errs.ErrNotFoundPipeline
-	//}
-	//err := profileModel.DeserializeImplantConfig()
-	//if err != nil {
-	//	return nil, err
-	//}
-	// profile, err := types.LoadProfile(profileModel.Raw)
-
-	return profileModel.Raw, nil
+	return os.ReadFile(filepath.Join(profileModel.DiskPath(), "implant.yaml"))
 }
 
 func GetProfiles() ([]*models.Profile, error) {
@@ -284,10 +362,13 @@ func DeleteProfileByName(profileName string) error {
 		return result.Error
 	}
 
-	//err := fileutils.ForceRemoveAll(filepath.Join(configs.ProfilePath, profileName))
-	//if err != nil {
-	//	return fmt.Errorf("could not remove profile '%s': %w", profileName, err)
-	//}
+	// 用 UUID 路径删除磁盘文件
+	profilePath := existingProfile.DiskPath()
+	if fileutils.Exist(profilePath) {
+		if err := fileutils.ForceRemoveAll(profilePath); err != nil {
+			return fmt.Errorf("could not remove profile '%s': %w", profileName, err)
+		}
+	}
 
 	// Execute deletion
 	err := Session().Where("name = ?", profileName).Delete(&models.Profile{}).Error
@@ -298,8 +379,66 @@ func DeleteProfileByName(profileName string) error {
 	return nil
 }
 
-func UpdateProfileRaw(profileName string, raw []byte) error {
-	return Session().Model(&models.Profile{}).Where("name = ?", profileName).Update("raw", raw).Error
+// UpdateProfileDisk 更新 profile 的磁盘配置文件
+func UpdateProfileDisk(profileName string, implantConfig []byte, preludeConfig []byte, resources *clientpb.BuildResources) error {
+	profileModel, err := GetProfileByName(profileName)
+	if err != nil {
+		return err
+	}
+	profilePath := profileModel.DiskPath()
+
+	// implant.yaml 必须写
+	if err := os.MkdirAll(profilePath, 0700); err != nil {
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(profilePath, "implant.yaml"), implantConfig, 0644); err != nil {
+		return err
+	}
+	if preludeConfig != nil {
+		if err := os.WriteFile(filepath.Join(profilePath, "prelude.yaml"), preludeConfig, 0644); err != nil {
+			return err
+		}
+	}
+	if resources != nil && len(resources.Entries) > 0 {
+		resourcesDir := filepath.Join(profilePath, "resources")
+		if err := os.MkdirAll(resourcesDir, 0755); err != nil {
+			return err
+		}
+		for _, entry := range resources.Entries {
+			if err := os.WriteFile(filepath.Join(resourcesDir, entry.Filename), entry.Content, 0644); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// GetProfileFullConfig 从磁盘读取 profile 的全部配置文件
+func GetProfileFullConfig(profileName string) (implantConfig []byte, preludeConfig []byte, resources *clientpb.BuildResources, err error) {
+	profileModel, err := GetProfileByName(profileName)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	return readProfileDisk(profileModel.DiskPath())
+}
+
+// GetProfileByNameWithConfig 返回带磁盘完整配置的 Profile protobuf
+func GetProfileByNameWithConfig(profileName string) (*clientpb.Profile, error) {
+	profileModel, err := GetProfileByName(profileName)
+	if err != nil {
+		return nil, err
+	}
+	pb := profileModel.ToProtobuf()
+
+	implant, prelude, resources, err := readProfileDisk(profileModel.DiskPath())
+	if err != nil {
+		return nil, err
+	}
+	pb.ImplantConfig = implant
+	pb.PreludeConfig = prelude
+	pb.Resources = resources
+
+	return pb, nil
 }
 
 // ============================================
