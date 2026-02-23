@@ -49,6 +49,28 @@ func (t *Tasks) Get(taskID uint32) *Task {
 	return nil
 }
 
+// GetOrRecover 先从内存查找，找不到则回退到 DB 恢复
+func (t *Tasks) GetOrRecover(sess *Session, taskID uint32) *Task {
+	if task := t.Get(taskID); task != nil {
+		return task
+	}
+	dbTask, err := db.GetTaskBySessionAndSeq(sess.ID, taskID)
+	if err != nil {
+		return nil
+	}
+	recovered := FromTaskProtobuf(dbTask.ToProtobuf())
+	recovered.Session = sess
+	recovered.Ctx, recovered.Cancel = context.WithCancel(context.Background())
+	recovered.DoneCh = make(chan bool)
+	recovered.Closed = true
+	close(recovered.DoneCh)
+	if recovered.Finished() {
+		recovered.Cancel()
+	}
+	t.Add(recovered)
+	return recovered
+}
+
 func (t *Tasks) Add(task *Task) {
 	t.active.Store(task.Id, task)
 }

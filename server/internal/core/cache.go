@@ -10,6 +10,7 @@ import (
 	"io"
 	"math"
 	"os"
+	"sort"
 	"sync"
 	"time"
 )
@@ -68,18 +69,34 @@ func (c *Cache) GetMessage(taskID, index int) (*implantpb.Spite, bool) {
 }
 
 func (c *Cache) GetMessages(taskID int) ([]*implantpb.Spite, bool) {
-	var messages []*implantpb.Spite
+	type indexedSpite struct {
+		index int32
+		spite *implantpb.Spite
+	}
+	var items []indexedSpite
+	now := time.Now().Unix()
+
 	c.items.Range(func(key, value interface{}) bool {
 		item := value.(*clientpb.SpiteCacheItem)
-		if int(item.Spite.TaskId) == taskID && time.Now().Unix() < item.Expiration {
-			messages = append(messages, item.Spite)
+		if int(item.Spite.TaskId) == taskID && now < item.Expiration {
+			items = append(items, indexedSpite{index: item.Index, spite: item.Spite})
 		}
 		return true
 	})
-	if len(messages) > 0 {
-		return messages, true
+
+	if len(items) == 0 {
+		return nil, false
 	}
-	return nil, false
+
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].index < items[j].index
+	})
+
+	messages := make([]*implantpb.Spite, len(items))
+	for i, item := range items {
+		messages[i] = item.spite
+	}
+	return messages, true
 }
 
 // Save serializes the cache items to a file using protobuf

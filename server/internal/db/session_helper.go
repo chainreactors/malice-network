@@ -273,6 +273,15 @@ func GetTask(taskID string) (*models.Task, error) {
 	return task, nil
 }
 
+func GetTaskBySessionAndSeq(sessionID string, seq uint32) (*models.Task, error) {
+	var task models.Task
+	err := Session().Where("session_id = ? AND seq = ?", sessionID, seq).First(&task).Error
+	if err != nil {
+		return nil, err
+	}
+	return &task, nil
+}
+
 func AddTask(task *clientpb.Task) error {
 	taskModel := &models.Task{
 		ID:         task.SessionId + "-" + utils.ToString(task.TaskId),
