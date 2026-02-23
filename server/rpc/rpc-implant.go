@@ -260,8 +260,7 @@ func (rpc *Server) triggerKeyExchange(ctx context.Context, sess *core.Session) e
 		if resp == nil {
 			return
 		}
-		sess.UpdatePrivateKey(keyPair.Private)
-		sess.UpdatePublicKey(resp.PublicKey)
+		sess.UpdateKeyPairFieldsAndPushCtrl(resp.PublicKey, keyPair.Private)
 	})
 	return err
 }

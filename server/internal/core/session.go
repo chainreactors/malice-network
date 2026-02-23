@@ -748,14 +748,25 @@ func (s *Session) initializeSecureManager(req *clientpb.RegisterSession) error {
 }
 
 func (s *Session) UpdatePublicKey(key string) {
-	s.KeyPair.PublicKey = key
-	s.SecureManager.UpdateKeyPair(s.KeyPair)
-	s.PushCtrl()
+	s.UpdateKeyPairFieldsAndPushCtrl(key, "")
 }
 
 func (s *Session) UpdatePrivateKey(key string) {
-	s.KeyPair.PrivateKey = key
-	s.SecureManager.UpdateKeyPair(s.KeyPair)
+	s.UpdateKeyPairFieldsAndPushCtrl("", key)
+}
+
+func (s *Session) UpdateKeyPairFieldsAndPushCtrl(publicKey string, privateKey string) {
+	next := &clientpb.KeyPair{}
+	if s.KeyPair != nil {
+		*next = *s.KeyPair
+	}
+	if publicKey != "" {
+		next.PublicKey = publicKey
+	}
+	if privateKey != "" {
+		next.PrivateKey = privateKey
+	}
+	s.UpdateKeyPair(next)
 	s.PushCtrl()
 }
 

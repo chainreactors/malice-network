@@ -37,11 +37,39 @@ type MaleficParser struct {
 	StartDelimiter byte
 	EndDelimiter   byte
 	keyPair        *clientpb.KeyPair // Age 密钥对，用于加解密
+	privateKeys    []string
 }
 
 // WithSecure 设置 Age 密钥对用于加解密，返回新的 parser 实例
 func (parser *MaleficParser) WithSecure(keyPair *clientpb.KeyPair) {
 	parser.keyPair = keyPair
+	parser.privateKeys = splitPrivateKeys(keyPair)
+}
+
+func splitPrivateKeys(keyPair *clientpb.KeyPair) []string {
+	if keyPair == nil {
+		return nil
+	}
+
+	raw := strings.TrimSpace(keyPair.PrivateKey)
+	if raw == "" {
+		return nil
+	}
+
+	seen := make(map[string]struct{})
+	privateKeys := make([]string, 0, 2)
+	for _, privateKey := range strings.Split(raw, "\n") {
+		privateKey = strings.TrimSpace(privateKey)
+		if privateKey == "" {
+			continue
+		}
+		if _, ok := seen[privateKey]; ok {
+			continue
+		}
+		seen[privateKey] = struct{}{}
+		privateKeys = append(privateKeys, privateKey)
+	}
+	return privateKeys
 }
 
 func ParseSid(data []byte) uint32 {
@@ -90,14 +118,10 @@ func (parser *MaleficParser) Parse(buf []byte) (*implantpb.Spites, error) {
 	}
 	buf = buf[:length]
 
-	if parser.keyPair != nil && parser.keyPair.PrivateKey != "" {
+	if len(parser.privateKeys) > 0 {
 		var decErr error
 		decrypted := false
-		for _, privateKey := range strings.Split(parser.keyPair.PrivateKey, "\n") {
-			privateKey = strings.TrimSpace(privateKey)
-			if privateKey == "" {
-				continue
-			}
+		for _, privateKey := range parser.privateKeys {
 			decryptedBuf, err := cryptography.AgeDecrypt(privateKey, buf)
 			if err == nil {
 				buf = decryptedBuf
