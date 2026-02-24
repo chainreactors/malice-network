@@ -80,14 +80,17 @@ jobs:
             dist/malice_checksums.txt
             dist/vsix/iom.vsix
           body: |
-            🌙 Nightly build 
+            🌙 Nightly Build / 每夜构建
 
-            📝 Commit: ${{ env.COMMIT }}
+            Commit / 提交: [`${{ env.COMMIT }}`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
+            Branch / 分支: `${{ github.ref_name }}`
 
-            ⚠️ This is an automated nightly build and may be unstable.
+            ⚠️ Automated nightly build, may be unstable.
+            ⚠️ 自动构建版本，可能不稳定。
 
-            📦 This release includes the latest changes from the main branch.
+            📦 Includes latest changes from `dev`.
+            📦 包含 `dev` 分支最新变更。
 
-            Usage: https://chainreactors.github.io/wiki/IoM/manual/manual/GUI
+            📚 Docs / 文档: https://wiki.chainreactors.red/
         env:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
