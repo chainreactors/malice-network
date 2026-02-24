@@ -8,14 +8,23 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/client/plugin"
 	"github.com/chainreactors/malice-network/helper/intermediate"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/mals"
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
 	"strings"
+	"sync"
 	"time"
 )
 
+var commandExecMu sync.Mutex
+
 func RunCommand(con *Console, cmdline interface{}) (string, error) {
+	// Console state (active session/menu/callee + stdout capture window) is shared.
+	// Serialize command execution to avoid cross-request output mixing.
+	commandExecMu.Lock()
+	defer commandExecMu.Unlock()
+
 	var args []string
 	var err error
 	switch c := cmdline.(type) {
@@ -63,6 +72,168 @@ func executeCommand(con *Console, command, sessionID, callee string) (string, er
 	return RunCommand(con, command)
 }
 
+func stripWaitFlag(args []string) []string {
+	if len(args) == 0 {
+		return args
+	}
+
+	filtered := make([]string, 0, len(args))
+	for _, arg := range args {
+		if arg == "--wait" || strings.HasPrefix(arg, "--wait=") {
+			continue
+		}
+		filtered = append(filtered, arg)
+	}
+
+	return filtered
+}
+
+func resolveSessionID(con *Console, sessionID string) (string, error) {
+	if sessionID != "" {
+		return sessionID, nil
+	}
+
+	if sess := con.GetInteractive(); sess != nil {
+		return sess.SessionId, nil
+	}
+
+	return "", fmt.Errorf("session id is required")
+}
+
+func getLatestTaskID(con *Console, sessionID string) (uint32, bool, error) {
+	tasks, err := con.Rpc.GetTasks(con.Context(), &clientpb.TaskRequest{
+		SessionId: sessionID,
+		All:       true,
+	})
+	if err != nil {
+		return 0, false, err
+	}
+
+	if tasks == nil || len(tasks.GetTasks()) == 0 {
+		return 0, false, nil
+	}
+
+	var latest uint32
+	for _, task := range tasks.GetTasks() {
+		if task != nil && task.GetTaskId() > latest {
+			latest = task.GetTaskId()
+		}
+	}
+
+	if latest == 0 {
+		return 0, false, nil
+	}
+
+	return latest, true, nil
+}
+
+func renderTaskOutput(taskCtx *clientpb.TaskContext) (string, error) {
+	if taskCtx == nil || taskCtx.Task == nil {
+		return "", fmt.Errorf("task context is nil")
+	}
+
+	if fn, ok := intermediate.InternalFunctions[taskCtx.Task.Type]; ok && fn.FinishCallback != nil {
+		result, err := fn.FinishCallback(taskCtx)
+		if err != nil {
+			return "", err
+		}
+		return result, nil
+	}
+
+	status, err := output.ParseStatus(taskCtx)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%v", status), nil
+}
+
+// executeRPCCommand executes a command for LocalRPC without relying on global stdout range capture.
+// It waits the task by task_id and renders output through task callbacks.
+func executeRPCCommand(con *Console, command, sessionID string) (string, error) {
+	if command == "" {
+		return "", fmt.Errorf("command is required")
+	}
+
+	commandExecMu.Lock()
+	defer commandExecMu.Unlock()
+
+	if err := switchSessionWithCallee(con, sessionID, consts.CalleeRPC); err != nil {
+		return "", err
+	}
+
+	resolvedSessionID, err := resolveSessionID(con, sessionID)
+	if err != nil {
+		return "", err
+	}
+
+	beforeTaskID, beforeExists, err := getLatestTaskID(con, resolvedSessionID)
+	if err != nil {
+		return "", err
+	}
+
+	args, err := shellquote.Split(command)
+	if err != nil {
+		return "", err
+	}
+
+	args = stripWaitFlag(args)
+	if err := con.App.Execute(con.Context(), con.App.ActiveMenu(), args, false); err != nil {
+		return "", err
+	}
+
+	var targetTaskID uint32
+	found := false
+	deadline := time.Now().Add(3 * time.Second)
+	for {
+		latestTaskID, latestExists, latestErr := getLatestTaskID(con, resolvedSessionID)
+		if latestErr != nil {
+			return "", latestErr
+		}
+
+		if latestExists && (!beforeExists || latestTaskID > beforeTaskID) {
+			targetTaskID = latestTaskID
+			found = true
+			break
+		}
+
+		if time.Now().After(deadline) {
+			break
+		}
+
+		time.Sleep(50 * time.Millisecond)
+	}
+
+	if !found {
+		client.Log.Debugf("LocalRPC: no new task detected (session=%s, command=%q)\n", resolvedSessionID, command)
+		return "", fmt.Errorf("command executed but no new task detected")
+	}
+
+	taskCtx, err := con.Rpc.WaitTaskFinish(con.Context(), &clientpb.Task{
+		SessionId: resolvedSessionID,
+		TaskId:    targetTaskID,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	rendered, err := renderTaskOutput(taskCtx)
+	if err != nil {
+		return "", err
+	}
+	rendered = strings.TrimSpace(rendered)
+
+	eventMessage := strings.TrimSpace(con.popTaskMessage(resolvedSessionID, targetTaskID))
+	if rendered == "" && eventMessage != "" {
+		return client.RemoveANSI(eventMessage), nil
+	}
+	if rendered == "" {
+		return "", fmt.Errorf("task finished without renderable output")
+	}
+
+	return client.RemoveANSI(rendered), nil
+}
+
 // ExecuteLuaScript 执行Lua脚本并返回结果
 func ExecuteLuaScript(con *Console, script string) (string, error) {
 	vmPool := con.MalManager.GetLuaVMPool()
@@ -98,6 +269,10 @@ func ExecuteLuaScript(con *Console, script string) (string, error) {
 
 // executeLua 执行Lua脚本的通用逻辑
 func executeLua(con *Console, script, sessionID, callee string) (string, error) {
+	// Keep LocalRPC/Lua execution serialized with command execution.
+	commandExecMu.Lock()
+	defer commandExecMu.Unlock()
+
 	if script == "" {
 		return "", fmt.Errorf("script is required")
 	}

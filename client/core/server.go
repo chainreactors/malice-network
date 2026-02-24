@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sync"
 
 	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
@@ -30,6 +31,45 @@ func wrapToTaskContext(event *clientpb.Event) *clientpb.TaskContext {
 
 type Server struct {
 	*client.ServerState
+	taskMessageMu sync.Mutex
+	taskMessages  map[string]string
+}
+
+func taskMessageKey(sessionID string, taskID uint32) string {
+	return fmt.Sprintf("%s-%d", sessionID, taskID)
+}
+
+func (s *Server) appendTaskMessage(task *clientpb.Task, message []byte) {
+	if s == nil || task == nil || len(message) == 0 {
+		return
+	}
+
+	msg := string(message)
+	if msg == "" {
+		return
+	}
+
+	key := taskMessageKey(task.SessionId, task.TaskId)
+	s.taskMessageMu.Lock()
+	defer s.taskMessageMu.Unlock()
+	if prev, ok := s.taskMessages[key]; ok && prev != "" {
+		s.taskMessages[key] = prev + "\n" + msg
+		return
+	}
+	s.taskMessages[key] = msg
+}
+
+func (s *Server) popTaskMessage(sessionID string, taskID uint32) string {
+	if s == nil {
+		return ""
+	}
+
+	key := taskMessageKey(sessionID, taskID)
+	s.taskMessageMu.Lock()
+	defer s.taskMessageMu.Unlock()
+	msg := s.taskMessages[key]
+	delete(s.taskMessages, key)
+	return msg
 }
 
 // NewServer wraps client.ServerState into core.ServerState
@@ -38,7 +78,7 @@ func NewServer(conn *grpc.ClientConn, config *mtls.ClientConfig) (*Server, error
 	if err != nil {
 		return nil, err
 	}
-	ser := &Server{ServerState: s}
+	ser := &Server{ServerState: s, taskMessages: make(map[string]string)}
 	events, err := ser.GetEvent(context.Background(), &clientpb.Int{})
 	if err != nil {
 		return nil, err
@@ -72,7 +112,10 @@ func (s *Server) triggerTaskDone(event *clientpb.Event) {
 		return
 	}
 	taskContext := wrapToTaskContext(event)
-	HandlerTask(sess, log, taskContext, event.Message, event.Callee, false)
+	s.appendTaskMessage(task, event.Message)
+	if event.Callee != consts.CalleeRPC {
+		HandlerTask(sess, log, taskContext, event.Message, event.Callee, false)
+	}
 
 	if callback, ok := s.DoneCallbacks.Load(fmt.Sprintf("%s-%d", task.SessionId, task.TaskId)); ok {
 		callback.(client.TaskCallback)(taskContext)
@@ -94,7 +137,10 @@ func (s *Server) triggerTaskFinish(event *clientpb.Event) {
 		return
 	}
 	taskContext := wrapToTaskContext(event)
-	HandlerTask(sess, log, taskContext, event.Message, event.Callee, true)
+	s.appendTaskMessage(task, event.Message)
+	if event.Callee != consts.CalleeRPC {
+		HandlerTask(sess, log, taskContext, event.Message, event.Callee, true)
+	}
 
 	callbackId := fmt.Sprintf("%s-%d", task.SessionId, task.TaskId)
 	if callback, ok := s.FinishCallbacks.Load(callbackId); ok {

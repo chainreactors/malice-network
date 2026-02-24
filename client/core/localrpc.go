@@ -8,7 +8,11 @@ import (
 	"google.golang.org/grpc"
 	"net"
 	"runtime/debug"
+	"sync/atomic"
+	"time"
 )
+
+var localRPCRequestSeq uint64
 
 // LocalRPCServer wraps the gRPC server for local command execution
 type LocalRPCServer struct {
@@ -25,11 +29,13 @@ func NewLocalRPCServer(console *Console) *LocalRPCServer {
 
 // ExecuteCommand implements the CommandService.ExecuteCommand RPC method
 func (s *LocalRPCServer) ExecuteCommand(ctx context.Context, req *localrpc.ExecuteCommandRequest) (*localrpc.ExecuteCommandResponse, error) {
-	client.Log.Debugf("LocalRPC: ExecuteCommand called with command: %s, session_id: %s\n", req.Command, req.SessionId)
+	reqID := atomic.AddUint64(&localRPCRequestSeq, 1)
+	start := time.Now()
+	client.Log.Debugf("LocalRPC[%d]: ExecuteCommand start (session=%s, command=%q)\n", reqID, req.SessionId, req.Command)
 
-	output, err := executeCommand(s.console, req.Command, req.SessionId, consts.CalleeRPC)
+	output, err := executeRPCCommand(s.console, req.Command, req.SessionId)
 	if err != nil {
-		client.Log.Errorf("LocalRPC: Error executing command: %v\n", err)
+		client.Log.Errorf("LocalRPC[%d]: ExecuteCommand failed after %s: %v\n", reqID, time.Since(start), err)
 		return &localrpc.ExecuteCommandResponse{
 			Output:  output,
 			Error:   err.Error(),
@@ -37,7 +43,7 @@ func (s *LocalRPCServer) ExecuteCommand(ctx context.Context, req *localrpc.Execu
 		}, nil
 	}
 
-	client.Log.Debugf("LocalRPC: Command executed successfully, output length: %d\n", len(output))
+	client.Log.Debugf("LocalRPC[%d]: ExecuteCommand done in %s (output_len=%d)\n", reqID, time.Since(start), len(output))
 	return &localrpc.ExecuteCommandResponse{
 		Output:  output,
 		Error:   "",
@@ -47,11 +53,13 @@ func (s *LocalRPCServer) ExecuteCommand(ctx context.Context, req *localrpc.Execu
 
 // ExecuteLua implements the CommandService.ExecuteLua RPC method
 func (s *LocalRPCServer) ExecuteLua(ctx context.Context, req *localrpc.ExecuteLuaRequest) (*localrpc.ExecuteLuaResponse, error) {
-	client.Log.Debugf("LocalRPC: ExecuteLua called with script length: %d, session_id: %s\n", len(req.Script), req.SessionId)
+	reqID := atomic.AddUint64(&localRPCRequestSeq, 1)
+	start := time.Now()
+	client.Log.Debugf("LocalRPC[%d]: ExecuteLua start (session=%s, script_len=%d)\n", reqID, req.SessionId, len(req.Script))
 
 	output, err := executeLua(s.console, req.Script, req.SessionId, consts.CalleeRPC)
 	if err != nil {
-		client.Log.Errorf("LocalRPC: Error executing Lua script: %v\n", err)
+		client.Log.Errorf("LocalRPC[%d]: ExecuteLua failed after %s: %v\n", reqID, time.Since(start), err)
 		return &localrpc.ExecuteLuaResponse{
 			Output:  output,
 			Error:   err.Error(),
@@ -59,7 +67,7 @@ func (s *LocalRPCServer) ExecuteLua(ctx context.Context, req *localrpc.ExecuteLu
 		}, nil
 	}
 
-	client.Log.Debugf("LocalRPC: Lua script executed successfully, output length: %d\n", len(output))
+	client.Log.Debugf("LocalRPC[%d]: ExecuteLua done in %s (output_len=%d)\n", reqID, time.Since(start), len(output))
 	return &localrpc.ExecuteLuaResponse{
 		Output:  output,
 		Error:   "",
