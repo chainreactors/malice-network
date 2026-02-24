@@ -114,7 +114,23 @@ profile delete profile_name
 	common.BindArgCompletions(deleteProfileCmd, nil,
 		common.ProfileCompleter(con))
 
-	profileCmd.AddCommand(listCmd, loadProfileCmd, newProfileCmd, deleteProfileCmd)
+	showProfileCmd := &cobra.Command{
+		Use:   consts.CommandProfileShow,
+		Short: "Show detailed profile information",
+		Long:  "Display a profile's metadata, implant.yaml, prelude.yaml, and resources list.",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return ProfileDetailCmd(cmd, con)
+		},
+		Example: `~~~
+// Show detailed information for a profile
+profile show my_profile
+~~~`,
+	}
+	common.BindArgCompletions(showProfileCmd, nil,
+		common.ProfileCompleter(con))
+
+	profileCmd.AddCommand(listCmd, showProfileCmd, loadProfileCmd, newProfileCmd, deleteProfileCmd)
 
 	buildCmd := &cobra.Command{
 		Use:   consts.CommandBuild,
