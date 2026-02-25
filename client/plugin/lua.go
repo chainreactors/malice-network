@@ -245,12 +245,18 @@ func (plug *LuaPlugin) RegisterLuaFunction() {
 	plug.registerFunction("help", func(name string, long string) (bool, error) {
 		cmd := plug.CMDs.Find(name)
 		cmd.Long = long
+		if cmd.Command != nil {
+			cmd.Command.Long = long
+		}
 		return true, nil
 	}, &mals.Helper{Group: intermediate.ClientGroup})
 
 	plug.registerFunction("example", func(name string, example string) (bool, error) {
 		cmd := plug.CMDs.Find(name)
 		cmd.Example = example
+		if cmd.Command != nil {
+			cmd.Command.Example = example
+		}
 		return true, nil
 	}, &mals.Helper{Group: intermediate.ClientGroup})
 
@@ -412,6 +418,14 @@ func (plug *LuaPlugin) RegisterLuaFunction() {
 			if p.Type == LuaFlag {
 				malCmd.Flags().String(p.Name, "", p.Name)
 			}
+		}
+
+		// apply plugin help/example to cobra.Command
+		if cmd.Long != "" {
+			malCmd.Long = cmd.Long
+		}
+		if cmd.Example != "" {
+			malCmd.Example = cmd.Example
 		}
 
 		logs.Log.Debugf("Registered Command: %s\n", cmd.Name)
