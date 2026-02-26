@@ -105,6 +105,7 @@ func DingTalkSet(f *pflag.FlagSet) {
 func LarkSet(f *pflag.FlagSet) {
 	f.Bool("lark-enable", false, "enable lark")
 	f.String("lark-webhook-url", "", "lark webhook url")
+	f.String("lark-secret", "", "lark webhook sign secret")
 }
 
 func ServerChanSet(f *pflag.FlagSet) {
@@ -131,6 +132,7 @@ func ParseNotifyFlags(cmd *cobra.Command) *clientpb.Notify {
 	dingTalkSecret, _ := cmd.Flags().GetString("dingtalk-secret")
 	dingTalkToken, _ := cmd.Flags().GetString("dingtalk-token")
 	larkWebhookURL, _ := cmd.Flags().GetString("lark-webhook-url")
+	larkSecret, _ := cmd.Flags().GetString("lark-secret")
 	serverChanURL, _ := cmd.Flags().GetString("serverchan-url")
 	pushPlusToken, _ := cmd.Flags().GetString("pushplus-token")
 	pushPlusTopic, _ := cmd.Flags().GetString("pushplus-topic")
@@ -147,6 +149,7 @@ func ParseNotifyFlags(cmd *cobra.Command) *clientpb.Notify {
 
 		LarkEnable:     larkEnable,
 		LarkWebhookUrl: larkWebhookURL,
+		LarkSecret:     larkSecret,
 
 		ServerchanEnable: serverChanEnable,
 		ServerchanUrl:    serverChanURL,

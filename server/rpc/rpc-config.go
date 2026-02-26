@@ -64,6 +64,7 @@ func (rpc *Server) GetNotifyConfig(ctx context.Context, req *clientpb.Empty) (*c
 		DingtalkToken:    notifyConfig.DingTalk.Token,
 		LarkEnable:       notifyConfig.Lark.Enable,
 		LarkWebhookUrl:   notifyConfig.Lark.WebHookUrl,
+		LarkSecret:       notifyConfig.Lark.Secret,
 		ServerchanEnable: notifyConfig.ServerChan.Enable,
 		ServerchanUrl:    notifyConfig.ServerChan.URL,
 		PushplusEnable:   notifyConfig.PushPlus.Enable,
@@ -89,6 +90,7 @@ func (rpc *Server) UpdateNotifyConfig(ctx context.Context, req *clientpb.Notify)
 		Lark: &configs.LarkConfig{
 			Enable:     req.LarkEnable,
 			WebHookUrl: req.LarkWebhookUrl,
+			Secret:     req.LarkSecret,
 		},
 		ServerChan: &configs.ServerChanConfig{
 			Enable: req.ServerchanEnable,

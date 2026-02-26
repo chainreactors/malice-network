@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nikoksr/notify"
+	inotify "github.com/chainreactors/malice-network/server/internal/notify"
 )
 
 // newTestBroker creates a minimal eventBroker for testing SafeGoWithTask.
@@ -19,7 +19,7 @@ func newTestBroker() *eventBroker {
 		subscribe:   make(chan chan Event, eventBufSize),
 		unsubscribe: make(chan chan Event, eventBufSize),
 		send:        make(chan Event, eventBufSize),
-		notifier:    Notifier{notify: notify.New(), enable: false},
+		notifier:    inotify.NewNotifier(),
 		cache:       NewMessageCache(eventBufSize),
 		lock:        &sync.Mutex{},
 	}

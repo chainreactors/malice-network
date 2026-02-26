@@ -146,6 +146,7 @@ type DingTalkConfig struct {
 type LarkConfig struct {
 	Enable     bool   `config:"enable" default:"false" yaml:"enable"`
 	WebHookUrl string `config:"webhook_url" yaml:"webhook_url"`
+	Secret     string `config:"secret" yaml:"secret"`
 }
 
 type ServerChanConfig struct {

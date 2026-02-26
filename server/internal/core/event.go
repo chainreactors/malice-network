@@ -1,22 +1,17 @@
 package core
 
 import (
-	"context"
 	"fmt"
+	"strings"
+	"sync"
+
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/server/internal/configs"
+	inotify "github.com/chainreactors/malice-network/server/internal/notify"
 	"github.com/chainreactors/tui"
-	"github.com/nikoksr/notify"
-	"github.com/nikoksr/notify/service/dingding"
-	"github.com/nikoksr/notify/service/http"
-	"github.com/nikoksr/notify/service/lark"
-	"github.com/nikoksr/notify/service/telegram"
-	"net/url"
-	"strings"
-	"sync"
 )
 
 const (
@@ -165,7 +160,7 @@ type eventBroker struct {
 	subscribe   chan chan Event
 	unsubscribe chan chan Event
 	send        chan Event
-	notifier    Notifier
+	notifier    inotify.Notifier
 
 	lock  *sync.Mutex
 	cache *RingCache
@@ -239,7 +234,7 @@ func (broker *eventBroker) GetAll() []*Event {
 
 // Notify - Notify all third-patry services
 func (broker *eventBroker) Notify(event Event) {
-	SafeGo(func() { broker.notifier.Send(&event) })
+	SafeGo(func() { broker.notifier.Send(event.EventType, event.Op, event.Message) })
 }
 
 func NewBroker() *eventBroker {
@@ -249,9 +244,7 @@ func NewBroker() *eventBroker {
 		subscribe:   make(chan chan Event, eventBufSize),
 		unsubscribe: make(chan chan Event, eventBufSize),
 		send:        make(chan Event, eventBufSize),
-		notifier: Notifier{notify: notify.New(),
-			enable: false,
-		},
+		notifier: inotify.NewNotifier(),
 		cache: NewMessageCache(eventBufSize),
 		lock:  &sync.Mutex{},
 	}
@@ -288,81 +281,6 @@ var (
 	EventBroker *eventBroker
 )
 
-type Notifier struct {
-	notify *notify.Notify
-	enable bool
-}
-
 func (broker *eventBroker) InitService(config *configs.NotifyConfig) error {
-	if config == nil || !config.Enable {
-		return nil
-	}
-	broker.notifier.enable = true
-	if config.Telegram != nil && config.Telegram.Enable {
-		tg, err := telegram.New(config.Telegram.APIKey)
-		if err != nil {
-			return err
-		}
-		tg.SetParseMode(telegram.ModeMarkdown)
-		tg.AddReceivers(config.Telegram.ChatID)
-		broker.notifier.notify.UseServices(tg)
-	}
-	if config.DingTalk != nil && config.DingTalk.Enable {
-		dt := dingding.New(&dingding.Config{
-			Token:  config.DingTalk.Token,
-			Secret: config.DingTalk.Secret,
-		})
-		broker.notifier.notify.UseServices(dt)
-	}
-	if config.Lark != nil && config.Lark.Enable {
-		lark := lark.NewWebhookService(config.Lark.WebHookUrl)
-		broker.notifier.notify.UseServices(lark)
-	}
-	if config.ServerChan != nil && config.ServerChan.Enable {
-		sc := http.New()
-		sc.AddReceivers(&http.Webhook{
-			URL:         config.ServerChan.URL,
-			Method:      "POST",
-			ContentType: "application/x-www-form-urlencoded",
-			BuildPayload: func(subject, message string) (payload any) {
-				data := url.Values{}
-				data.Set("subject", subject)
-				data.Set("message", message)
-				return data.Encode()
-			},
-		})
-		broker.notifier.notify.UseServices(sc)
-	}
-	if config.PushPlus != nil && config.PushPlus.Enable {
-		pp := http.New()
-		pp.AddReceivers(&http.Webhook{
-			URL:         fmt.Sprintf("https://www.pushplus.plus/send"),
-			Method:      "POST",
-			ContentType: "application/json",
-			BuildPayload: func(subject, message string) (payload any) {
-				return map[string]string{
-					"title":    subject,
-					"content":  message,
-					"token":    config.PushPlus.Token,
-					"topic":    config.PushPlus.Topic,
-					"channel":  config.PushPlus.Channel,
-					"template": "markdown",
-				}
-			},
-		})
-		broker.notifier.notify.UseServices(pp)
-	}
-	return nil
-}
-
-func (n *Notifier) Send(event *Event) {
-	if !n.enable {
-		return
-	}
-	title := fmt.Sprintf("[%s] %s", event.EventType, event.Op)
-	err := n.notify.Send(context.Background(), title, event.Message)
-	if err != nil {
-		logs.Log.Errorf("Failed to send notification: %s", err)
-	}
-	return
+	return broker.notifier.InitService(config)
 }
