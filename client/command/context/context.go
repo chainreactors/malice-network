@@ -31,7 +31,7 @@ func ListContexts(cmd *cobra.Command, con *core.Console) error {
 		table.NewColumn("Session", "Session", 10),
 		table.NewColumn("Task", "Task", 6),
 		table.NewColumn("Type", "Type", 12),
-		table.NewColumn("CreatedAt", "CreatedAt", 20),
+		table.NewColumn("CreatedAt", "Created At", 20),
 	}, true)
 
 	tableModel.SetRows(rowEntries)

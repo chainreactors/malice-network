@@ -59,10 +59,10 @@ func RegisterNetstatFunc(con *core.Console) {
 			var rowEntries []table.Row
 			var row table.Row
 			tableModel := tui.NewTable([]table.Column{
-				table.NewFlexColumn("LocalAddr", "LocalAddr", 1),
-				table.NewFlexColumn("RemoteAddr", "RemoteAddr", 1),
-				table.NewColumn("SkState", "SkState", 15),
-				table.NewColumn("Pid", "Pid", 7),
+				table.NewFlexColumn("LocalAddr", "Local Addr", 1),
+				table.NewFlexColumn("RemoteAddr", "Remote Addr", 1),
+				table.NewColumn("SkState", "Sk State", 15),
+				table.NewColumn("Pid", "PID", 7),
 				table.NewColumn("Protocol", "Protocol", 10),
 			}, true)
 			for _, sock := range resp.GetSocks() {

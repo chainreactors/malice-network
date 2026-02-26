@@ -69,7 +69,7 @@ func printMals(maljson m.MalsYaml, malHttpConfig m.MalHTTPConfig, con *core.Cons
 	tableModel := tui.NewTable([]table.Column{
 		table.NewColumn("Name", "Name", 25),
 		table.NewColumn("Version", "Version", 10),
-		table.NewFlexColumn("Repo_url", "Repo_url", 1),
+		table.NewFlexColumn("Repo_url", "Repo URL", 1),
 		table.NewFlexColumn("Help", "Help", 1),
 	}, false)
 	for _, mal := range maljson.Mals {

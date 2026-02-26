@@ -154,8 +154,8 @@ func printCerts(certs *clientpb.Certs, con *core.Console) {
 		table.NewFlexColumn("Organization", "Organization", 1),
 		table.NewColumn("Country", "Country", 10),
 		table.NewColumn("Locality", "Locality", 10),
-		table.NewFlexColumn("OrganizationalUnit", "OrganizationalUnit", 1),
-		table.NewFlexColumn("StreetAddress", "StreetAddress", 1),
+		table.NewFlexColumn("OrganizationalUnit", "Organizational Unit", 1),
+		table.NewFlexColumn("StreetAddress", "Street Address", 1),
 		table.NewColumn("Expire", "Expire", 25),
 	}, true)
 

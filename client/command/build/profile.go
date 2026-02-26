@@ -28,7 +28,7 @@ func ProfileShowCmd(cmd *cobra.Command, con *core.Console) error {
 	tableModel := tui.NewTable([]table.Column{
 		table.NewFlexColumn("Name", "Name", 1),
 		table.NewColumn("Pipeline", "Pipeline", 16),
-		table.NewColumn("CreatedAt", "CreatedAt", 16),
+		table.NewColumn("CreatedAt", "Created At", 16),
 	}, true)
 
 	var rowEntries []table.Row
@@ -142,7 +142,7 @@ func ProfileDetailCmd(cmd *cobra.Command, con *core.Console) error {
 	if profile.Resources != nil && len(profile.Resources.Entries) > 0 {
 		con.Log.Console("\n--- resources ---\n\n")
 		tableModel := tui.NewTable([]table.Column{
-			table.NewFlexColumn("Filename", "Filename", 1),
+			table.NewFlexColumn("Filename", "File Name", 1),
 			table.NewColumn("Size", "Size", 12),
 		}, true)
 

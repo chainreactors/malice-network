@@ -124,7 +124,7 @@ func ListWebsitesCmd(cmd *cobra.Command, con *core.Console) error {
 	tableModel := tui.NewTable([]table.Column{
 		table.NewFlexColumn("Name", "Name", 1),
 		table.NewColumn("Port", "Port", 7),
-		table.NewFlexColumn("RootPath", "RootPath", 1),
+		table.NewFlexColumn("RootPath", "Root Path", 1),
 		table.NewColumn("Enable", "Enable", 7),
 	}, true)
 	if len(websites.Pipelines) == 0 {

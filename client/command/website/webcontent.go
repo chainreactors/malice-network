@@ -138,11 +138,11 @@ func ListWebContentCmd(cmd *cobra.Command, con *core.Console) error {
 	var rowEntries []table.Row
 	tableModel := tui.NewTable([]table.Column{
 		table.NewColumn("ID", "ID", 8),
-		table.NewColumn("WebsiteName", "WebsiteName", 15),
-		table.NewColumn("ListenerID", "ListenerID", 15),
+		table.NewColumn("WebsiteName", "Website Name", 15),
+		table.NewColumn("ListenerID", "Listener ID", 15),
 		table.NewFlexColumn("Path", "Path", 1),
 		table.NewColumn("Size", "Size", 8),
-		table.NewFlexColumn("ContentType", "ContentType", 1),
+		table.NewFlexColumn("ContentType", "Content Type", 1),
 	}, true)
 
 	for _, content := range contents.Contents {

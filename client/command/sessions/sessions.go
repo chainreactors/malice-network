@@ -3,6 +3,8 @@ package sessions
 import (
 	"fmt"
 	"io"
+	"net"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -95,14 +97,33 @@ func PrintSessions(sessions map[string]*client.Session, con *core.Console, isAll
 			computer = fmt.Sprintf("%s/%s", session.Os.Hostname, session.Os.Username)
 		}
 
+		// Strip port from Remote Address, keep IP only
+		remoteAddr := session.Target
+		if host, _, err := net.SplitHostPort(remoteAddr); err == nil {
+			remoteAddr = host
+		}
+
+		// Extract PID and process name
+		var pid string
+		var processName string
+		if session.Process != nil {
+			pid = fmt.Sprintf("%d", session.Process.Pid)
+			processName = filepath.Base(session.Process.Name)
+			if processName == "." || processName == "" {
+				processName = filepath.Base(session.Process.Path)
+			}
+		}
+
 		row = table.NewRow(
 			table.RowData{
 				"ID":             session.SessionId[:8],
 				"Group/Note":     fmt.Sprintf("%s/%s", session.GroupName, session.Note),
 				"Pipeline":       session.PipelineId,
-				"Remote Address": session.Target,
+				"Remote Address": remoteAddr,
 				"UserName":       computer,
 				"System":         fmt.Sprintf("%s/%s", session.Os.Name, session.Os.Arch),
+				"PID":            pid,
+				"Process":        processName,
 				"Sleep":          fmt.Sprintf("%s [%.1f%%]", session.Timer.Expression, session.Timer.Jitter*100),
 				"Last":           formatTimeDiff(session.LastCheckin, session.IsAlive),
 				"CreatedAt":      time.Unix(session.CreatedAt, 0).Format("2006-01-02 15:04"),
@@ -116,11 +137,13 @@ func PrintSessions(sessions map[string]*client.Session, con *core.Console, isAll
 		table.NewFlexColumn("Group/Note", "Group/Note", 1),
 		table.NewFlexColumn("Pipeline", "Pipeline", 1),
 		table.NewFlexColumn("Remote Address", "Remote Address", 1),
-		table.NewFlexColumn("UserName", "UserName", 1),
+		table.NewFlexColumn("UserName", "User Name", 1),
 		table.NewFlexColumn("System", "System", 1),
+		table.NewFlexColumn("Process", "Process", 1),
+		table.NewColumn("PID", "PID", 7),
 		table.NewColumn("Sleep", "Sleep", 12),
 		table.NewColumn("Last", "Last", 8),
-		table.NewColumn("CreatedAt", "CreatedAt", 16),
+		table.NewColumn("CreatedAt", "Created At", 16),
 	}, isStatic)
 	tableModel.SetAscSort("Last")
 	tableModel.SetRows(rowEntries)

@@ -86,7 +86,7 @@ func PrintArtifacts(artifacts *clientpb.Artifacts, con *core.Console) error {
 		//table.NewColumn("Modules", "Modules", defaultLengths["Modules"]),
 		table.NewColumn("Profile", "Profile", 12),
 		table.NewColumn("Status", "Status", 10),
-		table.NewColumn("CreatedAt", "CreatedAt", 16),
+		table.NewColumn("CreatedAt", "Created At", 16),
 	}, false)
 	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)

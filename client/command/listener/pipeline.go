@@ -32,7 +32,7 @@ func ListPipelineCmd(cmd *cobra.Command, con *core.Console) error {
 		table.NewFlexColumn("Name", "Name", 1),
 		table.NewColumn("Enable", "Enable", 7),
 		table.NewColumn("Type", "Type", 6),
-		table.NewColumn("ListenerID", "ListenerID", 11),
+		table.NewColumn("ListenerID", "Listener ID", 11),
 		table.NewFlexColumn("Address", "Address", 1),
 		table.NewColumn("Parser", "Parser", 7),
 		table.NewColumn("Encryption", "Encryption", 12),

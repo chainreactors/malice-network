@@ -44,11 +44,11 @@ func printFiles(files *clientpb.Files, con *core.Console) {
 		rowEntries = append(rowEntries, row)
 	}
 	tableModel := tui.NewTable([]table.Column{
-		table.NewColumn("FileID", "FileID", 8),
+		table.NewColumn("FileID", "File ID", 8),
 		table.NewFlexColumn("Name", "Name", 1),
 		table.NewColumn("Type", "Type", 10),
-		table.NewFlexColumn("LocalName", "LocalName", 1),
-		table.NewFlexColumn("RemotePath", "RemotePath", 2),
+		table.NewFlexColumn("LocalName", "Local Name", 1),
+		table.NewFlexColumn("RemotePath", "Remote Path", 2),
 		//table.NewColumn("Checksum", "Checksum", maxLengths["Checksum"]),
 	}, true)
 	tableModel.SetMultiline()

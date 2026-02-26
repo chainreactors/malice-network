@@ -32,9 +32,9 @@ func printTasks(tasks []*clientpb.Task, con *core.Console, isAll bool) {
 		table.NewColumn("ID", "ID", 4),
 		table.NewFlexColumn("Type", "Type", 1),
 		table.NewColumn("Status", "Status", 15),
-		table.NewColumn("cur", "cur", 5),
-		table.NewColumn("total", "total", 5),
-		table.NewColumn("callby", "callby", 10),
+		table.NewColumn("cur", "Cur", 5),
+		table.NewColumn("total", "Total", 5),
+		table.NewColumn("callby", "Call By", 10),
 		//table.NewColumn("timeout", "timeout", 8),
 	}, true)
 	for _, task := range tasks {
