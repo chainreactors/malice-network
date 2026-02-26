@@ -2,6 +2,7 @@ package build
 
 import (
 	"fmt"
+
 	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/malice-network/client/core"
@@ -504,11 +505,14 @@ artifact delete artifact_name
 }
 
 func Register(con *core.Console) {
-	con.EventCallback[consts.CtrlArtifactDownload] = func(event *clientpb.Event) {
-		err := WriteOriginArtifact(con, event.Job.Name)
-		if err != nil {
-			con.Log.Errorf("write artifact %s error: %s", event.Job.Name, err)
-			return
+	// EventCallback requires initialized Server; skip in doc-gen mode (genlua)
+	if con.Server != nil {
+		con.EventCallback[consts.CtrlArtifactDownload] = func(event *clientpb.Event) {
+			err := WriteOriginArtifact(con, event.Job.Name)
+			if err != nil {
+				con.Log.Errorf("write artifact %s error: %s", event.Job.Name, err)
+				return
+			}
 		}
 	}
 	con.RegisterServerFunc("search_artifact",
