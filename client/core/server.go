@@ -268,6 +268,29 @@ func (s *Server) EventHandler() {
 	}
 }
 
+// renderEvent applies CLI-specific coloring to plain event text based on event type/op.
+// Server sends plain text in Formatted; coloring is the client's responsibility.
+func renderEvent(event *clientpb.Event) string {
+	switch event.Type {
+	case consts.EventSession:
+		switch event.Op {
+		case consts.CtrlSessionRegister, consts.CtrlSessionReborn, consts.CtrlSessionInit:
+			return logs.GreenBold(event.Formatted)
+		case consts.CtrlSessionDead:
+			return logs.YellowBold(event.Formatted)
+		case consts.CtrlSessionError:
+			return logs.RedBold(event.Formatted)
+		case consts.CtrlSessionTask:
+			return logs.GreenBold(event.Formatted)
+		}
+	case consts.EventJob:
+		if event.Err != "" {
+			return logs.RedBold(event.Formatted)
+		}
+	}
+	return event.Formatted
+}
+
 func (s *Server) HandlerEvent(event *clientpb.Event) {
 	switch event.Type {
 	case consts.EventClient:
@@ -306,15 +329,16 @@ func (s *Server) handleJob(event *clientpb.Event) {
 		client.Log.Errorf("[%s] %s: %s\n", event.Type, event.Op, event.Err)
 		return
 	}
+	colored := renderEvent(event)
 	pipeline := event.GetJob().GetPipeline()
 	switch event.Op {
 	case consts.CtrlPipelineSync:
 		s.Pipelines[pipeline.Name] = pipeline
 	case consts.CtrlPipelineStop:
 		delete(s.Pipelines, pipeline.Name)
-		client.Log.Important(event.Formatted + "\n")
+		client.Log.Important(colored + "\n")
 	default:
-		client.Log.Important(event.Formatted + "\n")
+		client.Log.Important(colored + "\n")
 	}
 }
 
@@ -339,25 +363,29 @@ func (s *Server) handlerTask(event *clientpb.Event) {
 
 func (s *Server) handlerSession(event *clientpb.Event) {
 	sid := event.Session.SessionId
+	colored := renderEvent(event)
 	switch event.Op {
 	case consts.CtrlSessionRegister:
 		s.AddSession(event.Session)
-		client.Log.Important(event.Formatted + "\n")
+		client.Log.Important(colored + "\n")
 	case consts.CtrlSessionUpdate:
 		s.AddSession(event.Session)
 	case consts.CtrlSessionTask:
 		log := s.ObserverLog(sid)
-		log.Info(event.Formatted + "\n")
+		log.Info(colored + "\n")
 	case consts.CtrlSessionError:
 		log := s.ObserverLog(sid)
-		log.Error(event.Formatted + "\n")
+		log.Error(colored + "\n")
 	case consts.CtrlSessionLog:
 		log := s.ObserverLog(sid)
 		log.Error(event.Formatted + "\n")
 	case consts.CtrlSessionDead:
-		client.Log.Important(event.Formatted + "\n")
+		client.Log.Important(colored + "\n")
+	case consts.CtrlSessionInit:
+		s.AddSession(event.Session)
+		client.Log.Important(colored + "\n")
 	case consts.CtrlSessionReborn:
 		s.AddSession(event.Session)
-		client.Log.Important(event.Formatted + "\n")
+		client.Log.Important(colored + "\n")
 	}
 }

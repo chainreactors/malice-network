@@ -2,7 +2,6 @@ package core
 
 import (
 	"fmt"
-	"strings"
 	"sync"
 
 	"github.com/chainreactors/IoM-go/consts"
@@ -19,6 +18,8 @@ const (
 	eventBufSize = 25
 )
 
+// format produces plain-text structured messages (no ANSI colors).
+// Coloring is the responsibility of each consumer (CLI, GUI, MCP, etc.).
 func (event *Event) format() string {
 	switch event.EventType {
 	case consts.EventClient:
@@ -28,13 +29,29 @@ func (event *Event) format() string {
 			return fmt.Sprintf("%s left the game", event.Client.Name)
 		}
 	case consts.EventBroadcast:
-		return fmt.Sprintf("%s : %s  %s", event.Client.Name, event.Message, event.Err)
+		msg := fmt.Sprintf("%s : %s", event.Client.Name, event.Message)
+		if event.Err != "" {
+			msg += "  " + event.Err
+		}
+		return msg
 	case consts.EventNotify:
-		return fmt.Sprintf("%s notified: %s %s", event.Client.Name, event.Message, event.Err)
+		msg := fmt.Sprintf("%s notified: %s", event.Client.Name, event.Message)
+		if event.Err != "" {
+			msg += " " + event.Err
+		}
+		return msg
 	case consts.EventListener:
-		return fmt.Sprintf("[%s] %s: %s %s", event.EventType, event.Op, event.Message, event.Err)
+		msg := fmt.Sprintf("[%s] %s: %s", event.EventType, event.Op, event.Message)
+		if event.Err != "" {
+			msg += " " + event.Err
+		}
+		return msg
 	case consts.EventWebsite:
-		return fmt.Sprintf("[%s] %s: %s %s", event.EventType, event.Op, event.Message, event.Err)
+		msg := fmt.Sprintf("[%s] %s: %s", event.EventType, event.Op, event.Message)
+		if event.Err != "" {
+			msg += " " + event.Err
+		}
+		return msg
 	case consts.EventBuild:
 		return fmt.Sprintf("[%s] %s", event.EventType, event.Message)
 	case consts.EventCert:
@@ -47,39 +64,49 @@ func (event *Event) format() string {
 		sid := event.Session.SessionId
 		switch event.Op {
 		case consts.CtrlSessionRegister:
-			return logs.GreenBold(fmt.Sprintf("[%s]: %s", consts.CtrlSessionRegister, event.Message))
+			return fmt.Sprintf("[%s] %s", consts.CtrlSessionRegister, event.Message)
+		case consts.CtrlSessionDead:
+			return fmt.Sprintf("[%s] %s", consts.CtrlSessionDead, event.Message)
+		case consts.CtrlSessionReborn:
+			return fmt.Sprintf("[%s] %s", consts.CtrlSessionReborn, event.Message)
+		case consts.CtrlSessionInit:
+			return fmt.Sprintf("[%s] %s", consts.CtrlSessionInit, event.Message)
 		case consts.CtrlSessionTask:
-			return logs.GreenBold(fmt.Sprintf("[%s.%d] run task %s: %s", sid, event.Task.TaskId, event.Task.Type, event.Message))
+			return fmt.Sprintf("[%s.%d] run task %s: %s",
+				sid, event.Task.TaskId, event.Task.Type, event.Message)
 		case consts.CtrlSessionError:
-			return logs.GreenBold(fmt.Sprintf("[%s] task: %d error: %s", sid, event.Task.TaskId, event.Err))
+			return fmt.Sprintf("[%s] task: %d error: %s",
+				sid, event.Task.TaskId, event.Err)
 		case consts.CtrlSessionLog:
-			return fmt.Sprintf("[%s] log: \n%s", sid, event.Message)
+			return fmt.Sprintf("[%s] log:\n%s", sid, event.Message)
+		case consts.CtrlSessionCheckin:
+			return ""
 		}
 	case consts.EventJob:
 		if event.Err != "" {
 			return fmt.Sprintf("[%s] %s: %s", event.EventType, event.Op, event.Err)
 		}
 		pipeline := event.Job.GetPipeline()
+		kvView := func(pipeType string) string {
+			return fmt.Sprintf("[%s] %s: %s \n%s", event.EventType, event.Op, pipeType,
+				tui.NewOrderedKVTable(pipeline.KVMap()).View())
+		}
 		switch pipeline.Body.(type) {
 		case *clientpb.Pipeline_Tcp:
-			return fmt.Sprintf("[%s] %s: tcp \n%s", event.EventType, event.Op,
-				tui.NewOrderedKVTable(pipeline.KVMap()).View())
+			return kvView("tcp")
 		case *clientpb.Pipeline_Bind:
-			return fmt.Sprintf("[%s] %s: bind \n%s", event.EventType, event.Op,
-				tui.NewOrderedKVTable(pipeline.KVMap()).View())
+			return kvView("bind")
 		case *clientpb.Pipeline_Http:
 			if event.Op == consts.CtrlAcme {
 				return fmt.Sprintf("[%s] %s: cert %s create success", event.EventType, event.Op,
 					pipeline.Tls.Domain)
 			}
-			return fmt.Sprintf("[%s] %s: http \n%s", event.EventType, event.Op,
-				tui.NewOrderedKVTable(pipeline.KVMap()).View())
+			return kvView("http")
 		case *clientpb.Pipeline_Rem:
 			if event.Op == consts.CtrlRemAgentLog {
 				return ""
 			}
-			return fmt.Sprintf("[%s] %s: rem \n%s", event.EventType, event.Op,
-				tui.NewOrderedKVTable(pipeline.KVMap()).View())
+			return kvView("rem")
 		case *clientpb.Pipeline_Web:
 			baseURL := pipeline.URL()
 			if event.Op == consts.CtrlWebContentAddArtifact {
@@ -87,18 +114,13 @@ func (event *Event) format() string {
 					return fmt.Sprintf("[%s] %s: artifact %s amount at %s", event.EventType, event.Op,
 						cont.Id, baseURL+cont.Path)
 				}
-
 			} else if event.Op == consts.CtrlWebContentAdd {
-				var result string
 				if cont := event.Job.FirstContent(); cont != nil {
-					result += fmt.Sprintf("[%s] %s: content add success, path: %s\n",
+					return fmt.Sprintf("[%s] %s: content add success, path: %s",
 						event.EventType, event.Op, baseURL+cont.Path)
 				}
-				return strings.TrimSuffix(result, "\n")
 			}
-
-			return fmt.Sprintf("[%s] %s: web \n%s", event.EventType, event.Op,
-				tui.NewOrderedKVTable(pipeline.KVMap()).View())
+			return kvView("web")
 		}
 	}
 	return event.Message
