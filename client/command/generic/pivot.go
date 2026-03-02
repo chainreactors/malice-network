@@ -14,17 +14,19 @@ import (
 
 func ListPivotCmd(cmd *cobra.Command, con *core.Console) error {
 	all, _ := cmd.Flags().GetBool("all")
-	agents, err := ListPivot(con)
+	pivots, err := con.Rpc.GetContexts(con.Context(), &clientpb.Context{
+		Type: consts.ContextPivoting,
+	})
 	if err != nil {
 		return err
 	}
 
-	if len(agents) == 0 {
+	if len(pivots.Contexts) == 0 {
 		logs.Log.Info("No pivots\n")
 		return nil
 	}
 
-	PrintPivots(agents, con, all)
+	PrintPivots(pivots.Contexts, con, all)
 	return nil
 }
 
@@ -39,11 +41,22 @@ func ListPivot(con *core.Console) ([]*output.PivotingContext, error) {
 	return ctxs, nil
 }
 
-func PrintPivots(pivots []*output.PivotingContext, con *core.Console, all bool) {
+func PrintPivots(contexts []*clientpb.Context, con *core.Console, all bool) {
 	var rowEntries []table.Row
-	for _, pivot := range pivots {
+	for _, ctx := range contexts {
+		pivot, err := output.ToContext[*output.PivotingContext](ctx)
+		if err != nil {
+			continue
+		}
+
+		sessionID := ""
+		if ctx.Session != nil {
+			sessionID = ctx.Session.SessionId
+		}
+
 		row := table.NewRow(
 			table.RowData{
+				"Session":    sessionID,
 				"Enable":     fmt.Sprintf("%t", pivot.Enable),
 				"Listener":   pivot.Listener,
 				"Pipeline":   pivot.Pipeline,
@@ -58,6 +71,7 @@ func PrintPivots(pivots []*output.PivotingContext, con *core.Console, all bool) 
 	}
 
 	tableModel := tui.NewTable([]table.Column{
+		table.NewColumn("Session", "Session", 10),
 		table.NewColumn("Enable", "Enable", 6),
 		table.NewColumn("Listener", "Listener", 10),
 		table.NewColumn("Pipeline", "Pipeline", 10),
@@ -70,5 +84,4 @@ func PrintPivots(pivots []*output.PivotingContext, con *core.Console, all bool) 
 	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
 	con.Log.Console(tableModel.View())
-	//tui.Reset()
 }
