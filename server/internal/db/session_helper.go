@@ -230,6 +230,21 @@ func RemoveSession(sessionID string) error {
 	return result.Error
 }
 
+// RecoverRemovedSession finds a soft-deleted session and resets is_removed flag.
+// Returns nil,nil if no removed session found.
+func RecoverRemovedSession(sessionID string) (*models.Session, error) {
+	var session models.Session
+	result := Session().Where("session_id = ? AND is_removed = ?", sessionID, true).First(&session)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	session.IsRemoved = false
+	if err := Session().Save(&session).Error; err != nil {
+		return nil, err
+	}
+	return &session, nil
+}
+
 func UpdateSession(sessionID, note, group string) error {
 	var session models.Session
 	result := Session().Where("session_id = ?", sessionID).First(&session)

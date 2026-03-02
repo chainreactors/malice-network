@@ -78,8 +78,15 @@ func (rpc *Server) Checkin(ctx context.Context, req *implantpb.Ping) (*clientpb.
 	var sess *core.Session
 	if sess, err = core.Sessions.Get(sid); err != nil {
 		dbSess, err := db.FindSession(sid)
-		if err != nil || dbSess == nil {
+		if err != nil {
 			return nil, err
+		}
+		if dbSess == nil {
+			// session was soft-deleted, try to recover it
+			dbSess, err = db.RecoverRemovedSession(sid)
+			if err != nil || dbSess == nil {
+				return nil, err
+			}
 		}
 		dbSess.LastCheckin = getTimestamp(ctx)
 		sess, err = core.RecoverSession(dbSess)

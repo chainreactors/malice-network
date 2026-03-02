@@ -170,6 +170,7 @@ func (pipeline *TCPPipeline) startAcceptLoop(ln net.Listener, logPrefix string) 
 
 // HandleConnection 处理单个连接
 func (pipeline *TCPPipeline) HandleConnection(conn net.Conn) {
+	defer conn.Close()
 	peekConn, err := pipeline.WrapConn(conn)
 	if err != nil {
 		logs.Log.Errorf("%s wrap conn error: %v", pipeline.Name, err)
@@ -215,7 +216,6 @@ func (pipeline *TCPPipeline) handlePulse(conn *cryptostream.Conn) {
 }
 
 func (pipeline *TCPPipeline) handleBeacon(conn *cryptostream.Conn) {
-	defer conn.Close()
 	connect, err := core.GetConnection(conn, pipeline.ID(), pipeline.SecureConfig)
 	if err != nil {
 		logs.Log.Debugf("peek read header error: %s %v", conn.RemoteAddr(), err)
