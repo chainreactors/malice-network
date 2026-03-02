@@ -139,3 +139,22 @@ func UpdateSaasConfig(n *SaasConfig) error {
 	}
 	return nil
 }
+
+func GetAcmeConfig() *AcmeConfig {
+	a := &AcmeConfig{}
+	err := config.MapStruct("server.acme", a)
+	if err != nil {
+		logs.Log.Errorf("Failed to map acme config %s", err)
+		return nil
+	}
+	return a
+}
+
+func UpdateAcmeConfig(a *AcmeConfig) error {
+	err := config.Set("server.acme", a)
+	if err != nil {
+		logs.Log.Errorf("Failed to update acme config %s", err)
+		return err
+	}
+	return nil
+}

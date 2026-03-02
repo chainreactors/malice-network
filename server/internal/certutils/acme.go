@@ -1,175 +1,255 @@
 package certutils
 
 import (
-	"context"
-	"crypto/tls"
+	"crypto"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/x509"
+	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"github.com/chainreactors/IoM-go/proto/client/clientpb"
-	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/utils/fileutils"
-	"golang.org/x/crypto/acme/autocert"
 	"os"
 	"path/filepath"
-	"sync"
-	"time"
+
+	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/server/internal/configs"
+	"github.com/go-acme/lego/v4/certificate"
+	"github.com/go-acme/lego/v4/challenge"
+	"github.com/go-acme/lego/v4/lego"
+	"github.com/go-acme/lego/v4/providers/dns/alidns"
+	"github.com/go-acme/lego/v4/providers/dns/cloudflare"
+	"github.com/go-acme/lego/v4/providers/dns/dnspod"
+	"github.com/go-acme/lego/v4/providers/dns/route53"
+	"github.com/go-acme/lego/v4/registration"
 )
 
 const (
-	// ACMEDirName - Name of dir to store ACME certs
-	ACMEDirName  = "acme"
-	ACMERootPath = "/.well-known/acme-challenge/"
+	acmeAccountKeyFile  = "acme_account_key.pem"
+	acmeAccountInfoFile = "acme_account.json"
 )
 
-type ACMEManager struct {
-	manager *autocert.Manager
-	domains map[string]bool
-	mutex   sync.RWMutex
+var SupportedProviders = []string{"cloudflare", "alidns", "dnspod", "route53"}
+
+// AcmeUser implements registration.User interface for lego
+type AcmeUser struct {
+	Email        string                 `json:"email"`
+	Registration *registration.Resource `json:"registration"`
+	key          crypto.PrivateKey
 }
 
-var (
-	globalACMEManager *ACMEManager
-	acmeOnce          sync.Once
-)
-
-func GetACMEManager() *ACMEManager {
-	acmeOnce.Do(func() {
-		globalACMEManager = &ACMEManager{
-			domains: make(map[string]bool),
-		}
-		acmeDir := GetACMEDir()
-		cacheDir := filepath.Join(acmeDir, "cache")
-		globalACMEManager.manager = &autocert.Manager{
-			Cache:      autocert.DirCache(cacheDir),
-			Prompt:     autocert.AcceptTOS,
-			HostPolicy: globalACMEManager.hostPolicy,
-		}
-	})
-	return globalACMEManager
+func (u *AcmeUser) GetEmail() string {
+	return u.Email
 }
 
-func (a *ACMEManager) RegisterDomain(domain string) {
-	a.mutex.Lock()
-	defer a.mutex.Unlock()
-	a.domains[domain] = true
-	logs.Log.Infof("Registered domain '%s' for ACME", domain)
+func (u *AcmeUser) GetRegistration() *registration.Resource {
+	return u.Registration
 }
 
-func (a *ACMEManager) hostPolicy(ctx context.Context, host string) error {
-	a.mutex.RLock()
-	defer a.mutex.RUnlock()
-	if a.domains[host] {
-		return nil
-	}
-	return fmt.Errorf("host %s not allowed for ACME", host)
+func (u *AcmeUser) GetPrivateKey() crypto.PrivateKey {
+	return u.key
 }
 
-func (a *ACMEManager) GetManager() *autocert.Manager {
-	return a.manager
-}
+// loadOrCreateAccount loads an existing ACME account or creates a new one
+func loadOrCreateAccount(email string) (*AcmeUser, error) {
+	certsDir := configs.GetCertDir()
+	keyPath := filepath.Join(certsDir, acmeAccountKeyFile)
+	infoPath := filepath.Join(certsDir, acmeAccountInfoFile)
 
-// GetACMEDir - Dir to store ACME certs
-func GetACMEDir() string {
-	dir, err := os.Getwd()
-	if err != nil {
-		logs.Log.Errorf("Failed to get work dir %s", err)
-		return ""
-	}
-	acmePath := filepath.Join(dir, ACMEDirName)
-	if _, err := os.Stat(acmePath); os.IsNotExist(err) {
-		logs.Log.Infof("[mkdir] %s", acmePath)
-		os.MkdirAll(acmePath, 0700)
-	}
-	return acmePath
-}
+	user := &AcmeUser{}
 
-func isCertValid(certPath string) bool {
-	certPEM, err := os.ReadFile(certPath)
-	if err != nil {
-		return false
-	}
-	block, _ := pem.Decode(certPEM)
-	if block == nil {
-		return false
-	}
-	cert, err := x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		return false
-	}
-	return cert.NotAfter.After(time.Now())
-}
+	// Try to load existing account key
+	keyPEM, err := os.ReadFile(keyPath)
+	if err == nil {
+		block, _ := pem.Decode(keyPEM)
+		if block != nil {
+			privKey, parseErr := x509.ParseECPrivateKey(block.Bytes)
+			if parseErr == nil {
+				user.key = privKey
 
-func GetAcmeTls(config *clientpb.TLS) (*clientpb.TLS, error) {
-	config.Domain = filepath.Base(config.Domain)
-	acmeMgr := GetACMEManager()
+				// Try to load account info
+				infoData, infoErr := os.ReadFile(infoPath)
+				if infoErr == nil {
+					json.Unmarshal(infoData, user)
+				}
 
-	// mkdir domain dir
-	domainDir := filepath.Join(GetACMEDir(), config.Domain)
-	if _, err := os.Stat(domainDir); os.IsNotExist(err) {
-		err = os.MkdirAll(domainDir, 0700)
-		if err != nil {
-			logs.Log.Errorf("Failed to create domain dir: %v", err)
+				// Update email if different
+				if email != "" && user.Email != email {
+					user.Email = email
+				}
+
+				if user.Registration != nil {
+					return user, nil
+				}
+			}
 		}
 	}
-	certPath := filepath.Join(domainDir, config.Domain+".crt")
-	keyPath := filepath.Join(domainDir, config.Domain+".key")
 
-	if fileutils.Exist(certPath) && fileutils.Exist(keyPath) && isCertValid(certPath) {
-		certPEM, _ := os.ReadFile(certPath)
-		keyPEM, _ := os.ReadFile(keyPath)
-		return &clientpb.TLS{
-			Cert: &clientpb.Cert{
-				Cert: string(certPEM),
-				Key:  string(keyPEM),
-			},
-			Domain: config.Domain,
-			Acme:   config.Acme,
-			Enable: config.Enable,
-		}, nil
+	// Generate new key if needed
+	if user.key == nil {
+		privKey, genErr := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		if genErr != nil {
+			return nil, fmt.Errorf("failed to generate ACME account key: %w", genErr)
+		}
+		user.key = privKey
+
+		// Save key
+		keyBytes, marshalErr := x509.MarshalECPrivateKey(privKey)
+		if marshalErr != nil {
+			return nil, fmt.Errorf("failed to marshal ACME account key: %w", marshalErr)
+		}
+		keyPemBlock := pem.EncodeToMemory(&pem.Block{
+			Type:  "EC PRIVATE KEY",
+			Bytes: keyBytes,
+		})
+		if writeErr := os.WriteFile(keyPath, keyPemBlock, 0600); writeErr != nil {
+			return nil, fmt.Errorf("failed to save ACME account key: %w", writeErr)
+		}
 	}
 
-	logs.Log.Infof("Attempting to fetch let's encrypt certificate for '%s' ...", config.Domain)
-
-	hello := &tls.ClientHelloInfo{
-		ServerName: config.Domain,
-		//SupportedProtos: []string{acme.ALPNProto},
+	if email != "" {
+		user.Email = email
 	}
-	tlsCert, err := acmeMgr.manager.GetCertificate(hello)
+
+	return user, nil
+}
+
+// saveAccount persists the ACME account info to disk
+func saveAccount(user *AcmeUser) error {
+	certsDir := configs.GetCertDir()
+	infoPath := filepath.Join(certsDir, acmeAccountInfoFile)
+
+	data, err := json.MarshalIndent(user, "", "  ")
 	if err != nil {
-		logs.Log.Errorf("Failed to get certificate for domain '%s': %v", config.Domain, err)
-		return nil, err
+		return fmt.Errorf("failed to marshal account info: %w", err)
+	}
+	return os.WriteFile(infoPath, data, 0600)
+}
+
+// NewDNSProvider creates a DNS challenge provider based on provider name and credentials
+func NewDNSProvider(providerName string, credentials map[string]string) (challenge.Provider, error) {
+	switch providerName {
+	case "cloudflare":
+		cfg := cloudflare.NewDefaultConfig()
+		if token, ok := credentials["api_token"]; ok && token != "" {
+			cfg.AuthToken = token
+		} else {
+			cfg.AuthEmail = credentials["api_email"]
+			cfg.AuthKey = credentials["api_key"]
+		}
+		return cloudflare.NewDNSProviderConfig(cfg)
+
+	case "alidns":
+		cfg := alidns.NewDefaultConfig()
+		cfg.APIKey = credentials["access_key"]
+		cfg.SecretKey = credentials["secret_key"]
+		if region, ok := credentials["region"]; ok && region != "" {
+			cfg.RegionID = region
+		}
+		return alidns.NewDNSProviderConfig(cfg)
+
+	case "dnspod":
+		cfg := dnspod.NewDefaultConfig()
+		cfg.LoginToken = credentials["api_id"] + "," + credentials["api_token"]
+		return dnspod.NewDNSProviderConfig(cfg)
+
+	case "route53":
+		cfg := route53.NewDefaultConfig()
+		cfg.AccessKeyID = credentials["access_key_id"]
+		cfg.SecretAccessKey = credentials["secret_access_key"]
+		if region, ok := credentials["region"]; ok && region != "" {
+			cfg.Region = region
+		}
+		return route53.NewDNSProviderConfig(cfg)
+
+	default:
+		return nil, fmt.Errorf("unsupported DNS provider: %s (supported: %v)", providerName, SupportedProviders)
+	}
+}
+
+// ObtainCert obtains a certificate for the given domain using DNS-01 challenge via lego.
+// Parameters from the request take precedence over server config defaults.
+func ObtainCert(domain, providerName, email, caURL string, credentials map[string]string) (certPEM, keyPEM []byte, err error) {
+	// Merge with server config defaults
+	acmeCfg := configs.GetAcmeConfig()
+	if acmeCfg != nil {
+		if providerName == "" {
+			providerName = acmeCfg.Provider
+		}
+		if email == "" {
+			email = acmeCfg.Email
+		}
+		if caURL == "" {
+			caURL = acmeCfg.CAUrl
+		}
+		if len(credentials) == 0 && len(acmeCfg.Credentials) > 0 {
+			credentials = acmeCfg.Credentials
+		}
 	}
 
-	logs.Log.Infof("Successfully obtained certificate for domain '%s'", config.Domain)
-
-	var certPEMBytes []byte
-	for _, cert := range tlsCert.Certificate {
-		certPEMBytes = append(certPEMBytes, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert})...)
+	if caURL == "" {
+		caURL = lego.LEDirectoryProduction
 	}
 
-	keyBytes, err := x509.MarshalPKCS8PrivateKey(tlsCert.PrivateKey)
+	if providerName == "" {
+		return nil, nil, fmt.Errorf("DNS provider is required, set via --provider or server acme config")
+	}
+
+	// Load or create ACME account
+	user, err := loadOrCreateAccount(email)
 	if err != nil {
-		return nil, err
-	}
-	keyPEMBytes := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: keyBytes})
-
-	// Save certificate to local filesystem
-	if saveErr := os.WriteFile(certPath, certPEMBytes, 0600); saveErr != nil {
-		logs.Log.Warnf("Failed to save certificate to %s: %v", certPath, saveErr)
+		return nil, nil, fmt.Errorf("failed to load/create ACME account: %w", err)
 	}
 
-	if saveErr := os.WriteFile(keyPath, keyPEMBytes, 0600); saveErr != nil {
-		logs.Log.Warnf("Failed to save private key to %s: %v", keyPath, saveErr)
-	}
-	return &clientpb.TLS{
-		Cert: &clientpb.Cert{
-			Cert: string(certPEMBytes),
-			Key:  string(keyPEMBytes),
-		},
-		Domain: config.Domain,
-		Acme:   config.Acme,
-		Enable: config.Enable,
-	}, nil
+	// Create lego config
+	config := lego.NewConfig(user)
+	config.CADirURL = caURL
+	config.UserAgent = "malice-network/1.0"
 
+	// Create lego client
+	client, err := lego.NewClient(config)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create ACME client: %w", err)
+	}
+
+	// Create and set DNS provider
+	dnsProvider, err := NewDNSProvider(providerName, credentials)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create DNS provider: %w", err)
+	}
+
+	err = client.Challenge.SetDNS01Provider(dnsProvider)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to set DNS-01 provider: %w", err)
+	}
+
+	// Register account if needed
+	if user.Registration == nil {
+		logs.Log.Infof("Registering ACME account with email: %s", user.Email)
+		reg, regErr := client.Registration.Register(registration.RegisterOptions{
+			TermsOfServiceAgreed: true,
+		})
+		if regErr != nil {
+			return nil, nil, fmt.Errorf("failed to register ACME account: %w", regErr)
+		}
+		user.Registration = reg
+		if saveErr := saveAccount(user); saveErr != nil {
+			logs.Log.Warnf("Failed to save ACME account info: %v", saveErr)
+		}
+	}
+
+	// Obtain certificate
+	logs.Log.Infof("Requesting certificate for domain: %s (provider: %s, CA: %s)", domain, providerName, caURL)
+	request := certificate.ObtainRequest{
+		Domains: []string{domain},
+		Bundle:  true,
+	}
+
+	certificates, err := client.Certificate.Obtain(request)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to obtain certificate for %s: %w", domain, err)
+	}
+
+	logs.Log.Infof("Successfully obtained certificate for domain: %s", domain)
+	return certificates.Certificate, certificates.PrivateKey, nil
 }

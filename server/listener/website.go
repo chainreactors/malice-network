@@ -67,7 +67,6 @@ func (w *Website) ID() string {
 
 func (w *Website) Start() error {
 	mux := http.NewServeMux()
-	mux.HandleFunc(certutils.ACMERootPath, w.acmeChallengeHandler)
 	mux.HandleFunc(w.rootPath, w.websiteContentHandler)
 
 	ln, err := net.Listen("tcp", fmt.Sprintf(":%d", w.port))
@@ -229,13 +228,4 @@ func (w *Website) AddContent(content *clientpb.WebContent) error {
 	}
 	w.mu.Unlock()
 	return nil
-}
-
-// acmeChallengeHandler
-func (w *Website) acmeChallengeHandler(resp http.ResponseWriter, req *http.Request) {
-	if certutils.GetACMEManager() == nil {
-		http.Error(resp, "ACME not enabled", http.StatusNotFound)
-		return
-	}
-	certutils.GetACMEManager().GetManager().HTTPHandler(nil)
 }

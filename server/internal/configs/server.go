@@ -66,6 +66,7 @@ type ServerConfig struct {
 	NotifyConfig  *NotifyConfig `config:"notify" yaml:"notify"`
 	GithubConfig  *GithubConfig `config:"github" yaml:"github"`
 	SaasConfig    *SaasConfig   `config:"saas" yaml:"saas"`
+	AcmeConfig    *AcmeConfig   `config:"acme" yaml:"acme"`
 }
 
 func (c *ServerConfig) Address() string {
@@ -181,4 +182,23 @@ type SaasConfig struct {
 	Enable bool   `config:"enable" yaml:"enable"`
 	Url    string `config:"url" default:"" yaml:"url"`
 	Token  string `config:"token" default:"" yaml:"token"`
+}
+
+type AcmeConfig struct {
+	Email       string            `config:"email" yaml:"email"`
+	CAUrl       string            `config:"ca_url" default:"https://acme-v02.api.letsencrypt.org/directory" yaml:"ca_url"`
+	Provider    string            `config:"provider" yaml:"provider"`
+	Credentials map[string]string `config:"credentials" yaml:"credentials"`
+}
+
+func (a *AcmeConfig) ToProtobuf() *clientpb.AcmeConfig {
+	if a == nil {
+		return &clientpb.AcmeConfig{}
+	}
+	return &clientpb.AcmeConfig{
+		Email:       a.Email,
+		CaUrl:       a.CAUrl,
+		Provider:    a.Provider,
+		Credentials: a.Credentials,
+	}
 }

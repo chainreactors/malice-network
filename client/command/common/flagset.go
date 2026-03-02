@@ -368,3 +368,20 @@ func ParseImportCertFlags(cmd *cobra.Command) (*clientpb.TLS, error) {
 	}
 	return tls, nil
 }
+
+func AcmeFlagSet(f *pflag.FlagSet) {
+	f.String("domain", "", "domain to obtain certificate for")
+	f.String("provider", "", "DNS provider: cloudflare, alidns, dnspod, route53")
+	f.String("email", "", "ACME account email")
+	f.String("ca-url", "", "ACME CA directory URL")
+	f.StringToString("cred", nil, "credentials as key=value pairs")
+	SetFlagSetGroup(f, "acme")
+}
+
+func AcmeConfigFlagSet(f *pflag.FlagSet) {
+	f.String("email", "", "ACME account email")
+	f.String("ca-url", "", "ACME CA directory URL")
+	f.String("provider", "", "DNS provider: cloudflare, alidns, dnspod, route53")
+	f.StringToString("cred", nil, "credentials as key=value pairs")
+	SetFlagSetGroup(f, "acme_config")
+}

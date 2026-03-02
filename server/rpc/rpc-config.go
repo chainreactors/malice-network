@@ -122,3 +122,24 @@ func (rpc *Server) RefreshConfig(ctx context.Context, req *clientpb.Empty) (*cli
 	}
 	return &clientpb.Empty{}, nil
 }
+
+func (rpc *Server) GetAcmeConfig(ctx context.Context, req *clientpb.Empty) (*clientpb.AcmeConfig, error) {
+	acmeConfig := configs.GetAcmeConfig()
+	if acmeConfig == nil {
+		return &clientpb.AcmeConfig{}, nil
+	}
+	return acmeConfig.ToProtobuf(), nil
+}
+
+func (rpc *Server) UpdateAcmeConfig(ctx context.Context, req *clientpb.AcmeConfig) (*clientpb.Empty, error) {
+	err := configs.UpdateAcmeConfig(&configs.AcmeConfig{
+		Email:       req.Email,
+		CAUrl:       req.CaUrl,
+		Provider:    req.Provider,
+		Credentials: req.Credentials,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &clientpb.Empty{}, nil
+}

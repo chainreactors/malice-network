@@ -17,7 +17,6 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/utils"
-	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"google.golang.org/grpc"
@@ -295,8 +294,6 @@ func (lns *listener) Handler() {
 			handlerErr = lns.handlerRemAgentLog(msg.Job)
 		case consts.CtrlRemAgentStop:
 			handlerErr = lns.handlerRemAgentStop(msg.Job)
-		case consts.CtrlAcme:
-			handlerErr = lns.handlerAcme(msg.Job)
 		case consts.CtrlListenerSyncSession:
 			core.ListenerSessions.Add(msg.Session)
 			continue
@@ -655,60 +652,6 @@ func (lns *listener) handleStartRem(job *clientpb.Job) error {
 
 	lns.pipelines.Add(rem)
 	job.Name = rem.ID()
-	return nil
-}
-
-func (lns *listener) handlerAcme(job *clientpb.Job) error {
-	pipeline := job.GetPipeline()
-	var has80 bool
-	var website *Website
-	var websiteName string
-
-	for _, w := range lns.websites {
-		if w.port == 80 && w.Enable {
-			has80 = true
-			break
-		}
-	}
-
-	if !has80 {
-		websiteName = pipeline.Tls.Domain + "_acme"
-		web := &clientpb.Pipeline{
-			Name:       websiteName,
-			ListenerId: pipeline.ListenerId,
-			Enable:     false,
-			Ip:         lns.IP,
-			Body: &clientpb.Pipeline_Web{
-				Web: &clientpb.Website{
-					Name:     websiteName,
-					Root:     "/",
-					Port:     80,
-					Contents: make(map[string]*clientpb.WebContent),
-				},
-			},
-			Tls: pipeline.Tls,
-		}
-		var err error
-		website, err = StartWebsite(lns.Rpc, web, make(map[string]*clientpb.WebContent))
-		if err != nil {
-			return err
-		}
-		lns.websites[websiteName] = website
-	}
-
-	certutils.GetACMEManager().RegisterDomain(pipeline.Tls.Domain)
-	core.SafeGo(func() {
-		tls, err := certutils.GetAcmeTls(pipeline.GetTls())
-		if err != nil {
-			return
-		}
-		pipeline.Tls = tls
-		_, err = lns.Rpc.SaveAcmeCert(lns.Context(), pipeline)
-		if err != nil {
-			return
-		}
-	})
-
 	return nil
 }
 

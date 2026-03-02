@@ -58,28 +58,44 @@ cert self_signed --CN commonName --O "Example Organization" --C US --L "San Fran
 	}
 	common.BindFlag(selfSignCmd, common.SelfSignedFlagSet)
 
-	//	acmeCmd := &cobra.Command{
-	//		Use:   consts.CommandCertAcme,
-	//		Short: "generate a acme cert",
-	//		RunE: func(cmd *cobra.Command, args []string) error {
-	//			return AcmeCmd(cmd, con)
-	//		},
-	//		Example: `~~~
-	//// generate a acme cert
-	//cert acme --domain *.example.com --pipeline http
-	//~~~`,
-	//	}
-	//	common.BindFlag(acmeCmd, func(f *pflag.FlagSet) {
-	//		f.String("domain", "", "acme domain")
-	//		f.String("pipeline", "", "pipeline name")
-	//	})
+	acmeCmd := &cobra.Command{
+		Use:   consts.CommandCertAcme,
+		Short: "obtain an ACME certificate via DNS-01 challenge",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return AcmeCmd(cmd, con)
+		},
+		Example: `~~~
+// obtain cert using server config defaults
+cert acme --domain *.example.com
 
-	//acmeCmd.MarkFlagRequired("domain")
-	//acmeCmd.MarkFlagRequired("pipeline")
-	//
-	//common.BindFlagCompletions(acmeCmd, func(comp carapace.ActionMap) {
-	//	comp["pipeline"] = common.HttpPipelineCompleter(con)
-	//})
+// obtain cert with explicit provider
+cert acme --domain example.com --provider cloudflare --cred api_token=xxx
+
+// obtain cert using Let's Encrypt staging
+cert acme --domain example.com --ca-url https://acme-staging-v02.api.letsencrypt.org/directory
+~~~`,
+	}
+	common.BindFlag(acmeCmd, common.AcmeFlagSet)
+	_ = acmeCmd.MarkFlagRequired("domain")
+
+	acmeConfigCmd := &cobra.Command{
+		Use:   consts.CommandCertAcmeConfig,
+		Short: "view or update ACME configuration",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return AcmeConfigCmd(cmd, con)
+		},
+		Example: `~~~
+// view current ACME config
+cert acme_config
+
+// set default ACME config
+cert acme_config --email admin@example.com --provider cloudflare --cred api_token=xxx
+
+// update only email
+cert acme_config --email new@example.com
+~~~`,
+	}
+	common.BindFlag(acmeConfigCmd, common.AcmeConfigFlagSet)
 
 	delCmd := &cobra.Command{
 		Use:  consts.CommandCertDelete,
@@ -132,7 +148,7 @@ cert update cert-name --cert cert_path --key key_path --type imported
 		},
 		Example: `~~~
 // download a cert
-cert download cert-name -o cert_path 
+cert download cert-name -o cert_path
 ~~~`,
 	}
 
@@ -146,8 +162,7 @@ cert download cert-name -o cert_path
 	// Enable wizard for cert commands that need configuration
 	common.EnableWizardForCommands(importCmd, selfSignCmd, updateCmd)
 
-	certCmd.AddCommand(importCmd, selfSignCmd, delCmd, updateCmd, downloadCmd)
-	//certCmd.AddCommand(importCmd, selfSignCmd, acmeCmd, delCmd, updateCmd, downloadCmd)
+	certCmd.AddCommand(importCmd, selfSignCmd, acmeCmd, acmeConfigCmd, delCmd, updateCmd, downloadCmd)
 	return []*cobra.Command{
 		certCmd,
 	}

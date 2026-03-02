@@ -113,18 +113,46 @@ func (rpc *Server) UpdateCertificate(ctx context.Context, req *clientpb.TLS) (*c
 }
 
 func (rpc *Server) GenerateAcmeCert(ctx context.Context, req *clientpb.Pipeline) (*clientpb.Empty, error) {
-	lns, err := core.Listeners.Get(req.ListenerId)
+	return nil, fmt.Errorf("deprecated: use ObtainAcmeCert with DNS-01 challenge instead")
+}
+
+func (rpc *Server) ObtainAcmeCert(ctx context.Context, req *clientpb.AcmeRequest) (*clientpb.Empty, error) {
+	certPEM, keyPEM, err := certutils.ObtainCert(
+		req.Domain,
+		req.Provider,
+		req.Email,
+		req.CaUrl,
+		req.Credentials,
+	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("ACME certificate obtain failed: %w", err)
 	}
-	job := &core.Job{
-		ID:       core.NextJobID(),
-		Pipeline: req,
-		Name:     req.Name,
+
+	// Check if cert already exists, update or create
+	existing, _ := db.FindCertificate(req.Domain)
+	if existing != nil {
+		err = db.UpdateCert(req.Domain, string(certPEM), string(keyPEM), "")
+		if err != nil {
+			return nil, fmt.Errorf("failed to update certificate: %w", err)
+		}
+	} else {
+		certModel := &models.Certificate{
+			Name:    req.Domain,
+			Type:    "acme",
+			Domain:  req.Domain,
+			CertPEM: string(certPEM),
+			KeyPEM:  string(keyPEM),
+		}
+		err = db.SaveCertificate(certModel)
+		if err != nil {
+			return nil, fmt.Errorf("failed to save certificate: %w", err)
+		}
 	}
-	lns.PushCtrl(&clientpb.JobCtrl{
-		Ctrl: consts.CtrlAcme,
-		Job:  job.ToProtobuf()})
+
+	certModel, _ := db.FindCertificate(req.Domain)
+	if certModel != nil {
+		return rpc.publishCertEvent(certModel)
+	}
 	return &clientpb.Empty{}, nil
 }
 
@@ -137,11 +165,7 @@ func (rpc *Server) DownloadCertificate(ctx context.Context, req *clientpb.Cert) 
 }
 
 func (rpc *Server) SaveAcmeCert(ctx context.Context, req *clientpb.Pipeline) (*clientpb.Empty, error) {
-	certModel, err := db.SaveCertFromTLS(req.Tls, req.Name, req.ListenerId)
-	if err != nil {
-		return nil, err
-	}
-	return rpc.publishCertEvent(certModel)
+	return nil, fmt.Errorf("deprecated: use ObtainAcmeCert with DNS-01 challenge instead")
 }
 
 func (rpc *Server) publishCertEvent(certModel *models.Certificate) (*clientpb.Empty, error) {
