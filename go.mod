@@ -47,7 +47,8 @@ require (
 	github.com/wabzsy/gonut v1.0.0
 	github.com/yuin/gopher-lua v1.1.1
 	gopkg.in/yaml.v3 v3.0.1
-	gorm.io/gorm v1.25.4
+	gorm.io/driver/postgres v1.6.0
+	gorm.io/gorm v1.25.10
 	layeh.com/gopher-luar v1.0.11
 )
 
@@ -62,7 +63,6 @@ require (
 	golang.org/x/sys v0.41.0 // indirect
 	golang.org/x/term v0.40.0
 	golang.org/x/text v0.34.0
-	golang.org/x/time v0.14.0 // indirect
 	google.golang.org/grpc v1.78.0
 	google.golang.org/protobuf v1.36.11
 )
@@ -135,6 +135,10 @@ require (
 	github.com/gookit/goutil v0.6.15 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
+	github.com/jackc/pgpassfile v1.0.0 // indirect
+	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
+	github.com/jackc/pgx/v5 v5.6.0 // indirect
+	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/json-iterator/go v1.1.13-0.20220915233716-71ac16282d12 // indirect
@@ -207,8 +211,8 @@ replace (
 replace (
 	github.com/chainreactors/IoM-go => ./external/IoM-go
 	github.com/chainreactors/proxyclient => github.com/chainreactors/proxyclient v1.0.3
-	github.com/chainreactors/tui => ./external/tui
 	//github.com/chainreactors/rem => github.com/chainreactors/rem-community v0.2.4
+	github.com/chainreactors/tui => ./external/tui
 	github.com/mark3labs/mcp-go => ./external/mcp-go
 	github.com/reeflective/console => ./external/console
 	github.com/reeflective/readline => ./external/readline

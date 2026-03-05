@@ -753,7 +753,7 @@ func UpdateBuilderLog(name string, logEntry string) {
 	}
 	err := Session().Model(&models.Artifact{}).
 		Where("name = ?", name).
-		Update("log", gorm.Expr("ifnull(log, '') || ?", logEntry)).
+		Update("log", Adapter.AppendLogExpr(logEntry)).
 		Error
 
 	if err != nil {

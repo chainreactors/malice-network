@@ -2,7 +2,7 @@ package rpc
 
 import (
 	"context"
-	"fmt"
+
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
@@ -61,12 +61,9 @@ func (rpc *Server) ListRems(ctx context.Context, req *clientpb.Listener) (*clien
 }
 
 func (rpc *Server) StartRem(ctx context.Context, req *clientpb.CtrlPipeline) (*clientpb.Empty, error) {
-	listenerID := req.GetListenerId()
-	if listenerID == "" && req.Pipeline != nil {
-		listenerID = req.Pipeline.ListenerId
-	}
-	if listenerID == "" {
-		return nil, fmt.Errorf("listener_id required")
+	listenerID, err := resolveListenerID(req)
+	if err != nil {
+		return nil, err
 	}
 
 	remDB, err := db.FindPipelineByListener(req.Name, listenerID)
@@ -96,12 +93,9 @@ func (rpc *Server) StartRem(ctx context.Context, req *clientpb.CtrlPipeline) (*c
 }
 
 func (rpc *Server) StopRem(ctx context.Context, req *clientpb.CtrlPipeline) (*clientpb.Empty, error) {
-	listenerID := req.GetListenerId()
-	if listenerID == "" && req.Pipeline != nil {
-		listenerID = req.Pipeline.ListenerId
-	}
-	if listenerID == "" {
-		return nil, fmt.Errorf("listener_id required")
+	listenerID, err := resolveListenerID(req)
+	if err != nil {
+		return nil, err
 	}
 
 	lns, err := core.Listeners.Get(listenerID)
@@ -139,12 +133,9 @@ func (rpc *Server) StopRem(ctx context.Context, req *clientpb.CtrlPipeline) (*cl
 }
 
 func (rpc *Server) DeleteRem(ctx context.Context, req *clientpb.CtrlPipeline) (*clientpb.Empty, error) {
-	listenerID := req.GetListenerId()
-	if listenerID == "" && req.Pipeline != nil {
-		listenerID = req.Pipeline.ListenerId
-	}
-	if listenerID == "" {
-		return nil, fmt.Errorf("listener_id required")
+	listenerID, err := resolveListenerID(req)
+	if err != nil {
+		return nil, err
 	}
 
 	remDB, err := db.FindPipelineByListener(req.Name, listenerID)

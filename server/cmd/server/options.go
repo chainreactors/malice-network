@@ -253,7 +253,7 @@ func (opt *Options) PrepareConfig(defaultConfig []byte) error {
 }
 
 func (opt *Options) PrepareServer() error {
-	db.Client = db.NewDBClient()
+	db.Client = db.NewDBClient(opt.Server.DatabaseConfig)
 
 	// Backfill fingerprints for operators created before the fingerprint column existed
 	if err := db.BackfillOperatorFingerprints(); err != nil {

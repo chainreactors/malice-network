@@ -13,6 +13,36 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 )
 
+// resolveListenerID resolves the listener ID from a CtrlPipeline request.
+// If listener_id is not provided, it queries the database by pipeline name.
+// Returns an error if no pipeline is found, or if multiple pipelines share the same name.
+func resolveListenerID(req *clientpb.CtrlPipeline) (string, error) {
+	listenerID := req.GetListenerId()
+	if listenerID == "" && req.Pipeline != nil {
+		listenerID = req.Pipeline.ListenerId
+	}
+	if listenerID != "" {
+		return listenerID, nil
+	}
+
+	// No listener_id provided, try to resolve by pipeline name
+	if req.Name == "" {
+		return "", fmt.Errorf("pipeline name required")
+	}
+	pipelines, err := db.NewPipelineQuery().WhereName(req.Name).Find()
+	if err != nil {
+		return "", err
+	}
+	switch len(pipelines) {
+	case 0:
+		return "", fmt.Errorf("pipeline '%s' not found", req.Name)
+	case 1:
+		return pipelines[0].ListenerId, nil
+	default:
+		return "", fmt.Errorf("multiple pipelines named '%s' found across listeners, please specify listener_id", req.Name)
+	}
+}
+
 func (rpc *Server) RegisterPipeline(ctx context.Context, req *clientpb.Pipeline) (*clientpb.Empty, error) {
 	lns, err := core.Listeners.Get(req.ListenerId)
 	if err != nil {
@@ -59,12 +89,9 @@ func (rpc *Server) ListPipelines(ctx context.Context, req *clientpb.Listener) (*
 }
 
 func (rpc *Server) StartPipeline(ctx context.Context, req *clientpb.CtrlPipeline) (*clientpb.Empty, error) {
-	listenerID := req.GetListenerId()
-	if listenerID == "" && req.Pipeline != nil {
-		listenerID = req.Pipeline.ListenerId
-	}
-	if listenerID == "" {
-		return nil, fmt.Errorf("listener_id required")
+	listenerID, err := resolveListenerID(req)
+	if err != nil {
+		return nil, err
 	}
 
 	pipelineDB, err := db.FindPipelineByListener(req.Name, listenerID)
@@ -126,12 +153,9 @@ func (rpc *Server) StartPipeline(ctx context.Context, req *clientpb.CtrlPipeline
 }
 
 func (rpc *Server) StopPipeline(ctx context.Context, req *clientpb.CtrlPipeline) (*clientpb.Empty, error) {
-	listenerID := req.GetListenerId()
-	if listenerID == "" && req.Pipeline != nil {
-		listenerID = req.Pipeline.ListenerId
-	}
-	if listenerID == "" {
-		return nil, fmt.Errorf("listener_id required")
+	listenerID, err := resolveListenerID(req)
+	if err != nil {
+		return nil, err
 	}
 
 	lns, err := core.Listeners.Get(listenerID)
@@ -168,12 +192,9 @@ func (rpc *Server) StopPipeline(ctx context.Context, req *clientpb.CtrlPipeline)
 }
 
 func (rpc *Server) DeletePipeline(ctx context.Context, req *clientpb.CtrlPipeline) (*clientpb.Empty, error) {
-	listenerID := req.GetListenerId()
-	if listenerID == "" && req.Pipeline != nil {
-		listenerID = req.Pipeline.ListenerId
-	}
-	if listenerID == "" {
-		return nil, fmt.Errorf("listener_id required")
+	listenerID, err := resolveListenerID(req)
+	if err != nil {
+		return nil, err
 	}
 
 	pipelineDB, err := db.FindPipelineByListener(req.Name, listenerID)

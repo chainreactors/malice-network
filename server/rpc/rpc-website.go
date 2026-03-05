@@ -212,12 +212,20 @@ func (rpc *Server) StartWebsite(ctx context.Context, req *clientpb.CtrlPipeline)
 }
 
 func (rpc *Server) StopWebsite(ctx context.Context, req *clientpb.CtrlPipeline) (*clientpb.Empty, error) {
-	job, err := core.Jobs.GetByListener(req.Name, req.ListenerId)
+	listenerID, err := resolveListenerID(req)
+	if err != nil {
+		return nil, err
+	}
+
+	job, err := core.Jobs.GetByListener(req.Name, listenerID)
 	if err != nil {
 		return nil, err
 	}
 
 	err = db.DisablePipeline(job.Pipeline.Name)
+	if err != nil {
+		return nil, err
+	}
 	listener, err := core.Listeners.Get(job.Pipeline.ListenerId)
 	if err != nil {
 		return nil, err
@@ -227,9 +235,6 @@ func (rpc *Server) StopWebsite(ctx context.Context, req *clientpb.CtrlPipeline) 
 		Job:  job.ToProtobuf(),
 	})
 	listener.RemovePipeline(job.Pipeline)
-	if err != nil {
-		return nil, err
-	}
 	return &clientpb.Empty{}, nil
 }
 
@@ -242,6 +247,11 @@ func (rpc *Server) ListWebsites(ctx context.Context, req *clientpb.Listener) (*c
 }
 
 func (rpc *Server) DeleteWebsite(ctx context.Context, req *clientpb.CtrlPipeline) (*clientpb.Empty, error) {
+	listenerID, err := resolveListenerID(req)
+	if err != nil {
+		return nil, err
+	}
+
 	pipelineDB, err := db.FindPipeline(req.Name)
 	if err != nil {
 		return nil, err
@@ -257,7 +267,7 @@ func (rpc *Server) DeleteWebsite(ctx context.Context, req *clientpb.CtrlPipeline
 		return nil, err
 	}
 
-	job, err := core.Jobs.GetByListener(req.Name, req.ListenerId)
+	job, err := core.Jobs.GetByListener(req.Name, listenerID)
 	if err != nil {
 		return nil, err
 	}

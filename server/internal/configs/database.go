@@ -3,11 +3,11 @@ package configs
 import (
 	"errors"
 	"fmt"
-	"github.com/chainreactors/logs"
-	"gopkg.in/yaml.v3"
 	"net/url"
-	"os"
 	"path/filepath"
+	"strings"
+
+	"github.com/chainreactors/logs"
 )
 
 const (
@@ -21,53 +21,51 @@ const (
 
 var (
 	// ErrInvalidDialect - An invalid dialect was specified
-	ErrInvalidDialect      = errors.New("invalid SQL Dialect")
-	databaseFileName       = filepath.Join(ServerRootPath, "malice.db")
-	databaseConfigFileName = filepath.Join(ServerRootPath, "database.yaml")
+	ErrInvalidDialect = errors.New("invalid SQL Dialect")
+	databaseFileName  = filepath.Join(ServerRootPath, "malice.db")
 )
 
-// DatabaseConfig - Server config
+// DatabaseConfig - Database configuration
 type DatabaseConfig struct {
-	Dialect  string `json:"dialect" yaml:"dialect"`
-	Database string `json:"database" yaml:"database"`
-	Username string `json:"username" yaml:"username"`
-	Password string `json:"password" yaml:"password"`
-	Host     string `json:"host" yaml:"host"`
-	Port     uint16 `json:"port" yaml:"port"`
+	Dialect string `json:"dialect" config:"dialect" default:"sqlite3" yaml:"dialect"`
+	Database string `json:"database" config:"database" yaml:"database"`
+	Username string `json:"username" config:"username" yaml:"username"`
+	Password string `json:"password" config:"password" yaml:"password"`
+	Host     string `json:"host" config:"host" yaml:"host"`
+	Port     uint16 `json:"port" config:"port" yaml:"port"`
 
-	Params map[string]string `json:"params" yaml:"params"`
+	Params map[string]string `json:"params" config:"params" yaml:"params"`
 
-	MaxIdleConns int `json:"max_idle_conns" yaml:"max_idle_conns"`
-	MaxOpenConns int `json:"max_open_conns" yaml:"max_open_conns"`
+	MaxIdleConns int `json:"max_idle_conns" config:"max_idle_conns" default:"10" yaml:"max_idle_conns"`
+	MaxOpenConns int `json:"max_open_conns" config:"max_open_conns" default:"100" yaml:"max_open_conns"`
 
-	LogLevel string `json:"log_level" yaml:"log_level"`
+	LogLevel string `json:"log_level" config:"log_level" default:"warn" yaml:"log_level"`
 }
 
 // DSN - Get the db connections string
-// https://github.com/go-sql-driver/mysql#examples
 func (c *DatabaseConfig) DSN() (string, error) {
 	switch c.Dialect {
 	case Sqlite:
 		filePath := databaseFileName
 		params := encodeParams(c.Params)
 		return fmt.Sprintf("file:%s?%s", filePath, params), nil
-	//case MySQL:
-	//	user := url.QueryEscape(c.Username)
-	//	password := url.QueryEscape(c.Password)
-	//	db := url.QueryEscape(c.Database)
-	//	host := fmt.Sprintf("%s:%d", url.QueryEscape(c.Host), c.Port)
-	//	params := encodeParams(c.Params)
-	//	databaseConfigLog.Infof("Connecting to MySQL database %s@%s/%s", user, host, db)
-	//	return fmt.Sprintf("%s:%s@tcp(%s)/%s?%s", user, password, host, db, params), nil
-	//case Postgres:
-	//	user := url.QueryEscape(c.Username)
-	//	password := url.QueryEscape(c.Password)
-	//	db := url.QueryEscape(c.Database)
-	//	host := url.QueryEscape(c.Host)
-	//	port := c.Port
-	//	params := encodeParams(c.Params)
-	//	databaseConfigLog.Infof("Connecting to Postgres database %s@%s:%d/%s", user, host, port, db)
-	//	return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s %s", host, port, user, password, db, params), nil
+	case Postgres:
+		host := c.Host
+		if host == "" {
+			host = "localhost"
+		}
+		port := c.Port
+		if port == 0 {
+			port = 5432
+		}
+		db := c.Database
+		if db == "" {
+			db = "malice"
+		}
+		params := encodeParamsPostgres(c.Params)
+		logs.Log.Infof("Connecting to PostgreSQL database %s@%s:%d/%s", c.Username, host, port, db)
+		return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s %s",
+			host, port, c.Username, c.Password, db, params), nil
 	default:
 		return "", ErrInvalidDialect
 	}
@@ -81,58 +79,21 @@ func encodeParams(rawParams map[string]string) string {
 	return params.Encode()
 }
 
-// Save - Save config file to disk
-func (c *DatabaseConfig) Save() error {
-	data, err := yaml.Marshal(c)
-	if err != nil {
-		return err
+// encodeParamsPostgres encodes params in space-separated key=value format for PostgreSQL DSN
+func encodeParamsPostgres(rawParams map[string]string) string {
+	var parts []string
+	for key, value := range rawParams {
+		parts = append(parts, fmt.Sprintf("%s=%s", key, value))
 	}
-	err = os.WriteFile(databaseConfigFileName, data, 0o600)
-	if err != nil {
-		return err
-	}
-	return nil
+	return strings.Join(parts, " ")
 }
 
-// GetDatabaseConfig - Get config value
-func GetDatabaseConfig() *DatabaseConfig {
-	configPath := databaseConfigFileName
-	config := getDefaultDatabaseConfig()
-	if _, err := os.Stat(configPath); !os.IsNotExist(err) {
-		data, err := os.ReadFile(configPath)
-		if err != nil {
-			logs.Log.Errorf("Failed to read config file %s", err)
-			return config
-		}
-		err = yaml.Unmarshal(data, config)
-		if err != nil {
-			logs.Log.Errorf("Failed to parse config file %s", err)
-			return config
-		}
-	} else {
-		logs.Log.Debugf("Config file does not exist, using defaults")
-	}
-
-	if config.MaxIdleConns < 1 {
-		config.MaxIdleConns = 1
-	}
-	if config.MaxOpenConns < 1 {
-		config.MaxOpenConns = 1
-	}
-
-	err := config.Save() // This updates the config with any missing fields
-	if err != nil {
-		logs.Log.Errorf("Failed to save default config %s", err)
-	}
-	return config
-}
-
-func getDefaultDatabaseConfig() *DatabaseConfig {
+// GetDefaultDatabaseConfig returns the default database configuration (SQLite)
+func GetDefaultDatabaseConfig() *DatabaseConfig {
 	return &DatabaseConfig{
 		Dialect:      Sqlite,
 		MaxIdleConns: 10,
 		MaxOpenConns: 100,
-
-		LogLevel: "warn",
+		LogLevel:     "warn",
 	}
 }

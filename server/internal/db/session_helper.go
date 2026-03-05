@@ -134,17 +134,7 @@ func BackfillOperatorFingerprints() error {
 // ============================================
 
 func FindAliveSessions() (Sessions, error) {
-	updateResult := Session().Exec(`
-        UPDATE sessions
-        SET is_alive = false
-        WHERE last_checkin < strftime('%s', 'now') - (
-            CAST(COALESCE(
-                JSON_EXTRACT(data, '$.interval'),
-                '30'  -- default value if interval doesn't exist
-            ) AS INTEGER) * 2
-        )
-        AND is_removed = false
-    `)
+	updateResult := Session().Exec(Adapter.FindAliveSessionsUpdateSQL())
 
 	if updateResult.Error != nil {
 		logs.Log.Infof("Failed to update inactive sessions: %v", updateResult.Error)
@@ -152,17 +142,7 @@ func FindAliveSessions() (Sessions, error) {
 	}
 
 	var activeSessions Sessions
-	result := Session().Raw(`
-        SELECT *
-        FROM sessions
-        WHERE last_checkin > strftime('%s', 'now') - (
-            CAST(COALESCE(
-                JSON_EXTRACT(data, '$.interval'),
-                '30'  -- default value if interval doesn't exist
-            ) AS INTEGER) * 2
-        )
-        AND is_removed = false
-    `).Scan(&activeSessions)
+	result := Session().Raw(Adapter.FindAliveSessionsSelectSQL()).Scan(&activeSessions)
 
 	if result.Error != nil {
 		return nil, result.Error
@@ -362,7 +342,7 @@ func FindContext(contextID string) (*models.Context, error) {
 
 	// prefix match for short IDs
 	var contexts []*models.Context
-	if err := Session().Where("CAST(id AS TEXT) LIKE ?", contextID+"%").Find(&contexts).Error; err != nil {
+	if err := Session().Where(Adapter.CastIDAsText("id"), contextID+"%").Find(&contexts).Error; err != nil {
 		return nil, err
 	}
 	switch len(contexts) {
@@ -530,7 +510,8 @@ func FindContextBySessionAndTypeAndDate(sessionID, contextType, date string) (*m
 	var context models.Context
 	result := Session().Model(&models.Context{}).
 		Joins("JOIN sessions ON contexts.session_id = sessions.session_id").
-		Where("sessions.session_id = ? AND contexts.type = ? AND DATE(contexts.created_at) = ?",
+		Where(fmt.Sprintf("sessions.session_id = ? AND contexts.type = ? AND %s = ?",
+			Adapter.DateFunction("contexts.created_at")),
 			sessionID, contextType, date).
 		First(&context)
 

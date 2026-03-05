@@ -55,18 +55,19 @@ func NewDebugLog(filename string) *logs.Logger {
 }
 
 type ServerConfig struct {
-	Enable        bool          `config:"enable" default:"true" yaml:"enable"`
-	GRPCPort      uint16        `config:"grpc_port" default:"5004" yaml:"grpc_port"`
-	GRPCHost      string        `config:"grpc_host" default:"0.0.0.0" yaml:"grpc_host"`
-	IP            string        `config:"ip" default:"" yaml:"ip"`
-	DaemonConfig  bool          `config:"daemon" default:"false" yaml:"daemon"`
-	EncryptionKey string        `config:"encryption_key" default:"maliceofinternal" yaml:"encryption_key"`
-	LogConfig     *LogConfig    `config:"log" yaml:"log"`
-	MiscConfig    *MiscConfig   `config:"config" yaml:"config"`
-	NotifyConfig  *NotifyConfig `config:"notify" yaml:"notify"`
-	GithubConfig  *GithubConfig `config:"github" yaml:"github"`
-	SaasConfig    *SaasConfig   `config:"saas" yaml:"saas"`
-	AcmeConfig    *AcmeConfig   `config:"acme" yaml:"acme"`
+	Enable         bool            `config:"enable" default:"true" yaml:"enable"`
+	GRPCPort       uint16          `config:"grpc_port" default:"5004" yaml:"grpc_port"`
+	GRPCHost       string          `config:"grpc_host" default:"0.0.0.0" yaml:"grpc_host"`
+	IP             string          `config:"ip" default:"" yaml:"ip"`
+	DaemonConfig   bool            `config:"daemon" default:"false" yaml:"daemon"`
+	EncryptionKey  string          `config:"encryption_key" default:"maliceofinternal" yaml:"encryption_key"`
+	LogConfig      *LogConfig      `config:"log" yaml:"log"`
+	MiscConfig     *MiscConfig     `config:"config" yaml:"config"`
+	NotifyConfig   *NotifyConfig   `config:"notify" yaml:"notify"`
+	GithubConfig   *GithubConfig   `config:"github" yaml:"github"`
+	SaasConfig     *SaasConfig     `config:"saas" yaml:"saas"`
+	AcmeConfig     *AcmeConfig     `config:"acme" yaml:"acme"`
+	DatabaseConfig *DatabaseConfig `config:"database" yaml:"database"`
 }
 
 func (c *ServerConfig) Address() string {
