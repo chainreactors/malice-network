@@ -82,6 +82,24 @@ func (rpc *Server) Mkdir(ctx context.Context, req *implantpb.Request) (*clientpb
 	return greq.Task.ToProtobuf(), nil
 }
 
+func (rpc *Server) Touch(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+	err := types.AssertRequestName(req, consts.ModuleTouch)
+	if err != nil {
+		return nil, err
+	}
+	greq, err := newGenericRequest(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	ch, err := rpc.GenericHandler(ctx, greq)
+	if err != nil {
+		return nil, err
+	}
+
+	greq.HandlerResponse(ch, types.MsgEmpty)
+	return greq.Task.ToProtobuf(), nil
+}
+
 func (rpc *Server) Rm(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
 	err := types.AssertRequestName(req, consts.ModuleRm)
 	if err != nil {

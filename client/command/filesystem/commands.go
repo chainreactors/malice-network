@@ -166,6 +166,25 @@ mkdir /tmp
 	common.BindArgCompletions(mkdirCmd, nil,
 		carapace.ActionValues().Usage("mkdir path"))
 
+	touchCmd := &cobra.Command{
+		Use:   consts.ModuleTouch + " [path]",
+		Short: "Touch file",
+		Long:  "create an empty file or update file timestamps in implant",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return TouchCmd(cmd, con)
+		},
+		Annotations: map[string]string{
+			"depend": consts.ModuleTouch,
+		},
+		Example: `~~~
+touch /tmp/file.txt
+~~~`,
+	}
+
+	common.BindArgCompletions(touchCmd, nil,
+		carapace.ActionValues().Usage("touch file path"))
+
 	mvCmd := &cobra.Command{
 		Use:   consts.ModuleMv + " [source] [target]",
 		Short: "Move file",
@@ -229,6 +248,7 @@ enum_drivers
 		lsCmd,
 		enumDriverCmd,
 		mkdirCmd,
+		touchCmd,
 		mvCmd,
 		rmCmd,
 	}
@@ -345,6 +365,24 @@ func Register(con *core.Console) {
 		[]string{
 			"session: special session",
 			"path: dir",
+		},
+		[]string{"task"})
+
+	con.RegisterImplantFunc(
+		consts.ModuleTouch,
+		Touch,
+		"btouch",
+		Touch,
+		output.ParseStatus,
+		nil)
+
+	con.AddCommandFuncHelper(
+		consts.ModuleTouch,
+		consts.ModuleTouch,
+		consts.ModuleTouch+`(active(),"/tmp/file.txt")`,
+		[]string{
+			"session: special session",
+			"path: file path",
 		},
 		[]string{"task"})
 
