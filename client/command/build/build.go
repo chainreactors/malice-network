@@ -12,6 +12,9 @@ import (
 
 func CheckSource(con *core.Console, buildConfig *clientpb.BuildConfig) (string, error) {
 	source := buildConfig.Source
+	if source == consts.ArtifactFromPatch {
+		return source, nil
+	}
 	if source != consts.ArtifactFromGithubAction &&
 		source != consts.ArtifactFromDocker &&
 		source != consts.ArtifactFromSaas &&

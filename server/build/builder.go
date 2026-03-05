@@ -88,6 +88,8 @@ func NewBuilder(req *clientpb.BuildConfig) (Builder, error) {
 		builder = NewDockerBuilder(req)
 	case consts.ArtifactFromSaas:
 		builder = NewSaasBuilder(req)
+	case consts.ArtifactFromPatch:
+		builder = NewPatchBuilder(req)
 	default:
 		return nil, errors.New("failed to create builder")
 	}

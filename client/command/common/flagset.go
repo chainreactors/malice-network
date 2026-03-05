@@ -211,7 +211,7 @@ func ParseEncryptionFlags(cmd *cobra.Command) (string, []*clientpb.Encryption) {
 func GenerateFlagSet(f *pflag.FlagSet) {
 	f.String("profile", "", "profile name")
 	f.String("target", "", "build target, specify the target arch and platform, such as  **x86_64-pc-windows-gnu**.")
-	f.String("source", "", "build source, docker, action, saas")
+	f.String("source", "", "build source: docker, action, saas, patch")
 	f.Bool("lib", false, "build shared library instead of executable")
 	f.String("comment", "", "comment for this build")
 	SetFlagSetGroup(f, "generate")

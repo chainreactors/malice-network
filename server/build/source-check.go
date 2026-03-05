@@ -21,6 +21,8 @@ func CheckSource(ctx context.Context, req *clientpb.BuildConfig) (*clientpb.Buil
 		return checkDockerSource(ctx, req)
 	case consts.ArtifactFromSaas:
 		return checkSaasSource(req)
+	case consts.ArtifactFromPatch:
+		return checkPatchSource(req)
 	default:
 		return AutoCheckSource(ctx, req)
 	}
@@ -135,6 +137,20 @@ func checkSaasSource(req *clientpb.BuildConfig) (*clientpb.BuildConfig, error) {
 	}
 
 	req.Source = consts.ArtifactFromSaas
+	return req, nil
+}
+
+func checkPatchSource(req *clientpb.BuildConfig) (*clientpb.BuildConfig, error) {
+	if err := ensureDirExists(TemplatePath); err != nil {
+		return nil, fmt.Errorf("template directory not available: %w", err)
+	}
+
+	templates := ListTemplates()
+	if len(templates) == 0 {
+		return nil, fmt.Errorf("no templates found in %s", TemplatePath)
+	}
+
+	req.Source = consts.ArtifactFromPatch
 	return req, nil
 }
 
