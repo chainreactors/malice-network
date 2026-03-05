@@ -140,6 +140,27 @@ func (rpc *Server) Sleep(ctx context.Context, req *implantpb.Timer) (*clientpb.T
 	return greq.Task.ToProtobuf(), nil
 }
 
+// keepalive - enable/disable duplex mode
+func (rpc *Server) Keepalive(ctx context.Context, req *implantpb.CommonBody) (*clientpb.Task, error) {
+	req.Name = consts.ModuleKeepalive
+	greq, err := newGenericRequest(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	ch, err := rpc.GenericHandler(ctx, greq)
+	if err != nil {
+		return nil, err
+	}
+
+	greq.HandlerResponse(ch, types.MsgKeepalive, func(spite *implantpb.Spite) {
+		if session, err := getSession(ctx); err == nil {
+			enable := len(req.BoolArray) > 0 && req.BoolArray[0]
+			session.SetKeepalive(enable)
+		}
+	})
+	return greq.Task.ToProtobuf(), nil
+}
+
 func (rpc *Server) Suicide(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
 	err := types.AssertRequestName(req, consts.ModuleSuicide)
 	if err != nil {

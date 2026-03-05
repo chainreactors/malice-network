@@ -143,7 +143,16 @@ info b1ab9056
 		comp["pipeline"] = common.AllPipelineCompleter(con)
 	})
 
-	return []*cobra.Command{sleepCmd, suicideCmd, getCmd, waitCmd, pollingCmd, initCmd, recoverCmd, infoCommand, switchCmd}
+	keepaliveCmd := &cobra.Command{
+		Use:   consts.ModuleKeepalive + " [enable/disable]",
+		Short: "toggle duplex keepalive mode",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return KeepaliveCmd(cmd, con)
+		},
+	}
+
+	return []*cobra.Command{sleepCmd, suicideCmd, getCmd, waitCmd, pollingCmd, initCmd, recoverCmd, infoCommand, switchCmd, keepaliveCmd}
 }
 
 func Register(con *core.Console) {
@@ -174,6 +183,20 @@ func Register(con *core.Console) {
 			"sess:special session",
 			"interval:time interval, in seconds",
 			"jitter:jitter, percentage of interval",
+		}, []string{"task"})
+
+	con.RegisterImplantFunc(consts.ModuleKeepalive,
+		Keepalive,
+		"", nil,
+		output.ParseStatus,
+		nil,
+	)
+
+	con.AddCommandFuncHelper(consts.ModuleKeepalive, consts.ModuleKeepalive,
+		`keepalive(active(), true)`,
+		[]string{
+			"sess:special session",
+			"enable:enable or disable keepalive (true/false)",
 		}, []string{"task"})
 
 	con.RegisterImplantFunc(consts.ModuleSuicide,

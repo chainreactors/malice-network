@@ -259,6 +259,9 @@ type Session struct {
 	responses *sync.Map
 	rpcLog    *logs.Logger
 
+	keepaliveMu      sync.Mutex
+	keepaliveEnabled bool
+
 	Ctx    context.Context
 	Cancel context.CancelFunc
 }
@@ -642,6 +645,32 @@ func (s *Session) UpdateKeyPair(keyPair *clientpb.KeyPair) {
 	}
 }
 
+// SetKeepalive updates the keepalive state. Returns the previous state.
+func (s *Session) SetKeepalive(enabled bool) bool {
+	s.keepaliveMu.Lock()
+	defer s.keepaliveMu.Unlock()
+	prev := s.keepaliveEnabled
+	s.keepaliveEnabled = enabled
+	if prev != enabled {
+		logs.Log.Infof("[keepalive] session %s: %v -> %v", s.ID, prev, enabled)
+	}
+	return prev
+}
+
+// IsKeepaliveEnabled returns the current keepalive status.
+func (s *Session) IsKeepaliveEnabled() bool {
+	s.keepaliveMu.Lock()
+	defer s.keepaliveMu.Unlock()
+	return s.keepaliveEnabled
+}
+
+// ResetKeepalive resets keepalive state (used on disconnect).
+func (s *Session) ResetKeepalive() {
+	s.keepaliveMu.Lock()
+	defer s.keepaliveMu.Unlock()
+	s.keepaliveEnabled = false
+}
+
 type sessions struct {
 	active *sync.Map // map[uint32]*Session
 }
@@ -683,7 +712,7 @@ func (s *sessions) Remove(sessionID string) {
 		return
 	}
 	parentSession := val.(*Session)
-	//children := findAllChildrenByPeerID(parentSession.PeerID)
+	parentSession.ResetKeepalive()
 	s.active.Delete(parentSession.ID)
 	//coreLog.Debugf("Removing %d children of session %d (%v)", len(children), parentSession.ID, children)
 	//for _, child := range children {
