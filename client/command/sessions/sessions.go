@@ -2,7 +2,6 @@ package sessions
 
 import (
 	"fmt"
-	"io"
 	"net"
 	"path/filepath"
 	"sort"
@@ -149,7 +148,7 @@ func PrintSessions(sessions map[string]*client.Session, con *core.Console, isAll
 	tableModel.SetRows(rowEntries)
 	tableModel.SetMultiline()
 	tableModel.SetHandle(func() {
-		SessionLogin(tableModel, tableModel.Buffer, con)()
+		SessionLogin(tableModel, con)()
 	})
 	err := tableModel.Run()
 	if err != nil {
@@ -158,12 +157,12 @@ func PrintSessions(sessions map[string]*client.Session, con *core.Console, isAll
 	tui.Reset()
 }
 
-func SessionLogin(tableModel *tui.TableModel, writer io.Writer, con *core.Console) func() {
+func SessionLogin(tableModel *tui.TableModel, con *core.Console) func() {
 	var sessionId string
 	selectRow := tableModel.GetHighlightedRow()
 	if selectRow.Data == nil {
 		return func() {
-			con.Log.FErrorf(writer, "No row selected\n")
+			con.Log.Errorf("No row selected\n")
 			return
 		}
 	}
