@@ -3,6 +3,7 @@ package models
 import (
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"time"
 
@@ -63,10 +64,16 @@ func (wc *WebsiteContent) ToProtobuf(read bool) *clientpb.WebContent {
 }
 
 func (wc *WebsiteContent) URL() string {
-	if wc.Pipeline.Tls != nil && wc.Pipeline.Tls.Enable {
-		return fmt.Sprintf("https://%s:%d%s%s", wc.Pipeline.IP, wc.Pipeline.Port, wc.Pipeline.WebPath, wc.Path)
+	webPath := "/"
+	if wc.Pipeline != nil && wc.Pipeline.PipelineParams != nil && wc.Pipeline.WebPath != "" {
+		webPath = wc.Pipeline.WebPath
 	}
-	return fmt.Sprintf("http://%s:%d%s%s", wc.Pipeline.IP, wc.Pipeline.Port, wc.Pipeline.WebPath, wc.Path)
+	contentPath := path.Join(webPath, wc.Path)
+
+	if wc.Pipeline.Tls != nil && wc.Pipeline.Tls.Enable {
+		return fmt.Sprintf("https://%s:%d%s", wc.Pipeline.IP, wc.Pipeline.Port, contentPath)
+	}
+	return fmt.Sprintf("http://%s:%d%s", wc.Pipeline.IP, wc.Pipeline.Port, contentPath)
 }
 
 func FromWebContentPb(content *clientpb.WebContent) *WebsiteContent {

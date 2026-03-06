@@ -334,7 +334,7 @@ func FindWebContent(id string) (*models.WebsiteContent, error) {
 	contents := &models.WebsiteContent{}
 	err = Session().Where(&models.WebsiteContent{
 		ID: uuidFromString,
-	}).First(&contents).Error
+	}).Preload("Pipeline").First(&contents).Error
 	if err != nil {
 		return nil, err
 	}
