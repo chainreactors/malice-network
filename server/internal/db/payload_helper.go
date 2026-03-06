@@ -228,8 +228,6 @@ func NewProfile(profile *clientpb.Profile) error {
 
 	return Session().Create(model).Error
 }
-
-// GetProfile recovers profile from database and disk
 func GetProfile(name string) (*implanttypes.ProfileConfig, error) {
 	var profileModel *models.Profile
 

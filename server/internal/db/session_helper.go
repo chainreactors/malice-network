@@ -184,7 +184,11 @@ func CreateOrRecoverSession(session *models.Session) error {
 	}
 
 	// Now create the new session
-	return Session().Create(session).Error
+	query := Session()
+	if session.ProfileName == "" {
+		query = query.Omit("profile_name")
+	}
+	return query.Create(session).Error
 }
 
 func FindTaskAndMaxTasksID(sessionID string) ([]*models.Task, uint32, error) {
@@ -219,7 +223,11 @@ func RecoverRemovedSession(sessionID string) (*models.Session, error) {
 		return nil, result.Error
 	}
 	session.IsRemoved = false
-	if err := Session().Save(&session).Error; err != nil {
+	query := Session()
+	if session.ProfileName == "" {
+		query = query.Omit("profile_name")
+	}
+	if err := query.Save(&session).Error; err != nil {
 		return nil, err
 	}
 	return &session, nil
@@ -237,7 +245,11 @@ func UpdateSession(sessionID, note, group string) error {
 	if note != "" {
 		session.Note = note
 	}
-	result = Session().Save(&session)
+	query := Session()
+	if session.ProfileName == "" {
+		query = query.Omit("profile_name")
+	}
+	result = query.Save(&session)
 	return result.Error
 }
 
@@ -251,7 +263,11 @@ func UpdateSessionTimer(sessionID string, expression string, jitter float64) err
 	if jitter != 0 {
 		session.Data.Jitter = jitter
 	}
-	result = Session().Save(&session)
+	query := Session()
+	if session.ProfileName == "" {
+		query = query.Omit("profile_name")
+	}
+	result = query.Save(&session)
 	return result.Error
 }
 
@@ -488,11 +504,26 @@ func SaveContext(ctx *clientpb.Context) (*models.Context, error) {
 		contextDB.ID = id
 	}
 
-	return contextDB, Session().Session(&gorm.Session{
+	var omitFields []string
+	if contextDB.SessionID == "" {
+		omitFields = append(omitFields, "session_id")
+	}
+	if contextDB.PipelineID == "" {
+		omitFields = append(omitFields, "pipeline_id")
+	}
+	if contextDB.TaskID == "" {
+		omitFields = append(omitFields, "task_id")
+	}
+
+	query := Session().Session(&gorm.Session{
 		FullSaveAssociations: false,
 	}).Clauses(clause.OnConflict{
 		UpdateAll: true,
-	}).Create(contextDB).Error
+	})
+	if len(omitFields) > 0 {
+		query = query.Omit(omitFields...)
+	}
+	return contextDB, query.Create(contextDB).Error
 }
 
 func DeleteContext(contextID string) error {
@@ -501,7 +532,21 @@ func DeleteContext(contextID string) error {
 
 // UpdateContext updates an existing context
 func UpdateContext(context *models.Context) error {
-	return Session().Save(context).Error
+	var omitFields []string
+	if context.SessionID == "" {
+		omitFields = append(omitFields, "session_id")
+	}
+	if context.PipelineID == "" {
+		omitFields = append(omitFields, "pipeline_id")
+	}
+	if context.TaskID == "" {
+		omitFields = append(omitFields, "task_id")
+	}
+	query := Session()
+	if len(omitFields) > 0 {
+		query = query.Omit(omitFields...)
+	}
+	return query.Save(context).Error
 }
 
 // FindContextBySessionAndTypeAndDate finds a context by session ID, type and date
@@ -532,5 +577,9 @@ func FindTodayKeyloggerContext(sessionID string) (*models.Context, error) {
 
 // SaveSessionModel saves a session model to database
 func SaveSessionModel(session *models.Session) error {
-	return Session().Save(session).Error
+	query := Session()
+	if session.ProfileName == "" {
+		query = query.Omit("profile_name")
+	}
+	return query.Save(session).Error
 }

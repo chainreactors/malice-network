@@ -23,10 +23,10 @@ type Profile struct {
 	ParamsData string                      `gorm:"column:params"` // 改用更简洁的数据库字段名
 
 	// BasicPipeline 和 PulsePipeline
-	PipelineID string `gorm:"type:string;index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
+	PipelineID string `gorm:"type:string;index;"`
 
 	// BasicPipeline 和 PulsePipeline
-	Pipeline *Pipeline `gorm:"foreignKey:PipelineID;references:Name;"`
+	Pipeline *Pipeline `gorm:"foreignKey:PipelineID;references:Name;-:migration;"`
 
 	CreatedAt time.Time `gorm:"->;<-:create;"`
 }

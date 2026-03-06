@@ -14,7 +14,7 @@ type Task struct {
 	Seq         uint32
 	Type        string
 	SessionID   string
-	Session     Session `gorm:"foreignKey:SessionID"`
+	Session     Session `gorm:"foreignKey:SessionID;references:SessionID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 	Cur         int
 	Total       int
 	Description string

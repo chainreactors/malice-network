@@ -38,19 +38,35 @@ func NewDBClient(dbConfig *configs.DatabaseConfig) *gorm.DB {
 	default:
 		panic(fmt.Sprintf("Unknown DB Dialect: '%s'", dbConfig.Dialect))
 	}
-	if err := dbClient.AutoMigrate(
-		&models.Profile{},
-		&models.Artifact{},
-		&models.Session{},
+	allModels := []interface{}{
 		&models.Pipeline{},
-		&models.Task{},
-		&models.WebsiteContent{},
 		&models.Operator{},
 		&models.Certificate{},
-		&models.Context{},
 		&models.AuthzRule{},
-	); err != nil {
-		logs.Log.Warnf("Failed to auto-migrate database: %v", err)
+		&models.Profile{},
+		&models.WebsiteContent{},
+		&models.Session{},
+		&models.Artifact{},
+		&models.Task{},
+		&models.Context{},
+	}
+
+	if dbConfig.Dialect == configs.Postgres {
+		// PostgreSQL: two-pass migration.
+		// Pass 1: create all tables without FK constraints.
+		// Pass 2: add FK constraints via raw SQL to avoid GORM's auto-detected
+		// reverse relationships generating incorrect FK direction (e.g., when
+		// Session and Task both have a SessionID field, GORM may generate
+		// sessions.session_id → tasks.session_id instead of the correct reverse).
+		dbClient.DisableForeignKeyConstraintWhenMigrating = true
+		if err := dbClient.AutoMigrate(allModels...); err != nil {
+			logs.Log.Warnf("Failed to create tables: %v", err)
+		}
+		addPostgresForeignKeys(dbClient)
+	} else {
+		if err := dbClient.AutoMigrate(allModels...); err != nil {
+			logs.Log.Warnf("Failed to auto-migrate database: %v", err)
+		}
 	}
 
 	sqlDB, err := dbClient.DB()
@@ -92,4 +108,44 @@ func postgresClient(dbConfig *configs.DatabaseConfig) *gorm.DB {
 		panic(fmt.Sprintf("Failed to open PostgreSQL database: %v", err))
 	}
 	return dbClient
+}
+
+// addPostgresForeignKeys adds FK constraints via raw SQL.
+// This avoids GORM's auto-detected reverse relationships which can generate
+// incorrect FK direction when both sides share the same field name (e.g. SessionID).
+func addPostgresForeignKeys(db *gorm.DB) {
+	fks := []struct {
+		name    string
+		table   string
+		column  string
+		refTab  string
+		refCol  string
+	}{
+		{"fk_sessions_profile", "sessions", "profile_name", "profiles", "name"},
+		{"fk_tasks_session", "tasks", "session_id", "sessions", "session_id"},
+		{"fk_contexts_session", "contexts", "session_id", "sessions", "session_id"},
+		{"fk_contexts_pipeline", "contexts", "pipeline_id", "pipelines", "name"},
+		{"fk_contexts_task", "contexts", "task_id", "tasks", "id"},
+		{"fk_website_contents_pipeline", "website_contents", "pipeline_id", "pipelines", "name"},
+	}
+
+	for _, fk := range fks {
+		// Skip if constraint already exists (idempotent for existing databases)
+		var count int64
+		db.Raw(
+			"SELECT count(*) FROM information_schema.table_constraints WHERE table_schema = CURRENT_SCHEMA() AND table_name = ? AND constraint_name = ?",
+			fk.table, fk.name,
+		).Scan(&count)
+		if count > 0 {
+			continue
+		}
+
+		sql := fmt.Sprintf(
+			`ALTER TABLE "%s" ADD CONSTRAINT "%s" FOREIGN KEY ("%s") REFERENCES "%s"("%s") ON UPDATE CASCADE ON DELETE SET NULL`,
+			fk.table, fk.name, fk.column, fk.refTab, fk.refCol,
+		)
+		if err := db.Exec(sql).Error; err != nil {
+			logs.Log.Warnf("Failed to add FK %s: %v", fk.name, err)
+		}
+	}
 }

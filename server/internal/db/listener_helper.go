@@ -377,13 +377,21 @@ func AddContent(content *clientpb.WebContent) (*models.WebsiteContent, error) {
 	err := Session().Preload("Pipeline").Where("pipeline_id = ? AND path = ?", content.WebsiteId, content.Path).First(&existingContent).Error
 	if err == nil {
 		webModel.ID = existingContent.ID
-		err = Session().Save(&webModel).Error
+		query := Session()
+		if webModel.PipelineID == "" {
+			query = query.Omit("pipeline_id")
+		}
+		err = query.Save(&webModel).Error
 		if err != nil {
 			return nil, err
 		}
 		webModel = existingContent
 	} else if errors.Is(err, gorm.ErrRecordNotFound) {
-		err = Session().Create(&webModel).Error
+		query := Session()
+		if webModel.PipelineID == "" {
+			query = query.Omit("pipeline_id")
+		}
+		err = query.Create(&webModel).Error
 		if err != nil {
 			return nil, err
 		}

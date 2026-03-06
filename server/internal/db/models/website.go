@@ -26,8 +26,8 @@ type WebsiteContent struct {
 	ContentType string `gorm:""`
 	//Encryption  *types.EncryptionConfig `gorm:"embedded;embeddedPrefix:encryption_"`
 
-	Pipeline   *Pipeline `gorm:"foreignKey:PipelineID;references:Name;"`
-	PipelineID string    `gorm:"type:string;index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
+	Pipeline   *Pipeline `gorm:"foreignKey:PipelineID;references:Name;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
+	PipelineID string    `gorm:"type:string;index;"`
 }
 
 // BeforeCreate - GORM hook to automatically set values

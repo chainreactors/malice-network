@@ -14,17 +14,17 @@ type Context struct {
 	ID         uuid.UUID `gorm:"primaryKey;->;<-:create;type:uuid"`
 	CreatedAt  time.Time `gorm:"->;<-:create"`
 	UpdatedAt  time.Time
-	SessionID  string `gorm:"type:string;index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
-	PipelineID string `gorm:"type:string;index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
-	TaskID     string `gorm:"type:string;index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
+	SessionID  string `gorm:"type:string;index;"`
+	PipelineID string `gorm:"type:string;index;"`
+	TaskID     string `gorm:"type:string;index;"`
 	Type       string
 	Nonce      string
 	Value      []byte
 	Context    output.Context `gorm:"-"`
 
-	Session  *Session  `gorm:"foreignKey:SessionID;references:SessionID;"`
-	Pipeline *Pipeline `gorm:"foreignKey:PipelineID;references:Name;"`
-	Task     *Task     `gorm:"foreignKey:TaskID;references:ID;"`
+	Session  *Session  `gorm:"foreignKey:SessionID;references:SessionID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
+	Pipeline *Pipeline `gorm:"foreignKey:PipelineID;references:Name;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
+	Task     *Task     `gorm:"foreignKey:TaskID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 }
 
 func (c *Context) BeforeCreate(tx *gorm.DB) (err error) {

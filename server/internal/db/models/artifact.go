@@ -12,7 +12,7 @@ import (
 type Artifact struct {
 	ID          uint32 `gorm:"primaryKey;autoIncrement"`
 	Name        string `gorm:"unique"`
-	ProfileName string `gorm:"index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:ProfileName;references:Name"`
+	ProfileName string `gorm:"index;"`
 
 	CreatedAt time.Time `gorm:"->;<-:create;"`
 	UpdatedAt time.Time `gorm:"->;<-:update;"`
@@ -22,7 +22,7 @@ type Artifact struct {
 	Source string // docker 、 saas 、github action、upload...
 	//CA            string // ca file , ca file content
 	Path        string
-	Profile     Profile `gorm:"foreignKey:ProfileName;references:Name;"`
+	Profile     Profile `gorm:"foreignKey:ProfileName;references:Name;-:migration;"`
 	Os          string
 	Format      string // file extension like .exe/.dll/.so/.dylib or ""
 	Arch        string

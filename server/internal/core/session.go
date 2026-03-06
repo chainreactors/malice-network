@@ -451,7 +451,6 @@ func (s *Session) ToModel() *models.Session {
 		SessionID:   s.ID,
 		RawID:       s.RawID,
 		Note:        s.Note,
-		ProfileName: s.Name,
 		GroupName:   s.Group,
 		Target:      s.Target,
 		Initialized: s.Initialized,
@@ -462,9 +461,11 @@ func (s *Session) ToModel() *models.Session {
 		LastCheckin: s.LastCheckin,
 		DataString:  s.Marshal(),
 	}
-	artifact, err := db.GetArtifactByName(s.Note)
-	if err == nil {
-		sessModel.ProfileName = artifact.Name
+	artifact, err := db.GetArtifactByName(s.Name)
+	if err == nil && artifact.ProfileName != "" {
+		if _, profileErr := db.GetProfileByName(artifact.ProfileName); profileErr == nil {
+			sessModel.ProfileName = artifact.ProfileName
+		}
 	}
 	return sessModel
 }

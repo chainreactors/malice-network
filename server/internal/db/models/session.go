@@ -28,8 +28,8 @@ type Session struct {
 	Data        *client.SessionContext `gorm:"-"`
 	DataString  string                 `gorm:"column:data"`
 
-	ProfileName string  `gorm:"index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:ProfileName;references:Name"`
-	Profile     Profile `gorm:"foreignKey:ProfileName;references:Name;"`
+	ProfileName string  `gorm:"index;"`
+	Profile     Profile `gorm:"foreignKey:ProfileName;references:Name;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 }
 
 func (s *Session) BeforeCreate(tx *gorm.DB) (err error) {
