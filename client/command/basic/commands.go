@@ -151,6 +151,11 @@ info b1ab9056
 			return KeepaliveCmd(cmd, con)
 		},
 	}
+	common.BindArgCompletions(keepaliveCmd, nil,
+		carapace.ActionValues(
+			"enable",
+			"disable",
+		).Usage("keepalive state"))
 
 	return []*cobra.Command{sleepCmd, suicideCmd, getCmd, waitCmd, pollingCmd, initCmd, recoverCmd, infoCommand, switchCmd, keepaliveCmd}
 }
