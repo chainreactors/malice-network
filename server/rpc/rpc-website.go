@@ -14,6 +14,7 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
+	"google.golang.org/protobuf/proto"
 	"os"
 	"path"
 )
@@ -68,15 +69,13 @@ func cloneWebsiteJob(job *core.Job, contents map[string]*clientpb.WebContent) *c
 		return job.ToProtobuf()
 	}
 
-	pipelineCopy := *job.Pipeline
-	webCopy := *job.Pipeline.GetWeb()
-	webCopy.Contents = contents
-	pipelineCopy.Body = &clientpb.Pipeline_Web{Web: &webCopy}
+	pipelineCopy := proto.Clone(job.Pipeline).(*clientpb.Pipeline)
+	pipelineCopy.GetWeb().Contents = contents
 
 	return &clientpb.Job{
 		Id:       job.ID,
 		Name:     job.Name,
-		Pipeline: &pipelineCopy,
+		Pipeline: pipelineCopy,
 	}
 }
 
