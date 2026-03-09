@@ -63,6 +63,9 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 			Priv:   req.Priv,
 			Hidden: req.Hidden,
 		}, count)
+		if err != nil {
+			return nil, err
+		}
 		in, out, err := rpc.StreamGenericHandler(ctx, greq)
 		if err != nil {
 			return nil, err

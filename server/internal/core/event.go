@@ -21,21 +21,26 @@ const (
 // format produces plain-text structured messages (no ANSI colors).
 // Coloring is the responsibility of each consumer (CLI, GUI, MCP, etc.).
 func (event *Event) format() string {
+	clientName := ""
+	if event.Client != nil {
+		clientName = event.Client.Name
+	}
+
 	switch event.EventType {
 	case consts.EventClient:
 		if event.Op == consts.CtrlClientJoin {
-			return fmt.Sprintf("%s has joined the game", event.Client.Name)
+			return fmt.Sprintf("%s has joined the game", clientName)
 		} else if event.Op == consts.CtrlClientLeft {
-			return fmt.Sprintf("%s left the game", event.Client.Name)
+			return fmt.Sprintf("%s left the game", clientName)
 		}
 	case consts.EventBroadcast:
-		msg := fmt.Sprintf("%s : %s", event.Client.Name, event.Message)
+		msg := fmt.Sprintf("%s : %s", clientName, event.Message)
 		if event.Err != "" {
 			msg += "  " + event.Err
 		}
 		return msg
 	case consts.EventNotify:
-		msg := fmt.Sprintf("%s notified: %s", event.Client.Name, event.Message)
+		msg := fmt.Sprintf("%s notified: %s", clientName, event.Message)
 		if event.Err != "" {
 			msg += " " + event.Err
 		}
@@ -266,9 +271,9 @@ func NewBroker() *eventBroker {
 		subscribe:   make(chan chan Event, eventBufSize),
 		unsubscribe: make(chan chan Event, eventBufSize),
 		send:        make(chan Event, eventBufSize),
-		notifier: inotify.NewNotifier(),
-		cache: NewMessageCache(eventBufSize),
-		lock:  &sync.Mutex{},
+		notifier:    inotify.NewNotifier(),
+		cache:       NewMessageCache(eventBufSize),
+		lock:        &sync.Mutex{},
 	}
 	SafeGo(broker.Start)
 	ticker := GlobalTicker

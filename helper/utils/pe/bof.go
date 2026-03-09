@@ -116,7 +116,7 @@ func PackFile(data string) string {
 }
 
 func PackURL(data string) string {
-	return "url" + data
+	return "url:" + data
 }
 
 func PackInt(i int) (string, error) {

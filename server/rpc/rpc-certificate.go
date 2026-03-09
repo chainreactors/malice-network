@@ -105,7 +105,16 @@ func (rpc *Server) GetAllCertificates(ctx context.Context, req *clientpb.Empty) 
 }
 
 func (rpc *Server) UpdateCertificate(ctx context.Context, req *clientpb.TLS) (*clientpb.Empty, error) {
-	err := db.UpdateCert(req.Cert.Name, req.Cert.Cert, req.Cert.Key, req.Ca.Cert)
+	if req == nil || req.Cert == nil {
+		return nil, fmt.Errorf("certificate is required")
+	}
+
+	caPEM := ""
+	if req.Ca != nil {
+		caPEM = req.Ca.Cert
+	}
+
+	err := db.UpdateCert(req.Cert.Name, req.Cert.Cert, req.Cert.Key, caPEM)
 	if err != nil {
 		return nil, err
 	}

@@ -10,6 +10,9 @@ import (
 
 func (rpc *Server) GetLicenseInfo(ctx context.Context, req *clientpb.Empty) (*clientpb.LicenseInfo, error) {
 	saasConfig := configs.GetSaasConfig()
+	if saasConfig == nil {
+		return nil, types.ErrSaasUnable
+	}
 
 	if !saasConfig.Enable {
 		return nil, types.ErrSaasUnable

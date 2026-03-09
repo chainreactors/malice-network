@@ -208,7 +208,15 @@ func (w *Website) AddContent(content *clientpb.WebContent) error {
 		return errors.New("website_id and id are required")
 	}
 
-	contentPath, err := fileutils.SafeJoin(configs.WebsitePath, filepath.Join(content.WebsiteId, content.Id))
+	websiteID, err := fileutils.SanitizeBasename(content.WebsiteId)
+	if err != nil {
+		return err
+	}
+	websiteRoot, err := fileutils.SafeJoin(configs.WebsitePath, websiteID)
+	if err != nil {
+		return err
+	}
+	contentPath, err := fileutils.SafeJoin(websiteRoot, content.Id)
 	if err != nil {
 		return err
 	}

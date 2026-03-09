@@ -1,6 +1,10 @@
 package rpc
 
 import (
+	"fmt"
+	"net"
+	"sync"
+
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/IoM-go/proto/services/listenerrpc"
@@ -11,8 +15,6 @@ import (
 	"github.com/gookit/config/v2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	"net"
-	"sync"
 )
 
 var (
@@ -30,26 +32,25 @@ func InitLogs(debug bool) {
 	}
 }
 
-// StartClientListener - Start a mutual TLS listener
-func StartClientListener(address string) (*grpc.Server, net.Listener, error) {
-	logs.Log.Importantf("[server] starting gRPC console on %s", address)
+func RegisterRPCServices(grpcServer *grpc.Server) {
+	clientrpc.RegisterMaliceRPCServer(grpcServer, NewServer())
+	clientrpc.RegisterRootRPCServer(grpcServer, NewServer())
+	listenerrpc.RegisterListenerRPCServer(grpcServer, NewServer())
+}
 
-	InitLogs(config.Bool("debug"))
-	tlsConfig := certutils.GetOperatorServerMTLSConfig(configs.GetServerConfig().IP)
-	creds := credentials.NewTLS(tlsConfig)
-	ln, err := net.Listen("tcp", address)
-	if err != nil {
-		logs.Log.Errorf("%v", err)
-		return nil, nil, err
+func NewClientGRPCServer(serverIP string, debug bool) (*grpc.Server, error) {
+	InitLogs(debug)
+	tlsConfig := certutils.GetOperatorServerMTLSConfig(serverIP)
+	if tlsConfig == nil {
+		return nil, fmt.Errorf("failed to build operator server TLS config")
 	}
+	creds := credentials.NewTLS(tlsConfig)
 	options := []grpc.ServerOption{
 		grpc.Creds(creds),
 		grpc.MaxRecvMsgSize(consts.ServerMaxMessageSize),
 		grpc.MaxSendMsgSize(consts.ServerMaxMessageSize),
 	}
 
-	//options = append(options, authInterceptor()...)
-	//rootOptions := buildOptions(options, authInterceptor()...)
 	grpcServer := grpc.NewServer(buildOptions(
 		options,
 		[]grpc.UnaryServerInterceptor{
@@ -61,9 +62,28 @@ func StartClientListener(address string) (*grpc.Server, net.Listener, error) {
 			authStreamInterceptor(authLog),
 		},
 	)...)
-	clientrpc.RegisterMaliceRPCServer(grpcServer, NewServer())
-	clientrpc.RegisterRootRPCServer(grpcServer, NewServer())
-	listenerrpc.RegisterListenerRPCServer(grpcServer, NewServer())
+	RegisterRPCServices(grpcServer)
+	return grpcServer, nil
+}
+
+// StartClientListener - Start a mutual TLS listener
+func StartClientListener(address string) (*grpc.Server, net.Listener, error) {
+	logs.Log.Importantf("[server] starting gRPC console on %s", address)
+
+	ln, err := net.Listen("tcp", address)
+	if err != nil {
+		logs.Log.Errorf("%v", err)
+		return nil, nil, err
+	}
+	serverIP := ""
+	if serverConfig := configs.GetServerConfig(); serverConfig != nil {
+		serverIP = serverConfig.IP
+	}
+	grpcServer, err := NewClientGRPCServer(serverIP, config.Bool("debug"))
+	if err != nil {
+		_ = ln.Close()
+		return nil, nil, err
+	}
 	core.SafeGo(func() {
 		if err := grpcServer.Serve(ln); err != nil {
 			logs.Log.Warnf("gRPC server exited with error: %v", err)

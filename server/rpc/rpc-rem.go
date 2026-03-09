@@ -88,6 +88,7 @@ func (rpc *Server) StartRem(ctx context.Context, req *clientpb.CtrlPipeline) (*c
 		Ctrl: consts.CtrlRemStart,
 		Job:  job.ToProtobuf(),
 	})
+	core.Jobs.AddPipeline(rem)
 
 	return &clientpb.Empty{}, nil
 }
@@ -264,6 +265,9 @@ func (rpc *Server) RemAgentCtrl(ctx context.Context, req *clientpb.REMAgent) (*c
 		})
 		if err != nil {
 			return nil, err
+		}
+		if pipe.GetRem().Agents == nil {
+			pipe.GetRem().Agents = make(map[string]*clientpb.REMAgent)
 		}
 		pipe.GetRem().Agents[agent.Id] = agent
 		core.EventBroker.Publish(core.Event{

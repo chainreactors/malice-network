@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"io"
 	"os"
 	"path/filepath"
@@ -98,7 +99,13 @@ func WriteBuildConfigToPath(buildConfig *clientpb.BuildConfig, srcPath string) e
 
 		for _, entry := range buildConfig.Resources.Entries {
 			if entry.Filename != "" && entry.Content != nil {
-				resourcePath := filepath.Join(resourcesDir, entry.Filename)
+				resourcePath, err := fileutils.SafeJoin(resourcesDir, entry.Filename)
+				if err != nil {
+					return fmt.Errorf("failed to resolve resource file %s: %w", entry.Filename, err)
+				}
+				if err := os.MkdirAll(filepath.Dir(resourcePath), 0755); err != nil {
+					return fmt.Errorf("failed to create parent directory for %s: %w", entry.Filename, err)
+				}
 				if err := os.WriteFile(resourcePath, entry.Content, 0644); err != nil {
 					return fmt.Errorf("failed to write resource file %s: %w", entry.Filename, err)
 				}

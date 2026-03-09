@@ -53,6 +53,9 @@ func DoPOST(url string, data interface{}, headers map[string]string, expectStatu
 			return err
 		}
 		body = bytes.NewBuffer(jsonBytes)
+		if headers == nil {
+			headers = map[string]string{}
+		}
 		headers["Content-Type"] = "application/json"
 	}
 	return DoJSONRequest("POST", url, body, headers, expectStatus, out)

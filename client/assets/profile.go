@@ -1,6 +1,7 @@
 package assets
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -21,16 +22,14 @@ var (
 var HookFn = func(event string, c *config.Config) {
 	if strings.HasPrefix(event, "set.") {
 		rootDir, _ := filepath.Abs(GetRootAppDir())
-		open, err := os.OpenFile(filepath.Join(rootDir, maliceProfile), os.O_WRONLY|os.O_TRUNC, 0644)
-		if err != nil {
-			logs.Log.Errorf("cannot open config , %s ", err.Error())
-			return
-		}
-		defer open.Close()
-		_, err = config.DumpTo(open, config.Yaml)
+		var buf bytes.Buffer
+		_, err := config.DumpTo(&buf, config.Yaml)
 		if err != nil {
 			logs.Log.Errorf("cannot dump config , %s ", err.Error())
 			return
+		}
+		if err := fileutils.AtomicWriteFile(filepath.Join(rootDir, maliceProfile), buf.Bytes(), assetsFilePerm); err != nil {
+			logs.Log.Errorf("cannot write config , %s ", err.Error())
 		}
 	}
 }
@@ -81,7 +80,7 @@ func LoadProfile() (*Profile, error) {
 	profile := &Profile{}
 	if !fileutils.Exist(malicePath) {
 		confStr := configutil.InitDefaultConfig(profile, 0)
-		err := os.WriteFile(malicePath, confStr, 0644)
+		err := fileutils.AtomicWriteFile(malicePath, confStr, assetsFilePerm)
 		if err != nil {
 			return profile, err
 		}

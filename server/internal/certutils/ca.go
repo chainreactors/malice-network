@@ -16,11 +16,11 @@ import (
 
 func ParseCertificateAuthority(certPEM, keyPEM []byte) (*x509.Certificate, *rsa.PrivateKey, error) {
 	certBlock, _ := pem.Decode(certPEM)
-	var err error
 	if certBlock == nil {
 		certsLog.Error("Failed to parse certificate PEM")
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("failed to decode certificate PEM")
 	}
+	var err error
 	cert, err := x509.ParseCertificate(certBlock.Bytes)
 	if err != nil {
 		certsLog.Errorf("Failed to parse certificate: %v", err)
@@ -30,7 +30,7 @@ func ParseCertificateAuthority(certPEM, keyPEM []byte) (*x509.Certificate, *rsa.
 	keyBlock, _ := pem.Decode(keyPEM)
 	if keyBlock == nil {
 		certsLog.Error("Failed to parse certificate PEM")
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("failed to decode private key PEM")
 	}
 	key, err := x509.ParsePKCS1PrivateKey(keyBlock.Bytes)
 	if err != nil {

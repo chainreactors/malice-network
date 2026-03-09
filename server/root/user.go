@@ -7,6 +7,7 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/rootpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"google.golang.org/protobuf/proto"
 	"gopkg.in/yaml.v3"
 	"os"
@@ -29,9 +30,13 @@ func (user *UserCommand) Execute(rpc clientrpc.RootRPCClient, msg *rootpb.Operat
 	if msg.Op == "add" {
 		return saveClientAuth(rpc, msg)
 	} else if msg.Op == "del" {
-		return rpc.RemoveClient(context.Background(), msg)
+		ctx, cancel := context.WithTimeout(context.Background(), rootRPCTimeout)
+		defer cancel()
+		return rpc.RemoveClient(ctx, msg)
 	} else if msg.Op == "list" {
-		clients, err := rpc.ListClients(context.Background(), msg)
+		ctx, cancel := context.WithTimeout(context.Background(), rootRPCTimeout)
+		defer cancel()
+		clients, err := rpc.ListClients(ctx, msg)
 		if err != nil {
 			return nil, err
 		}
@@ -41,14 +46,18 @@ func (user *UserCommand) Execute(rpc clientrpc.RootRPCClient, msg *rootpb.Operat
 		return nil, nil
 	} else if msg.Op == "reset" {
 		// Remove existing operator (ignore error if not found)
-		_, _ = rpc.RemoveClient(context.Background(), msg)
+		ctx, cancel := context.WithTimeout(context.Background(), rootRPCTimeout)
+		defer cancel()
+		_, _ = rpc.RemoveClient(ctx, msg)
 		return saveClientAuth(rpc, msg)
 	}
 	return nil, ErrInvalidOperator
 }
 
 func saveClientAuth(rpc clientrpc.RootRPCClient, msg *rootpb.Operator) (proto.Message, error) {
-	resp, err := rpc.AddClient(context.Background(), msg)
+	ctx, cancel := context.WithTimeout(context.Background(), rootRPCTimeout)
+	defer cancel()
+	resp, err := rpc.AddClient(ctx, msg)
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +68,7 @@ func saveClientAuth(rpc clientrpc.RootRPCClient, msg *rootpb.Operator) (proto.Me
 		return nil, fmt.Errorf("failed to unmarshal client auth: %w", err)
 	}
 	yamlPath := filepath.Join(configDir, fmt.Sprintf("%s_%s.auth", conf.Operator, conf.Host))
-	err = os.WriteFile(yamlPath, []byte(resp.Response), 0644)
+	err = fileutils.AtomicWriteFile(yamlPath, []byte(resp.Response), 0o600)
 	if err != nil {
 		return nil, err
 	}

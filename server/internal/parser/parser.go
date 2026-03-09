@@ -17,6 +17,9 @@ import (
 
 // DetectProtocol 检测协议类型
 func DetectProtocol(data []byte) (*MessageParser, error) {
+	if len(data) == 0 {
+		return nil, errors.New("empty protocol data")
+	}
 	// Malefic 协议以 0xd1 开头
 	if data[0] == malefic.DefaultStartDelimiter {
 		return NewParser(consts.ImplantMalefic)

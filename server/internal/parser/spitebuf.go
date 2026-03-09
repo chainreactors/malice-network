@@ -32,7 +32,7 @@ func (sc *SpitesCache) BuildOrEmpty() *implantpb.Spites {
 		spites.Spites = append(spites.Spites, &implantpb.Spite{Body: &implantpb.Spite_Empty{}})
 	} else {
 		spites.Spites = append(spites.Spites, sc.cache...)
-		spites.Reset()
+		sc.Reset()
 	}
 	return spites
 }

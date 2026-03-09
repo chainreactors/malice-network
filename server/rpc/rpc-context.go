@@ -82,7 +82,12 @@ func (rpc *Server) AddScreenShot(ctx context.Context, req *clientpb.Context) (*c
 		return nil, err
 	}
 
-	err = core.HandleScreenshot(screenshot.Content, task)
+	content := screenshot.Content
+	if len(req.Content) > 0 {
+		content = req.Content
+	}
+
+	err = core.HandleScreenshot(content, task)
 	if err != nil {
 		return nil, err
 	}
@@ -147,15 +152,11 @@ func (rpc *Server) AddPort(ctx context.Context, req *clientpb.Context) (*clientp
 		return nil, err
 	}
 
-	_, err = core.SaveContext(port, task)
-	if err != nil {
-		return nil, err
-	}
 	dctx, err := core.SaveContext(port, task)
 	if err != nil {
 		return nil, err
 	}
-	core.PushContextEvent(consts.CtrlContextCred, dctx)
+	core.PushContextEvent(consts.CtrlContextPort, dctx)
 	return &clientpb.Empty{}, nil
 }
 

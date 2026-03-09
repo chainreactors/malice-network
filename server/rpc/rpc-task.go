@@ -257,6 +257,14 @@ func (rpc *Server) WaitTaskFinish(ctx context.Context, req *clientpb.Task) (*cli
 				Spite:   msg,
 			}, nil
 		}
+
+		content, err := getTaskContextFromDisk(sess, task, -1)
+		if err == nil {
+			return content, nil
+		}
+		if !errors.Is(err, types.ErrNotFoundTaskContent) {
+			return nil, err
+		}
 	}
 	return nil, types.ErrNotFoundTaskContent
 }

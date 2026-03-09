@@ -304,6 +304,7 @@ func (rpc *Server) StartWebsite(ctx context.Context, req *clientpb.CtrlPipeline)
 	if err != nil {
 		return nil, err
 	}
+	core.Jobs.AddPipeline(webpb)
 
 	artifacts, err := db.GetValidArtifacts()
 	if err != nil {
@@ -335,7 +336,18 @@ func (rpc *Server) StopWebsite(ctx context.Context, req *clientpb.CtrlPipeline) 
 
 	job, err := core.Jobs.GetByListener(req.Name, listenerID)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, types.ErrNotFoundPipeline) {
+			pipelineDB, findErr := resolveWebsite(req.Name, listenerID)
+			if findErr != nil {
+				return nil, findErr
+			}
+			job = &core.Job{
+				Name:     pipelineDB.Name,
+				Pipeline: pipelineDB.ToProtobuf(),
+			}
+		} else {
+			return nil, err
+		}
 	}
 
 	err = db.DisablePipeline(job.Pipeline.Name)
@@ -377,14 +389,22 @@ func (rpc *Server) DeleteWebsite(ctx context.Context, req *clientpb.CtrlPipeline
 	if err != nil {
 		return nil, err
 	}
-	listener.RemovePipeline(pipeline)
-	err = db.DeleteWebsite(req.Name)
-	if err != nil && !errors.Is(err, db.ErrRecordNotFound) {
-		return nil, err
-	}
 
 	job, err := core.Jobs.GetByListener(req.Name, listenerID)
 	if err != nil {
+		if errors.Is(err, types.ErrNotFoundPipeline) {
+			job = &core.Job{
+				Name:     pipeline.Name,
+				Pipeline: pipeline,
+			}
+		} else {
+			return nil, err
+		}
+	}
+
+	listener.RemovePipeline(pipeline)
+	err = db.DeleteWebsite(req.Name)
+	if err != nil && !errors.Is(err, db.ErrRecordNotFound) {
 		return nil, err
 	}
 

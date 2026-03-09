@@ -41,7 +41,12 @@ func Srdi(req *SrdiRequest) ([]byte, error) {
 	inputFile.Close()
 
 	// Create temporary output file
-	outputPath := filepath.Join(configs.TempPath, "mutant-srdi-output-*.bin")
+	outputFile, err := os.CreateTemp(configs.TempPath, "mutant-srdi-output-*.bin")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create temp output file: %w", err)
+	}
+	outputPath := outputFile.Name()
+	outputFile.Close()
 	defer os.Remove(outputPath)
 
 	// Handle userdata if provided

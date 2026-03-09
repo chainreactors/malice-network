@@ -57,6 +57,9 @@ func ParseStatus(ctx *clientpb.TaskContext) (interface{}, error) {
 }
 
 func ParseResponse(ctx *clientpb.TaskContext) (interface{}, error) {
+	if ctx == nil || ctx.Spite == nil {
+		return nil, fmt.Errorf("no response")
+	}
 	resp := ctx.Spite.GetResponse()
 	if resp != nil {
 		return resp.GetOutput(), nil
@@ -65,7 +68,13 @@ func ParseResponse(ctx *clientpb.TaskContext) (interface{}, error) {
 }
 
 func ParseExecResponse(ctx *clientpb.TaskContext) (interface{}, error) {
+	if ctx == nil || ctx.Spite == nil {
+		return nil, fmt.Errorf("no response")
+	}
 	resp := ctx.Spite.GetExecResponse()
+	if resp == nil {
+		return nil, fmt.Errorf("no response")
+	}
 	var s strings.Builder
 	if resp.End == true {
 		s.WriteString(fmt.Sprintf("pid: %d ,task: %d command done\n", resp.Pid, ctx.Task.TaskId))
@@ -87,6 +96,9 @@ func ParseExecResponse(ctx *clientpb.TaskContext) (interface{}, error) {
 }
 
 func ParseArrayResponse(ctx *clientpb.TaskContext) (interface{}, error) {
+	if ctx == nil || ctx.Spite == nil || ctx.Spite.GetResponse() == nil {
+		return nil, fmt.Errorf("no response")
+	}
 	array := ctx.Spite.GetResponse().GetArray()
 	if array == nil {
 		return nil, fmt.Errorf("no response")
@@ -104,6 +116,9 @@ func FormatArrayResponse(ctx *clientpb.TaskContext) (string, error) {
 }
 
 func ParseKVResponse(ctx *clientpb.TaskContext) (interface{}, error) {
+	if ctx == nil || ctx.Spite == nil || ctx.Spite.GetResponse() == nil {
+		return nil, fmt.Errorf("no response")
+	}
 	set := ctx.Spite.GetResponse().GetKv()
 	if set == nil {
 		return nil, fmt.Errorf("no response")
@@ -145,6 +160,9 @@ func FormatKVResponse(ctx *clientpb.TaskContext) (string, error) {
 
 // ParseCommonBody returns the CommonBody attached to the spite, if any.
 func ParseCommonBody(ctx *clientpb.TaskContext) (interface{}, error) {
+	if ctx == nil || ctx.Spite == nil {
+		return nil, fmt.Errorf("no common body")
+	}
 	common := ctx.Spite.GetCommon()
 	if common == nil {
 		return nil, fmt.Errorf("no common body")
@@ -154,6 +172,9 @@ func ParseCommonBody(ctx *clientpb.TaskContext) (interface{}, error) {
 
 // FormatCommonBody renders CommonBody content as a readable string.
 func FormatCommonBody(ctx *clientpb.TaskContext) (string, error) {
+	if ctx == nil || ctx.Spite == nil {
+		return "", fmt.Errorf("no common body")
+	}
 	common := ctx.Spite.GetCommon()
 	if common == nil {
 		return "", fmt.Errorf("no common body")

@@ -113,7 +113,7 @@ type SaasClient struct {
 
 func GetSaasClient() *SaasClient {
 	saasConfig := configs.GetSaasConfig()
-	if !saasConfig.Enable {
+	if saasConfig == nil || !saasConfig.Enable {
 		return &SaasClient{}
 	}
 	return &SaasClient{
@@ -354,10 +354,15 @@ func RegisterLicense() error {
 // 对外导出：兼容外部包调用
 func CheckAndDownloadArtifact(statusPath, downloadPath, token string, builder *models.Artifact, pollInterval, maxPollTime time.Duration) (string, string, error) {
 	client := GetSaasClient()
-	if client.Token == "" || client.BaseURL == "" {
+	if client.BaseURL == "" {
 		return "", "", types.ErrSaasUnable
 	}
-	client.Token = token
+	if token != "" {
+		client.Token = token
+	}
+	if client.Token == "" {
+		return "", "", types.ErrSaasUnable
+	}
 	result := client.CheckAndDownloadArtifact(statusPath, downloadPath, builder, pollInterval, maxPollTime)
 	return result.Path, result.Status, result.Err
 }

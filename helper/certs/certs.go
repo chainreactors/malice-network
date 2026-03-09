@@ -51,7 +51,7 @@ var CertTypes = []string{
 
 // SaveToPEMFile save to PEM file
 func SaveToPEMFile(filename string, pemData []byte) error {
-	file, err := os.Create(filename)
+	file, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
 	if err != nil {
 		return err
 	}

@@ -7,11 +7,15 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/rootpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"google.golang.org/protobuf/proto"
 	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
+	"time"
 )
+
+const rootRPCTimeout = 10 * time.Second
 
 // ListenerCommand - Listener command
 type ListenerCommand struct {
@@ -29,9 +33,13 @@ func (ln *ListenerCommand) Execute(rpc clientrpc.RootRPCClient, msg *rootpb.Oper
 	if msg.Op == "add" {
 		return saveListenerAuth(rpc, msg)
 	} else if msg.Op == "del" {
-		return rpc.RemoveListener(context.Background(), msg)
+		ctx, cancel := context.WithTimeout(context.Background(), rootRPCTimeout)
+		defer cancel()
+		return rpc.RemoveListener(ctx, msg)
 	} else if msg.Op == "list" {
-		listeners, err := rpc.ListListeners(context.Background(), msg)
+		ctx, cancel := context.WithTimeout(context.Background(), rootRPCTimeout)
+		defer cancel()
+		listeners, err := rpc.ListListeners(ctx, msg)
 		if err != nil {
 			return nil, err
 		}
@@ -40,14 +48,25 @@ func (ln *ListenerCommand) Execute(rpc clientrpc.RootRPCClient, msg *rootpb.Oper
 		}
 		return nil, nil
 	} else if msg.Op == "reset" {
-		_, _ = rpc.RemoveListener(context.Background(), msg)
+		ctx, cancel := context.WithTimeout(context.Background(), rootRPCTimeout)
+		defer cancel()
+		_, _ = rpc.RemoveListener(ctx, msg)
 		return saveListenerAuth(rpc, msg)
 	}
 	return nil, ErrInvalidOperator
 }
 
 func saveListenerAuth(rpc clientrpc.RootRPCClient, msg *rootpb.Operator) (proto.Message, error) {
-	resp, err := rpc.AddListener(context.Background(), msg)
+	if len(msg.Args) == 0 {
+		return nil, fmt.Errorf("missing name argument")
+	}
+	name, err := fileutils.SanitizeBasename(msg.Args[0])
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), rootRPCTimeout)
+	defer cancel()
+	resp, err := rpc.AddListener(ctx, msg)
 	if err != nil {
 		return nil, err
 	}
@@ -57,8 +76,8 @@ func saveListenerAuth(rpc clientrpc.RootRPCClient, msg *rootpb.Operator) (proto.
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal listener auth: %w", err)
 	}
-	yamlPath := filepath.Join(wd, fmt.Sprintf("%s.auth", msg.Args[0]))
-	err = os.WriteFile(yamlPath, []byte(resp.Response), 0644)
+	yamlPath := filepath.Join(wd, fmt.Sprintf("%s.auth", name))
+	err = fileutils.AtomicWriteFile(yamlPath, []byte(resp.Response), 0o600)
 	if err != nil {
 		return nil, err
 	}

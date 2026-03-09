@@ -15,14 +15,7 @@ const (
 // GetAliasesDir - Returns the path to the config dir
 func GetAliasesDir() string {
 	rootDir, _ := filepath.Abs(GetRootAppDir())
-	dir := filepath.Join(rootDir, AliasesDirName)
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		err = os.MkdirAll(dir, 0700)
-		if err != nil {
-			panic(err)
-		}
-	}
-	return dir
+	return ensureDir(filepath.Join(rootDir, AliasesDirName))
 }
 
 // GetInstalledAliasManifests - Returns a list of installed alias manifests
@@ -48,14 +41,7 @@ func GetInstalledAliasManifests() []string {
 // GetExtensionsDir
 func GetExtensionsDir() string {
 	rootDir, _ := filepath.Abs(GetRootAppDir())
-	dir := filepath.Join(rootDir, ExtensionsDirName)
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		err = os.MkdirAll(dir, 0700)
-		if err != nil {
-			panic(err)
-		}
-	}
-	return dir
+	return ensureDir(filepath.Join(rootDir, ExtensionsDirName))
 }
 
 // GetInstalledExtensionManifests - Returns a list of installed extension manifests
@@ -80,14 +66,7 @@ func GetInstalledExtensionManifests() []string {
 
 func GetMalsDir() string {
 	rootDir, _ := filepath.Abs(GetRootAppDir())
-	dir := filepath.Join(rootDir, MalsDirName)
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		err = os.MkdirAll(dir, 0700)
-		if err != nil {
-			panic(err)
-		}
-	}
-	return dir
+	return ensureDir(filepath.Join(rootDir, MalsDirName))
 }
 
 func GetInstalledMalManifests() []string {

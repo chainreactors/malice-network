@@ -113,7 +113,14 @@ func ExtractTarGz(gzipPath string, dest string) error {
 			return err
 		}
 
-		target := filepath.Join(dest, header.Name)
+		entryName := strings.TrimPrefix(filepath.ToSlash(header.Name), "./")
+		if entryName == "" {
+			continue
+		}
+		target, err := SafeJoin(dest, entryName)
+		if err != nil {
+			return fmt.Errorf("unsafe tar path %q: %w", header.Name, err)
+		}
 
 		switch header.Typeflag {
 		case tar.TypeDir:
@@ -121,6 +128,9 @@ func ExtractTarGz(gzipPath string, dest string) error {
 				return err
 			}
 		case tar.TypeReg:
+			if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
+				return err
+			}
 			outFile, err := os.Create(target)
 			if err != nil {
 				return err
@@ -226,7 +236,10 @@ func extractZipInternal(zipData []byte, targetDir, subdir string, filter func(st
 			continue
 		}
 
-		outputPath := filepath.Join(targetDir, fileName)
+		outputPath, err := SafeJoin(targetDir, fileName)
+		if err != nil {
+			return fmt.Errorf("unsafe zip path %q: %w", file.Name, err)
+		}
 		if err := extractZipFile(file, outputPath); err != nil {
 			return fmt.Errorf("failed to extract %s: %w", file.Name, err)
 		}

@@ -55,6 +55,9 @@ func (rpc *Server) PipeServer(ctx context.Context, req *implantpb.PipeRequest) (
 }
 
 func (rpc *Server) PipeUpload(ctx context.Context, pipe *implantpb.PipeRequest) (*clientpb.Task, error) {
+	if pipe == nil || pipe.Pipe == nil {
+		return nil, types.ErrMissingRequestField
+	}
 	req := pipe.Pipe
 	count := parser.Count(req.Data, config.Int(consts.ConfigMaxPacketLength))
 	if count == 1 {
@@ -76,6 +79,9 @@ func (rpc *Server) PipeUpload(ctx context.Context, pipe *implantpb.PipeRequest) 
 				Target: req.Target,
 			},
 		}, count)
+		if err != nil {
+			return nil, err
+		}
 		in, out, err := rpc.StreamGenericHandler(ctx, greq)
 		if err != nil {
 			return nil, err

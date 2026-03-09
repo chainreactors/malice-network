@@ -2,9 +2,11 @@ package codenames
 
 import (
 	_ "embed"
+	"errors"
 	"fmt"
 	insecureRand "math/rand"
 	"strings"
+	"sync"
 )
 
 var (
@@ -17,27 +19,49 @@ var (
 	nouns []byte
 
 	Nouns []string
+
+	setupOnce sync.Once
 )
 
 func SetupCodenames() {
-	Adjectives = strings.Split(string(adjectives), "\n")
-	Nouns = strings.Split(string(nouns), "\n")
+	Adjectives = splitWords(adjectives)
+	Nouns = splitWords(nouns)
+}
+
+func ensureCodenames() {
+	setupOnce.Do(SetupCodenames)
+}
+
+func splitWords(data []byte) []string {
+	lines := strings.Split(string(data), "\n")
+	words := make([]string, 0, len(lines))
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		words = append(words, line)
+	}
+	return words
 }
 
 // getRandomWord - Get a random word from a file, not cryptographically secure
 func getRandomWord(words []string) (string, error) {
-	wordsLen := len(words)
-	word := words[insecureRand.Intn(wordsLen-1)]
-	return strings.TrimSpace(word), nil
+	if len(words) == 0 {
+		return "", errors.New("word list is empty")
+	}
+	return words[insecureRand.Intn(len(words))], nil
 }
 
 // RandomAdjective - Get a random adjective, not cryptographically secure
 func RandomAdjective() (string, error) {
+	ensureCodenames()
 	return getRandomWord(Adjectives)
 }
 
 // RandomNoun - Get a random noun, not cryptographically secure
 func RandomNoun() (string, error) {
+	ensureCodenames()
 	return getRandomWord(Nouns)
 }
 

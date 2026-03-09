@@ -149,6 +149,7 @@ func (rpc *Server) StartPipeline(ctx context.Context, req *clientpb.CtrlPipeline
 	if err := db.EnablePipelineByListener(pipeline.Name, listenerID); err != nil {
 		return nil, err
 	}
+	core.Jobs.AddPipeline(pipeline)
 	return &clientpb.Empty{}, nil
 }
 
