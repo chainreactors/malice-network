@@ -64,20 +64,20 @@ type TCPProfile struct {
 }
 
 type BasicProfile struct {
-	Name        string                 `yaml:"name" json:"name"`
-	Proxy       *ProxyProfile          `yaml:"proxy" json:"proxy"`
-	Cron        string                 `yaml:"cron" json:"cron"`
-	Jitter      float64                `yaml:"jitter" json:"jitter"`
-	InitRetry   int                    `yaml:"init_retry" json:"init_retry"`
-	ServerRetry int                    `yaml:"server_retry" json:"server_retry"`
-	GlobalRetry int                    `yaml:"global_retry" json:"global_retry"`
-	Encryption  string                 `yaml:"encryption" json:"encryption"`
-	Key         string                 `yaml:"key" json:"key"`
-	Secure      *SecureProfile         `yaml:"secure" json:"secure"`
-	DGA         *DGAProfile            `yaml:"dga" json:"dga"`
-	Guardrail   *GuardrailProfile      `yaml:"guardrail" json:"guardrail"`
-	Targets     []Target               `yaml:"targets" json:"targets"`
-	Extras      map[string]interface{} `yaml:",inline" json:",inline"`
+	Name       string                 `yaml:"name" json:"name"`
+	Proxy      *ProxyProfile          `yaml:"proxy" json:"proxy"`
+	Cron       string                 `yaml:"cron" json:"cron"`
+	Jitter     float64                `yaml:"jitter" json:"jitter"`
+	Keepalive  bool                   `yaml:"keepalive" json:"keepalive"`
+	Retry      int                    `yaml:"retry" json:"retry"`
+	MaxCycles  int                    `yaml:"max_cycles" json:"max_cycles"`
+	Encryption string                 `yaml:"encryption" json:"encryption"`
+	Key        string                 `yaml:"key" json:"key"`
+	Secure     *SecureProfile         `yaml:"secure" json:"secure"`
+	DGA        *DGAProfile            `yaml:"dga" json:"dga"`
+	Guardrail  *GuardrailProfile      `yaml:"guardrail" json:"guardrail"`
+	Targets    []Target               `yaml:"targets" json:"targets"`
+	Extras     map[string]interface{} `yaml:",inline" json:",inline"`
 }
 
 type REMProfile struct {
@@ -207,11 +207,38 @@ type BuildProfile struct {
 	Extras    map[string]interface{} `yaml:",inline" json:",inline"`
 }
 
+type EvaderProfile struct {
+	AntiEmu      bool `yaml:"anti_emu" json:"anti_emu"`
+	EtwPass      bool `yaml:"etw_pass" json:"etw_pass"`
+	GodSpeed     bool `yaml:"god_speed" json:"god_speed"`
+	SleepEncrypt bool `yaml:"sleep_encrypt" json:"sleep_encrypt"`
+	AntiForensic bool `yaml:"anti_forensic" json:"anti_forensic"`
+	CfgPatch     bool `yaml:"cfg_patch" json:"cfg_patch"`
+	ApiUntangle  bool `yaml:"api_untangle" json:"api_untangle"`
+	NormalApi    bool `yaml:"normal_api" json:"normal_api"`
+}
+
+type ProxyDllProfile struct {
+	ProxyFunc     string `yaml:"proxyfunc" json:"proxyfunc"`
+	RawDll        string `yaml:"raw_dll" json:"raw_dll"`
+	ProxiedDll    string `yaml:"proxied_dll" json:"proxied_dll"`
+	ProxyDll      string `yaml:"proxy_dll" json:"proxy_dll"`
+	PackResources bool   `yaml:"pack_resources" json:"pack_resources"`
+	Block         bool   `yaml:"block" json:"block"`
+	HijackDllmain bool   `yaml:"hijack_dllmain" json:"hijack_dllmain"`
+}
+
+type LoaderProfile struct {
+	Evader   *EvaderProfile   `yaml:"evader" json:"evader"`
+	ProxyDll *ProxyDllProfile `yaml:"proxydll" json:"proxydll"`
+}
+
 type ProfileConfig struct {
 	Basic   *BasicProfile          `yaml:"basic" json:"basic"`
 	Pulse   *PulseProfile          `yaml:"pulse" json:"pulse"`
 	Implant *ImplantProfile        `yaml:"implants" json:"implants"`
 	Build   *BuildProfile          `yaml:"build" json:"build"`
+	Loader  *LoaderProfile         `yaml:"loader" json:"loader"`
 	Extras  map[string]interface{} `yaml:",inline" json:",inline"`
 }
 
@@ -355,6 +382,13 @@ func (p *ProfileConfig) Merge(other *ProfileConfig) {
 		}
 		p.mergeBuildProfile(other.Build)
 	}
+
+	if other.Loader != nil {
+		if p.Loader == nil {
+			p.Loader = &LoaderProfile{}
+		}
+		p.mergeLoaderProfile(other.Loader)
+	}
 }
 
 func (p *ProfileConfig) mergeBasicProfile(other *BasicProfile) {
@@ -367,14 +401,11 @@ func (p *ProfileConfig) mergeBasicProfile(other *BasicProfile) {
 	if other.Jitter != 0 {
 		p.Basic.Jitter = other.Jitter
 	}
-	if other.InitRetry != 0 {
-		p.Basic.InitRetry = other.InitRetry
+	if other.Retry != 0 {
+		p.Basic.Retry = other.Retry
 	}
-	if other.ServerRetry != 0 {
-		p.Basic.ServerRetry = other.ServerRetry
-	}
-	if other.GlobalRetry != 0 {
-		p.Basic.GlobalRetry = other.GlobalRetry
+	if other.MaxCycles != 0 {
+		p.Basic.MaxCycles = other.MaxCycles
 	}
 	if other.Encryption != "" {
 		p.Basic.Encryption = other.Encryption
@@ -397,6 +428,8 @@ func (p *ProfileConfig) mergeBasicProfile(other *BasicProfile) {
 	if len(other.Targets) > 0 {
 		p.Basic.Targets = other.Targets
 	}
+	// 布尔值需要特殊处理
+	p.Basic.Keepalive = other.Keepalive
 }
 
 func (p *ProfileConfig) mergePulseProfile(other *PulseProfile) {
@@ -471,6 +504,15 @@ func (p *ProfileConfig) mergeBuildProfile(other *BuildProfile) {
 	// 布尔值需要特殊处理
 	p.Build.ZigBuild = other.ZigBuild
 	p.Build.Remap = other.Remap
+}
+
+func (p *ProfileConfig) mergeLoaderProfile(other *LoaderProfile) {
+	if other.Evader != nil {
+		p.Loader.Evader = other.Evader
+	}
+	if other.ProxyDll != nil {
+		p.Loader.ProxyDll = other.ProxyDll
+	}
 }
 
 // Validate 验证配置的有效性

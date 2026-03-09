@@ -60,9 +60,9 @@ func BeaconFlagSet(f *pflag.FlagSet) {
 	f.String("name", "", "profile name")
 	f.String("cron", "", "cron expr (e.g., '*/5 * * * * * *')")
 	f.Float64("jitter", -1, "jitter value (0.0-1.0)")
-	f.Int("init-retry", -1, "initial retry count")
-	f.Int("server-retry", -1, "server retry count")
-	f.Int("global-retry", -1, "global retry count")
+	f.Int("retry", -1, "retry count")
+	f.Int("max-cycles", -1, "max cycles, -1 for infinite")
+	f.Bool("keepalive", false, "keepalive mode")
 	f.String("encryption", "", "encryption type (aes, xor, etc.)")
 	f.String("key", "", "encryption key")
 
@@ -188,19 +188,19 @@ func parseBuildFlags(cmd *cobra.Command, profile *implanttypes.ProfileConfig) (*
 		profile.Basic.Jitter = jitter
 	}
 
-	if cmd.Flags().Changed("init-retry") {
-		initRetry, _ := cmd.Flags().GetInt("init-retry")
-		profile.Basic.InitRetry = initRetry
+	if cmd.Flags().Changed("retry") {
+		retry, _ := cmd.Flags().GetInt("retry")
+		profile.Basic.Retry = retry
 	}
 
-	if cmd.Flags().Changed("server-retry") {
-		serverRetry, _ := cmd.Flags().GetInt("server-retry")
-		profile.Basic.ServerRetry = serverRetry
+	if cmd.Flags().Changed("max-cycles") {
+		maxCycles, _ := cmd.Flags().GetInt("max-cycles")
+		profile.Basic.MaxCycles = maxCycles
 	}
 
-	if cmd.Flags().Changed("global-retry") {
-		globalRetry, _ := cmd.Flags().GetInt("global-retry")
-		profile.Basic.GlobalRetry = globalRetry
+	if cmd.Flags().Changed("keepalive") {
+		keepalive, _ := cmd.Flags().GetBool("keepalive")
+		profile.Basic.Keepalive = keepalive
 	}
 
 	if cmd.Flags().Changed("encryption") {
