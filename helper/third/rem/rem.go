@@ -19,6 +19,15 @@ func init() {
 	utils.Log = logs.NewLogger(logs.InfoLevel)
 }
 
+func syncRemLoggerLevel() {
+	if utils.Log == nil {
+		utils.Log = logs.NewLogger(logs.InfoLevel)
+	}
+	if logs.Log != nil {
+		utils.Log.SetLevel(logs.Log.Level)
+	}
+}
+
 func ParseRemCmd(args []string) (*remrunner.Options, error) {
 	var option remrunner.Options
 	err := option.ParseArgs(append([]string{"rem"}, args...))
@@ -83,28 +92,32 @@ func NewRemServer(conURL string, ip string) (*RemConsole, error) {
 	var option remrunner.Options
 	var args []string
 	if ip == "" {
-		args = []string{"rem", "-s", conURL}
+		args = []string{"-s", conURL}
 	} else {
-		args = []string{"rem", "-s", conURL, "-i", ip}
+		args = []string{"-s", conURL, "-i", ip}
 	}
 	err := option.ParseArgs(args)
 	if err != nil {
 		// Fallback to -c for old version
 		if ip == "" {
-			args = []string{"rem", "-c", conURL}
+			args = []string{"-c", conURL}
 		} else {
-			args = []string{"rem", "-c", conURL, "-i", ip}
+			args = []string{"-c", conURL, "-i", ip}
 		}
 		err = option.ParseArgs(args)
 		if err != nil {
 			return nil, err
 		}
 	}
+	if logs.Log != nil && logs.Log.Level <= logs.DebugLevel {
+		option.Debug = true
+	}
 
 	remRunner, err := option.Prepare()
 	if err != nil {
 		return nil, err
 	}
+	syncRemLoggerLevel()
 
 	if len(remRunner.ConsoleURLs) > 0 {
 		remRunner.URLs.ConsoleURL = remRunner.ConsoleURLs[0]
@@ -128,10 +141,14 @@ func NewRemClient(conURL string, args []string) (*RemConsole, error) {
 	if err != nil {
 		return nil, err
 	}
+	if logs.Log != nil && logs.Log.Level <= logs.DebugLevel {
+		option.Debug = true
+	}
 	remRunner, err := option.Prepare()
 	if err != nil {
 		return nil, err
 	}
+	syncRemLoggerLevel()
 	remRunner.URLs.ConsoleURL = u
 	console, err := remrunner.NewConsole(remRunner, remRunner.URLs)
 	if err != nil {
