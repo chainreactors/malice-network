@@ -348,9 +348,7 @@ func (e *Engine) displayMultilinePrompts() {
 // and goes back to this same line after displaying this.
 func (e *Engine) displayHelpers() {
 	fmt.Print(term.NewlineReturn)
-
-	// Note: Autocomplete() is now called at the beginning of Refresh()
-	// to ensure inline suggestions are ready before displayLine().
+	fmt.Print(term.ClearScreenBelow)
 
 	// Display hint and completions.
 	ui.DisplayHint(e.hint)
