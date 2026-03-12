@@ -5,45 +5,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// Commands returns all AI-related commands
+// Commands returns AI interaction commands (ask, analyze).
+// The ai-config command lives under `config ai`.
 func Commands(con *core.Console) []*cobra.Command {
-	aiConfigCmd := &cobra.Command{
-		Use:   "ai-config",
-		Short: "Configure AI assistant settings",
-		Long:  "Configure the AI assistant with your preferred provider (OpenAI or Claude), API key, model, and other settings.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return AIConfigCmd(cmd, con)
-		},
-		Annotations: map[string]string{
-			"static": "true",
-		},
-		Example: `~~~
-// Enable AI with OpenAI
-ai-config --enable --provider openai --api-key "sk-xxx" --model gpt-4
-
-// Enable AI with Claude
-ai-config --enable --provider claude --api-key "sk-ant-xxx" --endpoint "https://api.anthropic.com/v1" --model claude-3-opus-20240229
-
-// Show current configuration
-ai-config --show
-
-// Disable AI
-ai-config --disable
-~~~`,
-	}
-
-	aiConfigCmd.Flags().Bool("enable", false, "Enable AI assistant")
-	aiConfigCmd.Flags().Bool("disable", false, "Disable AI assistant")
-	aiConfigCmd.Flags().Bool("show", false, "Show current AI configuration")
-	aiConfigCmd.Flags().String("provider", "", "AI provider: openai or claude")
-	aiConfigCmd.Flags().String("api-key", "", "API key for the AI provider")
-	aiConfigCmd.Flags().String("endpoint", "", "API endpoint URL")
-	aiConfigCmd.Flags().String("model", "", "Model name (e.g., gpt-4, claude-3-opus-20240229)")
-	aiConfigCmd.Flags().Int("max-tokens", 0, "Maximum tokens in response")
-	aiConfigCmd.Flags().Int("timeout", 0, "Request timeout in seconds")
-	aiConfigCmd.Flags().Int("history-size", 0, "Number of history lines to include as context")
-	aiConfigCmd.Flags().Bool("opsec-check", false, "Enable AI OPSEC risk assessment for high-risk commands")
-
 	askCmd := &cobra.Command{
 		Use:   "ask [question]",
 		Short: "Ask the AI assistant a question",
@@ -107,5 +71,47 @@ analyze "getsystem failed: UAC is enabled"
 ~~~`,
 	}
 
-	return []*cobra.Command{aiConfigCmd, askCmd, questionCmd, analyzeCmd}
+	return []*cobra.Command{askCmd, questionCmd, analyzeCmd}
 }
+
+// AIConfigCommand returns the ai subcommand for use under `config`.
+func AIConfigCommand(con *core.Console) *cobra.Command {
+	aiCmd := &cobra.Command{
+		Use:   "ai",
+		Short: "Show and update AI assistant configuration",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return AIConfigCmd(cmd, con)
+		},
+		Annotations: map[string]string{
+			"static": "true",
+		},
+		Example: `~~~
+// Enable AI with OpenAI
+config ai --enable --provider openai --api-key "sk-xxx" --model gpt-4
+
+// Enable AI with Claude
+config ai --enable --provider claude --api-key "sk-ant-xxx" --model claude-3-opus-20240229
+
+// Show current configuration
+config ai --show
+
+// Disable AI
+config ai --disable
+~~~`,
+	}
+
+	aiCmd.Flags().Bool("enable", false, "Enable AI assistant")
+	aiCmd.Flags().Bool("disable", false, "Disable AI assistant")
+	aiCmd.Flags().Bool("show", false, "Show current AI configuration")
+	aiCmd.Flags().String("provider", "", "AI provider: openai or claude")
+	aiCmd.Flags().String("api-key", "", "API key for the AI provider")
+	aiCmd.Flags().String("endpoint", "", "API endpoint URL")
+	aiCmd.Flags().String("model", "", "Model name (e.g., gpt-4, claude-3-opus-20240229)")
+	aiCmd.Flags().Int("max-tokens", 0, "Maximum tokens in response")
+	aiCmd.Flags().Int("timeout", 0, "Request timeout in seconds")
+	aiCmd.Flags().Int("history-size", 0, "Number of history lines to include as context")
+	aiCmd.Flags().Bool("opsec-check", false, "Enable AI OPSEC risk assessment for high-risk commands")
+
+	return aiCmd
+}
+

@@ -3,6 +3,7 @@ package config
 import (
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/client/command/ai"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/spf13/cobra"
@@ -71,7 +72,7 @@ func Commands(con *core.Console) []*cobra.Command {
 	// Enable wizard for config commands that need configuration
 	common.EnableWizardForCommands(githubUpdateCmd, notifyUpdateCmd)
 
-	configCmd.AddCommand(configRefreshCmd, githubCmd, notifyCmd)
+	configCmd.AddCommand(configRefreshCmd, githubCmd, notifyCmd, ai.AIConfigCommand(con))
 	return []*cobra.Command{configCmd}
 }
 
