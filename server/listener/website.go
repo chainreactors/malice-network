@@ -131,6 +131,7 @@ func (w *Website) ToProtobuf() *clientpb.Pipeline {
 		Name:       w.Name,
 		Enable:     w.Enable,
 		ListenerId: w.ListenerID,
+		Parser:     w.Parser,
 		Type:       consts.WebsitePipeline,
 		CertName:   w.CertName,
 		Body: &clientpb.Pipeline_Web{
@@ -141,7 +142,9 @@ func (w *Website) ToProtobuf() *clientpb.Pipeline {
 				Root:       w.rootPath,
 			},
 		},
-		Tls: w.TLSConfig.ToProtobuf(),
+		Tls:        w.TLSConfig.ToProtobuf(),
+		Encryption: w.Encryption.ToProtobuf(),
+		Secure:     w.SecureConfig.ToProtobuf(),
 	}
 	return p
 }

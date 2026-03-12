@@ -48,7 +48,7 @@ type AutoBuildConfig struct {
 }
 
 func (tcp *TcpPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, error) {
-	tls, err := tcp.TlsConfig.ReadCert()
+	tls, err := tlsToProtobuf(tcp.TlsConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +64,7 @@ func (tcp *TcpPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, erro
 				Port: uint32(tcp.Port),
 			},
 		},
-		Tls:        tls.ToProtobuf(),
+		Tls:        tls,
 		Encryption: tcp.EncryptionConfig.ToProtobuf(),
 		Secure:     tcp.SecureConfig.ToProtobuf(),
 	}, nil
@@ -78,7 +78,7 @@ type BindPipelineConfig struct {
 }
 
 func (pipeline *BindPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, error) {
-	tls, err := pipeline.TlsConfig.ReadCert()
+	tls, err := tlsToProtobuf(pipeline.TlsConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +90,7 @@ func (pipeline *BindPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline
 		Body: &clientpb.Pipeline_Bind{
 			Bind: &clientpb.BindPipeline{},
 		},
-		Tls:        tls.ToProtobuf(),
+		Tls:        tls,
 		Encryption: pipeline.EncryptionConfig.ToProtobuf(),
 	}, nil
 }
@@ -111,7 +111,7 @@ type HttpPipelineConfig struct {
 }
 
 func (http *HttpPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, error) {
-	tls, err := http.TlsConfig.ReadCert()
+	tls, err := tlsToProtobuf(http.TlsConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +146,7 @@ func (http *HttpPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, er
 				Params: params.String(),
 			},
 		},
-		Tls:        tls.ToProtobuf(),
+		Tls:        tls,
 		Encryption: http.EncryptionConfig.ToProtobuf(),
 		Secure:     http.SecureConfig.ToProtobuf(),
 	}, nil
@@ -206,35 +206,6 @@ func (content *WebContent) ToProtobuf() (*clientpb.WebContent, error) {
 		Content: data,
 		//Encryption: content.EncryptionConfig.ToProtobuf(),
 	}, nil
-}
-
-type CertConfig struct {
-	*implanttypes.CertConfig
-	Ca     *implanttypes.CertConfig
-	Enable bool `yaml:"enable"`
-}
-
-func (t *CertConfig) ToProtobuf() *clientpb.TLS {
-	if t.CertConfig == nil {
-		return &clientpb.TLS{
-			Enable: t.Enable,
-		}
-	}
-	var ca *clientpb.Cert
-	if t.Ca != nil {
-		ca = &clientpb.Cert{
-			Cert: t.Ca.Cert,
-		}
-	}
-	return &clientpb.TLS{
-		Cert: &clientpb.Cert{
-			Cert: t.Cert,
-			Key:  t.Key,
-		},
-		Ca:     ca,
-		Enable: t.Enable,
-		Acme:   t.Enable,
-	}
 }
 
 type TlsConfig struct {
@@ -307,6 +278,14 @@ func (t *TlsConfig) ReadCert() (*implanttypes.TlsConfig, error) {
 		}
 	}
 	return tls, nil
+}
+
+func tlsToProtobuf(config *TlsConfig) (*clientpb.TLS, error) {
+	tls, err := config.ReadCert()
+	if err != nil {
+		return nil, err
+	}
+	return tls.ToProtobuf(), nil
 }
 
 func NewCrypto(es []*clientpb.Encryption) ([]cryptostream.Cryptor, error) {

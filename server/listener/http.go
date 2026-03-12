@@ -64,6 +64,13 @@ type HTTPPipeline struct {
 }
 
 func (pipeline *HTTPPipeline) ToProtobuf() *clientpb.Pipeline {
+	params := (&implanttypes.PipelineParams{
+		Headers:    pipeline.Headers,
+		ErrorPage:  string(pipeline.ErrorPage),
+		BodyPrefix: string(pipeline.BodyPrefix),
+		BodySuffix: string(pipeline.BodySuffix),
+	}).String()
+
 	p := &clientpb.Pipeline{
 		Name:       pipeline.Name,
 		Enable:     pipeline.Enable,
@@ -77,10 +84,12 @@ func (pipeline *HTTPPipeline) ToProtobuf() *clientpb.Pipeline {
 				ListenerId: pipeline.ListenerID,
 				Port:       uint32(pipeline.Port),
 				Host:       pipeline.Host,
+				Params:     params,
 			},
 		},
 		Tls:        pipeline.TLSConfig.ToProtobuf(),
 		Encryption: pipeline.Encryption.ToProtobuf(),
+		Secure:     pipeline.SecureConfig.ToProtobuf(),
 	}
 	return p
 }

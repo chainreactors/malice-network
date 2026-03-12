@@ -6,7 +6,8 @@ import (
 	"fmt"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/utils/configutil"
+	config "github.com/gookit/config/v2"
+	yamlDriver "github.com/gookit/config/v2/yaml"
 	"gopkg.in/yaml.v3"
 	"io"
 	insecureRand "math/rand"
@@ -105,17 +106,31 @@ type LogConfig struct {
 
 type MiscConfig struct {
 	PacketLength int    `config:"packet_length" default:"4194304" yaml:"packet_length"`
-	Certificate  string `config:"cert" default:"" yaml:"cert"`
-	PrivateKey   string `config:"key" default:"" yaml:"key"`
+	Certificate  string `config:"certificate" default:"" yaml:"certificate"`
+	PrivateKey   string `config:"certificate_key" default:"" yaml:"certificate_key"`
 }
 
 func LoadMiscConfig() ([]byte, []byte, error) {
 	var opt ServerConfig
-	// load config
-	err := configutil.LoadConfig(ServerConfigFileName, &opt)
+	cfg := config.New("misc-config-loader")
+	cfg.WithOptions(func(opt *config.Options) {
+		opt.DecoderConfig.TagName = "config"
+		opt.ParseDefault = true
+	})
+	cfg.AddDriver(yamlDriver.Driver)
+
+	err := cfg.LoadFiles(ServerConfigFileName)
 	if err != nil {
 		logs.Log.Errorf("Failed to load config: %s", err)
 		return nil, nil, err
+	}
+	err = cfg.MapStruct("server", &opt)
+	if err != nil {
+		logs.Log.Errorf("Failed to map server config: %s", err)
+		return nil, nil, err
+	}
+	if opt.MiscConfig == nil {
+		return nil, nil, ErrNoConfig
 	}
 	if opt.MiscConfig.Certificate != "" && opt.MiscConfig.PrivateKey != "" {
 		return []byte(opt.MiscConfig.Certificate), []byte(opt.MiscConfig.PrivateKey), nil

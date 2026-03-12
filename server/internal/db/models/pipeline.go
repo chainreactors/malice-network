@@ -29,6 +29,53 @@ type Pipeline struct {
 	*implanttypes.PipelineParams `gorm:"-"`
 }
 
+func pipelineParamsFromProto(pipeline *clientpb.Pipeline) *implanttypes.PipelineParams {
+	return &implanttypes.PipelineParams{
+		Parser:     pipeline.Parser,
+		Tls:        implanttypes.FromTls(pipeline.Tls),
+		Encryption: implanttypes.FromEncryptions(pipeline.Encryption),
+		Secure:     implanttypes.FromSecure(pipeline.Secure),
+	}
+}
+
+func httpPipelineParams(params string, pipeline *clientpb.Pipeline) *implanttypes.PipelineParams {
+	merged := pipelineParamsFromProto(pipeline)
+	httpParams, err := implanttypes.UnmarshalPipelineParams(params)
+	if err != nil || httpParams == nil {
+		return merged
+	}
+	merged.Headers = httpParams.Headers
+	merged.ErrorPage = httpParams.ErrorPage
+	merged.BodyPrefix = httpParams.BodyPrefix
+	merged.BodySuffix = httpParams.BodySuffix
+	return merged
+}
+
+func customPipelineParams(params string, pipeline *clientpb.Pipeline) *implanttypes.PipelineParams {
+	merged := pipelineParamsFromProto(pipeline)
+	customParams, err := implanttypes.UnmarshalPipelineParams(params)
+	if err != nil || customParams == nil {
+		return merged
+	}
+	customParams.Parser = merged.Parser
+	customParams.Tls = merged.Tls
+	customParams.Encryption = merged.Encryption
+	customParams.Secure = merged.Secure
+	return customParams
+}
+
+func (pipeline *Pipeline) httpParamsString() string {
+	if pipeline == nil || pipeline.PipelineParams == nil {
+		return ""
+	}
+	return (&implanttypes.PipelineParams{
+		Headers:    pipeline.Headers,
+		ErrorPage:  pipeline.ErrorPage,
+		BodyPrefix: pipeline.BodyPrefix,
+		BodySuffix: pipeline.BodySuffix,
+	}).String()
+}
+
 func (pipeline *Pipeline) ToProtobuf() *clientpb.Pipeline {
 	if pipeline == nil {
 		return nil
@@ -70,6 +117,7 @@ func (pipeline *Pipeline) ToProtobuf() *clientpb.Pipeline {
 					ListenerId: pipeline.ListenerId,
 					Host:       pipeline.Host,
 					Port:       uint32(pipeline.Port),
+					Params:     pipeline.httpParamsString(),
 				},
 			},
 			Tls:        pipeline.Tls.ToProtobuf(),
@@ -93,6 +141,7 @@ func (pipeline *Pipeline) ToProtobuf() *clientpb.Pipeline {
 			},
 			Tls:        pipeline.Tls.ToProtobuf(),
 			Encryption: pipeline.Encryption.ToProtobuf(),
+			Secure:     pipeline.Secure.ToProtobuf(),
 		}
 	case consts.WebsitePipeline:
 		return &clientpb.Pipeline{
@@ -114,12 +163,14 @@ func (pipeline *Pipeline) ToProtobuf() *clientpb.Pipeline {
 			},
 			Tls:        pipeline.Tls.ToProtobuf(),
 			Encryption: pipeline.Encryption.ToProtobuf(),
+			Secure:     pipeline.Secure.ToProtobuf(),
 		}
 	case consts.RemPipeline:
 		return &clientpb.Pipeline{
 			Name:       pipeline.Name,
 			ListenerId: pipeline.ListenerId,
 			Enable:     pipeline.Enable,
+			Parser:     pipeline.Parser,
 			Type:       consts.RemPipeline,
 			Ip:         pipeline.IP,
 			CertName:   pipeline.CertName,
@@ -131,10 +182,12 @@ func (pipeline *Pipeline) ToProtobuf() *clientpb.Pipeline {
 					Link:      pipeline.PipelineParams.Link,
 					Subscribe: pipeline.PipelineParams.Subscribe,
 					Console:   pipeline.Console,
+					Agents:    pipeline.Agents,
 				},
 			},
 			Tls:        pipeline.Tls.ToProtobuf(),
 			Encryption: pipeline.Encryption.ToProtobuf(),
+			Secure:     pipeline.Secure.ToProtobuf(),
 		}
 	default:
 		// All non-built-in types (custom/externally-managed pipelines).
@@ -147,6 +200,7 @@ func (pipeline *Pipeline) ToProtobuf() *clientpb.Pipeline {
 			Name:       pipeline.Name,
 			ListenerId: pipeline.ListenerId,
 			Enable:     pipeline.Enable,
+			Parser:     pipeline.Parser,
 			Ip:         pipeline.IP,
 			Type:       pipeline.Type,
 			CertName:   pipeline.CertName,
@@ -159,6 +213,9 @@ func (pipeline *Pipeline) ToProtobuf() *clientpb.Pipeline {
 					Params:     params,
 				},
 			},
+			Tls:        pipeline.Tls.ToProtobuf(),
+			Encryption: pipeline.Encryption.ToProtobuf(),
+			Secure:     pipeline.Secure.ToProtobuf(),
 		}
 	}
 }
@@ -225,51 +282,37 @@ func FromPipelinePb(pipeline *clientpb.Pipeline) *Pipeline {
 	switch body := pipeline.Body.(type) {
 	case *clientpb.Pipeline_Tcp:
 		return &Pipeline{
-			ListenerId: pipeline.ListenerId,
-			Name:       pipeline.Name,
-			Enable:     pipeline.Enable,
-			Host:       body.Tcp.Host,
-			IP:         pipeline.Ip,
-			Port:       body.Tcp.Port,
-			Type:       consts.TCPPipeline,
-			CertName:   pipeline.CertName,
-			PipelineParams: &implanttypes.PipelineParams{
-				Parser:     pipeline.Parser,
-				Tls:        implanttypes.FromTls(pipeline.Tls),
-				Encryption: implanttypes.FromEncryptions(pipeline.Encryption),
-				Secure:     implanttypes.FromSecure(pipeline.Secure),
-			},
+			ListenerId:     pipeline.ListenerId,
+			Name:           pipeline.Name,
+			Enable:         pipeline.Enable,
+			Host:           body.Tcp.Host,
+			IP:             pipeline.Ip,
+			Port:           body.Tcp.Port,
+			Type:           consts.TCPPipeline,
+			CertName:       pipeline.CertName,
+			PipelineParams: pipelineParamsFromProto(pipeline),
 		}
 	case *clientpb.Pipeline_Http:
 		return &Pipeline{
-			ListenerId: pipeline.ListenerId,
-			Name:       pipeline.Name,
-			Enable:     pipeline.Enable,
-			Host:       body.Http.Host,
-			IP:         pipeline.Ip,
-			Port:       body.Http.Port,
-			Type:       consts.HTTPPipeline,
-			CertName:   pipeline.CertName,
-			PipelineParams: &implanttypes.PipelineParams{
-				Parser:     pipeline.Parser,
-				Tls:        implanttypes.FromTls(pipeline.Tls),
-				Encryption: implanttypes.FromEncryptions(pipeline.Encryption),
-				Secure:     implanttypes.FromSecure(pipeline.Secure),
-			},
+			ListenerId:     pipeline.ListenerId,
+			Name:           pipeline.Name,
+			Enable:         pipeline.Enable,
+			Host:           body.Http.Host,
+			IP:             pipeline.Ip,
+			Port:           body.Http.Port,
+			Type:           consts.HTTPPipeline,
+			CertName:       pipeline.CertName,
+			PipelineParams: httpPipelineParams(body.Http.Params, pipeline),
 		}
 	case *clientpb.Pipeline_Bind:
 		return &Pipeline{
-			ListenerId: pipeline.ListenerId,
-			Name:       pipeline.Name,
-			Enable:     pipeline.Enable,
-			IP:         pipeline.Ip,
-			Type:       consts.BindPipeline,
-			CertName:   pipeline.CertName,
-			PipelineParams: &implanttypes.PipelineParams{
-				Parser:     pipeline.Parser,
-				Tls:        implanttypes.FromTls(pipeline.Tls),
-				Encryption: implanttypes.FromEncryptions(pipeline.Encryption),
-			},
+			ListenerId:     pipeline.ListenerId,
+			Name:           pipeline.Name,
+			Enable:         pipeline.Enable,
+			IP:             pipeline.Ip,
+			Type:           consts.BindPipeline,
+			CertName:       pipeline.CertName,
+			PipelineParams: pipelineParamsFromProto(pipeline),
 		}
 	case *clientpb.Pipeline_Rem:
 		return &Pipeline{
@@ -282,9 +325,14 @@ func FromPipelinePb(pipeline *clientpb.Pipeline) *Pipeline {
 			IP:         pipeline.Ip,
 			CertName:   pipeline.CertName,
 			PipelineParams: &implanttypes.PipelineParams{
-				Link:      body.Rem.Link,
-				Subscribe: body.Rem.Subscribe,
-				Console:   body.Rem.Console,
+				Parser:     pipeline.Parser,
+				Tls:        implanttypes.FromTls(pipeline.Tls),
+				Encryption: implanttypes.FromEncryptions(pipeline.Encryption),
+				Secure:     implanttypes.FromSecure(pipeline.Secure),
+				Link:       body.Rem.Link,
+				Subscribe:  body.Rem.Subscribe,
+				Console:    body.Rem.Console,
+				Agents:     body.Rem.Agents,
 			},
 		}
 	case *clientpb.Pipeline_Web:
@@ -297,25 +345,25 @@ func FromPipelinePb(pipeline *clientpb.Pipeline) *Pipeline {
 			CertName:   pipeline.CertName,
 			Type:       consts.WebsitePipeline,
 			PipelineParams: &implanttypes.PipelineParams{
-				WebPath: body.Web.Root,
-				Tls:     implanttypes.FromTls(pipeline.Tls),
+				Parser:     pipeline.Parser,
+				Tls:        implanttypes.FromTls(pipeline.Tls),
+				Encryption: implanttypes.FromEncryptions(pipeline.Encryption),
+				Secure:     implanttypes.FromSecure(pipeline.Secure),
+				WebPath:    body.Web.Root,
 			},
 		}
 
 	case *clientpb.Pipeline_Custom:
 		return &Pipeline{
-			ListenerId: pipeline.ListenerId,
-			Name:       pipeline.Name,
-			Enable:     pipeline.Enable,
-			Host:       body.Custom.Host,
-			IP:         pipeline.Ip,
-			Port:       body.Custom.Port,
-			Type:       pipeline.Type,
-			CertName:   pipeline.CertName,
-			PipelineParams: &implanttypes.PipelineParams{
-				Parser: pipeline.Parser,
-				Tls:    implanttypes.FromTls(pipeline.Tls),
-			},
+			ListenerId:     pipeline.ListenerId,
+			Name:           pipeline.Name,
+			Enable:         pipeline.Enable,
+			Host:           body.Custom.Host,
+			IP:             pipeline.Ip,
+			Port:           body.Custom.Port,
+			Type:           pipeline.Type,
+			CertName:       pipeline.CertName,
+			PipelineParams: customPipelineParams(body.Custom.Params, pipeline),
 		}
 	default:
 		// Fallback for nil body or future unknown types.
@@ -324,16 +372,13 @@ func FromPipelinePb(pipeline *clientpb.Pipeline) *Pipeline {
 			typ = consts.CustomPipeline
 		}
 		return &Pipeline{
-			ListenerId: pipeline.ListenerId,
-			Name:       pipeline.Name,
-			Enable:     pipeline.Enable,
-			IP:         pipeline.Ip,
-			Type:       typ,
-			CertName:   pipeline.CertName,
-			PipelineParams: &implanttypes.PipelineParams{
-				Parser: pipeline.Parser,
-				Tls:    implanttypes.FromTls(pipeline.Tls),
-			},
+			ListenerId:     pipeline.ListenerId,
+			Name:           pipeline.Name,
+			Enable:         pipeline.Enable,
+			IP:             pipeline.Ip,
+			Type:           typ,
+			CertName:       pipeline.CertName,
+			PipelineParams: pipelineParamsFromProto(pipeline),
 		}
 	}
 }

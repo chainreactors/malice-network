@@ -16,12 +16,34 @@ func FromTls(tls *clientpb.TLS) *TlsConfig {
 		}
 	}
 	return &TlsConfig{
-		Cert:   FromCert(tls.Cert),
-		CA:     FromCert(tls.Ca),
-		Enable: tls.Enable,
-		Acme:   tls.Acme,
-		Domain: tls.Domain,
+		Cert:    FromCert(tls.Cert),
+		CA:      FromCert(tls.Ca),
+		Enable:  tls.Enable,
+		Acme:    tls.Acme,
+		Domain:  tls.Domain,
+		Subject: fromSubject(tls.CertSubject),
 	}
+}
+
+func fromSubject(subject *clientpb.CertificateSubject) *pkix.Name {
+	if subject == nil {
+		return nil
+	}
+	return &pkix.Name{
+		CommonName:         subject.Cn,
+		Organization:       singleValueSlice(subject.O),
+		Country:            singleValueSlice(subject.C),
+		Locality:           singleValueSlice(subject.L),
+		OrganizationalUnit: singleValueSlice(subject.Ou),
+		Province:           singleValueSlice(subject.St),
+	}
+}
+
+func singleValueSlice(value string) []string {
+	if value == "" {
+		return nil
+	}
+	return []string{value}
 }
 
 func FromCert(cert *clientpb.Cert) *CertConfig {
@@ -31,16 +53,6 @@ func FromCert(cert *clientpb.Cert) *CertConfig {
 	return &CertConfig{
 		Cert: cert.Cert,
 		Key:  cert.Key,
-	}
-}
-
-func FromEncryption(encryption *clientpb.Encryption) *EncryptionConfig {
-	if encryption == nil {
-		return nil
-	}
-	return &EncryptionConfig{
-		Type: encryption.Type,
-		Key:  encryption.Key,
 	}
 }
 
@@ -67,10 +79,6 @@ type TlsConfig struct {
 	CA      *CertConfig `json:"ca"`
 	Domain  string      `json:"domain"`
 	Subject *pkix.Name  `json:"subject"`
-}
-
-func (tls *TlsConfig) Empty() bool {
-	return tls == nil || tls.Cert == nil
 }
 
 func (tls *TlsConfig) ToSubjectProtobuf() *clientpb.CertificateSubject {
@@ -148,9 +156,9 @@ func (encryption *EncryptionConfig) ToProtobuf() *clientpb.Encryption {
 
 type SecureConfig struct {
 	Enable            bool   `json:"enable" config:"enable" default:"false" yaml:"enable"`
-	ServerPublicKey   string `json:"server_public_key" config:"server_public_key" yaml:"server_public_key"`     // Age 服务端公钥
-	ServerPrivateKey  string `json:"server_private_key" config:"server_private_key" yaml:"server_private_key"`   // Age 服务端私钥
-	ImplantPublicKey  string `json:"implant_public_key" config:"implant_public_key" yaml:"implant_public_key"`   // Age Implant公钥
+	ServerPublicKey   string `json:"server_public_key" config:"server_public_key" yaml:"server_public_key"`       // Age 服务端公钥
+	ServerPrivateKey  string `json:"server_private_key" config:"server_private_key" yaml:"server_private_key"`    // Age 服务端私钥
+	ImplantPublicKey  string `json:"implant_public_key" config:"implant_public_key" yaml:"implant_public_key"`    // Age Implant公钥
 	ImplantPrivateKey string `json:"implant_private_key" config:"implant_private_key" yaml:"implant_private_key"` // Age Implant私钥
 }
 
@@ -173,17 +181,6 @@ func (secure *SecureConfig) ImplantKeypair() *clientpb.KeyPair {
 	return &clientpb.KeyPair{
 		PublicKey:  secure.ImplantPublicKey,
 		PrivateKey: secure.ImplantPrivateKey,
-	}
-}
-
-// ExchangeKeyPair 返回用于密钥交换的密钥对（implant公钥 + server私钥）
-func (secure *SecureConfig) ExchangeKeyPair() *clientpb.KeyPair {
-	if secure == nil {
-		return &clientpb.KeyPair{}
-	}
-	return &clientpb.KeyPair{
-		PublicKey:  secure.ImplantPublicKey,
-		PrivateKey: secure.ServerPrivateKey,
 	}
 }
 

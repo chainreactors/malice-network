@@ -29,11 +29,13 @@ func NewRem(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline) (*RE
 		return nil, err
 	}
 	pp := &REM{
-		con:        console,
-		rpc:        rpc,
-		remConfig:  remConfig,
-		Name:       pipeline.Name,
-		ListenerID: pipeline.ListenerId,
+		con:            console,
+		rpc:            rpc,
+		remConfig:      remConfig,
+		Name:           pipeline.Name,
+		ListenerID:     pipeline.ListenerId,
+		CertName:       pipeline.CertName,
+		PipelineConfig: core.FromPipeline(pipeline),
 	}
 	return pp, nil
 }
@@ -45,6 +47,8 @@ type REM struct {
 	ListenerID string
 	Name       string
 	Enable     bool
+	CertName   string
+	*core.PipelineConfig
 }
 
 func (rem *REM) ID() string {
@@ -92,7 +96,9 @@ func (rem *REM) ToProtobuf() *clientpb.Pipeline {
 		Name:       rem.Name,
 		Enable:     rem.Enable,
 		ListenerId: rem.ListenerID,
+		Parser:     rem.Parser,
 		Type:       consts.RemPipeline,
+		CertName:   rem.CertName,
 		Body: &clientpb.Pipeline_Rem{
 			Rem: &clientpb.REM{
 				Name:       rem.Name,
@@ -105,6 +111,9 @@ func (rem *REM) ToProtobuf() *clientpb.Pipeline {
 				Agents:     rem.con.ToProtobuf(),
 			},
 		},
+		Tls:        rem.TLSConfig.ToProtobuf(),
+		Encryption: rem.Encryption.ToProtobuf(),
+		Secure:     rem.SecureConfig.ToProtobuf(),
 	}
 }
 
