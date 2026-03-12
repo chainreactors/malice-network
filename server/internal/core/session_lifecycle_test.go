@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -445,6 +446,579 @@ func TestLifecycle_MixedAliveDeadSessions(t *testing.T) {
 	remaining := s.All()
 	if len(remaining) != 3 {
 		t.Fatalf("expected 3 remaining sessions, got %d", len(remaining))
+	}
+}
+
+// ==========================================================================
+// Edge Cases: boundary scenarios and state transition gaps
+// ==========================================================================
+
+// ---------- Edge: Register → long silence → ticker kills → Checkin revives ----------
+
+func TestEdge_RegisterLongSilenceThenReborn(t *testing.T) {
+	cleanup := installTestDBMocks()
+	defer cleanup()
+
+	broker := &eventBroker{
+		stop:        make(chan struct{}),
+		publish:     make(chan Event, eventBufSize*4),
+		subscribe:   make(chan chan Event, eventBufSize),
+		unsubscribe: make(chan chan Event, eventBufSize),
+		send:        make(chan Event, eventBufSize),
+		notifier:    inotify.NewNotifier(),
+		cache:       NewMessageCache(eventBufSize),
+		lock:        &sync.Mutex{},
+	}
+	oldBroker := EventBroker
+	EventBroker = broker
+	defer func() { EventBroker = oldBroker }()
+
+	s := &sessions{active: &sync.Map{}}
+
+	// Step 1: Register with short interval
+	sess := newTestSession("silence-1",
+		withExpression("*/1 * * * *"), // every minute
+		withLastCheckin(time.Now().Unix()),
+	)
+	s.Add(sess)
+
+	// Step 2: NO checkin for a long time — simulate by backdating LastCheckin
+	sess.LastCheckin = time.Now().Add(-30 * time.Minute).Unix()
+
+	// Step 3: Ticker detects dead
+	runTicker(s)
+
+	if _, err := s.Get("silence-1"); err == nil {
+		t.Fatal("session should be dead after long silence")
+	}
+	if sess.Ctx.Err() == nil {
+		t.Fatal("context should be cancelled")
+	}
+
+	// Collect dead event
+	drainEvents(broker, 1)
+
+	// Step 4: Implant comes back — simulate Checkin recovery by adding a new session
+	rebornSess := newTestSession("silence-1",
+		withExpression("*/1 * * * *"),
+		withLastCheckin(time.Now().Unix()),
+	)
+	s.Add(rebornSess)
+
+	got, err := s.Get("silence-1")
+	if err != nil {
+		t.Fatalf("reborn session should be in memory: %v", err)
+	}
+	if got.Ctx.Err() != nil {
+		t.Fatal("reborn session should have fresh context")
+	}
+
+	// Step 5: Another ticker run — should NOT kill the fresh session
+	runTicker(s)
+
+	if _, err := s.Get("silence-1"); err != nil {
+		t.Fatal("fresh session should survive ticker")
+	}
+}
+
+// ---------- Edge: Task context cascading on session death ----------
+
+func TestEdge_TaskContextCascadesOnSessionDeath(t *testing.T) {
+	cleanup := installTestDBMocks()
+	defer cleanup()
+
+	broker := newTestBroker()
+	oldBroker := EventBroker
+	EventBroker = broker
+	defer func() { EventBroker = oldBroker }()
+
+	s := &sessions{active: &sync.Map{}}
+	sess := newTestSession("cascade-1")
+	s.Add(sess)
+
+	// Create tasks whose contexts derive from session.Ctx
+	task1 := sess.NewTask("type1", 1)
+	task2 := sess.NewTask("type2", 5)
+
+	// Tasks should be alive
+	if task1.Ctx.Err() != nil {
+		t.Fatal("task1 context should be alive before session death")
+	}
+	if task2.Ctx.Err() != nil {
+		t.Fatal("task2 context should be alive before session death")
+	}
+
+	// Kill session
+	s.Remove("cascade-1")
+
+	// All derived task contexts should be cancelled
+	if task1.Ctx.Err() == nil {
+		t.Fatal("task1 context should be cancelled after session death")
+	}
+	if task2.Ctx.Err() == nil {
+		t.Fatal("task2 context should be cancelled after session death")
+	}
+}
+
+// ---------- Edge: Double Remove is safe (idempotent) ----------
+
+func TestEdge_DoubleRemoveIsSafe(t *testing.T) {
+	s := &sessions{active: &sync.Map{}}
+	sess := newTestSession("double-rm")
+	s.Add(sess)
+
+	s.Remove("double-rm")
+	if sess.Ctx.Err() == nil {
+		t.Fatal("context should be cancelled after first Remove")
+	}
+
+	// Second Remove should not panic
+	s.Remove("double-rm")
+
+	// Session should still not be accessible
+	if _, err := s.Get("double-rm"); err == nil {
+		t.Fatal("session should not exist after double Remove")
+	}
+}
+
+// ---------- Edge: Concurrent Remove (ticker + user delete) ----------
+
+func TestEdge_ConcurrentRemove(t *testing.T) {
+	cleanup := installTestDBMocks()
+	defer cleanup()
+
+	broker := &eventBroker{
+		stop:        make(chan struct{}),
+		publish:     make(chan Event, eventBufSize*10),
+		subscribe:   make(chan chan Event, eventBufSize),
+		unsubscribe: make(chan chan Event, eventBufSize),
+		send:        make(chan Event, eventBufSize),
+		notifier:    inotify.NewNotifier(),
+		cache:       NewMessageCache(eventBufSize),
+		lock:        &sync.Mutex{},
+	}
+	oldBroker := EventBroker
+	EventBroker = broker
+	defer func() { EventBroker = oldBroker }()
+
+	var panicked atomic.Int32
+	var wg sync.WaitGroup
+
+	for round := 0; round < 20; round++ {
+		s := &sessions{active: &sync.Map{}}
+		sess := newTestSession("conc-rm",
+			withExpression("*/1 * * * *"),
+			withLastCheckin(time.Now().Add(-10*time.Minute).Unix()),
+		)
+		s.Add(sess)
+
+		wg.Add(2)
+		// Ticker path
+		go func() {
+			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					panicked.Add(1)
+				}
+			}()
+			for _, session := range s.All() {
+				if !session.isAlived() {
+					session.Save()
+					session.Publish(consts.CtrlSessionDead, "dead", true, true)
+					s.Remove(session.ID)
+				}
+			}
+		}()
+		// User delete path
+		go func() {
+			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					panicked.Add(1)
+				}
+			}()
+			s.Remove("conc-rm")
+		}()
+	}
+
+	done := make(chan struct{})
+	go func() { wg.Wait(); close(done) }()
+
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("concurrent Remove test timed out")
+	}
+
+	if p := panicked.Load(); p > 0 {
+		t.Fatalf("detected %d panics during concurrent Remove", p)
+	}
+}
+
+// ---------- Edge: isAlived with empty Expression ----------
+
+func TestEdge_isAlived_EmptyExpression(t *testing.T) {
+	sess := newTestSession("empty-expr",
+		withExpression(""), // no expression set
+		withLastCheckin(time.Now().Add(-1*time.Hour).Unix()),
+	)
+	// cronexpr.Parse("") fails → isAlived returns true (never times out)
+	// This is a known gap: sessions with no timer expression never die
+	if !sess.isAlived() {
+		t.Fatal("session with empty expression should be treated as always alive (cronexpr parse error fallback)")
+	}
+}
+
+// ---------- Edge: isAlived with zero Jitter ----------
+
+func TestEdge_isAlived_ZeroJitter(t *testing.T) {
+	sess := newTestSession("zero-jitter",
+		withExpression("*/1 * * * *"),
+		withLastCheckin(time.Now().Unix()),
+	)
+	sess.SessionContext.Jitter = 0.0
+
+	if !sess.isAlived() {
+		t.Fatal("recent session with zero jitter should be alive")
+	}
+
+	// Now expire it
+	sess.LastCheckin = time.Now().Add(-10 * time.Minute).Unix()
+	if sess.isAlived() {
+		t.Fatal("expired session with zero jitter should be dead")
+	}
+}
+
+// ---------- Edge: isAlived boundary — exactly at allowed offline ----------
+
+func TestEdge_isAlived_Boundary(t *testing.T) {
+	// With expression "*/1 * * * *" (every minute):
+	// nextInterval ≈ 0..60s, allowedOffline = max(nextInterval*(1+jitter)+30, 90) = 90s
+	// So a session that last checked in 89s ago should be alive,
+	// and one that checked in 91s ago should be dead.
+
+	sess := newTestSession("boundary",
+		withExpression("*/1 * * * *"),
+	)
+	sess.SessionContext.Jitter = 0.0
+
+	sess.LastCheckin = time.Now().Add(-89 * time.Second).Unix()
+	if !sess.isAlived() {
+		t.Fatal("session 89s ago should be alive (within 90s window)")
+	}
+
+	sess.LastCheckin = time.Now().Add(-91 * time.Second).Unix()
+	if sess.isAlived() {
+		t.Fatal("session 91s ago should be dead (beyond 90s window)")
+	}
+}
+
+// ---------- Edge: Add nil session ----------
+
+func TestEdge_AddNilSession(t *testing.T) {
+	cleanup := installTestDBMocks()
+	defer cleanup()
+
+	broker := newTestBroker()
+	oldBroker := EventBroker
+	EventBroker = broker
+	defer func() { EventBroker = oldBroker }()
+
+	s := &sessions{active: &sync.Map{}}
+	result := s.Add(nil)
+	if result != nil {
+		t.Fatal("Add(nil) should return nil")
+	}
+
+	all := s.All()
+	if len(all) != 0 {
+		t.Fatalf("expected 0 sessions after Add(nil), got %d", len(all))
+	}
+}
+
+// ---------- Edge: Session Replace (Add with same ID) ----------
+
+func TestEdge_AddReplacesExistingSession(t *testing.T) {
+	s := &sessions{active: &sync.Map{}}
+
+	sess1 := newTestSession("replace-1", withLastCheckin(100))
+	s.Add(sess1)
+
+	sess2 := newTestSession("replace-1", withLastCheckin(200))
+	s.Add(sess2)
+
+	got, _ := s.Get("replace-1")
+	if got.LastCheckin != 200 {
+		t.Fatalf("Add should replace: LastCheckin=%d, want 200", got.LastCheckin)
+	}
+
+	// Old session's context is NOT cancelled by Add — only Remove cancels
+	if sess1.Ctx.Err() != nil {
+		t.Fatal("old session context should NOT be cancelled by Add (only by Remove)")
+	}
+}
+
+// ---------- Edge: Rapid flapping (register → dead → register → dead) ----------
+
+func TestEdge_RapidFlapping(t *testing.T) {
+	cleanup := installTestDBMocks()
+	defer cleanup()
+
+	broker := &eventBroker{
+		stop:        make(chan struct{}),
+		publish:     make(chan Event, eventBufSize*20),
+		subscribe:   make(chan chan Event, eventBufSize),
+		unsubscribe: make(chan chan Event, eventBufSize),
+		send:        make(chan Event, eventBufSize),
+		notifier:    inotify.NewNotifier(),
+		cache:       NewMessageCache(eventBufSize),
+		lock:        &sync.Mutex{},
+	}
+	oldBroker := EventBroker
+	EventBroker = broker
+	defer func() { EventBroker = oldBroker }()
+
+	s := &sessions{active: &sync.Map{}}
+
+	for cycle := 0; cycle < 5; cycle++ {
+		// Register
+		sess := newTestSession("flap-1",
+			withExpression("*/1 * * * *"),
+			withLastCheckin(time.Now().Unix()),
+		)
+		s.Add(sess)
+
+		if _, err := s.Get("flap-1"); err != nil {
+			t.Fatalf("cycle %d: session should be alive after register", cycle)
+		}
+
+		// Expire it
+		sess.LastCheckin = time.Now().Add(-10 * time.Minute).Unix()
+
+		// Ticker kills it
+		runTicker(s)
+
+		if _, err := s.Get("flap-1"); err == nil {
+			t.Fatalf("cycle %d: session should be dead after ticker", cycle)
+		}
+		if sess.Ctx.Err() == nil {
+			t.Fatalf("cycle %d: context should be cancelled", cycle)
+		}
+	}
+
+	// After 5 flap cycles, no sessions in memory
+	if len(s.All()) != 0 {
+		t.Fatalf("expected 0 sessions after all flap cycles, got %d", len(s.All()))
+	}
+}
+
+// ---------- Edge: Recover with mixed finished/unfinished tasks ----------
+
+func TestEdge_RecoverMixedTasks(t *testing.T) {
+	sess := newTestSession("recover-mix")
+
+	// 3 finished, 2 unfinished
+	for i := uint32(1); i <= 3; i++ {
+		task := &Task{Id: i, Cur: 5, Total: 5, SessionId: sess.ID}
+		task.Ctx, task.Cancel = context.WithCancel(sess.Ctx)
+		sess.Tasks.Add(task)
+	}
+	for i := uint32(4); i <= 5; i++ {
+		task := &Task{Id: i, Cur: 1, Total: 5, SessionId: sess.ID}
+		task.Ctx, task.Cancel = context.WithCancel(sess.Ctx)
+		sess.Tasks.Add(task)
+	}
+
+	sess.Recover()
+
+	// Only unfinished tasks should have response channels
+	for i := uint32(1); i <= 3; i++ {
+		if _, ok := sess.GetResp(i); ok {
+			t.Fatalf("finished task %d should not have response channel", i)
+		}
+	}
+	for i := uint32(4); i <= 5; i++ {
+		if _, ok := sess.GetResp(i); !ok {
+			t.Fatalf("unfinished task %d should have response channel", i)
+		}
+	}
+}
+
+// ---------- Edge: Session with response channels is cleaned up on death ----------
+
+func TestEdge_ResponseChannelCleanupOnDeath(t *testing.T) {
+	s := &sessions{active: &sync.Map{}}
+	sess := newTestSession("resp-cleanup")
+	s.Add(sess)
+
+	// Store some response channels
+	ch1 := make(chan struct{})
+	ch2 := make(chan struct{})
+	sess.responses.Store(uint32(1), ch1)
+	sess.responses.Store(uint32(2), ch2)
+
+	// Verify they exist
+	_, ok1 := sess.responses.Load(uint32(1))
+	_, ok2 := sess.responses.Load(uint32(2))
+	if !ok1 || !ok2 {
+		t.Fatal("response channels should exist before death")
+	}
+
+	// Remove kills context but does NOT clear responses map
+	// (goroutines holding channel refs can still drain)
+	s.Remove("resp-cleanup")
+
+	// Context is dead — any goroutine waiting on sess.Ctx should exit
+	if sess.Ctx.Err() == nil {
+		t.Fatal("context should be cancelled")
+	}
+
+	// Response channels still exist in map (not cleaned up by Remove)
+	// This is by design — Task.Close() cleans up individual channels
+	_, ok1 = sess.responses.Load(uint32(1))
+	if !ok1 {
+		t.Fatal("response channels should still exist after Remove (cleaned by Task.Close)")
+	}
+}
+
+// ---------- Edge: Keepalive state across session death ----------
+
+func TestEdge_KeepaliveResetOnDeath(t *testing.T) {
+	s := &sessions{active: &sync.Map{}}
+	sess := newTestSession("keepalive-death")
+	s.Add(sess)
+
+	sess.SetKeepalive(true)
+	if !sess.IsKeepaliveEnabled() {
+		t.Fatal("keepalive should be enabled")
+	}
+
+	s.Remove("keepalive-death")
+
+	if sess.IsKeepaliveEnabled() {
+		t.Fatal("keepalive should be reset after Remove")
+	}
+}
+
+// ---------- Edge: Multiple sessions dying in same ticker cycle ----------
+
+func TestEdge_MultipleDeathsInSameTicker(t *testing.T) {
+	cleanup := installTestDBMocks()
+	defer cleanup()
+
+	var savedIDs []string
+	origSave := sessionDBSave
+	sessionDBSave = func(s *models.Session) error {
+		savedIDs = append(savedIDs, s.SessionID)
+		return nil
+	}
+	defer func() { sessionDBSave = origSave }()
+
+	broker := &eventBroker{
+		stop:        make(chan struct{}),
+		publish:     make(chan Event, eventBufSize*10),
+		subscribe:   make(chan chan Event, eventBufSize),
+		unsubscribe: make(chan chan Event, eventBufSize),
+		send:        make(chan Event, eventBufSize),
+		notifier:    inotify.NewNotifier(),
+		cache:       NewMessageCache(eventBufSize),
+		lock:        &sync.Mutex{},
+	}
+	oldBroker := EventBroker
+	EventBroker = broker
+	defer func() { EventBroker = oldBroker }()
+
+	s := &sessions{active: &sync.Map{}}
+
+	// Add 10 dead sessions
+	for i := 0; i < 10; i++ {
+		sess := newTestSession("batch-dead-"+string(rune('a'+i)),
+			withExpression("*/1 * * * *"),
+			withLastCheckin(time.Now().Add(-10*time.Minute).Unix()),
+		)
+		s.Add(sess)
+	}
+
+	runTicker(s)
+
+	// All 10 should be removed
+	remaining := s.All()
+	if len(remaining) != 0 {
+		t.Fatalf("expected 0 sessions after batch death, got %d", len(remaining))
+	}
+
+	// All 10 should have been saved to DB
+	if len(savedIDs) != 10 {
+		t.Fatalf("expected 10 DB saves, got %d", len(savedIDs))
+	}
+}
+
+// ---------- Edge: Checkin saves updated LastCheckin to DB ----------
+
+func TestEdge_CheckinSavePersistsNewTimestamp(t *testing.T) {
+	var savedModels []*models.Session
+	origSave := sessionDBSave
+	sessionDBSave = func(s *models.Session) error {
+		// Deep copy to capture snapshot
+		cp := *s
+		savedModels = append(savedModels, &cp)
+		return nil
+	}
+	defer func() { sessionDBSave = origSave }()
+
+	origArtifact := sessionDBGetArtifact
+	origProfile := sessionDBGetProfile
+	sessionDBGetArtifact = func(name string) (*models.Artifact, error) {
+		return &models.Artifact{Name: name}, nil
+	}
+	sessionDBGetProfile = func(name string) (*models.Profile, error) {
+		return &models.Profile{Name: name}, nil
+	}
+	defer func() {
+		sessionDBGetArtifact = origArtifact
+		sessionDBGetProfile = origProfile
+	}()
+
+	sess := newTestSession("checkin-ts",
+		withLastCheckin(1000),
+	)
+
+	// Simulate checkin: update LastCheckin then Save
+	newTime := time.Now().Unix()
+	sess.LastCheckin = newTime
+	sess.Save()
+
+	if len(savedModels) == 0 {
+		t.Fatal("expected at least one save")
+	}
+	if savedModels[len(savedModels)-1].LastCheckin != newTime {
+		t.Fatalf("DB should have new LastCheckin=%d, got %d",
+			newTime, savedModels[len(savedModels)-1].LastCheckin)
+	}
+}
+
+// ==========================================================================
+// Helper: simulate ticker callback
+// ==========================================================================
+
+func runTicker(s *sessions) {
+	for _, session := range s.All() {
+		if !session.isAlived() {
+			session.Save()
+			session.Publish(consts.CtrlSessionDead,
+				"session dead", true, true)
+			s.Remove(session.ID)
+		}
+	}
+}
+
+func drainEvents(broker *eventBroker, count int) {
+	for i := 0; i < count; i++ {
+		select {
+		case <-broker.publish:
+		case <-time.After(500 * time.Millisecond):
+			return
+		}
 	}
 }
 
