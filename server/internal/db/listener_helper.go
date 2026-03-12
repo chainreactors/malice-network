@@ -10,7 +10,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/certs"
 	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/helper/implanttypes"
@@ -25,45 +24,18 @@ import (
 // ============================================
 
 func FindPipeline(name string) (*models.Pipeline, error) {
-	var pipeline *models.Pipeline
-	result := Session().Where("name = ?", name).First(&pipeline)
-	if result.Error != nil {
-		return pipeline, result.Error
-	}
-	if pipeline.CertName != "" {
-		certificate, err := FindCertificate(pipeline.CertName)
-		if err != nil && !errors.Is(err, ErrRecordNotFound) {
-			logs.Log.Errorf("failed to find cert %s", err)
-		}
-		if certificate != nil {
-			pipeline.Tls = implanttypes.FromTls(certificate.ToProtobuf())
-		}
-	}
-	return pipeline, nil
+	return NewPipelineQuery().WhereName(name).WithCert().First()
 }
 
 func FindPipelineByListener(name, listenerID string) (*models.Pipeline, error) {
-	var pipeline *models.Pipeline
-	result := Session().Where("name = ? AND listener_id = ?", name, listenerID).First(&pipeline)
-	if result.Error != nil {
-		return pipeline, result.Error
-	}
-	if pipeline.CertName != "" {
-		certificate, err := FindCertificate(pipeline.CertName)
-		if err != nil && !errors.Is(err, ErrRecordNotFound) {
-			logs.Log.Errorf("failed to find cert %s", err)
-		}
-		if certificate != nil {
-			pipeline.Tls = implanttypes.FromTls(certificate.ToProtobuf())
-		}
-	}
-	return pipeline, nil
+	return NewPipelineQuery().WhereName(name).WhereListenerID(listenerID).WithCert().First()
 }
 
 func UpdatePipelineCert(certName string, pipeline *models.Pipeline) (*models.Pipeline, error) {
 	var cert *models.Certificate
 	if certName != "" {
-		err := Session().Where("name = ?", certName).First(&cert).Error
+		var err error
+		cert, err = FindCertificate(certName)
 		if err != nil {
 			return nil, err
 		}
@@ -81,35 +53,31 @@ func SavePipeline(pipeline *models.Pipeline) (*models.Pipeline, error) {
 	if pipeline == nil {
 		return nil, errors.New("pipeline cannot be nil")
 	}
-	newPipeline := &models.Pipeline{}
-	result := Session().Where("name = ? AND listener_id  = ?", pipeline.Name, pipeline.ListenerId).First(&newPipeline)
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			err := Session().Create(&pipeline).Error
-			if err != nil {
-				return nil, err
+	existing, err := NewPipelineQuery().WhereName(pipeline.Name).WhereListenerID(pipeline.ListenerId).First()
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			if createErr := Session().Create(&pipeline).Error; createErr != nil {
+				return nil, createErr
 			}
 			return pipeline, nil
 		}
-		return nil, result.Error
+		return nil, err
 	}
-	pipeline.ID = newPipeline.ID
-	pipeline.CertName = newPipeline.CertName
+	pipeline.ID = existing.ID
+	pipeline.CertName = existing.CertName
 	if pipeline.IP == "" {
-		pipeline.IP = newPipeline.IP
+		pipeline.IP = existing.IP
 	}
-	err := Session().Save(&pipeline).Error
-	return pipeline, err
+	saveErr := Session().Save(&pipeline).Error
+	return pipeline, saveErr
 }
 
 func DeletePipeline(name string) error {
-	result := Session().Where("name = ?", name).Delete(&models.Pipeline{})
-	return result.Error
+	return NewPipelineQuery().WhereName(name).Delete()
 }
 
 func DeletePipelineByListener(name, listenerID string) error {
-	result := Session().Where("name = ? AND listener_id = ?", name, listenerID).Delete(&models.Pipeline{})
-	return result.Error
+	return NewPipelineQuery().WhereName(name).WhereListenerID(listenerID).Delete()
 }
 
 func EnablePipeline(pid string) error {
@@ -149,17 +117,12 @@ func DisablePipelineByListener(pid, listenerID string) error {
 }
 
 func FindPipelineCert(pipelineName, listenerID string) (*models.Certificate, error) {
-	var pipeline *models.Pipeline
-	result := Session().Where("name = ? AND listener_id = ?", pipelineName, listenerID).First(&pipeline)
-	if result.Error != nil {
-		return nil, result.Error
+	pipeline, err := NewPipelineQuery().WhereName(pipelineName).WhereListenerID(listenerID).First()
+	if err != nil {
+		return nil, err
 	}
 	if pipeline.CertName != "" {
-		certificate, err := FindCertificate(pipeline.CertName)
-		if err != nil {
-			return nil, err
-		}
-		return certificate, nil
+		return FindCertificate(pipeline.CertName)
 	}
 	return nil, nil
 }
@@ -168,59 +131,37 @@ func FindPipelineCert(pipelineName, listenerID string) (*models.Certificate, err
 // Certificate Operations
 // ============================================
 
-// DeleteAllCertificates
-func DeleteAllCertificates() error {
-	result := Session().Exec("DELETE FROM certificates")
-	return result.Error
-}
-
 // DeleteCertificate
 func DeleteCertificate(name string) error {
-	var cert *models.Certificate
-	result := Session().Where("name = ?", name).First(&cert)
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+	_, err := FindCertificate(name)
+	if err != nil {
+		if errors.Is(err, ErrRecordNotFound) {
 			return nil
 		}
-		return result.Error
+		return err
 	}
-	result = Session().Delete(&cert)
-	if result.Error != nil {
-		return result.Error
-	}
-	return nil
+	return NewCertificateQuery().WhereName(name).Delete()
 }
 
 func FindCertificate(name string) (*models.Certificate, error) {
-	var cert *models.Certificate
-	result := Session().Where("name = ?", name).First(&cert)
-	if result.Error != nil {
-		return nil, result.Error
-	}
-	return cert, nil
+	return NewCertificateQuery().WhereName(name).First()
 }
 
-func GetAllCertificates() ([]*models.Certificate, error) {
-	var certificates []*models.Certificate
-	err := Session().Find(&certificates).Error
-	return certificates, err
+func GetAllCertificates() (Certificates, error) {
+	return NewCertificateQuery().Find()
 }
 
 func UpdateCert(name, cert, key, ca string) error {
-	return Session().Model(&models.Certificate{}).
-		Where("name = ?", name).
-		Select("cert_pem", "key_pem", "ca_cert_pem").
-		Updates(models.Certificate{
-			CertPEM:   cert,
-			KeyPEM:    key,
-			CACertPEM: ca,
-		}).Error
+	return NewCertificateQuery().WhereName(name).UpdateFields(map[string]interface{}{
+		"cert_pem":    cert,
+		"key_pem":     key,
+		"ca_cert_pem": ca,
+	})
 }
 
 func isDuplicateCommonNameAndCAType(name string) bool {
-	var count int64
-	Session().Model(&models.Certificate{}).Where("name = ?", name).Count(&count)
-	return count > 0
+	_, err := FindCertificate(name)
+	return err == nil
 }
 
 func SaveCertificate(certificate *models.Certificate) error {
@@ -263,16 +204,12 @@ func SaveCertFromTLS(tls *clientpb.TLS, pipelineName, listenerID string) (*model
 		var findPipeline *models.Pipeline
 		var err error
 		if listenerID != "" {
-			findPipeline = &models.Pipeline{}
-			result := Session().Where("name = ? AND listener_id = ?", pipelineName, listenerID).First(&findPipeline)
-			if result.Error != nil {
-				return nil, result.Error
-			}
+			findPipeline, err = FindPipelineByListener(pipelineName, listenerID)
 		} else {
 			findPipeline, err = FindPipeline(pipelineName)
-			if err != nil {
-				return nil, err
-			}
+		}
+		if err != nil {
+			return nil, err
 		}
 		_, err = UpdatePipelineCert(certModel.Name, findPipeline)
 		if err != nil {
@@ -288,10 +225,9 @@ func SaveCertFromTLS(tls *clientpb.TLS, pipelineName, listenerID string) (*model
 // ============================================
 
 func DeleteWebsite(name string) error {
-	website := models.Pipeline{}
-	result := Session().Where("name = ?", name).First(&website)
-	if result.Error != nil {
-		return result.Error
+	website, err := NewPipelineQuery().WhereName(name).First()
+	if err != nil {
+		return err
 	}
 	websiteDir, err := fileutils.SafeJoin(configs.WebsitePath, website.Name)
 	if err != nil {
@@ -300,29 +236,12 @@ func DeleteWebsite(name string) error {
 	if err := os.RemoveAll(websiteDir); err != nil {
 		return err
 	}
-	result = Session().Delete(&website)
-	if result.Error != nil {
-		return result.Error
-	}
-	return nil
+	return Delete(website)
 }
 
 // FindWebsiteByName - Get website by name
 func FindWebsiteByName(name string) (*models.Pipeline, error) {
-	var website *models.Pipeline
-	if err := Session().Where("name = ? AND type = 'website'", name).First(&website).Error; err != nil {
-		return nil, err
-	}
-	if website.CertName != "" {
-		certificate, err := FindCertificate(website.CertName)
-		if err != nil && !errors.Is(err, ErrRecordNotFound) {
-			logs.Log.Errorf("failed to find cert %s", err)
-		}
-		if certificate != nil {
-			website.Tls = implanttypes.FromTls(certificate.ToProtobuf())
-		}
-	}
-	return website, nil
+	return NewPipelineQuery().WhereName(name).WhereType(consts.WebsitePipeline).WithCert().First()
 }
 
 // WebContent by ID and path
@@ -331,31 +250,15 @@ func FindWebContent(id string) (*models.WebsiteContent, error) {
 	if err != nil {
 		return nil, err
 	}
-	contents := &models.WebsiteContent{}
-	err = Session().Where(&models.WebsiteContent{
-		ID: uuidFromString,
-	}).Preload("Pipeline").First(&contents).Error
-	if err != nil {
-		return nil, err
-	}
-	return contents, err
+	return NewWebContentQuery().WhereID(uuidFromString).WithPipeline().First()
 }
 
 func FindWebContentsByWebsite(website string) ([]*models.WebsiteContent, error) {
-	var contents []*models.WebsiteContent
-	var err error
-	if website == "" {
-		err = Session().Preload("Pipeline").Find(&contents).Error
-	} else {
-		err = Session().Where(&models.WebsiteContent{
-			PipelineID: website,
-		}).Preload("Pipeline").Find(&contents).Error
+	query := NewWebContentQuery().WithPipeline()
+	if website != "" {
+		query = query.WherePipelineID(website)
 	}
-	if err != nil {
-		return nil, err
-	}
-
-	return contents, err
+	return query.Find()
 }
 
 // AddContent - Add content to website
@@ -437,32 +340,11 @@ func AddAmountWebContent(artifactName, pipelineName string) (*clientpb.WebConten
 
 // RemoveContent - Remove content by ID
 func RemoveContent(id string) error {
-	uuid, _ := uuid.FromString(id)
-	err := Session().Delete(&models.WebsiteContent{}, uuid).Error
-	return err
+	contentID, _ := uuid.FromString(id)
+	return NewWebContentQuery().WhereID(contentID).Delete()
 }
 
 // FindEnabledWebsites - Get all enabled websites from database
-func FindEnabledWebsites() ([]*models.Pipeline, error) {
-	var websites []*models.Pipeline
-	err := Session().Where("type = ? AND enable = ?", consts.WebsitePipeline, true).Find(&websites).Error
-	if err != nil {
-		return nil, err
-	}
-
-	// Load certificates for each website
-	for _, website := range websites {
-		if website.CertName != "" {
-			certificate, err := FindCertificate(website.CertName)
-			if err != nil && !errors.Is(err, ErrRecordNotFound) {
-				logs.Log.Errorf("failed to find cert %s for website %s: %s", website.CertName, website.Name, err)
-				continue
-			}
-			if certificate != nil {
-				website.Tls = implanttypes.FromTls(certificate.ToProtobuf())
-			}
-		}
-	}
-
-	return websites, nil
+func FindEnabledWebsites() (Pipelines, error) {
+	return NewPipelineQuery().WhereType(consts.WebsitePipeline).WhereEnabled(true).WithCert().Find()
 }

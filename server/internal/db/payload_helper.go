@@ -109,14 +109,13 @@ func NewProfile(profile *clientpb.Profile) error {
 	}
 
 	// Check if profile name already exists
-	var existingProfile models.Profile
-	result := Session().Where("name = ?", profile.Name).First(&existingProfile)
-	if result.Error == nil {
+	_, err := NewProfileQuery().WhereName(profile.Name).First()
+	if err == nil {
 		// Found existing profile with same name, return friendly error message
 		return nil
-	} else if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 		// If it's not "record not found" error, it's another database error
-		return result.Error
+		return err
 	}
 
 	// for pipeline
@@ -229,11 +228,9 @@ func NewProfile(profile *clientpb.Profile) error {
 	return Session().Create(model).Error
 }
 func GetProfile(name string) (*implanttypes.ProfileConfig, error) {
-	var profileModel *models.Profile
-
-	result := Session().Preload("Pipeline").Where("name = ?", name).First(&profileModel)
-	if result.Error != nil {
-		return nil, result.Error
+	profileModel, err := NewProfileQuery().WhereName(name).WithPipeline().First()
+	if err != nil {
+		return nil, err
 	}
 	if profileModel.PipelineID != "" && profileModel.Pipeline == nil {
 		return nil, types.ErrNotFoundPipeline
@@ -321,22 +318,17 @@ func GetProfileContent(profileName string) ([]byte, error) {
 	return os.ReadFile(filepath.Join(profileModel.DiskPath(), "implant.yaml"))
 }
 
-func GetProfiles() ([]*models.Profile, error) {
-	var profiles []*models.Profile
-	result := Session().Preload("Pipeline").Order("created_at ASC").Find(&profiles)
-	return profiles, result.Error
+func GetProfiles() (Profiles, error) {
+	return NewProfileQuery().WithPipeline().OrderByCreated().Find()
 }
 
 func GetProfileByName(profileName string) (*models.Profile, error) {
-	var profile *models.Profile
-	result := Session().Preload("Pipeline").Where("name = ?", profileName).Order("created_at ASC").First(&profile)
-	return profile, result.Error
+	return NewProfileQuery().WhereName(profileName).WithPipeline().OrderByCreated().First()
 }
 
 // FindBuildersByPipelineID 遍历所有 builder，找到 profile.pipelineID = pipelineID 的 builder
 func FindBuildersByPipelineID(pipelineID string) ([]*models.Artifact, error) {
-	var builders []*models.Artifact
-	err := Session().Preload("Profile").Find(&builders).Error
+	builders, err := NewArtifactQuery().WithProfile().Find()
 	if err != nil {
 		return nil, err
 	}
@@ -352,12 +344,11 @@ func FindBuildersByPipelineID(pipelineID string) ([]*models.Artifact, error) {
 
 func DeleteProfileByName(profileName string) error {
 	// Check if profile exists first
-	var existingProfile models.Profile
-	result := Session().Where("name = ?", profileName).First(&existingProfile)
-	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+	existingProfile, err := NewProfileQuery().WhereName(profileName).First()
+	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return fmt.Errorf("profile '%s' not found", profileName)
-	} else if result.Error != nil {
-		return result.Error
+	} else if err != nil {
+		return err
 	}
 
 	// 用 UUID 路径删除磁盘文件
@@ -369,8 +360,7 @@ func DeleteProfileByName(profileName string) error {
 	}
 
 	// Execute deletion
-	err := Session().Where("name = ?", profileName).Delete(&models.Profile{}).Error
-	if err != nil {
+	if err := NewProfileQuery().WhereName(profileName).Delete(); err != nil {
 		return fmt.Errorf("failed to delete profile '%s': %v", profileName, err)
 	}
 
@@ -598,10 +588,9 @@ func resolveArtifactFormat(osName, buildType string, outputType string) string {
 }
 
 func GetValidArtifacts() ([]*models.Artifact, error) {
-	var artifacts []*models.Artifact
-	result := Session().Preload("Profile").Preload("Profile.Pipeline").Find(&artifacts)
-	if result.Error != nil {
-		return nil, result.Error
+	artifacts, err := NewArtifactQuery().WithProfilePipeline().Find()
+	if err != nil {
+		return nil, err
 	}
 
 	var validArtifacts []*models.Artifact
@@ -615,35 +604,38 @@ func GetValidArtifacts() ([]*models.Artifact, error) {
 	return validArtifacts, nil
 }
 
-// FindArtifact
+// FindArtifact finds an artifact by various criteria
 func FindArtifact(target *clientpb.Artifact, bin bool) (*clientpb.Artifact, error) {
 	var artifact *models.Artifact
-	var result *gorm.DB
+	var err error
+
 	// 根据 ID 或名称查找构建器
 	if target.Id != 0 {
-		result = Session().Where("id = ? AND status = ?", target.Id, consts.BuildStatusCompleted).Last(&artifact)
+		artifact, err = NewArtifactQuery().WhereID(target.Id).WhereStatus(consts.BuildStatusCompleted).Last()
 	} else if target.Name != "" {
-		result = Session().Where("name = ? AND status = ?", target.Name, consts.BuildStatusCompleted).Last(&artifact)
+		artifact, err = NewArtifactQuery().WhereName(target.Name).WhereStatus(consts.BuildStatusCompleted).Last()
 	} else if target.Profile != "" {
-		result = Session().Where("profile_name = ? AND status = ?", target.Profile, consts.BuildStatusCompleted).Last(&artifact)
+		artifact, err = NewArtifactQuery().WhereProfileName(target.Profile).WhereStatus(consts.BuildStatusCompleted).Last()
 	} else {
-		var builders []*models.Artifact
-		result = Session().Where("os = ? AND arch = ? AND type = ? AND status = ?", target.Platform, target.Arch, target.Type, consts.BuildStatusCompleted).
-			Preload("Profile.Pipeline").
-			Find(&builders)
-		for _, v := range builders {
-			if v.Type == consts.ImplantPulse && v.Profile.PipelineID == target.Pipeline {
-				artifact = v
-				break
-			}
-			if v.Profile.PipelineID == target.Pipeline {
-				artifact = v
-				break
+		var builders Artifacts
+		builders, err = NewArtifactQuery().
+			WhereOs(target.Platform).WhereArch(target.Arch).WhereType(target.Type).WhereStatus(consts.BuildStatusCompleted).
+			WithProfilePipeline().Find()
+		if err == nil {
+			for _, v := range builders {
+				if v.Type == consts.ImplantPulse && v.Profile.PipelineID == target.Pipeline {
+					artifact = v
+					break
+				}
+				if v.Profile.PipelineID == target.Pipeline {
+					artifact = v
+					break
+				}
 			}
 		}
 	}
-	if result.Error != nil {
-		return nil, fmt.Errorf("error finding artifact: %v, target: %+v", result.Error, target)
+	if err != nil {
+		return nil, fmt.Errorf("error finding artifact: %v, target: %+v", err, target)
 	}
 	if artifact == nil {
 		return nil, types.ErrNotFoundArtifact
@@ -657,14 +649,12 @@ func FindArtifact(target *clientpb.Artifact, bin bool) (*clientpb.Artifact, erro
 	} else {
 		return artifact.ToProtobuf([]byte{}), nil
 	}
-
 }
 
 func FindArtifactFromPipeline(pipelineName string) (*models.Artifact, error) {
-	var artifacts []*models.Artifact
-	result := Session().Preload("Profile").Where(" type = ?", consts.CommandBuildBeacon).Find(&artifacts)
-	if result.Error != nil {
-		return nil, result.Error
+	artifacts, err := NewArtifactQuery().WhereType(consts.CommandBuildBeacon).WithProfile().Find()
+	if err != nil {
+		return nil, err
 	}
 	for _, artifact := range artifacts {
 		if artifact.Profile.PipelineID == pipelineName {
@@ -674,47 +664,21 @@ func FindArtifactFromPipeline(pipelineName string) (*models.Artifact, error) {
 	return nil, ErrRecordNotFound
 }
 
-func GetArtifact(req *clientpb.Artifact) (*models.Artifact, error) {
-	if req.Id != 0 {
-		return GetArtifactById(req.Id)
-	} else if req.Name != "" {
-		return GetArtifactByName(req.Name)
-	} else {
-		return nil, types.ErrNotFoundArtifact
-	}
-}
-
 func GetArtifactByName(name string) (*models.Artifact, error) {
-	var artifact models.Artifact
-	result := Session().Preload("Profile").Where("name = ?", name).First(&artifact)
-	if result.Error != nil {
-		return nil, result.Error
-	}
-	return &artifact, nil
+	return NewArtifactQuery().WhereName(name).WithProfile().First()
 }
 
 func GetArtifactById(id uint32) (*models.Artifact, error) {
-	var artifact models.Artifact
-	result := Session().Preload("Profile").Where("id = ?", id).First(&artifact)
-	if result.Error != nil {
-		return nil, result.Error
-	}
-	return &artifact, nil
+	return NewArtifactQuery().WhereID(id).WithProfile().First()
 }
 
-func GetArtifactWithSaas() ([]*models.Artifact, error) {
-	var artifacts []*models.Artifact
-	result := Session().Where("source = ?", consts.ArtifactFromSaas).Find(&artifacts)
-	if result.Error != nil {
-		return nil, result.Error
-	}
-	return artifacts, nil
+func GetArtifactWithSaas() (Artifacts, error) {
+	return NewArtifactQuery().WhereSource(consts.ArtifactFromSaas).Find()
 }
 
 // GetBeaconBuilderByRelinkID 查找 type=beacon 且 RelinkBeaconID=指定id 的 builder
 func GetBeaconBuilderByRelinkID(relinkID uint32) ([]*models.Artifact, error) {
-	var artifacts []*models.Artifact
-	err := Session().Where("type = ?", "beacon").Find(&artifacts).Error
+	artifacts, err := NewArtifactQuery().WhereType("beacon").Find()
 	if err != nil {
 		return nil, err
 	}
@@ -734,41 +698,31 @@ func GetBeaconBuilderByRelinkID(relinkID uint32) ([]*models.Artifact, error) {
 }
 
 func DeleteArtifactByName(artifactName string) error {
-	model := &models.Artifact{}
-	err := Session().Where("name = ?", artifactName).First(&model).Error
+	artifact, err := NewArtifactQuery().WhereName(artifactName).First()
 	if err != nil {
 		return err
 	}
-	if model.Path != "" {
-		err = os.Remove(model.Path)
-		if err != nil {
+	if artifact.Path != "" {
+		if err := os.Remove(artifact.Path); err != nil {
 			return err
 		}
 	}
-	err = Session().Delete(model).Error
-	if err != nil {
-		return err
-	}
-	return nil
+	return Delete(artifact)
 }
 
 func UpdateBuilderLog(name string, logEntry string) {
 	if Session() == nil {
 		return
 	}
-	err := Session().Model(&models.Artifact{}).
-		Where("name = ?", name).
-		Update("log", Adapter.AppendLogExpr(logEntry)).
-		Error
-
+	err := NewArtifactQuery().WhereName(name).Update("log", Adapter.AppendLogExpr(logEntry))
 	if err != nil {
 		logs.Log.Errorf("Error updating log for Artifact name %s: %v", name, err)
 	}
 }
 
 func GetBuilderLogs(builderName string, limit int) (string, error) {
-	var builder models.Artifact
-	if err := Session().Where("name = ?", builderName).First(&builder).Error; err != nil {
+	builder, err := NewArtifactQuery().WhereName(builderName).First()
+	if err != nil {
 		return "", err
 	}
 
@@ -786,12 +740,8 @@ func UpdateBuilderStatus(builderID uint32, status string) {
 	if Session() == nil {
 		return
 	}
-	err := Session().Model(&models.Artifact{}).
-		Where("id = ?", builderID).
-		Update("status", status).
-		Error
+	err := NewArtifactQuery().WhereID(builderID).Update("status", status)
 	if err != nil {
 		logs.Log.Errorf("Error updating log for Artifact id %d: %v", builderID, err)
 	}
-	return
 }

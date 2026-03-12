@@ -8,8 +8,10 @@ import (
 // SeedDefaultAuthzRules inserts the default role-method mappings if the table is empty.
 // This runs at startup and only seeds when no rules exist.
 func SeedDefaultAuthzRules() error {
-	var count int64
-	Session().Model(&models.AuthzRule{}).Count(&count)
+	count, err := NewAuthzRuleQuery().Count()
+	if err != nil {
+		return err
+	}
 	if count > 0 {
 		return nil // Already seeded
 	}
@@ -41,9 +43,7 @@ func SeedDefaultAuthzRules() error {
 
 // GetAuthzRulesForRole returns all rules for a given role.
 func GetAuthzRulesForRole(role string) ([]*models.AuthzRule, error) {
-	var rules []*models.AuthzRule
-	err := Session().Where("role = ?", role).Find(&rules).Error
-	return rules, err
+	return NewAuthzRuleQuery().WhereRole(role).Find()
 }
 
 // AddAuthzRule adds a new authorization rule.
@@ -53,15 +53,14 @@ func AddAuthzRule(rule *models.AuthzRule) error {
 
 // RemoveAuthzRule removes an authorization rule by ID.
 func RemoveAuthzRule(id string) error {
-	return Session().Where("id = ?", id).Delete(&models.AuthzRule{}).Error
+	return NewAuthzRuleQuery().WhereID(id).Delete()
 }
 
 // ListAuthzRules returns all rules, optionally filtered by role.
 func ListAuthzRules(role string) ([]*models.AuthzRule, error) {
-	var rules []*models.AuthzRule
-	query := Session().Model(&models.AuthzRule{})
+	query := NewAuthzRuleQuery()
 	if role != "" {
-		query = query.Where("role = ?", role)
+		query = query.WhereRole(role)
 	}
-	return rules, query.Find(&rules).Error
+	return query.Find()
 }

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/mtls"
@@ -26,76 +25,48 @@ import (
 // ============================================
 
 func HasOperator(typ string) (bool, error) {
-	var count int64
-	err := Session().Model(&models.Operator{}).Where("type = ?", typ).Count(&count).Error
+	count, err := NewOperatorQuery().WhereType(typ).Count()
 	if err != nil {
 		return false, err
 	}
-	if count == 0 {
-		return false, nil
-	}
-	return true, nil
+	return count > 0, nil
 }
 
 func RemoveOperator(name string) error {
-	err := Session().Where(&models.Operator{
-		Name: name,
-	}).Delete(&models.Operator{}).Error
-	return err
+	return NewOperatorQuery().WhereName(name).Delete()
 }
 
 func CreateOperator(client *models.Operator) error {
-	err := Session().Save(client).Error
-	return err
-
+	return Save(client)
 }
 
-func ListClients() ([]*models.Operator, error) {
-	var operators []*models.Operator
-	err := Session().Where("type = ?", mtls.Client).Find(&operators).Error
-	if err != nil {
-		return nil, err
-	}
-
-	return operators, nil
+func ListClients() (Operators, error) {
+	return NewOperatorQuery().WhereType(mtls.Client).Find()
 }
 
-func ListListeners() ([]*models.Operator, error) {
-	var listeners []*models.Operator
-	err := Session().Where("type = ?", mtls.Listener).Find(&listeners).Error
-	return listeners, err
+func ListListeners() (Operators, error) {
+	return NewOperatorQuery().WhereType(mtls.Listener).Find()
 }
 
 // FindOperatorByFingerprint looks up an active operator by certificate SHA-256 fingerprint.
 func FindOperatorByFingerprint(fingerprint string) (*models.Operator, error) {
-	var op models.Operator
-	err := Session().Where("fingerprint = ?", fingerprint).First(&op).Error
-	if err != nil {
-		return nil, err
-	}
-	return &op, nil
+	return NewOperatorQuery().WhereFingerprint(fingerprint).First()
 }
 
 // FindOperatorByName looks up an operator by name.
 func FindOperatorByName(name string) (*models.Operator, error) {
-	var op models.Operator
-	err := Session().Where("name = ?", name).First(&op).Error
-	if err != nil {
-		return nil, err
-	}
-	return &op, nil
+	return NewOperatorQuery().WhereName(name).First()
 }
 
 // RevokeOperator sets the revoked flag on an operator.
 func RevokeOperator(name string) error {
-	return Session().Model(&models.Operator{}).Where("name = ?", name).Update("revoked", true).Error
+	return NewOperatorQuery().WhereName(name).Update("revoked", true)
 }
 
 // BackfillOperatorFingerprints computes and stores fingerprints for operators
 // that were created before the fingerprint column existed.
 func BackfillOperatorFingerprints() error {
-	var operators []*models.Operator
-	err := Session().Where("fingerprint = '' OR fingerprint IS NULL").Find(&operators).Error
+	operators, err := NewOperatorQuery().WhereFingerprintEmpty().Find()
 	if err != nil {
 		return err
 	}
@@ -120,7 +91,7 @@ func BackfillOperatorFingerprints() error {
 			}
 		}
 
-		Session().Model(op).Updates(map[string]interface{}{
+		NewOperatorQuery().WhereName(op.Name).Updates(map[string]interface{}{
 			"fingerprint": fp,
 			"role":        role,
 		})
@@ -152,17 +123,13 @@ func FindAliveSessions() (Sessions, error) {
 }
 
 func FindSession(sessionID string) (*models.Session, error) {
-	var session *models.Session
-	result := Session().Where("session_id = ?", sessionID).First(&session)
-	if result.Error != nil {
-		return nil, result.Error
+	session, err := NewSessionQuery().WhereID(sessionID).First()
+	if err != nil {
+		return nil, err
 	}
 	if session.IsRemoved {
 		return nil, nil
 	}
-	//if session.Last.Before(time.Now().Add(-time.Second * time.Duration(session.Time.Interval*2))) {
-	//	return nil, errors.New("session is dead")
-	//}
 	return session, nil
 }
 
@@ -184,17 +151,11 @@ func CreateOrRecoverSession(session *models.Session) error {
 	}
 
 	// Now create the new session
-	query := Session()
-	if session.ProfileName == "" {
-		query = query.Omit("profile_name")
-	}
-	return query.Create(session).Error
+	return createWithOmitEmpty(session, map[string]string{"profile_name": session.ProfileName})
 }
 
-func FindTaskAndMaxTasksID(sessionID string) ([]*models.Task, uint32, error) {
-	var tasks []*models.Task
-
-	err := Session().Where("session_id = ?", sessionID).Find(&tasks).Error
+func FindTaskAndMaxTasksID(sessionID string) (Tasks, uint32, error) {
+	tasks, err := NewTaskQuery().WhereSessionID(sessionID).Find()
 	if err != nil {
 		return tasks, 0, err
 	}
@@ -210,34 +171,27 @@ func FindTaskAndMaxTasksID(sessionID string) ([]*models.Task, uint32, error) {
 }
 
 func RemoveSession(sessionID string) error {
-	result := Session().Model(&models.Session{}).Where("session_id = ?", sessionID).Update("is_removed", true)
-	return result.Error
+	return NewSessionQuery().WhereID(sessionID).Update("is_removed", true)
 }
 
 // RecoverRemovedSession finds a soft-deleted session and resets is_removed flag.
 // Returns nil,nil if no removed session found.
 func RecoverRemovedSession(sessionID string) (*models.Session, error) {
-	var session models.Session
-	result := Session().Where("session_id = ? AND is_removed = ?", sessionID, true).First(&session)
-	if result.Error != nil {
-		return nil, result.Error
-	}
-	session.IsRemoved = false
-	query := Session()
-	if session.ProfileName == "" {
-		query = query.Omit("profile_name")
-	}
-	if err := query.Save(&session).Error; err != nil {
+	session, err := NewSessionQuery().WhereID(sessionID).WhereRemoved(true).First()
+	if err != nil {
 		return nil, err
 	}
-	return &session, nil
+	session.IsRemoved = false
+	if err := saveWithOmitEmpty(session, map[string]string{"profile_name": session.ProfileName}); err != nil {
+		return nil, err
+	}
+	return session, nil
 }
 
 func UpdateSession(sessionID, note, group string) error {
-	var session models.Session
-	result := Session().Where("session_id = ?", sessionID).First(&session)
-	if result.Error != nil {
-		return result.Error
+	session, err := NewSessionQuery().WhereID(sessionID).First()
+	if err != nil {
+		return err
 	}
 	if group != "" {
 		session.GroupName = group
@@ -245,30 +199,19 @@ func UpdateSession(sessionID, note, group string) error {
 	if note != "" {
 		session.Note = note
 	}
-	query := Session()
-	if session.ProfileName == "" {
-		query = query.Omit("profile_name")
-	}
-	result = query.Save(&session)
-	return result.Error
+	return saveWithOmitEmpty(session, map[string]string{"profile_name": session.ProfileName})
 }
 
 func UpdateSessionTimer(sessionID string, expression string, jitter float64) error {
-	var session *models.Session
-	result := Session().Where("session_id = ?", sessionID).First(&session)
-	if result.Error != nil {
-		return result.Error
+	session, err := NewSessionQuery().WhereID(sessionID).First()
+	if err != nil {
+		return err
 	}
 	session.Data.Expression = expression
 	if jitter != 0 {
 		session.Data.Jitter = jitter
 	}
-	query := Session()
-	if session.ProfileName == "" {
-		query = query.Omit("profile_name")
-	}
-	result = query.Save(&session)
-	return result.Error
+	return saveWithOmitEmpty(session, map[string]string{"profile_name": session.ProfileName})
 }
 
 // ============================================
@@ -276,21 +219,11 @@ func UpdateSessionTimer(sessionID string, expression string, jitter float64) err
 // ============================================
 
 func GetTask(taskID string) (*models.Task, error) {
-	var task *models.Task
-	err := Session().Where("id = ?", taskID).First(&task).Error
-	if err != nil {
-		return nil, err
-	}
-	return task, nil
+	return NewTaskQuery().WhereID(taskID).First()
 }
 
 func GetTaskBySessionAndSeq(sessionID string, seq uint32) (*models.Task, error) {
-	var task models.Task
-	err := Session().Where("session_id = ? AND seq = ?", sessionID, seq).First(&task).Error
-	if err != nil {
-		return nil, err
-	}
-	return &task, nil
+	return NewTaskQuery().WhereSessionID(sessionID).WhereSeq(seq).First()
 }
 
 func AddTask(task *clientpb.Task) error {
@@ -324,22 +257,15 @@ func UpdateTaskCur(taskID string, cur int) error {
 }
 
 func UpdateTaskFinish(taskID string) error {
-	var taskModel models.Task
-	if err := Session().First(&taskModel, "id = ?", taskID).Error; err != nil {
+	task, err := NewTaskQuery().WhereID(taskID).First()
+	if err != nil {
 		return err
 	}
-	return taskModel.UpdateFinish(Session())
-}
-
-func UpdateDownloadTotal(taskID uint32, sessionID string, total int) error {
-	taskModel := &models.Task{
-		ID: sessionID + "-" + utils.ToString(taskID),
-	}
-	return taskModel.UpdateTotal(Session(), total)
+	return task.UpdateFinish(Session())
 }
 
 func UpdateTaskDescription(taskID, Description string) error {
-	return Session().Model(&models.Task{}).Where("id = ?", taskID).Update("description", Description).Error
+	return NewTaskQuery().WhereID(taskID).Update("description", Description)
 }
 
 // ============================================
@@ -371,28 +297,8 @@ func FindContext(contextID string) (*models.Context, error) {
 	}
 }
 
-func GetContextFilesBySessionID(sessionID string, fileTypes []string) ([]*models.Context, error) {
-	var files []*models.Context
-	query := Session().Model(&models.Context{}).Where("session_id = ?", sessionID)
-
-	if len(fileTypes) > 0 {
-		query = query.Where("type IN (?)", fileTypes)
-	}
-
-	result := query.Find(&files)
-	if result.Error != nil {
-		return nil, result.Error
-	}
-	return files, nil
-}
-
 func GetContextByTask(taskID string) (*models.Context, error) {
-	var task *models.Context
-	result := Session().Model(&models.Context{}).Where("task_id = ?", taskID).First(&task)
-	if result.Error != nil {
-		return task, result.Error
-	}
-	return task, nil
+	return NewContextQuery().ByTask(taskID).First()
 }
 
 func GetDownloadFiles(sid string) ([]*clientpb.File, error) {
@@ -426,68 +332,6 @@ func GetDownloadFiles(sid string) ([]*clientpb.File, error) {
 	}
 
 	return res, nil
-}
-
-// ContextQuery 用于构建Context查询的结构体
-type ContextQuery struct {
-	db *gorm.DB
-}
-
-// NewContextQuery 创建新的Context查询构建器
-func NewContextQuery() *ContextQuery {
-	return &ContextQuery{
-		db: Session().
-			Preload("Session").
-			Preload("Pipeline").
-			Preload("Task"),
-	}
-}
-
-// ByType 按类型查询
-func (q *ContextQuery) ByType(typ string) *ContextQuery {
-	q.db = q.db.Where("type = ?", typ)
-	return q
-}
-
-// BySession 按会话ID查询
-func (q *ContextQuery) BySession(sessionID string) *ContextQuery {
-	q.db = q.db.Where("session_id = ?", sessionID)
-	return q
-}
-
-// ByTask 按任务ID查询
-func (q *ContextQuery) ByTask(taskID string) *ContextQuery {
-	q.db = q.db.Where("task_id = ?", taskID)
-	return q
-}
-
-// ByPipeline 按Pipeline ID查询
-func (q *ContextQuery) ByPipeline(pipelineID string) *ContextQuery {
-	q.db = q.db.Where("pipeline_id = ?", pipelineID)
-	return q
-}
-
-// ByNonce 按Nonce查询
-func (q *ContextQuery) ByNonce(nonce string) *ContextQuery {
-	q.db = q.db.Where("nonce = ?", nonce)
-	return q
-}
-
-// Find 执行查询并返回结果
-func (q *ContextQuery) Find() ([]*models.Context, error) {
-	var contexts []*models.Context
-	err := q.db.Find(&contexts).Error
-	return contexts, err
-}
-
-// First 查询单个结果
-func (q *ContextQuery) First() (*models.Context, error) {
-	var context models.Context
-	err := q.db.First(&context).Error
-	if err != nil {
-		return nil, err
-	}
-	return &context, nil
 }
 
 func SaveContext(ctx *clientpb.Context) (*models.Context, error) {
@@ -527,59 +371,14 @@ func SaveContext(ctx *clientpb.Context) (*models.Context, error) {
 }
 
 func DeleteContext(contextID string) error {
-	return Session().Where("id = ?", contextID).Delete(&models.Context{}).Error
-}
-
-// UpdateContext updates an existing context
-func UpdateContext(context *models.Context) error {
-	var omitFields []string
-	if context.SessionID == "" {
-		omitFields = append(omitFields, "session_id")
+	id, err := uuid.FromString(contextID)
+	if err != nil {
+		return err
 	}
-	if context.PipelineID == "" {
-		omitFields = append(omitFields, "pipeline_id")
-	}
-	if context.TaskID == "" {
-		omitFields = append(omitFields, "task_id")
-	}
-	query := Session()
-	if len(omitFields) > 0 {
-		query = query.Omit(omitFields...)
-	}
-	return query.Save(context).Error
-}
-
-// FindContextBySessionAndTypeAndDate finds a context by session ID, type and date
-// date format should be "2006-01-02"
-func FindContextBySessionAndTypeAndDate(sessionID, contextType, date string) (*models.Context, error) {
-	var context models.Context
-	result := Session().Model(&models.Context{}).
-		Joins("JOIN sessions ON contexts.session_id = sessions.session_id").
-		Where(fmt.Sprintf("sessions.session_id = ? AND contexts.type = ? AND %s = ?",
-			Adapter.DateFunction("contexts.created_at")),
-			sessionID, contextType, date).
-		First(&context)
-
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
-		return nil, result.Error
-	}
-	return &context, nil
-}
-
-// FindTodayKeyloggerContext finds today's keylogger context for a session
-func FindTodayKeyloggerContext(sessionID string) (*models.Context, error) {
-	today := time.Now().Format("2006-01-02")
-	return FindContextBySessionAndTypeAndDate(sessionID, consts.ContextKeyLogger, today)
+	return NewContextQuery().WhereID(id).Delete()
 }
 
 // SaveSessionModel saves a session model to database
 func SaveSessionModel(session *models.Session) error {
-	query := Session()
-	if session.ProfileName == "" {
-		query = query.Omit("profile_name")
-	}
-	return query.Save(session).Error
+	return saveWithOmitEmpty(session, map[string]string{"profile_name": session.ProfileName})
 }
