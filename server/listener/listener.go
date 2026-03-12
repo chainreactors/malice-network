@@ -606,8 +606,7 @@ func (lns *listener) handleWebContentUpdate(job *clientpb.JobCtrl) error {
 	if w == nil {
 		return errors.New("website not found")
 	}
-	w.AddContent(job.Content)
-	return nil
+	return w.AddContent(job.Content)
 }
 
 func (lns *listener) handleWebContentRemove(job *clientpb.Job) error {

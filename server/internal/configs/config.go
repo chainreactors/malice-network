@@ -8,6 +8,7 @@ import (
 	"github.com/gookit/config/v2"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 func InitConfig() error {
@@ -114,7 +115,7 @@ func GetWorkDir() string {
 }
 
 func UpdateGithubConfig(g *GithubConfig) error {
-	err := config.Set("server.github", g)
+	err := configutil.SetStructByTag("server.github", g, "config")
 	if err != nil {
 		logs.Log.Errorf("Failed to update github config %s", err)
 		return err
@@ -132,7 +133,7 @@ func UpdateNotifyConfig(n *NotifyConfig) error {
 }
 
 func UpdateSaasConfig(n *SaasConfig) error {
-	err := config.Set("server.saas", n)
+	err := configutil.SetStructByTag("server.saas", n, "config")
 	if err != nil {
 		logs.Log.Errorf("Failed to update saas config %s", err)
 		return err
@@ -141,9 +142,14 @@ func UpdateSaasConfig(n *SaasConfig) error {
 }
 
 func GetAcmeConfig() *AcmeConfig {
-	a := &AcmeConfig{}
+	a := &AcmeConfig{
+		CAUrl: "https://acme-v02.api.letsencrypt.org/directory",
+	}
 	err := config.MapStruct("server.acme", a)
 	if err != nil {
+		if strings.Contains(err.Error(), "does not exist") {
+			return a
+		}
 		logs.Log.Errorf("Failed to map acme config %s", err)
 		return nil
 	}
@@ -151,7 +157,7 @@ func GetAcmeConfig() *AcmeConfig {
 }
 
 func UpdateAcmeConfig(a *AcmeConfig) error {
-	err := config.Set("server.acme", a)
+	err := configutil.SetStructByTag("server.acme", a, "config")
 	if err != nil {
 		logs.Log.Errorf("Failed to update acme config %s", err)
 		return err

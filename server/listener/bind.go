@@ -16,7 +16,7 @@ func NewBindPipeline(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipel
 	pp := &BindPipeline{
 		rpc:            rpc,
 		Name:           pipeline.Name,
-		Enable:         true,
+		Enable:         pipeline.Enable,
 		CertName:       pipeline.CertName,
 		PipelineConfig: core.FromPipeline(pipeline),
 	}

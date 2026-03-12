@@ -92,6 +92,8 @@ func (rem *REM) Start() error {
 }
 
 func (rem *REM) ToProtobuf() *clientpb.Pipeline {
+	link := rem.getLink()
+	subscribe := rem.getSubscribe()
 	return &clientpb.Pipeline{
 		Name:       rem.Name,
 		Enable:     rem.Enable,
@@ -106,8 +108,8 @@ func (rem *REM) ToProtobuf() *clientpb.Pipeline {
 				Host:       rem.con.ConsoleURL.Hostname(),
 				Console:    rem.remConfig.Console,
 				Port:       uint32(rem.con.ConsoleURL.IntPort()),
-				Link:       rem.con.Link(),
-				Subscribe:  rem.con.Subscribe(),
+				Link:       link,
+				Subscribe:  subscribe,
 				Agents:     rem.con.ToProtobuf(),
 			},
 		},
@@ -115,6 +117,42 @@ func (rem *REM) ToProtobuf() *clientpb.Pipeline {
 		Encryption: rem.Encryption.ToProtobuf(),
 		Secure:     rem.SecureConfig.ToProtobuf(),
 	}
+}
+
+func (rem *REM) getLink() (link string) {
+	if rem.remConfig != nil && rem.remConfig.Link != "" {
+		link = rem.remConfig.Link
+	}
+	if rem.con == nil {
+		return link
+	}
+	defer func() {
+		if recover() != nil {
+			// Keep configured link when REM runtime has not fully started yet.
+		}
+	}()
+	if runtimeLink := rem.con.Link(); runtimeLink != "" {
+		link = runtimeLink
+	}
+	return link
+}
+
+func (rem *REM) getSubscribe() (subscribe string) {
+	if rem.remConfig != nil && rem.remConfig.Subscribe != "" {
+		subscribe = rem.remConfig.Subscribe
+	}
+	if rem.con == nil {
+		return subscribe
+	}
+	defer func() {
+		if recover() != nil {
+			// Keep configured subscribe endpoint when REM runtime has not fully started yet.
+		}
+	}()
+	if runtimeSubscribe := rem.con.Subscribe(); runtimeSubscribe != "" {
+		subscribe = runtimeSubscribe
+	}
+	return subscribe
 }
 
 func (rem *REM) Close() error {

@@ -105,7 +105,7 @@ func (parser *MaleficParser) ReadHeader(conn io.ReadWriteCloser) (uint32, uint32
 		return 0, 0, err
 	}
 	//logs.Log.Debugf("%v read packet from %s , %d bytes", sid, conn.RemoteAddr(), length)
-	if length > uint32(config.Uint(consts.ConfigMaxPacketLength))+consts.KB*16 {
+	if length > uint32(config.Uint(consts.ConfigMaxPacketLength))+consts.KB*16+1 {
 		return 0, 0, fmt.Errorf("%w,expect: %d, recv: %d", types.ErrPacketTooLarge, config.Int(consts.ConfigMaxPacketLength), length)
 	}
 	return sid, length, nil
