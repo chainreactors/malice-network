@@ -61,7 +61,10 @@ func (p Pipelines) ToProtobuf() *clientpb.Pipelines {
 	pbPipelines := &clientpb.Pipelines{Pipelines: make([]*clientpb.Pipeline, 0, len(p))}
 	for _, pipeline := range p {
 		if pipeline != nil {
-			pbPipelines.Pipelines = append(pbPipelines.Pipelines, pipeline.ToProtobuf())
+			pb := pipeline.ToProtobuf()
+			if pb != nil {
+				pbPipelines.Pipelines = append(pbPipelines.Pipelines, pb)
+			}
 		}
 	}
 	return pbPipelines

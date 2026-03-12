@@ -27,7 +27,6 @@ func ListPipelineCmd(cmd *cobra.Command, con *core.Console) error {
 		return nil
 	}
 	var rowEntries []table.Row
-	var row table.Row
 	tableModel := tui.NewTable([]table.Column{
 		table.NewFlexColumn("Name", "Name", 1),
 		table.NewColumn("Enable", "Enable", 7),
@@ -39,6 +38,9 @@ func ListPipelineCmd(cmd *cobra.Command, con *core.Console) error {
 		table.NewColumn("TLS", "TLS", 6),
 	}, true)
 	for _, pipeline := range pipelines.GetPipelines() {
+		if pipeline == nil || pipeline.Body == nil {
+			continue
+		}
 		newRow := table.RowData{}
 		var schema string
 		if pipeline.Enable {
@@ -72,7 +74,6 @@ func ListPipelineCmd(cmd *cobra.Command, con *core.Console) error {
 			}
 			newRow["Address"] = schema + pipeline.Ip + ":" + strconv.Itoa(int(body.Http.Port))
 			newRow["Parser"] = pipeline.Parser
-			row = table.NewRow(newRow)
 		case *clientpb.Pipeline_Tcp:
 			newRow["Name"] = pipeline.Name
 			newRow["Type"] = consts.TCPPipeline
@@ -84,16 +85,15 @@ func ListPipelineCmd(cmd *cobra.Command, con *core.Console) error {
 			}
 			newRow["Address"] = schema + pipeline.Ip + ":" + strconv.Itoa(int(body.Tcp.Port))
 			newRow["Parser"] = pipeline.Parser
-			row = table.NewRow(newRow)
 		case *clientpb.Pipeline_Rem, *clientpb.Pipeline_Bind:
 			newRow["Name"] = pipeline.Name
 			newRow["Type"] = consts.BindPipeline
 			newRow["ListenerID"] = pipeline.ListenerId
 			newRow["Parser"] = pipeline.Parser
-			row = table.NewRow(newRow)
+		default:
+			continue
 		}
-
-		rowEntries = append(rowEntries, row)
+		rowEntries = append(rowEntries, table.NewRow(newRow))
 	}
 	tableModel.SetRows(rowEntries)
 	con.Log.Console(tableModel.View())
