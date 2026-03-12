@@ -88,7 +88,13 @@ func (c *Console) complete(line []rune, pos int) (comps readline.Completions) {
 
 	// Assign both completions and command/flags/args usage strings.
 	comps = readline.CompleteRaw(raw)
-	comps = comps.Usage("%s", completions.Usage)
+	usage := completions.Usage
+	if usage == "" {
+		if target := findCompletionTarget(menu.Command, args[2:]); target != nil && target != menu.Command {
+			usage = target.UseLine()
+		}
+	}
+	comps = comps.Usage("%s", usage)
 	comps = c.justifyCommandComps(comps)
 
 	// If any errors arose from the completion call itself.
