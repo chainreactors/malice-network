@@ -69,11 +69,14 @@ var (
 //	return data, nil
 //}
 
-func MoveBuildOutput(target, buildType string, enable3RD, lib bool) (string, string, error) {
+func MoveBuildOutput(target, buildType string, enable3RD bool, outputType string) (string, string, error) {
 	targetInfo, ok := consts.GetBuildTarget(target)
 	if !ok {
 		return "", "", types.ErrInvalidateTarget
 	}
+
+	isLib := outputType == "lib"
+	isShellcode := outputType == "shellcode"
 
 	baseName := malefic
 	switch buildType {
@@ -102,17 +105,20 @@ func MoveBuildOutput(target, buildType string, enable3RD, lib bool) (string, str
 	case consts.Windows:
 		switch buildType {
 		case consts.CommandBuildModules, consts.CommandBuild3rdModules:
-			if !lib {
+			if !isLib {
 				return "", "", fmt.Errorf("modules build requires library output")
 			}
 			filename += consts.DllFile
 		case consts.CommandBuildPulse:
-			if lib {
-				return "", "", fmt.Errorf("pulse build does not support library output")
+			if isShellcode {
+				filename += consts.ShellcodeFile
+			} else if isLib {
+				filename += consts.DllFile
+			} else {
+				filename += consts.PEFile
 			}
-			filename += consts.PEFile
 		default:
-			if lib {
+			if isLib {
 				filename += consts.DllFile
 			} else {
 				filename += consts.PEFile
@@ -120,17 +126,17 @@ func MoveBuildOutput(target, buildType string, enable3RD, lib bool) (string, str
 		}
 	case consts.Linux:
 		if buildType == consts.CommandBuildPrelude {
-			if lib {
+			if isLib {
 				return "", "", fmt.Errorf("prelude build does not support library output")
 			}
 			// keep filename without extension
 		} else {
-			if lib {
+			if isLib {
 				filename += ".so"
 			}
 		}
 	case consts.Darwin:
-		if lib {
+		if isLib {
 			filename += ".dylib"
 		}
 	default:

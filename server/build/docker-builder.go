@@ -152,7 +152,7 @@ func (d *DockerBuilder) Execute() error {
 	}
 
 	libFlag := ""
-	if d.config.Lib {
+	if d.config.OutputType == "lib" {
 		libFlag = " --lib"
 	}
 
@@ -212,10 +212,14 @@ func (d *DockerBuilder) Execute() error {
 		} else {
 			pulseOs = target.OS
 		}
+		shellcodeFlag := ""
+		if d.config.OutputType == "shellcode" {
+			shellcodeFlag = " --shellcode"
+		}
 		buildCommand = fmt.Sprintf(
-			"%smalefic-mutant generate pulse -a %s -p %s && malefic-mutant build pulse -t %s",
+			"%smalefic-mutant generate pulse -a %s -p %s && malefic-mutant build%s pulse%s -t %s",
 			resourceMergePrefix,
-			target.Arch, pulseOs, d.config.Target,
+			target.Arch, pulseOs, libFlag, shellcodeFlag, d.config.Target,
 		)
 	}
 	d.containerName = "malefic_" + cryptography.RandomString(8)
@@ -276,7 +280,7 @@ func (d *DockerBuilder) Execute() error {
 }
 
 func (d *DockerBuilder) Collect() (string, string, error) {
-	_, artifactPath, err := MoveBuildOutput(d.config.Target, d.config.BuildType, d.enable3rd, d.config.Lib)
+	_, artifactPath, err := MoveBuildOutput(d.config.Target, d.config.BuildType, d.enable3rd, d.config.OutputType)
 	if err != nil {
 		logs.Log.Errorf("failed to move artifact %s output: %s", d.artifact.Name, err)
 		return "", consts.BuildStatusFailure, err

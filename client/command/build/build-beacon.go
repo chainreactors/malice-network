@@ -166,7 +166,7 @@ func prepareBuildConfig(cmd *cobra.Command, con *core.Console, buildType string)
 
 	buildConfig.MaleficConfig, _ = profile.ToYAML()
 
-	if err := parseLibFlag(cmd, buildConfig); err != nil {
+	if err := parseOutputType(cmd, buildConfig); err != nil {
 		return nil, err
 	}
 

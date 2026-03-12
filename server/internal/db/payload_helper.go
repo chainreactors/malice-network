@@ -448,7 +448,7 @@ func SaveArtifactFromConfig(req *clientpb.BuildConfig) (*models.Artifact, error)
 	if !ok {
 		return nil, types.ErrInvalidateTarget
 	}
-	format := resolveArtifactFormat(target.OS, req.BuildType, req.Lib)
+	format := resolveArtifactFormat(target.OS, req.BuildType, req.OutputType)
 	builder := models.Artifact{
 		Name:        req.BuildName,
 		ProfileName: req.ProfileName,
@@ -478,7 +478,7 @@ func SaveArtifactFromID(req *clientpb.BuildConfig, ID uint32) (*models.Artifact,
 	if !ok {
 		return nil, types.ErrInvalidateTarget
 	}
-	format := resolveArtifactFormat(target.OS, req.BuildType, req.Lib)
+	format := resolveArtifactFormat(target.OS, req.BuildType, req.OutputType)
 	artifact := models.Artifact{
 		ID:          ID,
 		Name:        req.BuildName,
@@ -563,25 +563,32 @@ func SaveArtifact(name, artifactType, platform, arch, source string) (*models.Ar
 	return artifact, nil
 }
 
-// resolveArtifactFormat returns file extension (with dot) based on OS/buildType/lib.
-func resolveArtifactFormat(osName, buildType string, lib bool) string {
+// resolveArtifactFormat returns file extension (with dot) based on OS/buildType/outputType.
+// outputType: "" or "executable" (default), "lib", "shellcode"
+func resolveArtifactFormat(osName, buildType string, outputType string) string {
+	isLib := outputType == "lib"
+	isShellcode := outputType == "shellcode"
+
 	switch osName {
 	case consts.Windows:
 		// modules/3rd are always DLL
 		if buildType == consts.CommandBuildModules || buildType == consts.CommandBuild3rdModules {
 			return consts.DllFile
 		}
-		if lib {
+		if isShellcode {
+			return consts.ShellcodeFile
+		}
+		if isLib {
 			return consts.DllFile
 		}
 		return consts.PEFile
 	case consts.Linux:
-		if lib {
+		if isLib {
 			return ".so"
 		}
 		return ""
 	case consts.Darwin:
-		if lib {
+		if isLib {
 			return ".dylib"
 		}
 		return ""

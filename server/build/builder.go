@@ -38,20 +38,21 @@ func validateBuildOptions(req *clientpb.BuildConfig) error {
 		if target.OS != consts.Windows {
 			return errors.New("modules build only supports Windows targets")
 		}
-		if !req.Lib {
+		if req.OutputType != "lib" {
 			return errors.New("modules build requires library output")
 		}
 	case consts.CommandBuildPrelude:
-		if req.Lib {
+		if req.OutputType == "lib" {
 			return errors.New("prelude build does not support --lib")
+		}
+		if req.OutputType == "shellcode" {
+			return errors.New("prelude build does not support --shellcode")
 		}
 	case consts.CommandBuildPulse:
 		if target.OS != consts.Windows {
 			return errors.New("pulse build only supports Windows targets")
 		}
-		if req.Lib {
-			return errors.New("pulse build does not support --lib")
-		}
+		// pulse supports: executable (default), lib, shellcode
 	}
 	return nil
 }

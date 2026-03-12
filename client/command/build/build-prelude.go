@@ -53,7 +53,7 @@ func PreludeCmd(cmd *cobra.Command, con *core.Console) error {
 		return errors.New("prelude build requires prelude config (use --prelude-path, --archive-path, or --profile with prelude config)")
 	}
 
-	if err := parseLibFlag(cmd, buildConfig); err != nil {
+	if err := parseOutputType(cmd, buildConfig); err != nil {
 		return err
 	}
 

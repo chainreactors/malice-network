@@ -220,12 +220,10 @@ func GenerateFlagSet(f *pflag.FlagSet) {
 func ParseGenerateFlags(cmd *cobra.Command) *clientpb.BuildConfig {
 	name, _ := cmd.Flags().GetString("profile")
 	target, _ := cmd.Flags().GetString("target")
-	lib, _ := cmd.Flags().GetBool("lib")
 	comment, _ := cmd.Flags().GetString("comment")
 	buildConfig := &clientpb.BuildConfig{
 		ProfileName: name,
 		Target:      target,
-		Lib:         lib,
 		Comment:     comment,
 	}
 	return buildConfig

@@ -83,17 +83,26 @@ func BindCmd(cmd *cobra.Command, con *core.Console) error {
 	return ExecuteBuild(con, buildConfig)
 }
 
-// parseLibFlag sets buildConfig.Lib based on the --lib flag and validates compatibility with buildType/target.
-func parseLibFlag(cmd *cobra.Command, buildConfig *clientpb.BuildConfig) error {
+// parseOutputType parses --lib and --shellcode flags and sets buildConfig.OutputType.
+func parseOutputType(cmd *cobra.Command, buildConfig *clientpb.BuildConfig) error {
 	libFlag, _ := cmd.Flags().GetBool("lib")
-	return ValidateLibFlag(buildConfig, libFlag, cmd.Flags().Changed("lib"))
+	shellcodeFlag := false
+	if cmd.Flags().Lookup("shellcode") != nil {
+		shellcodeFlag, _ = cmd.Flags().GetBool("shellcode")
+	}
+	return ValidateOutputType(buildConfig, libFlag, cmd.Flags().Changed("lib"), shellcodeFlag)
 }
 
-// ValidateLibFlag validates the lib flag and sets buildConfig.Lib.
-func ValidateLibFlag(buildConfig *clientpb.BuildConfig, libFlag bool, libFlagChanged bool) error {
+// ValidateOutputType validates output type flags and sets buildConfig.OutputType.
+// OutputType values: "" (executable, default), "lib" (dll/so/dylib), "shellcode" (raw .bin, pulse only)
+func ValidateOutputType(buildConfig *clientpb.BuildConfig, libFlag bool, libFlagChanged bool, shellcodeFlag bool) error {
 	target, ok := consts.GetBuildTarget(buildConfig.Target)
 	if !ok {
 		return errors.New("invalid target: " + buildConfig.Target)
+	}
+
+	if libFlag && shellcodeFlag {
+		return errors.New("--lib and --shellcode are mutually exclusive")
 	}
 
 	switch buildConfig.BuildType {
@@ -104,23 +113,36 @@ func ValidateLibFlag(buildConfig *clientpb.BuildConfig, libFlag bool, libFlagCha
 		if target.OS != consts.Windows {
 			return errors.New("modules build only supports Windows targets")
 		}
-		buildConfig.Lib = true
+		buildConfig.OutputType = "lib"
 	case consts.CommandBuildPrelude:
 		if libFlag {
 			return errors.New("prelude build does not support --lib")
 		}
-		buildConfig.Lib = false
-	case consts.CommandBuildPulse:
-		if libFlag {
-			return errors.New("pulse build does not support --lib")
+		if shellcodeFlag {
+			return errors.New("prelude build does not support --shellcode")
 		}
+		buildConfig.OutputType = ""
+	case consts.CommandBuildPulse:
 		if target.OS != consts.Windows {
 			return errors.New("pulse build only supports Windows targets")
 		}
-		buildConfig.Lib = false
+		if shellcodeFlag {
+			buildConfig.OutputType = "shellcode"
+		} else if libFlag {
+			buildConfig.OutputType = "lib"
+		} else {
+			buildConfig.OutputType = ""
+		}
 	default:
-		// beacon/bind allow both exe and lib
-		buildConfig.Lib = libFlag
+		// beacon/bind allow exe and lib
+		if shellcodeFlag {
+			return errors.New(buildConfig.BuildType + " build does not support --shellcode")
+		}
+		if libFlag {
+			buildConfig.OutputType = "lib"
+		} else {
+			buildConfig.OutputType = ""
+		}
 	}
 	return nil
 }

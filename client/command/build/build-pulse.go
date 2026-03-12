@@ -19,6 +19,7 @@ func PulseFlagSet(f *pflag.FlagSet) {
 	f.String("user-agent", "", "HTTP User-Agent string")
 	f.Uint32("artifact-id", 0, "pulse artifact id")
 	f.Uint32("beacon-artifact-id", 0, "beacon artifact id used by pulse relink")
+	f.Bool("shellcode", false, "Build pulse as raw shellcode (.bin)")
 }
 
 func PulseCmd(cmd *cobra.Command, con *core.Console) error {
@@ -33,7 +34,7 @@ func PulseCmd(cmd *cobra.Command, con *core.Console) error {
 		return fmt.Errorf("failed to parse build config: %w", err)
 	}
 	buildConfig.BuildType = consts.CommandBuildPulse
-	if err := parseLibFlag(cmd, buildConfig); err != nil {
+	if err := parseOutputType(cmd, buildConfig); err != nil {
 		return err
 	}
 

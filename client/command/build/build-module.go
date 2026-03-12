@@ -31,7 +31,7 @@ func ModulesCmd(cmd *cobra.Command, con *core.Console) error {
 	if err != nil {
 		return err
 	}
-	if err := parseLibFlag(cmd, buildConfig); err != nil {
+	if err := parseOutputType(cmd, buildConfig); err != nil {
 		return err
 	}
 	//

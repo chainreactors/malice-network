@@ -139,6 +139,16 @@ func ConvertArtifact(artifact *clientpb.Artifact, format string, rdi string) (*c
 	if format == "" || format == consts.FormatExecutable {
 		return artifact, nil
 	}
+	// Artifact already built as shellcode (e.g. pulse --shellcode), skip SRDI conversion
+	if artifact.Format == consts.ShellcodeFile {
+		convert, err := output.Convert(artifact.Bin, format)
+		if err != nil {
+			return nil, err
+		}
+		artifact.Bin = convert.Data
+		artifact.Format = format
+		return artifact, nil
+	}
 	if artifact.Platform != consts.Windows {
 		convert, err := output.Convert(artifact.Bin, format)
 		if err != nil {
