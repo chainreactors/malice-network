@@ -27,6 +27,7 @@ func (rpc *Server) ListAddon(ctx context.Context, req *implantpb.Request) (*clie
 		if exts := spite.GetAddons(); exts != nil {
 			sess, _ := getSession(ctx)
 			sess.Addons = exts.Addons
+			sess.SaveAndNotify("")
 		}
 	})
 	return greq.Task.ToProtobuf(), nil
@@ -49,6 +50,7 @@ func (rpc *Server) LoadAddon(ctx context.Context, req *implantpb.LoadAddon) (*cl
 			Depend: req.Depend,
 			Type:   req.Type,
 		})
+		sess.SaveAndNotify("")
 	})
 	return greq.Task.ToProtobuf(), nil
 }

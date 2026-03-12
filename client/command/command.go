@@ -43,14 +43,14 @@ func MakeBind(cmd *cobra.Command, con *core.Console, source string) BindFunc {
 				c.GroupID = group
 				c.Annotations["menu"] = cmd.Name()
 				c.Annotations["source"] = source
-				updateCommand(con, c, group)
+				updateCommand(con, c, group, false)
 				cmd.AddCommand(c)
 			}
 		}
 	}
 }
 
-func updateCommand(con *core.Console, c *cobra.Command, group string) {
+func updateCommand(con *core.Console, c *cobra.Command, group string, isSubCmd bool) {
 	c.SetHelpFunc(help.HelpFunc)
 	c.SetUsageFunc(help.UsageFunc)
 	if c.Annotations == nil {
@@ -74,12 +74,16 @@ func updateCommand(con *core.Console, c *cobra.Command, group string) {
 		}
 	}
 
-	con.CMDs[c.Name()] = c
+	// Only register top-level commands into CMDs to avoid subcommands
+	// overwriting top-level commands with the same Name() (e.g. "pipe upload" vs "upload")
+	if !isSubCmd {
+		con.CMDs[c.Name()] = c
+	}
 	if dep, ok := c.Annotations["depend"]; ok {
 		con.Helpers[dep] = c
 	}
 
 	for _, subCmd := range c.Commands() {
-		updateCommand(con, subCmd, group)
+		updateCommand(con, subCmd, group, true)
 	}
 }

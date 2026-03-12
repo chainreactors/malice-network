@@ -16,7 +16,7 @@ func handlerModule(sess *core.Session) func(spite *implantpb.Spite) {
 		if modules := spite.GetModules(); modules != nil {
 			sess.Modules = modules.Modules
 		}
-		sess.PushUpdate("")
+		sess.SaveAndNotify("")
 	}
 }
 
@@ -50,7 +50,7 @@ func (rpc *Server) LoadModule(ctx context.Context, req *implantpb.LoadModule) (*
 
 	greq.HandlerResponse(ch, types.MsgListModule, func(spite *implantpb.Spite) {
 		greq.Session.Modules = append(greq.Session.Modules, spite.GetModules().Modules...)
-		greq.Session.PushUpdate("")
+		greq.Session.SaveAndNotify("")
 	})
 	return greq.Task.ToProtobuf(), nil
 }

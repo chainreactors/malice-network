@@ -196,28 +196,56 @@ func (c *Console) RefreshCmd(sess *client.Session) int {
 		if cmd.Annotations["menu"] != consts.ImplantMenu {
 			continue
 		}
-		cmd.Hidden = false
-		if o, ok := cmd.Annotations["os"]; ok && !strings.Contains(o, sess.Os.Name) {
-			cmd.Hidden = true
-		}
-		if arch, ok := cmd.Annotations["arch"]; ok && !strings.Contains(arch, sess.Os.Arch) {
-			cmd.Hidden = true
-		}
-		if implantType, ok := cmd.Annotations["implant"]; ok && sess.Type != implantType {
-			cmd.Hidden = true
-		}
-		if depend, ok := cmd.Annotations["depend"]; ok {
-			for _, dep := range strings.Split(depend, ",") {
-				if !slices.Contains(sess.Modules, dep) {
-					cmd.Hidden = true
-				}
-			}
-		}
+		refreshCmdVisibility(cmd, sess)
+
 		if cmd.Hidden == false {
 			count++
 		}
 	}
 	return count
+}
+
+// refreshCmdVisibility sets Hidden on a command (and its subcommands recursively)
+// based on session os/arch/type/modules. For parent commands without a "depend"
+// annotation, they are hidden when all their subcommands are hidden.
+func refreshCmdVisibility(cmd *cobra.Command, sess *client.Session) {
+	// Recursively refresh subcommands first
+	for _, sub := range cmd.Commands() {
+		refreshCmdVisibility(sub, sess)
+	}
+
+	cmd.Hidden = false
+	if o, ok := cmd.Annotations["os"]; ok && !strings.Contains(o, sess.Os.Name) {
+		cmd.Hidden = true
+	}
+	if arch, ok := cmd.Annotations["arch"]; ok && !strings.Contains(arch, sess.Os.Arch) {
+		cmd.Hidden = true
+	}
+	if implantType, ok := cmd.Annotations["implant"]; ok && sess.Type != implantType {
+		cmd.Hidden = true
+	}
+	if depend, ok := cmd.Annotations["depend"]; ok {
+		for _, dep := range strings.Split(depend, ",") {
+			if !slices.Contains(sess.Modules, dep) {
+				cmd.Hidden = true
+			}
+		}
+	}
+
+	// For parent commands without "depend" annotation, hide them if all
+	// their subcommands are hidden (e.g. "pipe" when no pipe modules exist)
+	if _, hasDep := cmd.Annotations["depend"]; !hasDep && cmd.HasSubCommands() {
+		allSubHidden := true
+		for _, sub := range cmd.Commands() {
+			if !sub.Hidden {
+				allSubHidden = false
+				break
+			}
+		}
+		if allSubHidden {
+			cmd.Hidden = true
+		}
+	}
 }
 
 func (c *Console) SwitchImplant(sess *client.Session, callee string) {

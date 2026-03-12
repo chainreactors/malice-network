@@ -67,6 +67,7 @@ func (rpc *Server) SysInfo(ctx context.Context, req *implantpb.SysInfo) (*client
 		return nil, err
 	}
 	sess.UpdateSysInfo(req)
+	sess.SaveAndNotify("")
 	return &clientpb.Empty{}, nil
 }
 

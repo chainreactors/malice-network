@@ -69,11 +69,9 @@ func (rpc *Server) SessionManage(ctx context.Context, req *clientpb.BasicUpdateS
 		session, err := core.Sessions.Get(req.SessionId)
 		if err == nil {
 			session.Note = req.Arg
-			err = session.Save()
-			if err != nil {
+			if err = session.SaveAndNotify(fmt.Sprintf("session %s note updated to %s", req.SessionId, req.Arg)); err != nil {
 				return nil, err
 			}
-			session.PushUpdate(fmt.Sprintf("session %s note updated to %s", req.SessionId, req.Arg))
 		} else {
 			err = db.UpdateSession(req.SessionId, req.Arg, "")
 			if err != nil {
@@ -84,11 +82,9 @@ func (rpc *Server) SessionManage(ctx context.Context, req *clientpb.BasicUpdateS
 		session, err := core.Sessions.Get(req.SessionId)
 		if err == nil {
 			session.Group = req.Arg
-			err = session.Save()
-			if err != nil {
+			if err = session.SaveAndNotify(fmt.Sprintf("session %s group updated to %s", req.SessionId, req.Arg)); err != nil {
 				return nil, err
 			}
-			session.PushUpdate(fmt.Sprintf("session %s group updated to %s", req.SessionId, req.Arg))
 		} else {
 			err = db.UpdateSession(req.SessionId, "", req.Arg)
 			if err != nil {
@@ -116,6 +112,7 @@ func (rpc *Server) Info(ctx context.Context, req *implantpb.Request) (*clientpb.
 
 	greq.HandlerResponse(ch, types.MsgSysInfo, func(spite *implantpb.Spite) {
 		greq.Session.UpdateSysInfo(spite.GetSysinfo())
+		greq.Session.SaveAndNotify("")
 	})
 	return greq.Task.ToProtobuf(), nil
 }

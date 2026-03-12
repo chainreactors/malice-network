@@ -474,6 +474,17 @@ func (s *Session) PushUpdate(msg string) {
 	})
 }
 
+// SaveAndNotify 持久化 session 到数据库并广播更新事件到所有客户端。
+// 这是 RPC handler 修改 session 持久化字段后的标准路径。
+func (s *Session) SaveAndNotify(msg string) error {
+	if err := s.Save(); err != nil {
+		logs.Log.Errorf("save session %s failed: %s", s.ID, err.Error())
+		return err
+	}
+	s.PushUpdate(msg)
+	return nil
+}
+
 func (s *Session) Update(req *clientpb.RegisterSession) {
 	s.Name = req.RegisterData.Name
 	s.PipelineID = req.PipelineId
