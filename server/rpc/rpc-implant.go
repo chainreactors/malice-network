@@ -134,8 +134,7 @@ func (rpc *Server) Sleep(ctx context.Context, req *implantpb.Timer) (*clientpb.T
 	if session, err := getSession(ctx); err == nil {
 		session.Jitter = req.Jitter
 		session.Expression = req.Expression
-		err := session.Save()
-		if err != nil {
+		if err := session.SaveAndNotify(""); err != nil {
 			return nil, err
 		}
 	} else {

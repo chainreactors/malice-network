@@ -164,12 +164,6 @@ func HandleFileOperations(op string, data []byte, task *Task) error {
 		if _, err := file.Write(data[4:]); err != nil {
 			return fmt.Errorf("write file failed: %w", err)
 		}
-		//EventBroker.Publish(Event{
-		//	EventType: consts.EventContext,
-		//	Op:        consts.CtrlContextFileWrite,
-		//	Task:      task.ToProtobuf(),
-		//	Message:   fmt.Sprintf("file write: %s %d", savePath, len(data[4:])),
-		//})
 		return nil
 
 	case "close":

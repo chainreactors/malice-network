@@ -708,10 +708,6 @@ func (s *sessions) Add(session *Session) *Session {
 		return nil
 	}
 	s.active.Store(session.ID, session)
-	//EventBroker.Publish(Event{
-	//	EventType: consts.SessionOpenedEvent,
-	//	Session:   session,
-	//})
 	return session
 }
 
@@ -724,23 +720,6 @@ func (s *sessions) Remove(sessionID string) {
 	parentSession.ResetKeepalive()
 	parentSession.Cancel()
 	s.active.Delete(parentSession.ID)
-	//coreLog.Debugf("Removing %d children of session %d (%v)", len(children), parentSession.ID, children)
-	//for _, child := range children {
-	//	childSession, ok := s.active.LoadAndDelete(child.SessionID)
-	//	if ok {
-	//		PivotSessions.Delete(childSession.(*Session).Connection.ID)
-	//		EventBroker.Publish(Event{
-	//			EventType: consts.SessionClosedEvent,
-	//			Session:   childSession.(*Session),
-	//		})
-	//	}
-	//}
-
-	//Remove the parent session
-	//EventBroker.Publish(Event{
-	//	EventType: consts.SessionClosedEvent,
-	//	Session:   parentSession,
-	//})
 }
 
 // initializePipelineKeyPair 从pipeline获取预分发的密钥对
