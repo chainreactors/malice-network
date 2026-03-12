@@ -287,16 +287,25 @@ func renderEvent(event *clientpb.Event) string {
 		if event.Err != "" {
 			return logs.RedBold(event.Formatted)
 		}
+	case consts.EventListener:
+		switch event.Op {
+		case consts.CtrlListenerStart:
+			return logs.GreenBold(event.Formatted)
+		case consts.CtrlListenerStop:
+			return logs.YellowBold(event.Formatted)
+		}
 	}
 	return event.Formatted
 }
 
 func (s *Server) HandlerEvent(event *clientpb.Event) {
+	// Reconcile state first — single entry point for all map updates
+	s.ReconcileEvent(event)
+
+	// Then handle UI/logging
 	switch event.Type {
 	case consts.EventClient:
-		if event.Op == consts.CtrlClientJoin {
-			client.Log.Info(event.Formatted + "\n")
-		} else if event.Op == consts.CtrlClientLeft {
+		if event.Op == consts.CtrlClientJoin || event.Op == consts.CtrlClientLeft {
 			client.Log.Info(event.Formatted + "\n")
 		}
 	case consts.EventBroadcast:
@@ -308,7 +317,8 @@ func (s *Server) HandlerEvent(event *clientpb.Event) {
 	case consts.EventJob:
 		s.handleJob(event)
 	case consts.EventListener:
-		client.Log.Important(event.Formatted + "\n")
+		colored := renderEvent(event)
+		client.Log.Important(colored + "\n")
 	case consts.EventTask:
 		s.handlerTask(event)
 	case consts.EventWebsite:
@@ -329,14 +339,11 @@ func (s *Server) handleJob(event *clientpb.Event) {
 		client.Log.Errorf("[%s] %s: %s\n", event.Type, event.Op, event.Err)
 		return
 	}
+	// State updates are handled by ReconcileEvent; here we only log.
 	colored := renderEvent(event)
-	pipeline := event.GetJob().GetPipeline()
 	switch event.Op {
 	case consts.CtrlPipelineSync:
-		s.Pipelines[pipeline.Name] = pipeline
-	case consts.CtrlPipelineStop:
-		delete(s.Pipelines, pipeline.Name)
-		client.Log.Important(colored + "\n")
+		// silent sync, no log
 	default:
 		client.Log.Important(colored + "\n")
 	}
@@ -362,14 +369,14 @@ func (s *Server) handlerTask(event *clientpb.Event) {
 }
 
 func (s *Server) handlerSession(event *clientpb.Event) {
+	// State updates are handled by ReconcileEvent; here we only handle UI/logging.
 	sid := event.Session.SessionId
 	colored := renderEvent(event)
 	switch event.Op {
 	case consts.CtrlSessionRegister:
-		s.AddSession(event.Session)
 		client.Log.Important(colored + "\n")
 	case consts.CtrlSessionUpdate:
-		s.AddSession(event.Session)
+		// silent update, no log
 	case consts.CtrlSessionTask:
 		log := s.ObserverLog(sid)
 		log.Info(colored + "\n")
@@ -382,10 +389,8 @@ func (s *Server) handlerSession(event *clientpb.Event) {
 	case consts.CtrlSessionDead:
 		client.Log.Important(colored + "\n")
 	case consts.CtrlSessionInit:
-		s.AddSession(event.Session)
 		client.Log.Important(colored + "\n")
 	case consts.CtrlSessionReborn:
-		s.AddSession(event.Session)
 		client.Log.Important(colored + "\n")
 	}
 }

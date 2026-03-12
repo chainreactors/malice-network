@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"fmt"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"os"
 	"path/filepath"
@@ -72,6 +73,7 @@ func (rpc *Server) SessionManage(ctx context.Context, req *clientpb.BasicUpdateS
 			if err != nil {
 				return nil, err
 			}
+			session.PushUpdate(fmt.Sprintf("session %s note updated to %s", req.SessionId, req.Arg))
 		} else {
 			err = db.UpdateSession(req.SessionId, req.Arg, "")
 			if err != nil {
@@ -86,6 +88,7 @@ func (rpc *Server) SessionManage(ctx context.Context, req *clientpb.BasicUpdateS
 			if err != nil {
 				return nil, err
 			}
+			session.PushUpdate(fmt.Sprintf("session %s group updated to %s", req.SessionId, req.Arg))
 		} else {
 			err = db.UpdateSession(req.SessionId, "", req.Arg)
 			if err != nil {

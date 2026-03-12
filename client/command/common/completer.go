@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
-	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/certs"
 	"github.com/chainreactors/malice-network/helper/implanttypes"
@@ -61,7 +60,6 @@ import (
 
 func SessionIDCompleter(con *core.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
-		con.UpdateSessions(false)
 		results := make([]string, 0)
 		for _, s := range con.AlivedSessions() {
 			if s.Note != "" {
@@ -379,7 +377,6 @@ func WebsiteCompleter(con *core.Console) carapace.Action {
 func WebContentCompleter(con *core.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
-		con.UpdateListener()
 		// List all contents from all websites since content ID is globally unique
 		for _, pipeline := range con.Pipelines {
 			if web := pipeline.GetWeb(); web != nil {
@@ -413,11 +410,6 @@ func RemPipelineCompleter(con *core.Console) carapace.Action {
 func HttpPipelineCompleter(con *core.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
-		err := con.UpdatePipeline()
-		if err != nil {
-			logs.Log.Errorf("failed to get pipelines: %s", err)
-			return carapace.Action{}
-		}
 		for _, pipeline := range con.Pipelines {
 			if http := pipeline.GetHttp(); http != nil {
 				results = append(results, pipeline.Name,

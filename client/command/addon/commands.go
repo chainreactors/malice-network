@@ -96,7 +96,6 @@ func Register(con *core.Console) {
 			if len(exts.Addons) == 0 {
 				return "", fmt.Errorf("no addon found")
 			}
-			con.UpdateSession(content.Session.SessionId)
 			var s strings.Builder
 			s.WriteString("\n")
 			for _, ext := range exts.Addons {
@@ -136,7 +135,6 @@ func Register(con *core.Console) {
 		"",
 		nil,
 		func(content *clientpb.TaskContext) (interface{}, error) {
-			con.UpdateSession(content.Session.SessionId)
 			return "addon loaded", nil
 		}, nil)
 

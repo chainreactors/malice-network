@@ -2,6 +2,8 @@ package core
 
 import (
 	"errors"
+	"fmt"
+	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/types"
 	"sync"
@@ -96,21 +98,27 @@ type listeners struct {
 
 func (l *listeners) Add(listener *Listener) {
 	l.Store(listener.Name, listener)
-	//EventBroker.Publish(Event{
-	//	Job:       listener,
-	//	EventType: consts.JobStartedEvent,
-	//})
+	EventBroker.Publish(Event{
+		EventType: consts.EventListener,
+		Op:        consts.CtrlListenerStart,
+		Listener:  listener.ToProtobuf(),
+		Important: true,
+		Message:   fmt.Sprintf("listener %s started", listener.Name),
+	})
 }
 
-// Remove - Remove a job
+// Remove - Remove a listener
 func (l *listeners) Remove(listener *Listener) {
-	_, _ = l.LoadAndDelete(listener.Name)
-	//if ok {
-	//	EventBroker.Publish(Event{
-	//		Job:       listener,
-	//		EventType: consts.JobStoppedEvent,
-	//	})
-	//}
+	_, ok := l.LoadAndDelete(listener.Name)
+	if ok {
+		EventBroker.Publish(Event{
+			EventType: consts.EventListener,
+			Op:        consts.CtrlListenerStop,
+			Listener:  listener.ToProtobuf(),
+			Important: true,
+			Message:   fmt.Sprintf("listener %s stopped", listener.Name),
+		})
+	}
 }
 
 func (l *listeners) Find(pid string) (*clientpb.Pipeline, bool) {

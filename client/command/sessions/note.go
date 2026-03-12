@@ -28,6 +28,5 @@ func noteCmd(cmd *cobra.Command, con *core.Console) {
 		logs.Log.Errorf("Session error: %v\n", err)
 		return
 	}
-	con.UpdateSession(sid)
 	con.Log.Infof("update %s note to %s\n", sid, name)
 }

@@ -25,7 +25,6 @@ func groupCmd(cmd *cobra.Command, con *core.Console) error {
 	if err != nil {
 		return err
 	}
-	con.UpdateSession(sid)
 	con.Log.Infof("update %s group to %s\n", sid, group)
 	return nil
 }

@@ -137,11 +137,12 @@ func (event *Event) format() string {
 }
 
 type Event struct {
-	Session *clientpb.Session
-	Job     *clientpb.Job
-	Client  *clientpb.Client
-	Task    *clientpb.Task
-	Spite   *implantpb.Spite
+	Session  *clientpb.Session
+	Job      *clientpb.Job
+	Client   *clientpb.Client
+	Task     *clientpb.Task
+	Spite    *implantpb.Spite
+	Listener *clientpb.Listener
 
 	Important bool
 	EventType string
@@ -155,7 +156,9 @@ type Event struct {
 func (event *Event) String() string {
 	var id string
 
-	if event.Job != nil {
+	if event.Listener != nil {
+		id = fmt.Sprintf("Listener %s", event.Listener.Id)
+	} else if event.Job != nil {
 		id = fmt.Sprintf("Job %d %s", event.Job.Id, event.Job.Name)
 	} else if event.Task != nil {
 		id = fmt.Sprintf("Task %s %d", event.Task.SessionId, event.Task.TaskId)
@@ -177,6 +180,7 @@ func (event *Event) ToProtobuf() *clientpb.Event {
 		Client:    event.Client,
 		Task:      event.Task,
 		Spite:     event.Spite,
+		Listener:  event.Listener,
 		Type:      event.EventType,
 		Op:        event.Op,
 		Formatted: event.format(),
