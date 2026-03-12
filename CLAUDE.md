@@ -41,7 +41,6 @@ go run ./client    # start client
 
 - **Encoding**: UTF-8 without BOM for all files
 - **Code & comments**: English only (variable names, function names, comments, commit messages)
-- **Docs**: All files under `docs/` written in English
 
 ## Code Conventions
 
