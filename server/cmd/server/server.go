@@ -2,6 +2,8 @@ package server
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/server/assets"
@@ -39,7 +41,7 @@ func Start(defaultConfig []byte) error {
 		}
 		return nil
 	}
-	if opt.Quickstart {
+	if _, statErr := os.Stat(opt.Config); opt.Quickstart || os.IsNotExist(statErr) {
 		if err := RunQuickstart(&opt); err != nil {
 			return fmt.Errorf("quickstart failed: %w", err)
 		}
