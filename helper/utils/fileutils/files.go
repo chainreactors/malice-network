@@ -122,21 +122,27 @@ func MoveFile(sourcePath, destPath string) error {
 	if err != nil {
 		return err
 	}
-	defer sourceFile.Close()
 
 	destFile, err := os.Create(destPath)
 	if err != nil {
+		sourceFile.Close()
 		return err
 	}
-	defer destFile.Close()
 
 	if _, err = io.Copy(destFile, sourceFile); err != nil {
+		sourceFile.Close()
+		destFile.Close()
 		return err
 	}
 
 	if err = destFile.Sync(); err != nil {
+		sourceFile.Close()
+		destFile.Close()
 		return err
 	}
+
+	sourceFile.Close()
+	destFile.Close()
 
 	return os.Remove(sourcePath)
 }
