@@ -39,6 +39,11 @@ var (
 
 	// ErrImplantSendTimeout - The implant did not respond prior to timeout deadline
 	ErrImplantSendTimeout = errors.New("implant timeout")
+
+	// DB function variables — swappable in tests for mocking
+	sessionDBSave        = func(s *models.Session) error { return db.SaveSessionModel(s) }
+	sessionDBGetArtifact = func(name string) (*models.Artifact, error) { return db.GetArtifactByName(name) }
+	sessionDBGetProfile  = func(name string) (*models.Profile, error) { return db.GetProfileByName(name) }
 )
 
 func createSessionDirs(sessionID string) (string, error) {
@@ -69,18 +74,14 @@ func NewSessions() *sessions {
 	}
 	_, err := GlobalTicker.Start(consts.DefaultCacheInterval, func() {
 		for _, session := range newSessions.All() {
-			sessModel := session.ToModel()
 			if !session.isAlived() {
-				sessModel.IsAlive = false
+				if err := session.Save(); err != nil {
+					logs.Log.Errorf("save dead session %s failed: %s", session.ID, err.Error())
+				}
 				session.Publish(consts.CtrlSessionDead, fmt.Sprintf("session %s from %s at %s may have left ", session.ID, session.Target, session.PipelineID), true, true)
 				newSessions.Remove(session.ID)
 			}
-			err := session.Save()
-			if err != nil {
-				logs.Log.Errorf("update session %s info failed in db, %s", session.ID, err.Error())
-			}
 		}
-
 	})
 	if err != nil {
 		logs.Log.Errorf("cannot start ticker, %s", err.Error())
@@ -320,18 +321,12 @@ func (s *Session) TaskLog(task *Task, spite *implantpb.Spite) error {
 }
 
 func (s *Session) Recover() error {
-	modelTasks, err := db.ListTasks()
-	if err != nil {
-		return err
-	}
-	pbTasks := modelTasks.ToProtobuf()
-	for _, task := range pbTasks.Tasks {
+	for _, task := range s.Tasks.All() {
 		if task.Cur < task.Total {
 			ch := make(chan *implantpb.Spite, 16)
-			s.responses.Store(task, ch)
+			s.responses.Store(task.Id, ch)
 		}
 	}
-
 	return nil
 }
 
@@ -443,7 +438,7 @@ func (s *Session) ToProtobufLite() *clientpb.Session {
 }
 
 func (s *Session) Save() error {
-	return db.SaveSessionModel(s.ToModel())
+	return sessionDBSave(s.ToModel())
 }
 
 func (s *Session) ToModel() *models.Session {
@@ -461,9 +456,9 @@ func (s *Session) ToModel() *models.Session {
 		LastCheckin: s.LastCheckin,
 		DataString:  s.Marshal(),
 	}
-	artifact, err := db.GetArtifactByName(s.Name)
+	artifact, err := sessionDBGetArtifact(s.Name)
 	if err == nil && artifact.ProfileName != "" {
-		if _, profileErr := db.GetProfileByName(artifact.ProfileName); profileErr == nil {
+		if _, profileErr := sessionDBGetProfile(artifact.ProfileName); profileErr == nil {
 			sessModel.ProfileName = artifact.ProfileName
 		}
 	}
@@ -484,8 +479,10 @@ func (s *Session) Update(req *clientpb.RegisterSession) {
 	s.PipelineID = req.PipelineId
 	s.ListenerID = req.ListenerId
 	s.ProxyURL = req.RegisterData.Proxy
-	s.Expression = req.RegisterData.Timer.Expression
-	s.Jitter = req.RegisterData.Timer.Jitter
+	if req.RegisterData.Timer != nil {
+		s.Expression = req.RegisterData.Timer.Expression
+		s.Jitter = req.RegisterData.Timer.Jitter
+	}
 	s.SessionContext.Update(req)
 
 	// SecureManager现在使用固定的100次交互计数，不需要更新间隔
@@ -515,7 +512,7 @@ func (s *Session) UpdateSysInfo(info *implantpb.SysInfo) {
 }
 
 func (s *Session) FillSysInfo() {
-	artifact, err := db.GetArtifactByName(s.Name)
+	artifact, err := sessionDBGetArtifact(s.Name)
 	if err != nil {
 		logs.Log.Errorf("failed to find atrtifact %s: %s", s.Name, err)
 		return
@@ -714,6 +711,7 @@ func (s *sessions) Remove(sessionID string) {
 	}
 	parentSession := val.(*Session)
 	parentSession.ResetKeepalive()
+	parentSession.Cancel()
 	s.active.Delete(parentSession.ID)
 	//coreLog.Debugf("Removing %d children of session %d (%v)", len(children), parentSession.ID, children)
 	//for _, child := range children {

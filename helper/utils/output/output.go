@@ -77,7 +77,13 @@ func ParseExecResponse(ctx *clientpb.TaskContext) (interface{}, error) {
 	}
 	var s strings.Builder
 	if resp.End == true {
-		s.WriteString(fmt.Sprintf("pid: %d ,task: %d command done\n", resp.Pid, ctx.Task.TaskId))
+		duration := ""
+		if ctx.Task != nil && ctx.Task.FinishedAt > 0 && ctx.Task.CreatedAt > 0 {
+			dur := ctx.Task.FinishedAt - ctx.Task.CreatedAt
+			duration = fmt.Sprintf(", time: %ds", dur)
+		}
+		s.WriteString(fmt.Sprintf("pid: %d ,task: %d , exitcode: %d%s\n",
+			resp.Pid, ctx.Task.TaskId, resp.StatusCode, duration))
 	}
 	if resp.Stdout != nil || resp.Stderr != nil {
 		if resp.Stdout != nil {

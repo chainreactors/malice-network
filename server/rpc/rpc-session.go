@@ -44,18 +44,16 @@ func (rpc *Server) GetSession(ctx context.Context, req *clientpb.SessionRequest)
 	if err == nil {
 		return session.ToProtobuf(), nil
 	}
+	// Session not in memory (dead/offline). Return DB data directly
+	// without recovering to memory — only Checkin/Register should revive.
 	dbSess, err := db.FindSession(req.SessionId)
 	if err != nil {
 		return nil, err
-	} else if dbSess == nil {
+	}
+	if dbSess == nil {
 		return nil, nil
 	}
-	session, err = core.RecoverSession(dbSess)
-	if err != nil {
-		return nil, err
-	}
-	core.Sessions.Add(session)
-	return session.ToProtobuf(), nil
+	return dbSess.ToProtobuf(), nil
 }
 
 func (rpc *Server) SessionManage(ctx context.Context, req *clientpb.BasicUpdateSession) (*clientpb.Empty, error) {

@@ -137,7 +137,29 @@ func (pipeline *Pipeline) ToProtobuf() *clientpb.Pipeline {
 			Encryption: pipeline.Encryption.ToProtobuf(),
 		}
 	default:
-		return nil
+		// All non-built-in types (custom/externally-managed pipelines).
+		params := ""
+		if pipeline.PipelineParams != nil {
+			data, _ := json.Marshal(pipeline.PipelineParams)
+			params = string(data)
+		}
+		return &clientpb.Pipeline{
+			Name:       pipeline.Name,
+			ListenerId: pipeline.ListenerId,
+			Enable:     pipeline.Enable,
+			Ip:         pipeline.IP,
+			Type:       pipeline.Type,
+			CertName:   pipeline.CertName,
+			Body: &clientpb.Pipeline_Custom{
+				Custom: &clientpb.CustomPipeline{
+					Name:       pipeline.Name,
+					ListenerId: pipeline.ListenerId,
+					Host:       pipeline.Host,
+					Port:       pipeline.Port,
+					Params:     params,
+				},
+			},
+		}
 	}
 }
 func (pipeline *Pipeline) Address() string {
@@ -280,8 +302,39 @@ func FromPipelinePb(pipeline *clientpb.Pipeline) *Pipeline {
 			},
 		}
 
+	case *clientpb.Pipeline_Custom:
+		return &Pipeline{
+			ListenerId: pipeline.ListenerId,
+			Name:       pipeline.Name,
+			Enable:     pipeline.Enable,
+			Host:       body.Custom.Host,
+			IP:         pipeline.Ip,
+			Port:       body.Custom.Port,
+			Type:       pipeline.Type,
+			CertName:   pipeline.CertName,
+			PipelineParams: &implanttypes.PipelineParams{
+				Parser: pipeline.Parser,
+				Tls:    implanttypes.FromTls(pipeline.Tls),
+			},
+		}
 	default:
-		return nil
+		// Fallback for nil body or future unknown types.
+		typ := pipeline.Type
+		if typ == "" {
+			typ = consts.CustomPipeline
+		}
+		return &Pipeline{
+			ListenerId: pipeline.ListenerId,
+			Name:       pipeline.Name,
+			Enable:     pipeline.Enable,
+			IP:         pipeline.Ip,
+			Type:       typ,
+			CertName:   pipeline.CertName,
+			PipelineParams: &implanttypes.PipelineParams{
+				Parser: pipeline.Parser,
+				Tls:    implanttypes.FromTls(pipeline.Tls),
+			},
+		}
 	}
 }
 

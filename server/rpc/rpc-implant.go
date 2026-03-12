@@ -36,7 +36,7 @@ func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) 
 	} else {
 		logs.Log.Infof("session %s re-register", sess.ID)
 		sess.Update(req)
-		//sess.Publish(consts.CtrlSessionReborn, fmt.Sprintf("%s from %s reborn at %s", sess.Abstract(), sess.Target, sess.PipelineID), true, true)
+		sess.Publish(consts.CtrlSessionUpdate, fmt.Sprintf("%s from %s re-registered at %s", sess.Abstract(), sess.Target, sess.PipelineID), true, true)
 		core.Sessions.Add(sess)
 	}
 
@@ -98,6 +98,9 @@ func (rpc *Server) Checkin(ctx context.Context, req *implantpb.Ping) (*clientpb.
 		logs.Log.Debugf("recover session %s", sid)
 	}
 	sess.LastCheckin = getTimestamp(ctx)
+	if err := sess.Save(); err != nil {
+		logs.Log.Errorf("save session %s checkin failed: %s", sess.ID, err.Error())
+	}
 	sess.Publish(consts.CtrlSessionCheckin, "", false, false)
 
 	// 增加密钥轮换计数器并检查是否需要轮换

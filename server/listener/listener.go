@@ -437,8 +437,11 @@ func (lns *listener) startPipeline(pipelinepb *clientpb.Pipeline) (core.Pipeline
 		p, err = NewBindPipeline(lns.Rpc, pipelinepb)
 	case *clientpb.Pipeline_Http:
 		p, err = NewHttpPipeline(lns.Rpc, pipelinepb)
+	case *clientpb.Pipeline_Custom:
+		p = NewCustomPipeline(pipelinepb)
 	default:
-		return nil, fmt.Errorf("not impl")
+		// Fallback: treat any unknown body as custom pipeline.
+		p = NewCustomPipeline(pipelinepb)
 	}
 	if err != nil {
 		return nil, err

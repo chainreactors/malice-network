@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/chainreactors/malice-network/client/core"
-
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/tui"
@@ -27,6 +26,7 @@ func ListPipelineCmd(cmd *cobra.Command, con *core.Console) error {
 		return nil
 	}
 	var rowEntries []table.Row
+	var row table.Row
 	tableModel := tui.NewTable([]table.Column{
 		table.NewFlexColumn("Name", "Name", 1),
 		table.NewColumn("Enable", "Enable", 7),
@@ -74,6 +74,7 @@ func ListPipelineCmd(cmd *cobra.Command, con *core.Console) error {
 			}
 			newRow["Address"] = schema + pipeline.Ip + ":" + strconv.Itoa(int(body.Http.Port))
 			newRow["Parser"] = pipeline.Parser
+			row = table.NewRow(newRow)
 		case *clientpb.Pipeline_Tcp:
 			newRow["Name"] = pipeline.Name
 			newRow["Type"] = consts.TCPPipeline
@@ -85,11 +86,31 @@ func ListPipelineCmd(cmd *cobra.Command, con *core.Console) error {
 			}
 			newRow["Address"] = schema + pipeline.Ip + ":" + strconv.Itoa(int(body.Tcp.Port))
 			newRow["Parser"] = pipeline.Parser
+			row = table.NewRow(newRow)
 		case *clientpb.Pipeline_Rem, *clientpb.Pipeline_Bind:
 			newRow["Name"] = pipeline.Name
 			newRow["Type"] = consts.BindPipeline
 			newRow["ListenerID"] = pipeline.ListenerId
 			newRow["Parser"] = pipeline.Parser
+			row = table.NewRow(newRow)
+		case *clientpb.Pipeline_Custom:
+			newRow["Name"] = pipeline.Name
+			newRow["Type"] = pipeline.Type
+			newRow["ListenerID"] = pipeline.ListenerId
+			if body.Custom.Host != "" {
+				addr := body.Custom.Host
+				if body.Custom.Port > 0 {
+					addr += ":" + strconv.Itoa(int(body.Custom.Port))
+				}
+				newRow["Address"] = addr
+			}
+			newRow["Parser"] = pipeline.Parser
+			row = table.NewRow(newRow)
+		default:
+			newRow["Name"] = pipeline.Name
+			newRow["Type"] = pipeline.Type
+			newRow["ListenerID"] = pipeline.ListenerId
+			row = table.NewRow(newRow)
 		default:
 			continue
 		}

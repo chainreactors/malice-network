@@ -92,6 +92,9 @@ func (event *Event) format() string {
 			return fmt.Sprintf("[%s] %s: %s", event.EventType, event.Op, event.Err)
 		}
 		pipeline := event.Job.GetPipeline()
+		if pipeline == nil {
+			return fmt.Sprintf("[%s] %s: %s", event.EventType, event.Op, event.Message)
+		}
 		kvView := func(pipeType string) string {
 			return fmt.Sprintf("[%s] %s: %s \n%s", event.EventType, event.Op, pipeType,
 				tui.NewOrderedKVTable(pipeline.KVMap()).View())
@@ -126,6 +129,8 @@ func (event *Event) format() string {
 				}
 			}
 			return kvView("web")
+		case *clientpb.Pipeline_Custom:
+			return kvView(pipeline.Type)
 		}
 	}
 	return event.Message
