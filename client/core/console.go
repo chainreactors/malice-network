@@ -32,6 +32,14 @@ import (
 var (
 	ErrNotFoundSession = errors.New("session not found")
 	Prompt             = "IoM"
+
+	// asyncPrint writes output above the current prompt when readline is idle,
+	// or directly to stdout when a command is executing.
+	// Initialized with tui.Down fallback; replaced by Console.Start with TransientPrintf.
+	asyncPrint = func(format string, args ...any) {
+		tui.Down(1)
+		fmt.Printf(format, args...)
+	}
 )
 
 // BindCmds - Bind extra commands to the app object
@@ -148,6 +156,11 @@ func (c *Console) Start(bindCmds ...BindCmds) error {
 		return nil
 	}
 
+	// Wire asyncPrint so HandlerTask uses TransientPrintf for async output.
+	asyncPrint = func(format string, args ...any) {
+		c.App.TransientPrintf(format, args...)
+	}
+
 	return c.App.Start()
 }
 
@@ -170,14 +183,98 @@ func (c *Console) SyncBuildContext() context.Context {
 }
 
 func (c *Console) GetPrompt() string {
+	statusLine := c.getStatusLine()
+	promptLine := c.getPromptChar()
+
 	session := c.ActiveTarget.Get()
 	if session != nil {
-		groupName := session.GroupName
-		sessionID := session.SessionId
-		return tui.NewSessionColor(groupName, sessionID[:8])
-	} else {
-		return tui.AdaptTermColor("IOM")
+		promptLine = tui.NewSessionColor(session.GroupName, session.SessionId[:8]) + " " + promptLine
 	}
+
+	if statusLine == "" {
+		return promptLine
+	}
+	return statusLine + "\n" + promptLine
+}
+
+// getPromptChar returns the ❯ prompt character in green.
+func (c *Console) getPromptChar() string {
+	return tui.GreenFg.Render("❯") + " "
+}
+
+// formatCheckinAge formats a Unix timestamp into a compact relative time string.
+func formatCheckinAge(timestamp int64) string {
+	if timestamp <= 0 {
+		return "never"
+	}
+	diff := time.Now().Unix() - timestamp
+	if diff <= 0 {
+		return "now"
+	}
+	switch {
+	case diff < 60:
+		return fmt.Sprintf("%ds", diff)
+	case diff < 3600:
+		return fmt.Sprintf("%dm%ds", diff/60, diff%60)
+	case diff < 86400:
+		return fmt.Sprintf("%dh%dm", diff/3600, (diff/60)%60)
+	default:
+		return fmt.Sprintf("%dd%dh", diff/86400, (diff/3600)%24)
+	}
+}
+
+// getStatusLine returns the Starship-style status line above the prompt.
+func (c *Console) getStatusLine() string {
+	if c.Server == nil {
+		return ""
+	}
+
+	session := c.ActiveTarget.Get()
+	if session == nil {
+		// Client menu: user on v0.5.0 sessions 3/5
+		var alive, total int
+		for _, s := range c.Sessions {
+			total++
+			if s.IsAlive {
+				alive++
+			}
+		}
+		version := ""
+		if c.Info != nil {
+			version = c.Info.Version
+		}
+		name := ""
+		if c.Client != nil {
+			name = c.Client.Name
+		}
+		return fmt.Sprintf("%s %s %s %s %s",
+			tui.CyanFg.Render(name),
+			tui.DarkGrayFg.Render("on"),
+			tui.GreenFg.Render(version),
+			tui.DarkGrayFg.Render("sessions"),
+			tui.YellowFg.Render(fmt.Sprintf("%d/%d", alive, total)),
+		)
+	}
+
+	// Implant menu: [note] hostname os/arch via pipeline age
+	parts := make([]string, 0, 7)
+	if session.Note != "" {
+		parts = append(parts, tui.WhiteFg.Bold(true).Render(session.Note))
+	}
+	hostname := ""
+	osInfo := ""
+	if session.Os != nil {
+		hostname = session.Os.Hostname
+		osInfo = session.Os.Name + "/" + session.Os.Arch
+	}
+	parts = append(parts,
+		tui.CyanFg.Render(hostname),
+		tui.GreenFg.Render(osInfo),
+		tui.DarkGrayFg.Render("via"),
+		tui.PurpleFg.Render(session.PipelineId),
+		tui.YellowFg.Render(formatCheckinAge(session.LastCheckin)),
+	)
+	return strings.Join(parts, " ")
 }
 
 func (c *Console) RefreshActiveSession() {

@@ -15,7 +15,6 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/malice-network/helper/utils/output"
-	"github.com/chainreactors/tui"
 	"google.golang.org/grpc"
 )
 
@@ -209,8 +208,7 @@ func HandlerTask(sess *client.Session, log *client.Logger, ctx *clientpb.TaskCon
 
 	if resp != "" && (callee == consts.CalleeCMD || callee == consts.CalleeMal || callee == consts.CalleeRPC || callee == consts.CalleeMCP) {
 		if log != client.MuteLog {
-			tui.Down(1)
-			log.Console(resp + "\n")
+			asyncPrint("%s\n", resp)
 		}
 	}
 }

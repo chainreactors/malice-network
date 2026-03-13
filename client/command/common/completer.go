@@ -134,7 +134,11 @@ func ListenerPipelineNameCompleter(con *core.Console, cmd *cobra.Command) carapa
 func SessionAddonCompleter(con *core.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
-		for _, s := range con.GetInteractive().Addons {
+		sess := con.GetInteractive()
+		if sess == nil {
+			return carapace.ActionValuesDescribed(results...).Tag("session addons")
+		}
+		for _, s := range sess.Addons {
 			results = append(results, s.Name, "")
 		}
 		return carapace.ActionValuesDescribed(results...).Tag("session addons")
@@ -145,7 +149,11 @@ func SessionAddonCompleter(con *core.Console) carapace.Action {
 func SessionTaskCompleter(con *core.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
-		for _, s := range con.GetInteractive().Tasks.Tasks {
+		sess := con.GetInteractive()
+		if sess == nil || sess.Tasks == nil {
+			return carapace.ActionValuesDescribed(results...).Tag("session tasks")
+		}
+		for _, s := range sess.Tasks.Tasks {
 			results = append(results, fmt.Sprintf("%d", s.TaskId), "")
 		}
 		return carapace.ActionValuesDescribed(results...).Tag("session tasks")
@@ -340,8 +348,11 @@ func AllPipelineCompleter(con *core.Console) carapace.Action {
 func SessionModuleCompleter(con *core.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
-
-		for _, s := range con.GetInteractive().Modules {
+		sess := con.GetInteractive()
+		if sess == nil {
+			return carapace.ActionValuesDescribed(results...).Tag("session modules")
+		}
+		for _, s := range sess.Modules {
 			results = append(results, s, "")
 		}
 		return carapace.ActionValuesDescribed(results...).Tag("session modules")

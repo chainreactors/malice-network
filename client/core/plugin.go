@@ -11,7 +11,6 @@ import (
 	"github.com/chainreactors/IoM-go/types"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/mals"
-	"github.com/chainreactors/tui"
 )
 
 //var (
@@ -171,7 +170,7 @@ func WrapImplantFunc(con *Console, fun interface{}, callback ImplantFuncCallback
 			return nil, err
 		}
 
-		tui.Down(1)
+		con.App.TransientPrintf("")
 		err = types.HandleMaleficError(content.Spite)
 		if err != nil {
 			con.Log.Errorf("%s\n", err.Error())

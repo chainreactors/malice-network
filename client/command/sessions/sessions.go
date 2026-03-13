@@ -82,7 +82,7 @@ func PrintSessions(sessions map[string]*client.Session, con *core.Console, isAll
 
 	// Sort by CreatedAt timestamp (descending - newest first)
 	sort.Slice(sessionList, func(i, j int) bool {
-		return sessionList[i].CreatedAt < sessionList[j].CreatedAt
+		return sessionList[i].CreatedAt > sessionList[j].CreatedAt
 	})
 
 	for _, session := range sessionList {
@@ -125,6 +125,7 @@ func PrintSessions(sessions map[string]*client.Session, con *core.Console, isAll
 				"Process":        processName,
 				"Sleep":          fmt.Sprintf("%s [%.1f%%]", session.Timer.Expression, session.Timer.Jitter*100),
 				"Last":           formatTimeDiff(session.LastCheckin, session.IsAlive),
+				"LastRaw":        fmt.Sprintf("%020d", session.LastCheckin),
 				"CreatedAt":      time.Unix(session.CreatedAt, 0).Format("2006-01-02 15:04"),
 			})
 		rowEntries = append(rowEntries, row)
@@ -142,9 +143,10 @@ func PrintSessions(sessions map[string]*client.Session, con *core.Console, isAll
 		table.NewColumn("PID", "PID", 7),
 		table.NewColumn("Sleep", "Sleep", 12),
 		table.NewColumn("Last", "Last", 8),
+		table.NewColumn("LastRaw", "", 0),
 		table.NewColumn("CreatedAt", "Created At", 16),
 	}, isStatic)
-	tableModel.SetAscSort("Last")
+	tableModel.SetAscSort("LastRaw")
 	tableModel.SetRows(rowEntries)
 	tableModel.SetMultiline()
 	tableModel.SetHandle(func() {
@@ -166,9 +168,23 @@ func SessionLogin(tableModel *tui.TableModel, con *core.Console) func() {
 			return
 		}
 	}
-	for _, s := range con.Sessions {
-		if strings.HasPrefix(s.SessionId, selectRow.Data["ID"].(string)) {
-			sessionId = s.SessionId
+	prefix := selectRow.Data["ID"].(string)
+	var matches []string
+	for id := range con.Sessions {
+		if strings.HasPrefix(id, prefix) {
+			matches = append(matches, id)
+		}
+	}
+	switch len(matches) {
+	case 0:
+		return func() {
+			con.Log.Errorf("%s\n", core.ErrNotFoundSession.Error())
+		}
+	case 1:
+		sessionId = matches[0]
+	default:
+		return func() {
+			con.Log.Errorf("ambiguous session prefix '%s'\n", prefix)
 		}
 	}
 	session := con.Sessions[sessionId]
