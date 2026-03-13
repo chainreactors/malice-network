@@ -11,6 +11,7 @@ import (
 
 	"github.com/carapace-sh/carapace"
 	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/malice-network/helper/intl"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -27,8 +28,11 @@ type Skill struct {
 type SkillInfo struct {
 	Name        string
 	Description string
-	Source      string // "local" or "global"
+	Source      string // "local", "global", or "builtin"
 }
+
+// embeddedSkillsRoot is the path prefix inside intl.UnifiedFS.
+const embeddedSkillsRoot = "community/resources/skills"
 
 // skillSearchPaths returns the local and global skills directories in priority order.
 func skillSearchPaths() []struct {
@@ -50,12 +54,13 @@ func skillSearchPaths() []struct {
 	return paths
 }
 
-// DiscoverSkills scans local and global skills directories, returning all available skills.
-// Local skills override global skills with the same name.
+// DiscoverSkills scans local, global, and embedded skills directories.
+// Priority: local > global > builtin (embedded). Same-name skills are deduplicated.
 func DiscoverSkills() []SkillInfo {
 	seen := make(map[string]struct{})
 	var skills []SkillInfo
 
+	// 1. Filesystem paths (local + global)
 	for _, sp := range skillSearchPaths() {
 		entries, err := os.ReadDir(sp.dir)
 		if err != nil {
@@ -66,10 +71,11 @@ func DiscoverSkills() []SkillInfo {
 				continue
 			}
 			skillFile := filepath.Join(sp.dir, entry.Name(), "SKILL.md")
-			if _, err := os.Stat(skillFile); err != nil {
+			data, err := os.ReadFile(skillFile)
+			if err != nil {
 				continue
 			}
-			s, err := parseSkillFile(skillFile)
+			s, err := parseSkillData(data)
 			if err != nil {
 				continue
 			}
@@ -78,7 +84,7 @@ func DiscoverSkills() []SkillInfo {
 				name = entry.Name()
 			}
 			if _, exists := seen[name]; exists {
-				continue // local already registered, skip global duplicate
+				continue
 			}
 			seen[name] = struct{}{}
 			skills = append(skills, SkillInfo{
@@ -88,17 +94,51 @@ func DiscoverSkills() []SkillInfo {
 			})
 		}
 	}
+
+	// 2. Embedded skills (builtin)
+	entries, err := intl.ReadDir(embeddedSkillsRoot)
+	if err == nil {
+		for _, entry := range entries {
+			if !entry.IsDir() {
+				continue
+			}
+			data, err := intl.GetFileContent(embeddedSkillsRoot + "/" + entry.Name() + "/SKILL.md")
+			if err != nil {
+				continue
+			}
+			s, err := parseSkillData(data)
+			if err != nil {
+				continue
+			}
+			name := s.Name
+			if name == "" {
+				name = entry.Name()
+			}
+			if _, exists := seen[name]; exists {
+				continue
+			}
+			seen[name] = struct{}{}
+			skills = append(skills, SkillInfo{
+				Name:        name,
+				Description: s.Description,
+				Source:      "builtin",
+			})
+		}
+	}
+
 	return skills
 }
 
-// LoadSkill loads a skill by name, searching local then global directories.
+// LoadSkill loads a skill by name, searching local > global > embedded.
 func LoadSkill(name string) (*Skill, error) {
+	// 1. Filesystem paths
 	for _, sp := range skillSearchPaths() {
 		skillFile := filepath.Join(sp.dir, name, "SKILL.md")
-		if _, err := os.Stat(skillFile); err != nil {
+		data, err := os.ReadFile(skillFile)
+		if err != nil {
 			continue
 		}
-		s, err := parseSkillFile(skillFile)
+		s, err := parseSkillData(data)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse skill %q: %w", name, err)
 		}
@@ -108,16 +148,26 @@ func LoadSkill(name string) (*Skill, error) {
 		s.Dir = filepath.Join(sp.dir, name)
 		return s, nil
 	}
-	return nil, fmt.Errorf("skill %q not found (searched ./skills/ and ~/.config/malice/skills/)", name)
-}
 
-// parseSkillFile reads a SKILL.md file and separates YAML frontmatter from body.
-func parseSkillFile(path string) (*Skill, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
+	// 2. Embedded
+	embedPath := embeddedSkillsRoot + "/" + name + "/SKILL.md"
+	if data, err := intl.GetFileContent(embedPath); err == nil {
+		s, err := parseSkillData(data)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse embedded skill %q: %w", name, err)
+		}
+		if s.Name == "" {
+			s.Name = name
+		}
+		s.Dir = "embed://" + embeddedSkillsRoot + "/" + name
+		return s, nil
 	}
 
+	return nil, fmt.Errorf("skill %q not found (searched ./skills/, ~/.config/malice/skills/, and builtin)", name)
+}
+
+// parseSkillData parses raw SKILL.md bytes, separating YAML frontmatter from body.
+func parseSkillData(data []byte) (*Skill, error) {
 	content := string(data)
 	s := &Skill{}
 
@@ -250,7 +300,7 @@ func SkillListCmd(cmd *cobra.Command, con *core.Console) error {
 	}
 
 	// Calculate column widths
-	nameWidth := 4 // "NAME"
+	nameWidth := 4  // "NAME"
 	descWidth := 11 // "DESCRIPTION"
 	for _, s := range skills {
 		if len(s.Name) > nameWidth {
@@ -263,7 +313,7 @@ func SkillListCmd(cmd *cobra.Command, con *core.Console) error {
 
 	fmtStr := fmt.Sprintf("  %%-%ds  %%-%ds  %%s\n", nameWidth, descWidth)
 	fmt.Printf(fmtStr, "NAME", "DESCRIPTION", "SOURCE")
-	fmt.Printf(fmtStr, strings.Repeat("─", nameWidth), strings.Repeat("─", descWidth), "──────")
+	fmt.Printf(fmtStr, strings.Repeat("─", nameWidth), strings.Repeat("─", descWidth), "───────")
 	for _, s := range skills {
 		desc := s.Description
 		if desc == "" {
