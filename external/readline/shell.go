@@ -2,6 +2,7 @@ package readline
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/reeflective/readline/inputrc"
 	"github.com/reeflective/readline/internal/completion"
@@ -168,7 +169,12 @@ func (rl *Shell) PrintTransientf(msg string, args ...any) (n int, err error) {
 	fmt.Print(term.ClearScreenBelow)
 
 	// Print the logged message.
-	n, err = fmt.Printf(msg+"\n", args...)
+	// Ensure exactly one trailing newline to separate message from redrawn prompt.
+	formatted := fmt.Sprintf(msg, args...)
+	if !strings.HasSuffix(formatted, "\n") {
+		formatted += "\n"
+	}
+	n, err = fmt.Print(formatted)
 
 	// Redisplay the prompt, input line and active helpers.
 	rl.Prompt.PrimaryPrint()

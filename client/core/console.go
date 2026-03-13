@@ -42,6 +42,25 @@ var (
 	}
 )
 
+// promptSafeWriter routes logger output through Console.TransientPrintf
+// so that async log messages don't corrupt the readline prompt.
+// It strips the \x1b[1E cursor-next-line escape that log format strings
+// prepend, since TransientPrintf handles cursor positioning itself.
+type promptSafeWriter struct {
+	con *Console
+}
+
+func (w *promptSafeWriter) Write(p []byte) (n int, err error) {
+	msg := string(p)
+	// Strip cursor-next-line escape; TransientPrintf handles positioning.
+	msg = strings.ReplaceAll(msg, "\x1b[1E", "")
+	if msg == "" {
+		return len(p), nil
+	}
+	_, err = w.con.App.TransientPrintf("%s", msg)
+	return len(p), err
+}
+
 // BindCmds - Bind extra commands to the app object
 type BindCmds func(console *Console) console.Commands
 
@@ -160,6 +179,13 @@ func (c *Console) Start(bindCmds ...BindCmds) error {
 	asyncPrint = func(format string, args ...any) {
 		c.App.TransientPrintf(format, args...)
 	}
+
+	// Route all logger output through TransientPrintf for prompt-safe async display.
+	// This ensures background events (session register, task callbacks, etc.)
+	// don't corrupt the readline prompt.
+	safeWriter := &promptSafeWriter{con: c}
+	client.Stdout.SetWriter(safeWriter)
+	logs.Log.SetOutput(client.Stdout)
 
 	return c.App.Start()
 }

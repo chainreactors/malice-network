@@ -16,11 +16,11 @@ import (
 
 func init() {
 	styledLogStyle := map[logs.Level]string{
-		client.Debug:     client.NewLine + tui.BlueBg.Bold(true).Render(tui.Rocket+"[+]") + " %s",
-		client.Warn:      client.NewLine + tui.YellowBg.Bold(true).Render(tui.Zap+"[warn]") + " %s",
-		client.Important: client.NewLine + tui.PurpleBg.Bold(true).Render(tui.Fire+"[*]") + " %s",
-		client.Info:      client.NewLine + tui.GreenBg.Bold(true).Render(tui.HotSpring+"[i]") + " %s",
-		client.Error:     client.NewLine + tui.RedBg.Bold(true).Render(tui.Monster+"[-]") + " %s",
+		client.Debug:     client.NewLine + tui.DarkGrayFg.Render("●") + " %s",
+		client.Warn:      client.NewLine + tui.YellowFg.Bold(true).Render("●") + " %s",
+		client.Important: client.NewLine + tui.PurpleFg.Bold(true).Render("●") + " %s",
+		client.Info:      client.NewLine + tui.CyanFg.Render("●") + " %s",
+		client.Error:     client.NewLine + tui.RedFg.Bold(true).Render("●") + " %s",
 	}
 	logs.Log.SetFormatter(styledLogStyle)
 	client.Log.SetFormatter(styledLogStyle)
