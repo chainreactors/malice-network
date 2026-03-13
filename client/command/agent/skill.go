@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/carapace-sh/carapace"
+	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/intl"
 	"github.com/spf13/cobra"
@@ -270,7 +271,8 @@ func renderSkill(skill *Skill, args []string) string {
 	return strings.TrimSpace(body)
 }
 
-// SkillCmd loads and executes a skill as a poison injection.
+// SkillCmd loads and executes a skill, dispatching to bridge_agent or poison
+// depending on which module the session has loaded.
 func SkillCmd(cmd *cobra.Command, con *core.Console, args []string) error {
 	name := args[0]
 	skillArgs := args[1:]
@@ -283,11 +285,27 @@ func SkillCmd(cmd *cobra.Command, con *core.Console, args []string) error {
 	text := renderSkill(skill, skillArgs)
 
 	session := con.GetInteractive()
-	task, err := Poison(con.Rpc, session, text)
-	if err != nil {
-		return err
+
+	// Dispatch: bridge_agent module → BridgeAgentChat, otherwise → Poison
+	if BridgeAgentAvailable() && hasModule(session, ModuleBridgeAgent) {
+		aiSettings, err := assets.GetValidAISettings()
+		if err != nil {
+			return err
+		}
+		task, err := BridgeAgentChat(con.Rpc, session, text,
+			aiSettings.Model, aiSettings.Provider,
+			aiSettings.APIKey, aiSettings.Endpoint, 0)
+		if err != nil {
+			return err
+		}
+		session.Console(task, "skill "+name)
+	} else {
+		task, err := Poison(con.Rpc, session, text)
+		if err != nil {
+			return err
+		}
+		session.Console(task, "skill "+name)
 	}
-	session.Console(task, "skill "+name)
 	return nil
 }
 
