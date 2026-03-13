@@ -28,7 +28,7 @@ func GetDownloadsCmd(cmd *cobra.Command, con *core.Console) error {
 
 		row := table.NewRow(table.RowData{
 			"ID":      ctx.Id,
-			"Session": ctx.Session.SessionId,
+			"Session": getSessionID(ctx.Session),
 			"Task":    getTaskId(ctx.Task),
 			"Name":    download.Name,
 			"Path":    download.FilePath,
@@ -60,6 +60,13 @@ func GetDownloads(con *core.Console) ([]*clientpb.Context, error) {
 }
 
 func AddDownload(con *core.Console, sess *client.Session, task *clientpb.Task, fileDesc *output.FileDescriptor) (bool, error) {
+	if sess == nil || sess.Session == nil {
+		return false, fmt.Errorf("session is required")
+	}
+	if task == nil {
+		return false, fmt.Errorf("task is required")
+	}
+
 	_, err := con.Rpc.AddDownload(con.Context(), &clientpb.Context{
 		Session: sess.Session,
 		Task:    task,

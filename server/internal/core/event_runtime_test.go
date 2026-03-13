@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 )
 
 func TestEventBrokerRunDropsClosedSubscriber(t *testing.T) {
@@ -171,5 +172,40 @@ subscribed:
 		case <-deadline:
 			t.Fatal("broker did not continue dispatching events")
 		}
+	}
+}
+
+func TestEventToProtobufWebsiteWithoutTLSDoesNotPanic(t *testing.T) {
+	event := Event{
+		EventType: consts.EventJob,
+		Op:        consts.CtrlWebsiteStart,
+		Job: &clientpb.Job{
+			Name: "site-no-tls",
+			Pipeline: &clientpb.Pipeline{
+				Name: "site-no-tls",
+				Type: consts.WebsitePipeline,
+				Body: &clientpb.Pipeline_Web{
+					Web: &clientpb.Website{
+						Name: "site-no-tls",
+						Root: "/",
+						Port: 8080,
+					},
+				},
+			},
+		},
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("Event.ToProtobuf panicked for website without TLS: %v", r)
+		}
+	}()
+
+	pb := event.ToProtobuf()
+	if pb == nil {
+		t.Fatal("Event.ToProtobuf returned nil")
+	}
+	if pb.Formatted == "" {
+		t.Fatal("expected formatted event output")
 	}
 }

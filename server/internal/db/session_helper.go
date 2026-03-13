@@ -171,7 +171,14 @@ func FindTaskAndMaxTasksID(sessionID string) (Tasks, uint32, error) {
 }
 
 func RemoveSession(sessionID string) error {
-	return NewSessionQuery().WhereID(sessionID).Update("is_removed", true)
+	result := Session().Model(&models.Session{}).Where("session_id = ?", sessionID).Update("is_removed", true)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return ErrRecordNotFound
+	}
+	return nil
 }
 
 // RecoverRemovedSession finds a soft-deleted session and resets is_removed flag.

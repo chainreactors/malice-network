@@ -1,6 +1,7 @@
 package basic
 
 import (
+	"fmt"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/intermediate"
@@ -19,6 +20,12 @@ func WaitCmd(cmd *cobra.Command, con *core.Console) error {
 		TaskId:    uint32(uintID),
 		SessionId: session.SessionId,
 	})
+	if err != nil {
+		return err
+	}
+	if content == nil || content.Task == nil {
+		return fmt.Errorf("task %d returned empty response", uintID)
+	}
 	fn, ok := intermediate.InternalFunctions[content.Task.Type]
 	if !ok {
 		con.Log.Debugf("function %s not found\n", content.Task.Type)

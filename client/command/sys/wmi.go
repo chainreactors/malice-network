@@ -1,6 +1,7 @@
 package sys
 
 import (
+	"fmt"
 	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
@@ -44,6 +45,9 @@ func WmiExecuteCmd(cmd *cobra.Command, con *core.Console) error {
 	params := make(map[string]string)
 	for _, i := range param_str {
 		kv := strings.SplitN(i, "=", 2)
+		if len(kv) != 2 || kv[0] == "" {
+			return fmt.Errorf("invalid --params value %q: want key=value", i)
+		}
 		params[kv[0]] = kv[1]
 	}
 	session := con.GetInteractive()

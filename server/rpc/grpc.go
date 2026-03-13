@@ -65,6 +65,17 @@ func InitLogs(debug bool) {
 	}
 }
 
+func CloseLogs() {
+	if authLog != nil {
+		authLog.Close(false)
+		authLog = nil
+	}
+	if rpcLog != nil {
+		rpcLog.Close(false)
+		rpcLog = nil
+	}
+}
+
 func RegisterRPCServices(grpcServer *grpc.Server) {
 	clientrpc.RegisterMaliceRPCServer(grpcServer, NewServer())
 	clientrpc.RegisterRootRPCServer(grpcServer, NewServer())

@@ -115,7 +115,7 @@ func PrintSessions(sessions map[string]*client.Session, con *core.Console, isAll
 
 		row = table.NewRow(
 			table.RowData{
-				"ID":             session.SessionId[:8],
+				"ID":             shortSessionID(session.SessionId),
 				"Group/Note":     fmt.Sprintf("%s/%s", session.GroupName, session.Note),
 				"Pipeline":       session.PipelineId,
 				"Remote Address": remoteAddr,

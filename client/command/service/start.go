@@ -28,7 +28,7 @@ func ServiceStartCmd(cmd *cobra.Command, con *core.Console) error {
 // ServiceStart 通过 gRPC 调用启动服务
 func ServiceStart(rpc clientrpc.MaliceRPCClient, session *client.Session, name string) (*clientpb.Task, error) {
 	request := &implantpb.ServiceRequest{
-		Type: consts.ModuleServiceCreate,
+		Type: consts.ModuleServiceStart,
 		Service: &implantpb.ServiceConfig{
 			Name: name,
 		},

@@ -27,7 +27,7 @@ func GetPortsCmd(cmd *cobra.Command, con *core.Console) error {
 
 		row := table.NewRow(table.RowData{
 			"ID":      ctx.Id,
-			"Session": ctx.Session.SessionId,
+			"Session": getSessionID(ctx.Session),
 			"Task":    getTaskId(ctx.Task),
 			"Length":  len(portCtx.Ports),
 		})

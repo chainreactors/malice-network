@@ -69,6 +69,8 @@ Control the start type and error control by providing appropriate values.`,
 		comp["start_type"] = common.ServiceStartTypeCompleter()
 		comp["error"] = common.ServiceErrorControlCompleter()
 	})
+	_ = serviceCreateCmd.MarkFlagRequired("name")
+	_ = serviceCreateCmd.MarkFlagRequired("path")
 
 	serviceStartCmd := &cobra.Command{
 		Use:   consts.SubCommandName(consts.ModuleServiceStart) + " [service_name]",

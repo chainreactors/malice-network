@@ -77,6 +77,42 @@ func TestHTTPPipelineRoundTripPreservesParamsAndCommonFields(t *testing.T) {
 	}
 }
 
+func TestTCPPipelineRoundTripPreservesCommonFields(t *testing.T) {
+	pb := &clientpb.Pipeline{
+		Name:       "tcp-1",
+		ListenerId: "listener-1",
+		Enable:     true,
+		Parser:     consts.ImplantMalefic,
+		Ip:         "127.0.0.1",
+		Type:       consts.TCPPipeline,
+		Encryption: []*clientpb.Encryption{
+			{Type: consts.CryptorXOR, Key: "xor-key"},
+		},
+		Secure: &clientpb.Secure{
+			Enable: true,
+		},
+		Body: &clientpb.Pipeline_Tcp{
+			Tcp: &clientpb.TCPPipeline{
+				Host: "0.0.0.0",
+				Port: 8443,
+			},
+		},
+	}
+
+	model := FromPipelinePb(pb)
+	if model.Host != "0.0.0.0" || model.Port != 8443 || len(model.Encryption) != 1 || model.Secure == nil || !model.Secure.Enable {
+		t.Fatalf("tcp fields not preserved in model: %#v", model)
+	}
+
+	roundTrip := model.ToProtobuf()
+	if roundTrip.GetTcp().Host != "0.0.0.0" || roundTrip.GetTcp().Port != 8443 {
+		t.Fatalf("tcp transport fields lost on protobuf round trip: %#v", roundTrip.GetTcp())
+	}
+	if roundTrip.Secure == nil || !roundTrip.Secure.Enable || len(roundTrip.Encryption) != 1 {
+		t.Fatalf("tcp common fields lost on protobuf round trip: %#v", roundTrip)
+	}
+}
+
 func TestBindPipelineRoundTripPreservesSecure(t *testing.T) {
 	pb := &clientpb.Pipeline{
 		Name:       "bind-1",
@@ -105,6 +141,48 @@ func TestBindPipelineRoundTripPreservesSecure(t *testing.T) {
 	roundTrip := model.ToProtobuf()
 	if roundTrip.Secure == nil || !roundTrip.Secure.Enable || roundTrip.Secure.ServerKeypair.PrivateKey != "spriv" {
 		t.Fatalf("bind secure config lost on protobuf round trip: %#v", roundTrip.Secure)
+	}
+}
+
+func TestREMPipelineRoundTripPreservesRuntimeConfig(t *testing.T) {
+	pb := &clientpb.Pipeline{
+		Name:       "rem-1",
+		ListenerId: "listener-1",
+		Enable:     true,
+		Parser:     "auto",
+		Ip:         "127.0.0.1",
+		Type:       consts.RemPipeline,
+		Encryption: []*clientpb.Encryption{
+			{Type: consts.CryptorAES, Key: "aes-key"},
+		},
+		Body: &clientpb.Pipeline_Rem{
+			Rem: &clientpb.REM{
+				Host:      "127.0.0.1",
+				Port:      19966,
+				Link:      "tcp://127.0.0.1:19966",
+				Subscribe: "pivot",
+				Console:   "tcp://127.0.0.1:19966",
+				Agents: map[string]*clientpb.REMAgent{
+					"agent-a": {Id: "agent-a", PipelineId: "rem-1"},
+				},
+			},
+		},
+	}
+
+	model := FromPipelinePb(pb)
+	if model.Console != "tcp://127.0.0.1:19966" || model.Link != "tcp://127.0.0.1:19966" || model.Subscribe != "pivot" {
+		t.Fatalf("rem params not preserved in model: %#v", model.PipelineParams)
+	}
+	if len(model.Agents) != 1 {
+		t.Fatalf("rem agents not preserved in model: %#v", model.Agents)
+	}
+
+	roundTrip := model.ToProtobuf()
+	if roundTrip.GetRem().Console != "tcp://127.0.0.1:19966" || roundTrip.GetRem().Link != "tcp://127.0.0.1:19966" || roundTrip.GetRem().Subscribe != "pivot" {
+		t.Fatalf("rem params lost on protobuf round trip: %#v", roundTrip.GetRem())
+	}
+	if len(roundTrip.GetRem().Agents) != 1 {
+		t.Fatalf("rem agents lost on protobuf round trip: %#v", roundTrip.GetRem().Agents)
 	}
 }
 

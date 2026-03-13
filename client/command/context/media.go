@@ -25,7 +25,7 @@ func GetMediaCmd(cmd *cobra.Command, con *core.Console) error {
 		}
 		rows = append(rows, table.NewRow(table.RowData{
 			"ID":      ctx.Id,
-			"Session": ctx.Session.SessionId,
+			"Session": getSessionID(ctx.Session),
 			"Task":    getTaskId(ctx.Task),
 			"Kind":    media.MediaKind,
 			"Name":    media.Name,

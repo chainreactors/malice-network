@@ -36,7 +36,7 @@ func findSessionByPrefix(con *core.Console, prefix string) (*client.Session, err
 	for id, sess := range con.Sessions {
 		if strings.HasPrefix(id, prefix) {
 			matches = append(matches, sess)
-			matchIDs = append(matchIDs, id[:8]) // 只显示前 8 位
+			matchIDs = append(matchIDs, shortSessionID(id))
 		}
 	}
 

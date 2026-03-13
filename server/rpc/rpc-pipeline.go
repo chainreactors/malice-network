@@ -13,6 +13,19 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 )
 
+func waitForCtrlStatus(action, name string, status *clientpb.JobStatus) error {
+	if status == nil {
+		return fmt.Errorf("%s %s failed: unknown error", action, name)
+	}
+	if status.Status == consts.CtrlStatusSuccess {
+		return nil
+	}
+	if status.Error != "" {
+		return fmt.Errorf("%s %s failed: %s", action, name, status.Error)
+	}
+	return fmt.Errorf("%s %s failed: unknown error", action, name)
+}
+
 // resolveListenerID resolves the listener ID from a CtrlPipeline request.
 // If listener_id is not provided, it queries the database by pipeline name.
 // Returns an error if no pipeline is found, or if multiple pipelines share the same name.
@@ -137,12 +150,9 @@ func (rpc *Server) StartPipeline(ctx context.Context, req *clientpb.CtrlPipeline
 		Job:  job.ToProtobuf()})
 
 	status := lns.WaitCtrl(ctrlID)
-	if status == nil || status.Status != consts.CtrlStatusSuccess {
+	if err := waitForCtrlStatus("start pipeline", req.Name, status); err != nil {
 		_ = db.DisablePipelineByListener(pipelineDB.Name, listenerID)
-		if status != nil && status.Error != "" {
-			return nil, fmt.Errorf("start pipeline %s failed: %s", req.Name, status.Error)
-		}
-		return nil, fmt.Errorf("start pipeline %s failed: unknown error", req.Name)
+		return nil, err
 	}
 
 	pipeline := pipelineDB.ToProtobuf()
@@ -164,30 +174,32 @@ func (rpc *Server) StopPipeline(ctx context.Context, req *clientpb.CtrlPipeline)
 		return nil, err
 	}
 
-	var pipe *clientpb.Pipeline
-	if existing := lns.GetPipeline(req.Name); existing != nil {
-		pipe = existing
-	} else {
-		pipelineDB, err := db.FindPipelineByListener(req.Name, listenerID)
-		if err != nil {
-			return nil, err
-		}
-		pipe = pipelineDB.ToProtobuf()
+	if _, err := db.FindPipelineByListener(req.Name, listenerID); err != nil {
+		return nil, err
 	}
 
-	job := &core.Job{
-		ID:       core.NextJobID(),
-		Name:     req.Name,
-		Pipeline: pipe,
+	pipe := lns.GetPipeline(req.Name)
+	if pipe != nil {
+		job := &core.Job{
+			ID:       core.NextJobID(),
+			Name:     req.Name,
+			Pipeline: pipe,
+		}
+		ctrlID := lns.PushCtrl(&clientpb.JobCtrl{
+			Ctrl: consts.CtrlPipelineStop,
+			Job:  job.ToProtobuf(),
+		})
+		status := lns.WaitCtrl(ctrlID)
+		if err := waitForCtrlStatus("stop pipeline", req.Name, status); err != nil {
+			return nil, err
+		}
 	}
-	lns.RemovePipeline(pipe)
-	lns.PushCtrl(&clientpb.JobCtrl{
-		Ctrl: consts.CtrlPipelineStop,
-		Job:  job.ToProtobuf(),
-	})
-	err = db.DisablePipelineByListener(req.Name, listenerID)
-	if err != nil {
+
+	if err := db.DisablePipelineByListener(req.Name, listenerID); err != nil {
 		return nil, err
+	}
+	if pipe != nil {
+		lns.RemovePipeline(pipe)
 	}
 	return &clientpb.Empty{}, nil
 }
@@ -202,19 +214,28 @@ func (rpc *Server) DeletePipeline(ctx context.Context, req *clientpb.CtrlPipelin
 	if err != nil {
 		return nil, err
 	}
-	pipeline := pipelineDB.ToProtobuf()
 	lns, err := core.Listeners.Get(listenerID)
 	if err != nil {
 		return nil, err
 	}
-	lns.RemovePipeline(pipeline)
-	lns.PushCtrl(&clientpb.JobCtrl{
-		Ctrl: consts.CtrlPipelineStop,
-		Job: &clientpb.Job{
-			Pipeline: pipeline,
-		},
-	})
-	err = db.DeletePipelineByListener(req.Name, listenerID)
+
+	if pipe := lns.GetPipeline(req.Name); pipe != nil {
+		ctrlID := lns.PushCtrl(&clientpb.JobCtrl{
+			Ctrl: consts.CtrlPipelineStop,
+			Job: &clientpb.Job{
+				Id:       core.NextJobID(),
+				Name:     req.Name,
+				Pipeline: pipe,
+			},
+		})
+		status := lns.WaitCtrl(ctrlID)
+		if err := waitForCtrlStatus("delete pipeline", req.Name, status); err != nil {
+			return nil, err
+		}
+		lns.RemovePipeline(pipe)
+	}
+
+	err = db.DeletePipelineByListener(pipelineDB.Name, listenerID)
 	if err != nil {
 		return nil, err
 	}

@@ -26,8 +26,8 @@ func GetScreenshotsCmd(cmd *cobra.Command, con *core.Console) error {
 			return err
 		}
 		row := table.NewRow(table.RowData{
-			"ID":      ctx,
-			"Session": ctx.Session.SessionId,
+			"ID":      ctx.Id,
+			"Session": getSessionID(ctx.Session),
 			"Task":    getTaskId(ctx.Task),
 			"Name":    screenshot.Name,
 			"Path":    screenshot.FilePath,

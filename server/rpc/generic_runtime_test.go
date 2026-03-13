@@ -12,7 +12,7 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/core"
 )
 
-func waitEventBrokerReady(t *testing.T, broker interface{ TryPublish(core.Event) error }) {
+func waitEventBrokerReady(t testing.TB, broker interface{ TryPublish(core.Event) error }) {
 	t.Helper()
 	deadline := time.After(2 * time.Second)
 	for {

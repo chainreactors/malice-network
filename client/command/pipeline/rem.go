@@ -2,6 +2,8 @@ package pipeline
 
 import (
 	"fmt"
+	"strconv"
+
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/client/command/common"
@@ -10,7 +12,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/third/rem"
 	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
-	"strconv"
 )
 
 func ListRemCmd(cmd *cobra.Command, con *core.Console) error {
@@ -32,7 +33,7 @@ func ListRemCmd(cmd *cobra.Command, con *core.Console) error {
 		}
 	}
 
-	fmt.Println(tui.RendStructDefault(rems))
+	con.Log.Console(tui.RendStructDefault(rems) + "\n")
 	return nil
 }
 
@@ -49,6 +50,12 @@ func NewRemCmd(cmd *cobra.Command, con *core.Console) error {
 		parse.SetPort(int(cryptography.RandomInRange(20000, 60000)))
 	}
 	port, err := strconv.Atoi(parse.URL.Port())
+	if err != nil {
+		return err
+	}
+	if name == "" {
+		name = fmt.Sprintf("rem_%s_%d", listenerID, port)
+	}
 	pipeline := &clientpb.Pipeline{
 		Name:       name,
 		ListenerId: listenerID,

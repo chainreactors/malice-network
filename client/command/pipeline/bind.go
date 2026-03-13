@@ -6,6 +6,7 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/spf13/cobra"
 )
 
@@ -15,6 +16,9 @@ func NewBindPipelineCmd(cmd *cobra.Command, con *core.Console) error {
 		return fmt.Errorf("listener id is required")
 	}
 	name := cmd.Flags().Arg(0)
+	if name == "" {
+		name = fmt.Sprintf("bind_%s_%d", listenerID, cryptography.RandomInRange(10240, 65535))
+	}
 
 	tls, certName, err := common.ParseTLSFlags(cmd)
 	if err != nil {

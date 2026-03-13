@@ -17,7 +17,7 @@ func ObserveCmd(cmd *cobra.Command, con *core.Console) error {
 	}
 
 	idArg := cmd.Flags().Args()
-	if idArg == nil {
+	if len(idArg) == 0 {
 		if con.GetInteractive() != nil {
 			idArg = []string{con.GetInteractive().SessionId}
 		} else {

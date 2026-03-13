@@ -265,7 +265,12 @@ func (rpc *Server) RegisterWebsite(ctx context.Context, req *clientpb.Pipeline) 
 }
 
 func (rpc *Server) StartWebsite(ctx context.Context, req *clientpb.CtrlPipeline) (*clientpb.Empty, error) {
-	webpipe, err := db.FindWebsiteByName(req.Name)
+	listenerID, err := resolveListenerID(req)
+	if err != nil {
+		return nil, err
+	}
+
+	webpipe, err := resolveWebsite(req.Name, listenerID)
 	if err != nil {
 		return nil, err
 	}
@@ -296,11 +301,18 @@ func (rpc *Server) StartWebsite(ctx context.Context, req *clientpb.CtrlPipeline)
 		Pipeline: webpb,
 		Name:     webpipe.Name,
 	}
-	listener.PushCtrl(&clientpb.JobCtrl{
+	ctrlID := listener.PushCtrl(&clientpb.JobCtrl{
 		Ctrl: consts.CtrlWebsiteStart,
 		Job:  job.ToProtobuf(),
 	})
-	err = db.EnablePipeline(webpipe.Name)
+
+	status := listener.WaitCtrl(ctrlID)
+	if err := waitForCtrlStatus("start website", req.Name, status); err != nil {
+		_ = db.DisablePipelineByListener(webpipe.Name, webpipe.ListenerId)
+		return nil, err
+	}
+
+	err = db.EnablePipelineByListener(webpipe.Name, webpipe.ListenerId)
 	if err != nil {
 		return nil, err
 	}
@@ -334,35 +346,34 @@ func (rpc *Server) StopWebsite(ctx context.Context, req *clientpb.CtrlPipeline) 
 		return nil, err
 	}
 
-	job, err := core.Jobs.GetByListener(req.Name, listenerID)
+	website, job, err := getWebsiteRuntime(req.Name, listenerID)
 	if err != nil {
-		if errors.Is(err, types.ErrNotFoundPipeline) {
-			pipelineDB, findErr := resolveWebsite(req.Name, listenerID)
-			if findErr != nil {
-				return nil, findErr
-			}
-			job = &core.Job{
-				Name:     pipelineDB.Name,
-				Pipeline: pipelineDB.ToProtobuf(),
-			}
-		} else {
+		return nil, err
+	}
+
+	listener, err := core.Listeners.Get(website.ListenerId)
+	if err != nil {
+		return nil, err
+	}
+
+	if job != nil {
+		ctrlID := listener.PushCtrl(&clientpb.JobCtrl{
+			Ctrl: consts.CtrlWebsiteStop,
+			Job:  job.ToProtobuf(),
+		})
+		status := listener.WaitCtrl(ctrlID)
+		if err := waitForCtrlStatus("stop website", req.Name, status); err != nil {
 			return nil, err
 		}
 	}
 
-	err = db.DisablePipeline(job.Pipeline.Name)
+	err = db.DisablePipelineByListener(website.Name, website.ListenerId)
 	if err != nil {
 		return nil, err
 	}
-	listener, err := core.Listeners.Get(job.Pipeline.ListenerId)
-	if err != nil {
-		return nil, err
+	if job != nil {
+		listener.RemovePipeline(job.Pipeline)
 	}
-	listener.PushCtrl(&clientpb.JobCtrl{
-		Ctrl: consts.CtrlWebsiteStop,
-		Job:  job.ToProtobuf(),
-	})
-	listener.RemovePipeline(job.Pipeline)
 	return &clientpb.Empty{}, nil
 }
 
@@ -380,38 +391,31 @@ func (rpc *Server) DeleteWebsite(ctx context.Context, req *clientpb.CtrlPipeline
 		return nil, err
 	}
 
-	pipelineDB, err := db.FindPipeline(req.Name)
+	website, job, err := getWebsiteRuntime(req.Name, listenerID)
 	if err != nil {
 		return nil, err
 	}
-	pipeline := pipelineDB.ToProtobuf()
-	listener, err := core.Listeners.Get(pipeline.ListenerId)
+	listener, err := core.Listeners.Get(website.ListenerId)
 	if err != nil {
 		return nil, err
 	}
 
-	job, err := core.Jobs.GetByListener(req.Name, listenerID)
-	if err != nil {
-		if errors.Is(err, types.ErrNotFoundPipeline) {
-			job = &core.Job{
-				Name:     pipeline.Name,
-				Pipeline: pipeline,
-			}
-		} else {
+	if job != nil {
+		ctrlID := listener.PushCtrl(&clientpb.JobCtrl{
+			Ctrl: consts.CtrlWebsiteStop,
+			Job:  job.ToProtobuf(),
+		})
+		status := listener.WaitCtrl(ctrlID)
+		if err := waitForCtrlStatus("delete website", req.Name, status); err != nil {
 			return nil, err
 		}
+		listener.RemovePipeline(job.Pipeline)
 	}
 
-	listener.RemovePipeline(pipeline)
-	err = db.DeleteWebsite(req.Name)
+	err = db.DeleteWebsite(website.Name)
 	if err != nil && !errors.Is(err, db.ErrRecordNotFound) {
 		return nil, err
 	}
-
-	listener.PushCtrl(&clientpb.JobCtrl{
-		Ctrl: consts.CtrlWebsiteStop,
-		Job:  job.ToProtobuf(),
-	})
 
 	return &clientpb.Empty{}, nil
 }

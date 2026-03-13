@@ -5,9 +5,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
@@ -84,7 +84,12 @@ func ListPipelineCmd(cmd *cobra.Command, con *core.Console) error {
 			}
 			newRow["Address"] = schema + pipeline.Ip + ":" + strconv.Itoa(int(body.Tcp.Port))
 			newRow["Parser"] = pipeline.Parser
-		case *clientpb.Pipeline_Rem, *clientpb.Pipeline_Bind:
+		case *clientpb.Pipeline_Rem:
+			newRow["Name"] = pipeline.Name
+			newRow["Type"] = consts.RemPipeline
+			newRow["ListenerID"] = pipeline.ListenerId
+			newRow["Parser"] = pipeline.Parser
+		case *clientpb.Pipeline_Bind:
 			newRow["Name"] = pipeline.Name
 			newRow["Type"] = consts.BindPipeline
 			newRow["ListenerID"] = pipeline.ListenerId

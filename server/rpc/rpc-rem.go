@@ -70,26 +70,76 @@ func (rpc *Server) StartRem(ctx context.Context, req *clientpb.CtrlPipeline) (*c
 	if err != nil {
 		return nil, err
 	}
-	err = db.EnablePipelineByListener(remDB.Name, listenerID)
-	if err != nil {
-		return nil, err
-	}
-	rem := remDB.ToProtobuf()
 	lns, err := core.Listeners.Get(listenerID)
 	if err != nil {
 		return nil, err
 	}
+
+	if existing := lns.GetPipeline(req.Name); existing != nil && existing.Enable {
+		_ = db.EnablePipelineByListener(req.Name, listenerID)
+		return &clientpb.Empty{}, nil
+	}
+
+	rem := remDB.ToProtobuf()
 	job := &core.Job{
 		ID:       core.NextJobID(),
 		Pipeline: rem,
 		Name:     rem.Name,
 	}
-	lns.PushCtrl(&clientpb.JobCtrl{
+
+	ctrlID := lns.PushCtrl(&clientpb.JobCtrl{
 		Ctrl: consts.CtrlRemStart,
 		Job:  job.ToProtobuf(),
 	})
+
+	status := lns.WaitCtrl(ctrlID)
+	if err := waitForCtrlStatus("start rem", req.Name, status); err != nil {
+		_ = db.DisablePipelineByListener(remDB.Name, listenerID)
+		return nil, err
+	}
+
+	if err := db.EnablePipelineByListener(rem.Name, listenerID); err != nil {
+		return nil, err
+	}
 	core.Jobs.AddPipeline(rem)
 
+	return &clientpb.Empty{}, nil
+}
+
+func (rpc *Server) DeleteRem(ctx context.Context, req *clientpb.CtrlPipeline) (*clientpb.Empty, error) {
+	listenerID, err := resolveListenerID(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := db.FindPipelineByListener(req.Name, listenerID); err != nil {
+		return &clientpb.Empty{}, err
+	}
+	lns, err := core.Listeners.Get(listenerID)
+	if err != nil {
+		return nil, err
+	}
+
+	if existing := lns.GetPipeline(req.Name); existing != nil {
+		ctrlID := lns.PushCtrl(&clientpb.JobCtrl{
+			Ctrl: consts.CtrlRemStop,
+			Job: &clientpb.Job{
+				Id:       core.NextJobID(),
+				Name:     req.Name,
+				Pipeline: existing,
+			},
+		})
+		status := lns.WaitCtrl(ctrlID)
+		if err := waitForCtrlStatus("delete rem", req.Name, status); err != nil {
+			return nil, err
+		}
+		lns.RemovePipeline(existing)
+	}
+
+	err = db.DeletePipelineByListener(req.Name, listenerID)
+	if err != nil {
+		return nil, err
+	}
 	return &clientpb.Empty{}, nil
 }
 
@@ -104,60 +154,33 @@ func (rpc *Server) StopRem(ctx context.Context, req *clientpb.CtrlPipeline) (*cl
 		return nil, err
 	}
 
-	var pipe *clientpb.Pipeline
+	if _, err := db.FindPipelineByListener(req.Name, listenerID); err != nil {
+		return nil, err
+	}
+
 	if existing := lns.GetPipeline(req.Name); existing != nil {
-		pipe = existing
-	} else {
-		remDB, err := db.FindPipelineByListener(req.Name, listenerID)
-		if err != nil {
+		job := &core.Job{
+			ID:       core.NextJobID(),
+			Name:     req.Name,
+			Pipeline: existing,
+		}
+
+		ctrlID := lns.PushCtrl(&clientpb.JobCtrl{
+			Ctrl: consts.CtrlRemStop,
+			Job:  job.ToProtobuf(),
+		})
+		status := lns.WaitCtrl(ctrlID)
+		if err := waitForCtrlStatus("stop rem", req.Name, status); err != nil {
 			return nil, err
 		}
-		pipe = remDB.ToProtobuf()
 	}
 
-	job := &core.Job{
-		ID:       core.NextJobID(),
-		Name:     req.Name,
-		Pipeline: pipe,
-	}
-
-	lns.RemovePipeline(pipe)
-	lns.PushCtrl(&clientpb.JobCtrl{
-		Ctrl: consts.CtrlRemStop,
-		Job:  job.ToProtobuf(),
-	})
 	err = db.DisablePipelineByListener(req.Name, listenerID)
 	if err != nil {
 		return nil, err
 	}
-	return &clientpb.Empty{}, nil
-}
-
-func (rpc *Server) DeleteRem(ctx context.Context, req *clientpb.CtrlPipeline) (*clientpb.Empty, error) {
-	listenerID, err := resolveListenerID(req)
-	if err != nil {
-		return nil, err
-	}
-
-	remDB, err := db.FindPipelineByListener(req.Name, listenerID)
-	if err != nil {
-		return &clientpb.Empty{}, err
-	}
-	rem := remDB.ToProtobuf()
-	lns, err := core.Listeners.Get(listenerID)
-	if err != nil {
-		return nil, err
-	}
-	lns.RemovePipeline(rem)
-	lns.PushCtrl(&clientpb.JobCtrl{
-		Ctrl: consts.CtrlRemStop,
-		Job: &clientpb.Job{
-			Pipeline: rem,
-		},
-	})
-	err = db.DeletePipelineByListener(req.Name, listenerID)
-	if err != nil {
-		return nil, err
+	if existing := lns.GetPipeline(req.Name); existing != nil {
+		lns.RemovePipeline(existing)
 	}
 	return &clientpb.Empty{}, nil
 }

@@ -64,6 +64,8 @@ func Commands(con *core.Console) []*cobra.Command {
 	common.BindFlagCompletions(taskSchdCreateCmd, func(comp carapace.ActionMap) {
 		comp["trigger_type"] = common.TaskTriggerTypeCompleter()
 	})
+	_ = taskSchdCreateCmd.MarkFlagRequired("name")
+	_ = taskSchdCreateCmd.MarkFlagRequired("path")
 
 	taskSchdStartCmd := &cobra.Command{
 		Use:   consts.SubCommandName(consts.ModuleTaskSchdStart) + " [name]",

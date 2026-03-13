@@ -5,25 +5,22 @@ on:
     branches: [dev]
   pull_request:
     branches: [dev]
+  workflow_dispatch:
 
 jobs:
-  test:
+  unit:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
-          token: ${{ secrets.PAT_TOKEN }}
           submodules: recursive
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: "1.24.13"
-
-      - name: Configure Git
-        run: |
-          git config --global url."https://${{ secrets.PAT_TOKEN }}@github.com/".insteadOf "https://github.com/"
+          cache: true
 
       - name: Go mod tidy
         run: go mod tidy
@@ -38,3 +35,21 @@ jobs:
         run: go build ./...
         env:
           CGO_ENABLED: 0
+
+  integration:
+    needs: unit
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.13"
+          cache: true
+
+      - name: Client/Server integration tests
+        run: go test -tags=integration ./server ./client/command/listener ./client/command/pipeline ./client/command/website ./client/command/sessions ./client/command/context -count=1 -timeout 300s

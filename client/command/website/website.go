@@ -96,14 +96,19 @@ func StartWebsite(con *core.Console, websiteName, certName string) error {
 
 func StopWebsitePipelineCmd(cmd *cobra.Command, con *core.Console) error {
 	name := cmd.Flags().Arg(0)
-	return StopWebsite(con, name)
+	listenerID, _ := cmd.Flags().GetString("listener")
+	return stopWebsite(con, name, listenerID)
 }
 
 // StopWebsite
 func StopWebsite(con *core.Console, name string) error {
+	return stopWebsite(con, name, "")
+}
+
+func stopWebsite(con *core.Console, name, listenerID string) error {
 	_, err := con.Rpc.StopWebsite(con.Context(), &clientpb.CtrlPipeline{
 		Name:       name,
-		ListenerId: "",
+		ListenerId: listenerID,
 	})
 	if err != nil {
 		return err

@@ -9,6 +9,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/implanttypes"
 	"github.com/spf13/cobra"
+	"os"
 )
 
 func NewHttpPipelineCmd(cmd *cobra.Command, con *core.Console) error {
@@ -38,6 +39,13 @@ func NewHttpPipelineCmd(cmd *cobra.Command, con *core.Console) error {
 	errorPage, _ := cmd.Flags().GetString("error-page")
 	bodyPrefix, _ := cmd.Flags().GetString("body-prefix")
 	bodySuffix, _ := cmd.Flags().GetString("body-suffix")
+	if errorPage != "" {
+		content, err := os.ReadFile(errorPage)
+		if err != nil {
+			return err
+		}
+		errorPage = string(content)
+	}
 
 	// 转换headers格式
 	headerMap := make(map[string][]string)

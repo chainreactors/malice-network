@@ -18,7 +18,7 @@ func ListContexts(cmd *cobra.Command, con *core.Console) error {
 	for _, ctx := range contexts.Contexts {
 		row := table.NewRow(table.RowData{
 			"ID":        ctx.Id,
-			"Session":   ctx.Session.SessionId,
+			"Session":   getSessionID(ctx.Session),
 			"Task":      getTaskId(ctx.Task),
 			"Type":      ctx.Type,
 			"CreatedAt": ctx.CreatedAt,
@@ -50,8 +50,16 @@ func GetContextsByType(con *core.Console, contextType string) (*clientpb.Context
 	return allContexts, nil
 }
 
+func getSessionID(session *clientpb.Session) string {
+	if session == nil {
+		return "-"
+	}
+	return session.SessionId
+}
+
 func GetContextsByTask(con *core.Console, contextType string, task *clientpb.Task) (*clientpb.Contexts, error) {
 	allContexts, err := con.Rpc.GetContexts(con.Context(), &clientpb.Context{
+		Type: contextType,
 		Task: task,
 	})
 	if err != nil {

@@ -66,9 +66,8 @@ session -a --static
 		Long: `Add a note to a session. If a note already exists, it will be updated. 
 When using an active session, only provide the new note.`,
 		Args: cobra.MaximumNArgs(2),
-		Run: func(cmd *cobra.Command, args []string) {
-			noteCmd(cmd, con)
-			return
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return noteCmd(cmd, con)
 		},
 		Example: `~~~
 // Add a note to specified session

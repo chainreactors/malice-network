@@ -266,13 +266,20 @@ func AddContent(content *clientpb.WebContent) (*models.WebsiteContent, error) {
 	if content == nil {
 		return nil, errors.New("content is nil")
 	}
+	if content.Size == 0 && len(content.Content) > 0 {
+		content.Size = uint64(len(content.Content))
+	}
 
 	switch content.Type {
 	case "", "raw", "default":
 		content.Type = "raw"
-		content.ContentType = mime.TypeByExtension(filepath.Ext(content.Path))
+		if content.ContentType == "" {
+			content.ContentType = mime.TypeByExtension(filepath.Ext(content.Path))
+		}
 	default:
-		content.ContentType = mime.TypeByExtension(filepath.Ext(content.Path))
+		if content.ContentType == "" {
+			content.ContentType = mime.TypeByExtension(filepath.Ext(content.Path))
+		}
 	}
 
 	var existingContent *models.WebsiteContent
@@ -288,7 +295,9 @@ func AddContent(content *clientpb.WebContent) (*models.WebsiteContent, error) {
 		if err != nil {
 			return nil, err
 		}
-		webModel = existingContent
+		if err := Session().Preload("Pipeline").Where("id = ?", webModel.ID).First(webModel).Error; err != nil {
+			return nil, err
+		}
 	} else if errors.Is(err, gorm.ErrRecordNotFound) {
 		query := Session()
 		if webModel.PipelineID == "" {
@@ -340,6 +349,21 @@ func AddAmountWebContent(artifactName, pipelineName string) (*clientpb.WebConten
 
 // RemoveContent - Remove content by ID
 func RemoveContent(id string) error {
+	content, err := FindWebContent(id)
+	if err != nil {
+		return err
+	}
+
+	if content.PipelineID != "" {
+		contentPath, joinErr := fileutils.SafeJoin(configs.WebsitePath, filepath.Join(content.PipelineID, content.ID.String()))
+		if joinErr != nil {
+			return joinErr
+		}
+		if removeErr := os.Remove(contentPath); removeErr != nil && !errors.Is(removeErr, os.ErrNotExist) {
+			return removeErr
+		}
+	}
+
 	contentID, _ := uuid.FromString(id)
 	return NewWebContentQuery().WhereID(contentID).Delete()
 }

@@ -1,6 +1,8 @@
 package sessions
 
 import (
+	"fmt"
+
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/spf13/cobra"
@@ -11,8 +13,7 @@ func groupCmd(cmd *cobra.Command, con *core.Console) error {
 	group := cmd.Flags().Arg(0)
 
 	if con.GetInteractive() == nil && sid == "" {
-		con.Log.Errorf("No session selected\n")
-		return nil
+		return fmt.Errorf("no session selected")
 	} else if sid == "" && con.GetInteractive() != nil {
 		sid = con.GetInteractive().Session.GetSessionId()
 	}
