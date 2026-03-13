@@ -124,6 +124,9 @@ func SaveSettings(settings *Settings) error {
 	}
 
 	// Github settings
+	if err := config.Set("settings.github", nil); err != nil {
+		return err
+	}
 	if settings.Github != nil {
 		if err := setConfigs([][2]interface{}{
 			{"settings.github.repo", settings.Github.Repo},
@@ -136,6 +139,9 @@ func SaveSettings(settings *Settings) error {
 	}
 
 	// AI settings
+	if err := config.Set("settings.ai", nil); err != nil {
+		return err
+	}
 	if settings.AI != nil {
 		if err := setConfigs([][2]interface{}{
 			{"settings.ai.enable", settings.AI.Enable},
@@ -171,10 +177,10 @@ func GetValidAISettings() (*AISettings, error) {
 		return nil, fmt.Errorf("failed to load settings: %w", err)
 	}
 	if settings == nil || settings.AI == nil || !settings.AI.Enable {
-		return nil, fmt.Errorf("AI is not enabled. Use 'ai-config --enable --api-key <key>' to enable it")
+		return nil, fmt.Errorf("AI is not enabled. Use 'config ai --enable --api-key <key>' to enable it")
 	}
 	if settings.AI.APIKey == "" {
-		return nil, fmt.Errorf("AI API key not configured. Use 'ai-config --api-key <key>' to set it")
+		return nil, fmt.Errorf("AI API key not configured. Use 'config ai --api-key <key>' to set it")
 	}
 
 	return settings.AI, nil

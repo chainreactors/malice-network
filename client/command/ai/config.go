@@ -24,7 +24,7 @@ const (
 	DefaultHistory   = 20
 )
 
-// AIConfigCmd handles the ai-config command
+// AIConfigCmd handles the config ai command
 func AIConfigCmd(cmd *cobra.Command, con *core.Console) error {
 	showConfig, _ := cmd.Flags().GetBool("show")
 	enableAI, _ := cmd.Flags().GetBool("enable")

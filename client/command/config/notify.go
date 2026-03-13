@@ -17,8 +17,13 @@ func GetNotifyCmd(cmd *cobra.Command, con *core.Console) error {
 }
 
 func UpdateNotifyCmd(cmd *cobra.Command, con *core.Console) error {
-	notify := ParseNotifyFlags(cmd)
-	_, err := UpdateNotify(con, notify)
+	current, err := con.Rpc.GetNotifyConfig(con.Context(), &clientpb.Empty{})
+	if err != nil {
+		return err
+	}
+
+	notify := mergeNotifyUpdate(current, cmd)
+	_, err = UpdateNotify(con, notify)
 	if err != nil {
 		return err
 	}

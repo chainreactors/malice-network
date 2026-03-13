@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/spf13/cobra"
@@ -49,7 +50,7 @@ func parseSourceConfig(cmd *cobra.Command, con *core.Console, buildConfig *clien
 		buildConfig.Comment = comment
 	}
 	// use github action
-	actionConfig := common.ParseGithubFlags(cmd)
+	actionConfig := resolveGithubActionConfig(cmd)
 	if actionConfig != nil {
 		buildConfig.SourceConfig = &clientpb.BuildConfig_GithubAction{
 			GithubAction: actionConfig,
@@ -61,6 +62,20 @@ func parseSourceConfig(cmd *cobra.Command, con *core.Console, buildConfig *clien
 	}
 	buildConfig.Source = source
 	return buildConfig, nil
+}
+
+func resolveGithubActionConfig(cmd *cobra.Command) *clientpb.GithubActionBuildConfig {
+	actionConfig := common.ParseGithubFlags(cmd)
+	if actionConfig != nil {
+		return actionConfig
+	}
+
+	settings, err := assets.LoadSettings()
+	if err != nil || settings == nil || settings.Github == nil {
+		return nil
+	}
+
+	return settings.Github.ToProtobuf()
 }
 
 // ExecuteBuild executes the build logic.
