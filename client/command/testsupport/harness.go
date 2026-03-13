@@ -35,6 +35,24 @@ type CommandCase struct {
 func NewHarness(t testing.TB) *Harness {
 	t.Helper()
 
+	h := newHarness(t)
+	h.Session = h.AddSession(t, "test-session-12345678")
+	h.Console.ActiveTarget.Set(h.Session)
+	h.Console.App.SwitchMenu(consts.ImplantMenu)
+	return h
+}
+
+func NewClientHarness(t testing.TB) *Harness {
+	t.Helper()
+
+	h := newHarness(t)
+	h.Console.App.SwitchMenu(consts.ClientMenu)
+	return h
+}
+
+func newHarness(t testing.TB) *Harness {
+	t.Helper()
+
 	oldDir := assets.MaliceDirName
 	assets.MaliceDirName = t.TempDir()
 	assets.InitLogDir()
@@ -70,9 +88,6 @@ func NewHarness(t testing.TB) *Harness {
 		Console:  con,
 		Recorder: recorder,
 	}
-	h.Session = h.AddSession(t, "test-session-12345678")
-	h.Console.ActiveTarget.Set(h.Session)
-	h.Console.App.SwitchMenu(consts.ImplantMenu)
 	return h
 }
 
@@ -143,6 +158,15 @@ func (h *Harness) Execute(argv ...string) error {
 	return root.Execute()
 }
 
+func (h *Harness) ExecuteClient(argv ...string) error {
+	root := commandpkg.BindClientsCommands(h.Console)()
+	root.SilenceErrors = true
+	root.SilenceUsage = true
+	h.Console.App.Shell().Line().Set([]rune(strings.Join(argv, " "))...)
+	root.SetArgs(argv)
+	return root.Execute()
+}
+
 func RunCases(t *testing.T, cases []CommandCase) {
 	t.Helper()
 
@@ -155,6 +179,32 @@ func RunCases(t *testing.T, cases []CommandCase) {
 			}
 
 			err := h.Execute(tc.Argv...)
+			switch {
+			case tc.WantErr == "" && err != nil:
+				t.Fatalf("execute %q failed: %v", strings.Join(tc.Argv, " "), err)
+			case tc.WantErr != "" && (err == nil || !strings.Contains(err.Error(), tc.WantErr)):
+				t.Fatalf("execute %q error = %v, want substring %q", strings.Join(tc.Argv, " "), err, tc.WantErr)
+			}
+
+			if tc.Assert != nil {
+				tc.Assert(t, h, err)
+			}
+		})
+	}
+}
+
+func RunClientCases(t *testing.T, cases []CommandCase) {
+	t.Helper()
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.Name, func(t *testing.T) {
+			h := NewClientHarness(t)
+			if tc.Setup != nil {
+				tc.Setup(t, h)
+			}
+
+			err := h.ExecuteClient(tc.Argv...)
 			switch {
 			case tc.WantErr == "" && err != nil:
 				t.Fatalf("execute %q failed: %v", strings.Join(tc.Argv, " "), err)

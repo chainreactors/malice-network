@@ -99,7 +99,7 @@ cert acme_config --email new@example.com
 
 	delCmd := &cobra.Command{
 		Use:  consts.CommandCertDelete,
-		Args: cobra.MaximumNArgs(1),
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return DeleteCmd(cmd, con)
 		},
@@ -115,7 +115,7 @@ cert delete cert-name
 	updateCmd := &cobra.Command{
 		Use:   consts.CommandCertUpdate,
 		Short: "update a cert",
-		Args:  cobra.MaximumNArgs(1),
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return UpdateCmd(cmd, con)
 		},
@@ -142,7 +142,7 @@ cert update cert-name --cert cert_path --key key_path --type imported
 	downloadCmd := &cobra.Command{
 		Use:   consts.CommandCertDownload,
 		Short: "download a cert",
-		Args:  cobra.MaximumNArgs(1),
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return DownloadCmd(cmd, con)
 		},

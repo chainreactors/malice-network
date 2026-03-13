@@ -6,15 +6,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func VersionCmd(cmd *cobra.Command, con *core.Console) {
-	printVersion(con)
+func VersionCmd(cmd *cobra.Command, con *core.Console) error {
+	return printVersion(con)
 }
 
-func printVersion(con *core.Console) {
+func printVersion(con *core.Console) error {
 	basic, err := con.Rpc.GetBasic(con.Context(), &clientpb.Empty{})
 	if err != nil {
-		con.Log.Errorf("Error getting version info: %v\n", err)
-		return
+		return err
 	}
 	con.Log.Importantf("%s on %s %s\n", basic.Version, basic.Os, basic.Arch)
+	return nil
 }

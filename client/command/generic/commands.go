@@ -36,9 +36,8 @@ func Commands(con *core.Console) []*cobra.Command {
 	versionCmd := &cobra.Command{
 		Use:   consts.CommandVersion,
 		Short: "show server version",
-		Run: func(cmd *cobra.Command, args []string) {
-			VersionCmd(cmd, con)
-			return
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return VersionCmd(cmd, con)
 		},
 	}
 
@@ -56,8 +55,8 @@ func Commands(con *core.Console) []*cobra.Command {
 		Use:   consts.CommandBroadcast + " [message]",
 		Short: "Broadcast a message to all clients",
 		Args:  cobra.MinimumNArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			BroadcastCmd(cmd, con)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return BroadcastCmd(cmd, con)
 		},
 	}
 

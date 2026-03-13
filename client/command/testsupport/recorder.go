@@ -31,20 +31,40 @@ type RecorderRPC struct {
 	sessionEvents []RecordedCall
 	taskID        atomic.Uint32
 
-	taskResponders        map[string]func(context.Context, any) (*clientpb.Task, error)
-	emptyResponders       map[string]func(context.Context, any) (*clientpb.Empty, error)
-	taskContextResponders map[string]func(context.Context, any) (*clientpb.TaskContext, error)
-	sessionResponders     map[string]func(context.Context, any) (*clientpb.Session, error)
-	sessions              map[string]*clientpb.Session
+	taskResponders         map[string]func(context.Context, any) (*clientpb.Task, error)
+	emptyResponders        map[string]func(context.Context, any) (*clientpb.Empty, error)
+	taskContextResponders  map[string]func(context.Context, any) (*clientpb.TaskContext, error)
+	taskContextsResponders map[string]func(context.Context, any) (*clientpb.TaskContexts, error)
+	tasksResponders        map[string]func(context.Context, any) (*clientpb.Tasks, error)
+	sessionResponders      map[string]func(context.Context, any) (*clientpb.Session, error)
+	basicResponders        map[string]func(context.Context, any) (*clientpb.Basic, error)
+	listenersResponders    map[string]func(context.Context, any) (*clientpb.Listeners, error)
+	pipelinesResponders    map[string]func(context.Context, any) (*clientpb.Pipelines, error)
+	licenseResponders      map[string]func(context.Context, any) (*clientpb.LicenseInfo, error)
+	contextsResponders     map[string]func(context.Context, any) (*clientpb.Contexts, error)
+	certsResponders        map[string]func(context.Context, any) (*clientpb.Certs, error)
+	tlsResponders          map[string]func(context.Context, any) (*clientpb.TLS, error)
+	acmeConfigResponders   map[string]func(context.Context, any) (*clientpb.AcmeConfig, error)
+	sessions               map[string]*clientpb.Session
 }
 
 func NewRecorderRPC() *RecorderRPC {
 	r := &RecorderRPC{
-		taskResponders:        map[string]func(context.Context, any) (*clientpb.Task, error){},
-		emptyResponders:       map[string]func(context.Context, any) (*clientpb.Empty, error){},
-		taskContextResponders: map[string]func(context.Context, any) (*clientpb.TaskContext, error){},
-		sessionResponders:     map[string]func(context.Context, any) (*clientpb.Session, error){},
-		sessions:              map[string]*clientpb.Session{},
+		taskResponders:         map[string]func(context.Context, any) (*clientpb.Task, error){},
+		emptyResponders:        map[string]func(context.Context, any) (*clientpb.Empty, error){},
+		taskContextResponders:  map[string]func(context.Context, any) (*clientpb.TaskContext, error){},
+		taskContextsResponders: map[string]func(context.Context, any) (*clientpb.TaskContexts, error){},
+		tasksResponders:        map[string]func(context.Context, any) (*clientpb.Tasks, error){},
+		sessionResponders:      map[string]func(context.Context, any) (*clientpb.Session, error){},
+		basicResponders:        map[string]func(context.Context, any) (*clientpb.Basic, error){},
+		listenersResponders:    map[string]func(context.Context, any) (*clientpb.Listeners, error){},
+		pipelinesResponders:    map[string]func(context.Context, any) (*clientpb.Pipelines, error){},
+		licenseResponders:      map[string]func(context.Context, any) (*clientpb.LicenseInfo, error){},
+		contextsResponders:     map[string]func(context.Context, any) (*clientpb.Contexts, error){},
+		certsResponders:        map[string]func(context.Context, any) (*clientpb.Certs, error){},
+		tlsResponders:          map[string]func(context.Context, any) (*clientpb.TLS, error){},
+		acmeConfigResponders:   map[string]func(context.Context, any) (*clientpb.AcmeConfig, error){},
+		sessions:               map[string]*clientpb.Session{},
 	}
 	r.taskID.Store(100)
 	return r
@@ -90,8 +110,56 @@ func (r *RecorderRPC) OnTaskContext(method string, fn func(context.Context, any)
 	r.taskContextResponders[method] = fn
 }
 
+func (r *RecorderRPC) OnTaskContexts(method string, fn func(context.Context, any) (*clientpb.TaskContexts, error)) {
+	r.taskContextsResponders[method] = fn
+}
+
+func (r *RecorderRPC) OnTasks(method string, fn func(context.Context, any) (*clientpb.Tasks, error)) {
+	r.tasksResponders[method] = fn
+}
+
 func (r *RecorderRPC) OnSession(method string, fn func(context.Context, any) (*clientpb.Session, error)) {
 	r.sessionResponders[method] = fn
+}
+
+func (r *RecorderRPC) OnBasic(method string, fn func(context.Context, any) (*clientpb.Basic, error)) {
+	r.basicResponders[method] = fn
+}
+
+func (r *RecorderRPC) OnListeners(method string, fn func(context.Context, any) (*clientpb.Listeners, error)) {
+	r.listenersResponders[method] = fn
+}
+
+func (r *RecorderRPC) OnPipelines(method string, fn func(context.Context, any) (*clientpb.Pipelines, error)) {
+	r.pipelinesResponders[method] = fn
+}
+
+func (r *RecorderRPC) OnLicenseInfo(method string, fn func(context.Context, any) (*clientpb.LicenseInfo, error)) {
+	r.licenseResponders[method] = fn
+}
+
+func (r *RecorderRPC) OnContexts(method string, fn func(context.Context, any) (*clientpb.Contexts, error)) {
+	r.contextsResponders[method] = fn
+}
+
+func (r *RecorderRPC) OnCerts(method string, fn func(context.Context, any) (*clientpb.Certs, error)) {
+	r.certsResponders[method] = fn
+}
+
+func (r *RecorderRPC) OnTLS(method string, fn func(context.Context, any) (*clientpb.TLS, error)) {
+	r.tlsResponders[method] = fn
+}
+
+func (r *RecorderRPC) OnAcmeConfig(method string, fn func(context.Context, any) (*clientpb.AcmeConfig, error)) {
+	r.acmeConfigResponders[method] = fn
+}
+
+func (r *RecorderRPC) GetBasic(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Basic, error) {
+	r.recordPrimary(ctx, "GetBasic", in)
+	if responder, ok := r.basicResponders["GetBasic"]; ok {
+		return responder(ctx, in)
+	}
+	return &clientpb.Basic{Version: "test-version", Os: "windows", Arch: "amd64"}, nil
 }
 
 func (r *RecorderRPC) Sleep(ctx context.Context, in *implantpb.Timer, opts ...grpc.CallOption) (*clientpb.Task, error) {
@@ -152,9 +220,108 @@ func (r *RecorderRPC) GetSession(ctx context.Context, in *clientpb.SessionReques
 	return cloneRequest(session).(*clientpb.Session), nil
 }
 
+func (r *RecorderRPC) GetTasks(ctx context.Context, in *clientpb.TaskRequest, opts ...grpc.CallOption) (*clientpb.Tasks, error) {
+	r.recordPrimary(ctx, "GetTasks", in)
+	if responder, ok := r.tasksResponders["GetTasks"]; ok {
+		return responder(ctx, in)
+	}
+	return &clientpb.Tasks{}, nil
+}
+
+func (r *RecorderRPC) GetListeners(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Listeners, error) {
+	r.recordPrimary(ctx, "GetListeners", in)
+	if responder, ok := r.listenersResponders["GetListeners"]; ok {
+		return responder(ctx, in)
+	}
+	return &clientpb.Listeners{}, nil
+}
+
+func (r *RecorderRPC) ListJobs(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Pipelines, error) {
+	r.recordPrimary(ctx, "ListJobs", in)
+	if responder, ok := r.pipelinesResponders["ListJobs"]; ok {
+		return responder(ctx, in)
+	}
+	return &clientpb.Pipelines{}, nil
+}
+
+func (r *RecorderRPC) GetLicenseInfo(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.LicenseInfo, error) {
+	r.recordPrimary(ctx, "GetLicenseInfo", in)
+	if responder, ok := r.licenseResponders["GetLicenseInfo"]; ok {
+		return responder(ctx, in)
+	}
+	return &clientpb.LicenseInfo{Type: consts.LicenseCommunity}, nil
+}
+
+func (r *RecorderRPC) GetContexts(ctx context.Context, in *clientpb.Context, opts ...grpc.CallOption) (*clientpb.Contexts, error) {
+	r.recordPrimary(ctx, "GetContexts", in)
+	if responder, ok := r.contextsResponders["GetContexts"]; ok {
+		return responder(ctx, in)
+	}
+	return &clientpb.Contexts{}, nil
+}
+
+func (r *RecorderRPC) GetAllTaskContent(ctx context.Context, in *clientpb.Task, opts ...grpc.CallOption) (*clientpb.TaskContexts, error) {
+	r.recordPrimary(ctx, "GetAllTaskContent", in)
+	if responder, ok := r.taskContextsResponders["GetAllTaskContent"]; ok {
+		return responder(ctx, in)
+	}
+	return &clientpb.TaskContexts{}, nil
+}
+
+func (r *RecorderRPC) Broadcast(ctx context.Context, in *clientpb.Event, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+	return r.emptyResponse(ctx, "Broadcast", in)
+}
+
+func (r *RecorderRPC) Notify(ctx context.Context, in *clientpb.Event, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+	return r.emptyResponse(ctx, "Notify", in)
+}
+
 func (r *RecorderRPC) SessionEvent(ctx context.Context, in *clientpb.Event, opts ...grpc.CallOption) (*clientpb.Empty, error) {
 	r.recordSessionEvent(ctx, "SessionEvent", in)
 	return &clientpb.Empty{}, nil
+}
+
+func (r *RecorderRPC) DeleteCertificate(ctx context.Context, in *clientpb.Cert, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+	return r.emptyResponse(ctx, "DeleteCertificate", in)
+}
+
+func (r *RecorderRPC) UpdateCertificate(ctx context.Context, in *clientpb.TLS, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+	return r.emptyResponse(ctx, "UpdateCertificate", in)
+}
+
+func (r *RecorderRPC) GetAllCertificates(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Certs, error) {
+	r.recordPrimary(ctx, "GetAllCertificates", in)
+	if responder, ok := r.certsResponders["GetAllCertificates"]; ok {
+		return responder(ctx, in)
+	}
+	return &clientpb.Certs{}, nil
+}
+
+func (r *RecorderRPC) DownloadCertificate(ctx context.Context, in *clientpb.Cert, opts ...grpc.CallOption) (*clientpb.TLS, error) {
+	r.recordPrimary(ctx, "DownloadCertificate", in)
+	if responder, ok := r.tlsResponders["DownloadCertificate"]; ok {
+		return responder(ctx, in)
+	}
+	return &clientpb.TLS{
+		Cert: &clientpb.Cert{},
+		Ca:   &clientpb.Cert{},
+	}, nil
+}
+
+func (r *RecorderRPC) ObtainAcmeCert(ctx context.Context, in *clientpb.AcmeRequest, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+	return r.emptyResponse(ctx, "ObtainAcmeCert", in)
+}
+
+func (r *RecorderRPC) GetAcmeConfig(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.AcmeConfig, error) {
+	r.recordPrimary(ctx, "GetAcmeConfig", in)
+	if responder, ok := r.acmeConfigResponders["GetAcmeConfig"]; ok {
+		return responder(ctx, in)
+	}
+	return &clientpb.AcmeConfig{Credentials: map[string]string{}}, nil
+}
+
+func (r *RecorderRPC) UpdateAcmeConfig(ctx context.Context, in *clientpb.AcmeConfig, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+	return r.emptyResponse(ctx, "UpdateAcmeConfig", in)
 }
 
 func (r *RecorderRPC) ServiceList(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error) {
@@ -275,6 +442,10 @@ func (r *RecorderRPC) WmiExecute(ctx context.Context, in *implantpb.WmiMethodReq
 
 func (r *RecorderRPC) InitBindSession(ctx context.Context, in *implantpb.Init, opts ...grpc.CallOption) (*clientpb.Empty, error) {
 	return r.emptyResponse(ctx, "InitBindSession", in)
+}
+
+func (r *RecorderRPC) GenerateSelfCert(ctx context.Context, in *clientpb.Pipeline, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+	return r.emptyResponse(ctx, "GenerateSelfCert", in)
 }
 
 func (r *RecorderRPC) taskResponse(ctx context.Context, method string, request any) (*clientpb.Task, error) {

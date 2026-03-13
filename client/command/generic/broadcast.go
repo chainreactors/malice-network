@@ -8,31 +8,25 @@ import (
 	"strings"
 )
 
-func BroadcastCmd(cmd *cobra.Command, con *core.Console) {
+func BroadcastCmd(cmd *cobra.Command, con *core.Console) error {
 	msg := cmd.Flags().Args()
 	isNotify, _ := cmd.Flags().GetBool("notify")
-	var err error
 	if isNotify {
-		_, err = Notify(con, &clientpb.Event{
+		_, err := Notify(con, &clientpb.Event{
 			Type:    consts.EventNotify,
 			Client:  con.Client,
 			Message: []byte(strings.Join(msg, " ")),
 		})
-		if err != nil {
-			con.Log.Errorf("notify error: %s\n", err)
-			return
-		}
+		return err
 	} else {
-		_, err = Broadcast(con, &clientpb.Event{
+		_, err := Broadcast(con, &clientpb.Event{
 			Type:    consts.EventBroadcast,
 			Client:  con.Client,
 			Message: []byte(strings.Join(msg, " ")),
 		})
-		if err != nil {
-			con.Log.Errorf("broadcast error: %s\n", err)
-			return
-		}
+		return err
 	}
+	return nil
 }
 
 func Broadcast(con *core.Console, event *clientpb.Event) (bool, error) {

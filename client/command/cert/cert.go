@@ -4,6 +4,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/core"
@@ -43,7 +44,10 @@ func UpdateCmd(cmd *cobra.Command, con *core.Console) error {
 	caPath, _ := cmd.Flags().GetString("ca-cert")
 	var cert, key, ca string
 	var err error
-	if certPath != "" && keyPath != "" && caPath != "" {
+	if certPath != "" || keyPath != "" {
+		if certPath == "" || keyPath == "" {
+			return fmt.Errorf("cert and key must be provided together")
+		}
 		cert, err = cryptography.ProcessPEM(certPath)
 		if err != nil {
 			return err
@@ -52,6 +56,8 @@ func UpdateCmd(cmd *cobra.Command, con *core.Console) error {
 		if err != nil {
 			return err
 		}
+	}
+	if caPath != "" {
 		ca, err = cryptography.ProcessPEM(caPath)
 		if err != nil {
 			return err
@@ -82,7 +88,7 @@ func DownloadCmd(cmd *cobra.Command, con *core.Console) error {
 		Name: certName,
 	})
 	if err != nil {
-		return nil
+		return err
 	}
 	printCert(cert)
 	var path string
@@ -116,7 +122,7 @@ func DownloadCmd(cmd *cobra.Command, con *core.Console) error {
 func GetCertCmd(cmd *cobra.Command, con *core.Console) error {
 	certs, err := con.Rpc.GetAllCertificates(con.Context(), &clientpb.Empty{})
 	if err != nil {
-		return nil
+		return err
 	}
 	if len(certs.Certs) > 0 {
 		printCerts(certs, con)

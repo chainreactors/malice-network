@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document records the test expansion work for implant-facing commands under `client/command`.
+This document records the test expansion work for command-layer conformance under `client/command`.
 
 The primary goal of this effort was not to increase coverage numbers mechanically. The goal was to make the tests reliably expose command-layer defects, especially:
 
@@ -12,14 +12,15 @@ The primary goal of this effort was not to increase coverage numbers mechanicall
 - wrong default and fallback behavior
 - wrong RPC method selection
 - wrong protobuf field or value assembly
+- swallowed control-plane RPC failures
 
-This work intentionally treats most `server/rpc` handlers as thin transport adapters. Those handlers still keep regression tests, but they are not the main confidence layer for implant features whose real risk lives in command parsing and request assembly.
+This work intentionally treats most `server/rpc` handlers as thin transport adapters. Those handlers still keep regression tests, but they are not the main confidence layer for client commands whose real risk lives in command parsing and request assembly.
 
 ## Testing Strategy
 
 ### Why Command-First
 
-For the implant command path, the most failure-prone logic is usually not in server-side forwarding. It is in the client command layer:
+For both implant and control-plane command paths, the most failure-prone logic is usually not in server-side forwarding. It is in the client command layer:
 
 - flags are optional when they should be required
 - aliases and shorthand values are normalized incorrectly
@@ -53,28 +54,29 @@ The work was implemented in the following order:
 1. inventory the implant-related commands and existing tests
 2. identify which paths were only covered by ad hoc fake RPC tests
 3. identify command-layer defects that the new tests should expose
-4. build a shared harness under `client/command/testsupport`
-5. migrate existing command tests onto the shared harness
+4. build shared harnesses under `client/command/testsupport`
+5. migrate existing command tests onto the shared harnesses
 6. add missing suites for uncovered command families
 7. fix production issues exposed by the conformance cases
 8. validate with package tests and full repository checks
 
 ## Shared Harness Design
 
-The reusable harness lives in:
+The reusable harnesses live in:
 
 - `client/command/testsupport/harness.go`
 - `client/command/testsupport/recorder.go`
 
 ### Harness Responsibilities
 
-The harness provides:
+The harness layer now provides:
 
 - a temporary client runtime directory
 - a real `core.Console`
-- a seeded active implant session
+- execution through the real Cobra command roots
+- an implant-seeded harness for `implant` commands
+- a client-root harness for non-implant control-plane commands
 - optional pipeline and session fixtures
-- execution through the real `implant` Cobra root
 
 ### Recorder Responsibilities
 
@@ -89,6 +91,12 @@ It also supports responder hooks for cases that need command flow control, such 
 
 - `WaitTaskFinish`
 - `GetSession`
+- `GetBasic`
+- `GetListeners`
+- `ListJobs`
+- `GetLicenseInfo`
+- `GetContexts`
+- certificate and ACME control-plane RPCs
 - default task-producing RPCs
 
 ### Why This Matters For Future E2E
@@ -175,6 +183,20 @@ Trigger alias coverage includes:
 - `wmi_query`
 - `wmi_execute`
 
+### Control-Plane Commands
+
+- `version`
+- `broadcast`
+- `license`
+- `pivot`
+- `listener`
+- `job`
+- `cert`
+- `cert self_signed`
+- `cert update`
+- `cert download`
+- `cert acme_config`
+
 ## Assertion Model
 
 Each command case focuses on one operator-visible contract:
@@ -199,6 +221,13 @@ The following defects were identified while expanding the tests.
 - `sys wmi_execute` assumed every `--params` item contained `=` and indexed `kv[1]` unconditionally. Malformed input could panic.
 - `service create` documented `--name` and `--path` as required but did not enforce them.
 - `taskschd create` documented `--name` and `--path` as required but did not enforce them.
+- `cert` list swallowed `GetAllCertificates` failures and reported success on transport failure.
+- `cert download` swallowed `DownloadCertificate` failures and reported success on transport failure.
+- `cert update` dropped `cert` and `key` payloads whenever `--ca-cert` was omitted.
+- `cert update` accepted a partial key pair instead of rejecting `--cert` or `--key` alone.
+- `cert delete`, `cert update`, and `cert download` accepted a missing certificate name and could issue malformed requests.
+- `version` swallowed `GetBasic` failures because the command path did not return errors.
+- `broadcast` swallowed `Broadcast` and `Notify` failures because the command path logged and returned success.
 
 ### Product Lessons From These Defects
 
@@ -222,6 +251,18 @@ The following production changes were made and kept under regression tests:
   - mark `service create --name` and `--path` as required
 - `client/command/taskschd/commands.go`
   - mark `taskschd create --name` and `--path` as required
+- `client/command/cert/commands.go`
+  - require a certificate name for `delete`, `update`, and `download`
+- `client/command/cert/cert.go`
+  - propagate certificate list and download transport errors
+  - process `cert` and `key` without requiring `ca-cert`
+  - reject partial key-pair updates
+- `client/command/generic/commands.go`
+  - convert `version` and `broadcast` to error-returning command paths
+- `client/command/generic/version.go`
+  - return `GetBasic` failures to Cobra instead of logging and succeeding
+- `client/command/generic/broadcast.go`
+  - return `Broadcast` and `Notify` failures to Cobra instead of logging and succeeding
 
 ## Why These Tests Are Effective
 
