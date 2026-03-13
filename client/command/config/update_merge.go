@@ -3,12 +3,13 @@ package config
 import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/proto"
 )
 
 func mergeGithubUpdate(existing *clientpb.GithubActionBuildConfig, cmd *cobra.Command) *clientpb.GithubActionBuildConfig {
 	merged := &clientpb.GithubActionBuildConfig{}
 	if existing != nil {
-		*merged = *existing
+		proto.Merge(merged, existing)
 	}
 
 	if cmd.Flags().Changed("owner") {
@@ -30,7 +31,7 @@ func mergeGithubUpdate(existing *clientpb.GithubActionBuildConfig, cmd *cobra.Co
 func mergeNotifyUpdate(existing *clientpb.Notify, cmd *cobra.Command) *clientpb.Notify {
 	merged := &clientpb.Notify{}
 	if existing != nil {
-		*merged = *existing
+		proto.Merge(merged, existing)
 	}
 
 	mergeBoolFlag(cmd, "telegram-enable", &merged.TelegramEnable)
