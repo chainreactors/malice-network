@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/listenerrpc"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"google.golang.org/protobuf/proto"
+	"io"
 	"time"
 )
 
@@ -55,10 +57,13 @@ func (rpc *Server) SpiteStream(stream listenerrpc.ListenerRPC_SpiteStreamServer)
 			logs.Log.Debugf("[server.%s] receive spite %s from %s, %d bytes", sess.ID, msg.Spite.Name, msg.ListenerId, size)
 		}
 
-		if ch, ok := sess.GetResp(msg.TaskId); ok {
-			core.SafeGo(func() {
-				ch <- msg.Spite
-			})
+		ch, ok := sess.GetResp(msg.TaskId)
+		if !ok {
+			logs.Log.Warnf("response channel missing for session %s task %d", msg.SessionId, msg.TaskId)
+			continue
+		}
+		if err := deliverSpiteResponse(ch, msg.Spite); err != nil {
+			logs.Log.Warnf("deliver spite response failed for session %s task %d: %v", msg.SessionId, msg.TaskId, err)
 		}
 	}
 }
@@ -93,54 +98,119 @@ func (rpc *Server) JobStream(stream listenerrpc.ListenerRPC_JobStreamServer) err
 	if err != nil {
 		return err
 	}
-	core.SafeGo(func() {
+	ctx, cancel := context.WithCancel(stream.Context())
+	defer cancel()
+
+	recvMsgCh := make(chan *clientpb.JobStatus)
+	sendErrCh := core.GoGuarded("listener-job-stream-send:"+listenerID, func() error {
 		for {
 			select {
-			case msg := <-lns.Ctrl:
+			case <-ctx.Done():
+				return nil
+			case msg, ok := <-lns.Ctrl:
+				if !ok {
+					return nil
+				}
 				lns.CtrlJob.Store(msg.Id, nil)
-				err := stream.Send(msg)
-				if err != nil {
-					logs.Log.Errorf("send job ctrl faild %v", err)
-					return
+				if err := stream.Send(msg); err != nil {
+					lns.CtrlJob.Delete(msg.Id)
+					return fmt.Errorf("send job ctrl failed: %w", err)
 				}
 			}
 		}
+	}, core.LogGuardedError("listener-job-stream-send:"+listenerID))
+	recvErrCh := core.GoGuarded("listener-job-stream-recv:"+listenerID, func() error {
+		defer close(recvMsgCh)
+		for {
+			msg, err := stream.Recv()
+			if err != nil {
+				if err == io.EOF {
+					return nil
+				}
+				return err
+			}
+			select {
+			case <-ctx.Done():
+				return nil
+			case recvMsgCh <- msg:
+			}
+		}
+	}, core.LogGuardedError("listener-job-stream-recv:"+listenerID))
+
+	var pendingRecvCh <-chan *clientpb.JobStatus = recvMsgCh
+	var pendingSendErrCh <-chan error = sendErrCh
+	var pendingRecvErrCh <-chan error = recvErrCh
+
+	for pendingRecvCh != nil || pendingSendErrCh != nil || pendingRecvErrCh != nil {
+		select {
+		case msg, ok := <-pendingRecvCh:
+			if !ok {
+				cancel()
+				pendingRecvCh = nil
+				continue
+			}
+			handleJobStatus(lns, msg)
+		case err, ok := <-pendingSendErrCh:
+			pendingSendErrCh = nil
+			cancel()
+			if ok && err != nil {
+				return err
+			}
+		case err, ok := <-pendingRecvErrCh:
+			pendingRecvErrCh = nil
+			cancel()
+			if ok && err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func handleJobStatus(lns *core.Listener, msg *clientpb.JobStatus) {
+	if _, ok := lns.CtrlJob.Load(msg.CtrlId); ok {
+		lns.CtrlJob.Store(msg.CtrlId, msg)
+		core.GoGuarded("listener-job-status-cleanup", func() error {
+			time.Sleep(1 * time.Second)
+			lns.CtrlJob.Delete(msg.CtrlId)
+			return nil
+		}, core.LogGuardedError("listener-job-status-cleanup"))
+	}
+	if msg.Ctrl == consts.CtrlPipelineSync {
+		return
+	}
+	if msg.Status == consts.CtrlStatusSuccess {
+		core.EventBroker.Publish(core.Event{
+			EventType: consts.EventJob,
+			Op:        msg.Ctrl,
+			IsNotify:  true,
+			Job:       msg.Job,
+			Important: true,
+		})
+		return
+	}
+	core.EventBroker.Publish(core.Event{
+		EventType: consts.EventJob,
+		Op:        msg.Ctrl,
+		Err:       fmt.Sprintf("%s faild,status %d,  %s", msg.Job.Name, msg.Status, msg.Error),
+		IsNotify:  true,
+		Important: true,
 	})
+}
 
-	for {
-		msg, err := stream.Recv()
-		if err != nil {
-			return err
+func deliverSpiteResponse(ch chan *implantpb.Spite, spite *implantpb.Spite) (err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			err = core.RecoverError("listener-spite-response", recovered)
 		}
-		_, ok := lns.CtrlJob.Load(msg.CtrlId)
-		if ok {
-			lns.CtrlJob.Store(msg.CtrlId, msg)
-			core.SafeGo(func() {
-				time.Sleep(1 * time.Second)
-				lns.CtrlJob.Delete(msg.CtrlId)
-			})
-		}
-		if msg.Ctrl == consts.CtrlPipelineSync {
-			continue
-		}
-		if msg.Status == consts.CtrlStatusSuccess {
-			core.EventBroker.Publish(core.Event{
-				EventType: consts.EventJob,
-				Op:        msg.Ctrl,
-				IsNotify:  true,
-				Job:       msg.Job,
-				Important: true,
-			})
-		} else {
-			core.EventBroker.Publish(core.Event{
-				EventType: consts.EventJob,
-				Op:        msg.Ctrl,
-				Err:       fmt.Sprintf("%s faild,status %d,  %s", msg.Job.Name, msg.Status, msg.Error),
-				IsNotify:  true,
-				Important: true,
-			})
-		}
+	}()
 
+	select {
+	case ch <- spite:
+		return nil
+	default:
+		return fmt.Errorf("response channel full")
 	}
 }
 

@@ -113,17 +113,20 @@ func (rpc *Server) ExecuteModule(ctx context.Context, req *implantpb.ExecuteModu
 			return nil, err
 		}
 
-		core.SafeGoWithTask(greq.Task, func() {
+		runTaskHandler(greq.Task, func() error {
 			for resp := range out {
 				if resp == nil {
-					return
+					return nil
 				}
 				err := types.AssertSpite(resp, expect)
 				if err != nil {
 					continue
 				}
-				_ = greq.HandlerSpite(resp)
+				if err := greq.HandlerSpite(resp); err != nil {
+					return err
+				}
 			}
+			return nil
 		}, greq.Task.Close)
 
 		return greq.Task.ToProtobuf(), nil

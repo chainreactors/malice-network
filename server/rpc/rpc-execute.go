@@ -143,24 +143,24 @@ func (rpc *Server) Execute(ctx context.Context, req *implantpb.ExecRequest) (*cl
 			return nil, err
 		}
 
-		core.SafeGoWithTask(greq.Task, func() {
+		runTaskHandler(greq.Task, func() error {
 			for {
 				resp := <-out
 				exec := resp.GetExecResponse()
 				err := types.AssertSpite(resp, types.MsgExec)
 				if err != nil {
-					greq.Task.Panic(buildErrorEvent(greq.Task, err))
-					return
+					return buildTaskError(err)
 				}
 				err = greq.HandlerSpite(resp)
 				if err != nil {
-					return
+					return err
 				}
 				if exec.End {
 					greq.Task.Finish(resp, "")
 					break
 				}
 			}
+			return nil
 		}, greq.Task.Close)
 	}
 

@@ -78,6 +78,9 @@ func (pipeline *TCPPipeline) ID() string {
 
 func (pipeline *TCPPipeline) Close() error {
 	pipeline.Enable = false
+	if pipeline.ln == nil {
+		return nil
+	}
 	err := pipeline.ln.Close()
 	if err != nil {
 		return err
@@ -95,11 +98,14 @@ func (pipeline *TCPPipeline) Start() error {
 	}
 	forward.ListenerId = pipeline.ListenerID
 	core.Forwarders.Add(forward)
-	core.SafeGo(func() {
+	core.GoGuarded("tcp-forward-recv:"+pipeline.Name, func() error {
 		for {
 			msg, err := forward.Stream.Recv()
 			if err != nil {
-				return
+				if !pipeline.Enable {
+					return nil
+				}
+				return fmt.Errorf("tcp pipeline %s forward recv: %w", pipeline.Name, err)
 			}
 			connect := core.Connections.Get(msg.Session.SessionId)
 			if connect == nil {
@@ -108,7 +114,7 @@ func (pipeline *TCPPipeline) Start() error {
 			}
 			connect.C <- msg
 		}
-	}, func() { logs.Log.Errorf("forwarder stream exit!!!") })
+	}, pipeline.runtimeErrorHandler("forward recv loop"))
 
 	pipeline.ln, err = pipeline.handler()
 	if err != nil {
@@ -132,7 +138,9 @@ func (pipeline *TCPPipeline) handler() (net.Listener, error) {
 	}
 
 	// 非 TLS 模式，使用原有逻辑
-	core.SafeGo(func() { pipeline.startAcceptLoop(ln, "tcp pipeline") })
+	core.GoGuarded("tcp-accept:"+pipeline.Name, func() error {
+		return pipeline.startAcceptLoop(ln, "tcp pipeline")
+	}, pipeline.runtimeErrorHandler("accept loop"))
 	return ln, nil
 }
 
@@ -147,24 +155,25 @@ func (pipeline *TCPPipeline) handleWithCmux(ln net.Listener) (net.Listener, erro
 		}
 	}
 
-	return StartCmuxTCPListener(ln, tlsConfig, pipeline.HandleConnection)
+	return StartCmuxTCPListener(ln, tlsConfig, pipeline.HandleConnection, pipeline.runtimeErrorHandler("cmux"))
 }
 
 // startAcceptLoop 启动连接接受循环 (用于非 cmux 模式)
-func (pipeline *TCPPipeline) startAcceptLoop(ln net.Listener, logPrefix string) {
-	defer logs.Log.Errorf("%s exit!!!", logPrefix)
+func (pipeline *TCPPipeline) startAcceptLoop(ln net.Listener, logPrefix string) error {
+	defer logs.Log.Debugf("%s exit", logPrefix)
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
-			logs.Log.Errorf("Accept failed: %v", err)
-			if !pipeline.Enable {
+			if !pipeline.Enable || errors.Is(err, net.ErrClosed) {
 				logs.Log.Importantf("%s already disable, break accept", ln.Addr().String())
-				return
-			} else {
-				continue
+				return nil
 			}
+			return fmt.Errorf("tcp pipeline %s accept failed: %w", pipeline.Name, err)
 		}
-		core.SafeGo(func() { pipeline.HandleConnection(conn) })
+		core.GoGuarded("tcp-conn:"+pipeline.Name, func() error {
+			pipeline.HandleConnection(conn)
+			return nil
+		}, core.LogGuardedError("tcp-conn:"+pipeline.Name))
 	}
 }
 
@@ -183,6 +192,9 @@ func (pipeline *TCPPipeline) HandleConnection(conn net.Conn) {
 		pipeline.handleBeacon(peekConn)
 	case consts.ImplantPulse:
 		pipeline.handlePulse(peekConn)
+	default:
+		logs.Log.Warnf("tcp pipeline %s unsupported implant from %s: %s",
+			pipeline.Name, conn.RemoteAddr(), peekConn.Parser.Implant)
 	}
 }
 
@@ -218,7 +230,7 @@ func (pipeline *TCPPipeline) handlePulse(conn *cryptostream.Conn) {
 func (pipeline *TCPPipeline) handleBeacon(conn *cryptostream.Conn) {
 	connect, err := core.GetConnection(conn, pipeline.ID(), pipeline.SecureConfig)
 	if err != nil {
-		logs.Log.Debugf("peek read header error: %s %v", conn.RemoteAddr(), err)
+		logs.Log.Warnf("tcp pipeline %s peek read header error from %s: %v", pipeline.Name, conn.RemoteAddr(), err)
 		return
 	}
 
@@ -228,9 +240,32 @@ func (pipeline *TCPPipeline) handleBeacon(conn *cryptostream.Conn) {
 		err = connect.Handler(ctx, conn)
 		if err != nil {
 			if !errors.Is(err, io.EOF) {
-				logs.Log.Debugf("handler error: %s", err.Error())
+				logs.Log.Warnf("tcp pipeline %s handler error from %s: %s", pipeline.Name, conn.RemoteAddr(), err.Error())
 			}
 			return
 		}
 	}
+}
+
+func (pipeline *TCPPipeline) runtimeErrorHandler(scope string) core.GoErrorHandler {
+	label := fmt.Sprintf("tcp pipeline %s %s", pipeline.Name, scope)
+	return core.CombineErrorHandlers(
+		core.LogGuardedError(label),
+		func(err error) {
+			pipeline.Enable = false
+			if pipeline.ln != nil {
+				_ = pipeline.ln.Close()
+			}
+			if core.EventBroker != nil {
+				core.EventBroker.Publish(core.Event{
+					EventType: consts.EventListener,
+					Op:        consts.CtrlPipelineStop,
+					Listener:  &clientpb.Listener{Id: pipeline.ListenerID},
+					Message:   label,
+					Err:       core.ErrorText(err),
+					Important: true,
+				})
+			}
+		},
+	)
 }

@@ -15,6 +15,16 @@ import (
 	"github.com/chainreactors/rem/agent"
 )
 
+var remHealthCheck = func(client listenerrpc.ListenerRPCClient, ctx context.Context, pipeline *clientpb.Pipeline) error {
+	if client == nil {
+		return errors.New("rem rpc client is nil")
+	}
+	_, err := client.HealthCheckRem(ctx, pipeline)
+	return err
+}
+
+var remSleep = time.Sleep
+
 func NewRem(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline) (*REM, error) {
 	remConfig := pipeline.GetRem()
 	var conURL string
@@ -66,56 +76,60 @@ func (rem *REM) Start() error {
 	}
 	rem.Enable = true
 	logs.Log.Important(rem.con.Link())
-	core.SafeGo(func() {
-		for rem.Enable {
-			agent, err := rem.con.Accept()
-			if err != nil {
-				logs.Log.Error(err)
-				continue
-			}
-
-			core.SafeGo(func() { rem.con.Handler(agent) })
-		}
-	})
-
-	core.SafeGo(func() {
-		for rem.Enable {
-			_, err := rem.rpc.HealthCheckRem(context.Background(), rem.ToProtobuf())
-			if err != nil {
-				logs.Log.Error(err)
-			}
-
-			time.Sleep(30 * time.Second)
-		}
-	})
+	core.GoGuarded("rem-accept:"+rem.Name, rem.acceptLoop, rem.runtimeErrorHandler("accept loop"))
+	core.GoGuarded("rem-health:"+rem.Name, rem.healthLoop, rem.runtimeErrorHandler("health loop"))
 	return nil
 }
 
 func (rem *REM) ToProtobuf() *clientpb.Pipeline {
 	link := rem.getLink()
 	subscribe := rem.getSubscribe()
+	host := ""
+	var port uint32
+	agents := map[string]*clientpb.REMAgent{}
+	if rem.con != nil && rem.con.ConsoleURL != nil {
+		host = rem.con.ConsoleURL.Hostname()
+		port = uint32(rem.con.ConsoleURL.IntPort())
+		agents = rem.con.ToProtobuf()
+	}
+
+	var tlsConfig *clientpb.TLS
+	var encryption []*clientpb.Encryption
+	var secure *clientpb.Secure
+	parserName := ""
+	if rem.PipelineConfig != nil {
+		parserName = rem.Parser
+		if rem.TLSConfig != nil {
+			tlsConfig = rem.TLSConfig.ToProtobuf()
+		}
+		encryption = rem.Encryption.ToProtobuf()
+		if rem.SecureConfig != nil {
+			secure = rem.SecureConfig.ToProtobuf()
+		}
+	}
+
 	return &clientpb.Pipeline{
 		Name:       rem.Name,
 		Enable:     rem.Enable,
 		ListenerId: rem.ListenerID,
-		Parser:     rem.Parser,
+		Parser:     parserName,
 		Type:       consts.RemPipeline,
 		CertName:   rem.CertName,
 		Body: &clientpb.Pipeline_Rem{
 			Rem: &clientpb.REM{
 				Name:       rem.Name,
 				ListenerId: rem.ListenerID,
-				Host:       rem.con.ConsoleURL.Hostname(),
+				Host:       host,
 				Console:    rem.remConfig.Console,
-				Port:       uint32(rem.con.ConsoleURL.IntPort()),
+				Port:       port,
 				Link:       link,
 				Subscribe:  subscribe,
-				Agents:     rem.con.ToProtobuf(),
+				Agents:     agents,
 			},
 		},
-		Tls:        rem.TLSConfig.ToProtobuf(),
-		Encryption: rem.Encryption.ToProtobuf(),
-		Secure:     rem.SecureConfig.ToProtobuf(),
+		Tls:        tlsConfig,
+		Encryption: encryption,
+		Secure:     secure,
 	}
 }
 
@@ -126,14 +140,14 @@ func (rem *REM) getLink() (link string) {
 	if rem.con == nil {
 		return link
 	}
-	defer func() {
-		if recover() != nil {
-			// Keep configured link when REM runtime has not fully started yet.
+	core.RunGuarded("rem-link:"+rem.Name, func() error {
+		if runtimeLink := rem.con.Link(); runtimeLink != "" {
+			link = runtimeLink
 		}
-	}()
-	if runtimeLink := rem.con.Link(); runtimeLink != "" {
-		link = runtimeLink
-	}
+		return nil
+	}, func(err error) {
+		logs.Log.Debugf("rem runtime link unavailable: %s", core.ErrorText(err))
+	})
 	return link
 }
 
@@ -144,19 +158,108 @@ func (rem *REM) getSubscribe() (subscribe string) {
 	if rem.con == nil {
 		return subscribe
 	}
-	defer func() {
-		if recover() != nil {
-			// Keep configured subscribe endpoint when REM runtime has not fully started yet.
+	core.RunGuarded("rem-subscribe:"+rem.Name, func() error {
+		if runtimeSubscribe := rem.con.Subscribe(); runtimeSubscribe != "" {
+			subscribe = runtimeSubscribe
 		}
-	}()
-	if runtimeSubscribe := rem.con.Subscribe(); runtimeSubscribe != "" {
-		subscribe = runtimeSubscribe
-	}
+		return nil
+	}, func(err error) {
+		logs.Log.Debugf("rem runtime subscribe unavailable: %s", core.ErrorText(err))
+	})
 	return subscribe
 }
 
 func (rem *REM) Close() error {
+	rem.Enable = false
+	if rem.con == nil {
+		return nil
+	}
 	return rem.con.Close()
+}
+
+func (rem *REM) acceptLoop() error {
+	for rem.Enable {
+		agent, err := rem.con.Accept()
+		if err != nil {
+			if !rem.Enable {
+				return nil
+			}
+			return fmt.Errorf("rem %s accept agent: %w", rem.Name, err)
+		}
+
+		core.GoGuarded("rem-agent:"+rem.Name, func() error {
+			rem.con.Handler(agent)
+			return nil
+		}, core.LogGuardedError("rem-agent:"+rem.Name))
+	}
+	return nil
+}
+
+func (rem *REM) healthLoop() error {
+	const (
+		healthFailureThreshold = 3
+		opHealthDegraded       = "health-check-failed"
+		opHealthRecovered      = "health-check-recovered"
+	)
+
+	consecutiveFailures := 0
+	unhealthy := false
+	for rem.Enable {
+		if err := remHealthCheck(rem.rpc, context.Background(), rem.ToProtobuf()); err != nil {
+			consecutiveFailures++
+			logs.Log.Errorf("rem %s health check failed (%d/%d): %v", rem.Name, consecutiveFailures, healthFailureThreshold, err)
+			if consecutiveFailures >= healthFailureThreshold && !unhealthy {
+				unhealthy = true
+				if core.EventBroker != nil {
+					core.EventBroker.Publish(core.Event{
+						EventType: consts.EventListener,
+						Op:        opHealthDegraded,
+						Listener:  &clientpb.Listener{Id: rem.ListenerID},
+						Message:   fmt.Sprintf("rem pipeline %s health degraded", rem.Name),
+						Err:       err.Error(),
+						Important: true,
+					})
+				}
+			}
+		} else {
+			if unhealthy && core.EventBroker != nil {
+				core.EventBroker.Publish(core.Event{
+					EventType: consts.EventListener,
+					Op:        opHealthRecovered,
+					Listener:  &clientpb.Listener{Id: rem.ListenerID},
+					Message:   fmt.Sprintf("rem pipeline %s health recovered", rem.Name),
+					Important: true,
+				})
+			}
+			consecutiveFailures = 0
+			unhealthy = false
+		}
+		remSleep(30 * time.Second)
+	}
+	return nil
+}
+
+func (rem *REM) runtimeErrorHandler(scope string) core.GoErrorHandler {
+	label := fmt.Sprintf("rem pipeline %s %s", rem.Name, scope)
+	return core.CombineErrorHandlers(
+		core.LogGuardedError(label),
+		func(err error) {
+			rem.Enable = false
+			if rem.con != nil {
+				_ = rem.con.Close()
+			}
+			if core.EventBroker != nil {
+				core.EventBroker.Publish(core.Event{
+					EventType: consts.EventListener,
+					Op:        consts.CtrlRemStop,
+					Listener:  &clientpb.Listener{Id: rem.ListenerID},
+					Message:   label,
+					Err:       core.ErrorText(err),
+					Important: true,
+				})
+			}
+		},
+	)
 }
 
 func (lns *listener) handlerRemAgentCtrl(job *clientpb.Job) error {

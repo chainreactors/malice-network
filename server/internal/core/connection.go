@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
@@ -26,6 +27,7 @@ var (
 	ListenerSessions = &listenerSessions{
 		sessions: &sync.Map{},
 	}
+	ErrConnectionRemoved = fmt.Errorf("connection removed")
 )
 
 // listenerSessions 管理 listener 端的 session 信息
@@ -147,32 +149,13 @@ func NewConnection(p *parser.MessageParser, sid uint32, pipelineID string, keyPa
 		LastMessage: time.Now(),
 		C:           make(chan *clientpb.SpiteRequest, 255),
 		Sender:      make(chan *implantpb.Spites, 1),
-		Alive:       true,
 		cache:       parser.NewSpitesBuf(),
 		Parser:      p,
 	}
+	conn.alive.Store(true)
 
-	SafeGo(func() {
-		for {
-			select {
-			case req := <-conn.C:
-				logs.Log.Debugf("[pipeline] received spite_request %s", req.Spite.Name)
-				conn.cache.Append(req.Spite)
-			}
-		}
-	})
-
-	SafeGo(func() {
-		for {
-			if conn.cache.Len() == 0 {
-				time.Sleep(100 * time.Millisecond)
-				continue
-			}
-			select {
-			case conn.Sender <- conn.cache.Build():
-			}
-		}
-	})
+	GoGuarded("connection-recv:"+conn.SessionID, conn.runReceiveLoop, conn.runtimeErrorHandler("receive loop"))
+	GoGuarded("connection-send:"+conn.SessionID, conn.runSenderLoop, conn.runtimeErrorHandler("sender loop"))
 	return conn
 }
 
@@ -183,27 +166,91 @@ type Connection struct {
 	PipelineID  string
 	C           chan *clientpb.SpiteRequest // spite
 	Sender      chan *implantpb.Spites
-	Alive       bool
 	Parser      *parser.MessageParser
 	cache       *parser.SpitesCache
+	alive       atomic.Bool
+	errMu       sync.Mutex
+	lastErr     error
 }
 
-func (c *Connection) Send(ctx context.Context, conn *cryptostream.Conn) {
+func (c *Connection) IsAlive() bool {
+	return c.alive.Load()
+}
+
+func (c *Connection) LastError() error {
+	c.errMu.Lock()
+	defer c.errMu.Unlock()
+	return c.lastErr
+}
+
+func (c *Connection) fail(err error) {
+	if err != nil {
+		c.errMu.Lock()
+		if c.lastErr == nil {
+			c.lastErr = err
+		}
+		c.errMu.Unlock()
+	}
+	c.alive.Store(false)
+}
+
+func (c *Connection) runtimeErrorHandler(scope string) GoErrorHandler {
+	label := fmt.Sprintf("connection %s %s", c.SessionID, scope)
+	return CombineErrorHandlers(
+		LogGuardedError(label),
+		func(err error) {
+			c.fail(err)
+			Connections.remove(c.SessionID, err)
+		},
+	)
+}
+
+func (c *Connection) runReceiveLoop() error {
+	for c.IsAlive() {
+		select {
+		case req, ok := <-c.C:
+			if !ok {
+				return nil
+			}
+			logs.Log.Debugf("[pipeline] received spite_request %s", req.Spite.Name)
+			c.cache.Append(req.Spite)
+		case <-time.After(100 * time.Millisecond):
+		}
+	}
+	return nil
+}
+
+func (c *Connection) runSenderLoop() error {
+	for c.IsAlive() {
+		if c.cache.Len() == 0 {
+			time.Sleep(100 * time.Millisecond)
+			continue
+		}
+		select {
+		case c.Sender <- c.cache.Build():
+		case <-time.After(100 * time.Millisecond):
+		}
+	}
+	return nil
+}
+
+func (c *Connection) Send(ctx context.Context, conn *cryptostream.Conn) error {
 	select {
 	case <-time.After(1000 * time.Millisecond):
-		return
+		return nil
 	case <-ctx.Done():
-		return
-	case msg := <-c.Sender:
+		return nil
+	case msg, ok := <-c.Sender:
+		if !ok || msg == nil {
+			return nil
+		}
 		// Parser 内部会自动处理加解密逻辑
 		err := c.Parser.WritePacket(conn, msg, c.RawID)
 		if err != nil {
-			// retry
-			logs.Log.Debugf("Error write packet, %s", err.Error())
-			c.Sender <- msg
-			return
+			return fmt.Errorf("write packet for connection %s: %w", c.SessionID, err)
 		}
 	}
+	return nil
 }
 
 func (c *Connection) buildResponse(conn *cryptostream.Conn, length uint32) error {
@@ -236,7 +283,9 @@ func (c *Connection) Handler(ctx context.Context, conn *cryptostream.Conn) error
 	if err != nil {
 		return fmt.Errorf("error reading header:%s %w", conn.RemoteAddr(), err)
 	}
-	SafeGo(func() { c.Send(ctx, conn) })
+	GoGuarded("connection-send-call:"+c.SessionID, func() error {
+		return c.Send(ctx, conn)
+	}, c.runtimeErrorHandler("send call"))
 
 	return c.buildResponse(conn, length)
 }
@@ -247,7 +296,9 @@ func (c *Connection) HandlerSimplex(ctx context.Context, conn *cryptostream.Conn
 	if err != nil {
 		return fmt.Errorf("error reading header:%s %w", conn.RemoteAddr(), err)
 	}
-	c.Send(ctx, conn)
+	if err := c.Send(ctx, conn); err != nil {
+		return err
+	}
 	return c.buildResponse(conn, length)
 }
 
@@ -276,6 +327,9 @@ func (c *connections) Push(sid string, msg *clientpb.SpiteRequest) error {
 	if connect == nil {
 		return fmt.Errorf("connection %s not found", sid)
 	}
+	if !connect.IsAlive() {
+		return fmt.Errorf("connection %s is not alive", sid)
+	}
 	connect.C <- msg
 	return nil
 }
@@ -293,8 +347,13 @@ func (c *connections) Add(connect *Connection) *Connection {
 }
 
 func (c *connections) Remove(sessionID string) {
+	c.remove(sessionID, ErrConnectionRemoved)
+}
+
+func (c *connections) remove(sessionID string, err error) {
 	conn := c.Get(sessionID)
 	if conn != nil {
-		conn.Alive = false
+		conn.fail(err)
+		c.connections.Delete(sessionID)
 	}
 }

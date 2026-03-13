@@ -8,7 +8,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/server/assets"
 	"github.com/chainreactors/malice-network/server/internal/configs"
-	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/gookit/config/v2"
 	"github.com/gookit/config/v2/yaml"
 	"github.com/jessevdk/go-flags"
@@ -73,10 +72,5 @@ func Start(defaultConfig []byte) error {
 			return fmt.Errorf("cannot prepare listener, %s", err.Error())
 		}
 	}
-	core.SafeGo(func() {
-		if err := opt.Handler(); err != nil {
-			logs.Log.Errorf("handler error: %v", err)
-		}
-	})
-	select {}
+	return opt.Handler()
 }

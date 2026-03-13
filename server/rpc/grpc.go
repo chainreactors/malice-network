@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"sync"
@@ -21,6 +22,37 @@ var (
 	pipelinesCh     sync.Map
 	authLog, rpcLog *logs.Logger
 )
+
+var serveClientGRPC = func(server *grpc.Server, ln net.Listener) error {
+	return server.Serve(ln)
+}
+
+func runClientListener(grpcServer *grpc.Server, ln net.Listener) error {
+	if err := serveClientGRPC(grpcServer, ln); err != nil {
+		return fmt.Errorf("gRPC server exited with error: %w", err)
+	}
+	return nil
+}
+
+func normalizeClientListenerError(err error) error {
+	if errors.Is(err, grpc.ErrServerStopped) {
+		return nil
+	}
+	return err
+}
+
+var newClientListenerRuntime = func(address, serverIP string, debug bool) (*grpc.Server, net.Listener, error) {
+	ln, err := net.Listen("tcp", address)
+	if err != nil {
+		return nil, nil, err
+	}
+	grpcServer, err := NewClientGRPCServer(serverIP, debug)
+	if err != nil {
+		_ = ln.Close()
+		return nil, nil, err
+	}
+	return grpcServer, ln, nil
+}
 
 func InitLogs(debug bool) {
 	if debug {
@@ -70,25 +102,17 @@ func NewClientGRPCServer(serverIP string, debug bool) (*grpc.Server, error) {
 func StartClientListener(address string) (*grpc.Server, net.Listener, error) {
 	logs.Log.Importantf("[server] starting gRPC console on %s", address)
 
-	ln, err := net.Listen("tcp", address)
-	if err != nil {
-		logs.Log.Errorf("%v", err)
-		return nil, nil, err
-	}
 	serverIP := ""
 	if serverConfig := configs.GetServerConfig(); serverConfig != nil {
 		serverIP = serverConfig.IP
 	}
-	grpcServer, err := NewClientGRPCServer(serverIP, config.Bool("debug"))
+	grpcServer, ln, err := newClientListenerRuntime(address, serverIP, config.Bool("debug"))
 	if err != nil {
-		_ = ln.Close()
 		return nil, nil, err
 	}
-	core.SafeGo(func() {
-		if err := grpcServer.Serve(ln); err != nil {
-			logs.Log.Warnf("gRPC server exited with error: %v", err)
-		}
-	})
+	core.GoGuarded("grpc-client-listener", func() error {
+		return normalizeClientListenerError(runClientListener(grpcServer, ln))
+	}, core.FatalGuardedError("grpc-client-listener"))
 	return grpcServer, ln, nil
 }
 

@@ -2,13 +2,12 @@ package rpc
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	types "github.com/chainreactors/IoM-go/types"
-	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/parser"
 	"github.com/gookit/config/v2"
 )
@@ -87,12 +86,11 @@ func (rpc *Server) PipeUpload(ctx context.Context, pipe *implantpb.PipeRequest) 
 			return nil, err
 		}
 		var blockId = 0
-		core.SafeGoWithTask(greq.Task, func() {
+		runTaskHandler(greq.Task, func() error {
 			stat := <-out
 			err := types.HandleMaleficError(stat)
 			if err != nil {
-				greq.Task.Panic(buildErrorEvent(greq.Task, err))
-				return
+				return buildTaskError(err)
 			}
 			for block := range parser.Chunked(req.Data, config.Int(consts.ConfigMaxPacketLength)) {
 				msg := &implantpb.Block{
@@ -108,18 +106,19 @@ func (rpc *Server) PipeUpload(ctx context.Context, pipe *implantpb.PipeRequest) 
 					TaskId:  greq.Task.Id,
 				}, msg)
 				spite.Name = types.MsgUpload.String()
-				in <- spite
+				if err := in.Send(spite); err != nil {
+					return err
+				}
 				resp := <-out
 				err = types.AssertSpite(resp, types.MsgAck)
 				if err != nil {
-					return
+					return buildTaskError(err)
 				}
 				greq.Session.AddMessage(resp, blockId)
 
 				err = greq.Session.TaskLog(greq.Task, resp)
 				if err != nil {
-					logs.Log.Errorf("Failed to write task log: %v", err)
-					return
+					return fmt.Errorf("write task log: %w", err)
 				}
 				if resp.GetAck().Success {
 					greq.Task.Done(resp, "")
@@ -128,7 +127,8 @@ func (rpc *Server) PipeUpload(ctx context.Context, pipe *implantpb.PipeRequest) 
 					}
 				}
 			}
-		}, greq.Task.Close, func() { close(in) })
+			return nil
+		}, greq.Task.Close, in.Close)
 		return greq.Task.ToProtobuf(), nil
 	}
 }

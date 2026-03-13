@@ -20,11 +20,11 @@ func (rpc *Server) Build(ctx context.Context, req *clientpb.BuildConfig) (*clien
 		return nil, err
 	}
 
-	core.SafeGo(func() {
+	core.GoGuarded("rpc-build:"+artifact.Name, func() error {
 		if execErr := builder.Execute(); execErr != nil {
 			logs.Log.Errorf("failed to build %s: %s", artifact.Name, execErr)
 			build.SendBuildMsg(artifact, consts.BuildStatusFailure, make([]byte, 0), execErr)
-			return
+			return nil
 		}
 
 		_, status, err := builder.Collect()
@@ -35,7 +35,8 @@ func (rpc *Server) Build(ctx context.Context, req *clientpb.BuildConfig) (*clien
 		}
 		//build.SendBuildMsg(artifact, status, req.ParamsBytes, err)
 		build.SendBuildMsg(artifact, status, make([]byte, 0), err)
-	})
+		return nil
+	}, core.LogGuardedError("rpc-build:"+artifact.Name))
 
 	return artifact, nil
 }

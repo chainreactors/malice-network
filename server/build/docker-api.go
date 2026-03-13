@@ -3,11 +3,12 @@ package build
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
-	"regexp"
+	"strings"
 	"sync"
 
 	"github.com/chainreactors/IoM-go/consts"
@@ -54,6 +55,8 @@ var (
 
 var dockerClient *client.Client
 var once sync.Once
+var dockerStdCopy = stdcopy.StdCopy
+var updateBuilderLog = db.UpdateBuilderLog
 
 func GetImage(target string) string {
 	if target == consts.TargetX64Windows || target == consts.TargetX86Windows {
@@ -100,42 +103,74 @@ func catchLogs(cli *client.Client, containerID, name string) error {
 	stdoutPipe, stdoutWriter := io.Pipe()
 	stderrPipe, stderrWriter := io.Pipe()
 
-	core.SafeGo(func() {
-		_, err := stdcopy.StdCopy(stdoutWriter, stderrWriter, logReader)
-		stdoutWriter.Close()
-		stderrWriter.Close()
-		if err != nil && err != io.EOF {
-			logs.Log.Errorf("Error demultiplexing logs for container %s: %v", containerID, err)
-		}
-	})
-
 	var wg sync.WaitGroup
-	wg.Add(2)
+	errCh := make(chan error, 3)
 
-	core.SafeGo(func() {
-		defer wg.Done()
-		scanner := bufio.NewScanner(stdoutPipe)
-		for scanner.Scan() {
-			line := scanner.Text() + "\n"
-			re := regexp.MustCompile(`[\x00-\x1F&&[^\n]]+`)
-			line = re.ReplaceAllString(line, "")
-			db.UpdateBuilderLog(name, line)
+	runLogWorker(&wg, errCh, "docker-log-copy:"+name, func() error {
+		_, err := dockerStdCopy(stdoutWriter, stderrWriter, logReader)
+		if err != nil && !errors.Is(err, io.EOF) {
+			return fmt.Errorf("demultiplex logs for container %s: %w", containerID, err)
 		}
+		return nil
+	}, func() {
+		_ = stdoutWriter.Close()
+		_ = stderrWriter.Close()
 	})
 
-	core.SafeGo(func() {
-		defer wg.Done()
-		scanner := bufio.NewScanner(stderrPipe)
-		for scanner.Scan() {
-			line := scanner.Text() + "\n"
-			re := regexp.MustCompile(`[\x00-\x1F&&[^\n]]+`)
-			line = re.ReplaceAllString(line, "")
-			db.UpdateBuilderLog(name, line)
-		}
+	runLogWorker(&wg, errCh, "docker-log-stdout:"+name, func() error {
+		return consumeLogPipe(stdoutPipe, name)
+	}, func() {
+		_ = stdoutPipe.Close()
+	})
+
+	runLogWorker(&wg, errCh, "docker-log-stderr:"+name, func() error {
+		return consumeLogPipe(stderrPipe, name)
+	}, func() {
+		_ = stderrPipe.Close()
 	})
 
 	wg.Wait()
+	close(errCh)
+
+	var allErrs []error
+	for err := range errCh {
+		allErrs = append(allErrs, err)
+	}
+	return errors.Join(allErrs...)
+}
+
+func runLogWorker(wg *sync.WaitGroup, errCh chan<- error, label string, fn func() error, cleanups ...func()) {
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := core.RunGuarded(label, fn, core.LogGuardedError(label), cleanups...); err != nil {
+			errCh <- err
+		}
+	}()
+}
+
+func consumeLogPipe(r io.Reader, name string) error {
+	scanner := bufio.NewScanner(r)
+	for scanner.Scan() {
+		line := sanitizeLogLine(scanner.Text()) + "\n"
+		updateBuilderLog(name, line)
+	}
+	if err := scanner.Err(); err != nil && !errors.Is(err, io.EOF) {
+		return fmt.Errorf("scan builder log %s: %w", name, err)
+	}
 	return nil
+}
+
+func sanitizeLogLine(line string) string {
+	return strings.Map(func(r rune) rune {
+		if r == '\n' || r == '\r' || r == '\t' {
+			return r
+		}
+		if r >= 0 && r < 0x20 {
+			return -1
+		}
+		return r
+	}, line)
 }
 
 func sendContainerCtrlMsg(isEnd bool, containerName string, req *clientpb.BuildConfig, err error) {

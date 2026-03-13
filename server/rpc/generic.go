@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
@@ -137,21 +138,25 @@ func (r *GenericRequest) HandlerSpite(spite *implantpb.Spite) error {
 	return nil
 }
 
+func runTaskHandler(task *core.Task, fn func() error, cleanups ...func()) <-chan error {
+	if task == nil {
+		return core.GoGuarded("rpc-task", fn, core.LogGuardedError("rpc-task"), cleanups...)
+	}
+	return core.GoTask(task, "rpc-task:"+task.Name(), fn, cleanups...)
+}
+
 func (r *GenericRequest) HandlerResponse(ch chan *implantpb.Spite, typ types.MsgName, callbacks ...func(spite *implantpb.Spite)) {
-	core.SafeGoWithTask(r.Task, func() {
+	runTaskHandler(r.Task, func() error {
 		resp := <-ch
 
 		err := types.AssertStatusAndSpite(resp, typ)
 		if err != nil {
-			logs.Log.Debug(err)
-			r.Task.Panic(buildErrorEvent(r.Task, err))
-			return
+			return buildTaskError(err)
 		}
 
 		err = r.HandlerSpite(resp)
 		if err != nil {
-			logs.Log.Errorf("handler spite error, %s", err.Error())
-			return
+			return fmt.Errorf("handler spite: %w", err)
 		}
 		if callbacks != nil {
 			r.SetCallback(func() {
@@ -161,30 +166,26 @@ func (r *GenericRequest) HandlerResponse(ch chan *implantpb.Spite, typ types.Msg
 			})
 		}
 		r.Task.Finish(resp, "")
+		return nil
 	}, r.Task.Close)
 }
 
-func buildErrorEvent(task *core.Task, err error) core.Event {
-	var eventErr string
+func buildTaskError(err error) error {
+	if err == nil {
+		return nil
+	}
 
 	switch {
 	case errors.Is(err, types.ErrNilStatus):
-		eventErr = types.ErrNilStatus.Error()
+		return types.ErrNilStatus
 	case errors.Is(err, types.ErrAssertFailure):
-		eventErr = types.ErrAssertFailure.Error()
+		return types.ErrAssertFailure
 	case errors.Is(err, types.ErrNilResponseBody):
-		eventErr = types.ErrNilResponseBody.Error()
+		return types.ErrNilResponseBody
 	case errors.Is(err, types.ErrMissingRequestField):
-		eventErr = types.ErrMissingRequestField.Error()
+		return types.ErrMissingRequestField
 	default:
-		eventErr = err.Error()
-	}
-
-	return core.Event{
-		EventType: consts.EventTask,
-		Op:        consts.CtrlTaskError,
-		Task:      task.ToProtobuf(),
-		Err:       eventErr,
+		return err
 	}
 }
 
@@ -224,7 +225,7 @@ func (rpc *Server) GenericHandler(ctx context.Context, req *GenericRequest) (cha
 }
 
 // StreamGenericHandler - Generic handler for async request/response's for beacon tasks
-func (rpc *Server) StreamGenericHandler(ctx context.Context, req *GenericRequest) (chan *implantpb.Spite, chan *implantpb.Spite, error) {
+func (rpc *Server) StreamGenericHandler(ctx context.Context, req *GenericRequest) (*core.SpiteStreamWriter, chan *implantpb.Spite, error) {
 	spite, err := req.InitSpite(ctx)
 	if err != nil {
 		logs.Log.Errorf("%s", err.Error())

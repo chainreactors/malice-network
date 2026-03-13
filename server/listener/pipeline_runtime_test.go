@@ -1,6 +1,8 @@
 package listener
 
 import (
+	"context"
+	"errors"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
@@ -8,9 +10,28 @@ import (
 
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/helper/implanttypes"
 	"github.com/chainreactors/malice-network/server/internal/configs"
+	"google.golang.org/grpc"
 )
+
+type failingBindRPCClient struct {
+	err error
+}
+
+func (c *failingBindRPCClient) SpiteStream(context.Context, ...grpc.CallOption) (listenerrpc.ListenerRPC_SpiteStreamClient, error) {
+	return nil, c.err
+}
+
+func (c *failingBindRPCClient) Register(context.Context, *clientpb.RegisterSession, ...grpc.CallOption) (*clientpb.Empty, error) {
+	return &clientpb.Empty{}, nil
+}
+
+func (c *failingBindRPCClient) Checkin(context.Context, *implantpb.Ping, ...grpc.CallOption) (*clientpb.Empty, error) {
+	return &clientpb.Empty{}, nil
+}
 
 func TestNewHTTPPipelinePreservesConfigFromProtobuf(t *testing.T) {
 	pb := &clientpb.Pipeline{
@@ -164,6 +185,26 @@ func TestNewBindPipelinePreservesEnableStateAndConfig(t *testing.T) {
 	}
 	if len(pipeline.Encryption) != 1 || pipeline.Encryption[0].Key != "bind-key" {
 		t.Fatalf("unexpected encryption config: %#v", pipeline.Encryption)
+	}
+}
+
+func TestBindPipelineStartReturnsForwardCreationError(t *testing.T) {
+	want := errors.New("forward stream unavailable")
+	pipeline, err := NewBindPipeline(&failingBindRPCClient{err: want}, &clientpb.Pipeline{
+		Name:       "bind-start-fail",
+		ListenerId: "listener-1",
+		Enable:     true,
+		Body: &clientpb.Pipeline_Bind{
+			Bind: &clientpb.BindPipeline{},
+		},
+	})
+	if err != nil {
+		t.Fatalf("NewBindPipeline failed: %v", err)
+	}
+
+	err = pipeline.Start()
+	if !errors.Is(err, want) {
+		t.Fatalf("Start error = %v, want %v", err, want)
 	}
 }
 

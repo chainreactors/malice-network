@@ -82,11 +82,12 @@ func (w *Website) Start() error {
 	} else {
 		server := NewHTTPServer(mux)
 		w.server = ln
-		core.SafeGo(func() {
-			if err := server.Serve(ln); err != nil && err != http.ErrServerClosed {
-				logs.Log.Errorf("HTTP Server failed to start: %v", err)
+		core.GoGuarded("website-serve:"+w.Name, func() error {
+			if err := serveHTTP(server, ln); err != nil && err != http.ErrServerClosed {
+				return fmt.Errorf("website %s serve: %w", w.Name, err)
 			}
-		})
+			return nil
+		}, core.LogGuardedError("website-serve:"+w.Name))
 	}
 
 	w.Enable = true
@@ -101,7 +102,7 @@ func (w *Website) startWithCmux(ln net.Listener, mux *http.ServeMux) error {
 		return err
 	}
 
-	_, err = StartCmuxHTTPListener(ln, tlsConfig, mux)
+	_, err = StartCmuxHTTPListener(ln, tlsConfig, mux, core.LogGuardedError("website-cmux:"+w.Name))
 	if err != nil {
 		return err
 	}

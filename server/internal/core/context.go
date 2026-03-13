@@ -128,10 +128,7 @@ func HandleFileOperations(op string, data []byte, task *Task) error {
 		if sess.SessionContext == nil {
 			return errors.New("session context is nil")
 		}
-		if sess.Any == nil {
-			sess.Any = map[string]interface{}{}
-		}
-		sess.Any[getFileExtKey(fileId)] = savePath
+		sess.SetAny(getFileExtKey(fileId), savePath)
 		EventBroker.Publish(Event{
 			EventType: consts.EventContext,
 			Op:        consts.CtrlContextFileCreate,
@@ -144,10 +141,11 @@ func HandleFileOperations(op string, data []byte, task *Task) error {
 		if sess.SessionContext == nil {
 			return errors.New("session context is nil")
 		}
-		if sess.Any == nil {
-			return errors.New("session context storage is nil")
+		value, ok := sess.GetAny(getFileExtKey(fileId))
+		if !ok {
+			return fmt.Errorf("no file found for ID: %d", fileId)
 		}
-		savePath, ok := sess.Any[getFileExtKey(fileId)].(string)
+		savePath, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("no file found for ID: %d", fileId)
 		}
@@ -170,10 +168,11 @@ func HandleFileOperations(op string, data []byte, task *Task) error {
 		if sess.SessionContext == nil {
 			return errors.New("session context is nil")
 		}
-		if sess.Any == nil {
-			return errors.New("session context storage is nil")
+		value, ok := sess.GetAny(getFileExtKey(fileId))
+		if !ok {
+			return fmt.Errorf("no file found for ID: %d", fileId)
 		}
-		savePath, ok := sess.Any[getFileExtKey(fileId)].(string)
+		savePath, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("no file found for ID: %d", fileId)
 		}
@@ -190,7 +189,7 @@ func HandleFileOperations(op string, data []byte, task *Task) error {
 		if err != nil {
 			return err
 		}
-		delete(sess.Any, getFileExtKey(fileId))
+		sess.DeleteAny(getFileExtKey(fileId))
 		EventBroker.Publish(Event{
 			EventType: consts.EventContext,
 			Op:        consts.CtrlContextFileClose,

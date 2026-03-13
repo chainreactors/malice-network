@@ -1,17 +1,17 @@
 package core
 
 import (
+	"errors"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/chainreactors/IoM-go/consts"
 	inotify "github.com/chainreactors/malice-network/server/internal/notify"
 )
 
-// newTestBroker creates a minimal eventBroker for testing SafeGoWithTask.
-// The publish channel is buffered so Publish() won't block.
-// Caller reads from broker.publish directly to capture events.
 func newTestBroker() *eventBroker {
 	return &eventBroker{
 		stop:        make(chan struct{}),
@@ -25,41 +25,92 @@ func newTestBroker() *eventBroker {
 	}
 }
 
-// ---------- SafeGo ----------
-
-func TestSafeGo_NormalExecution(t *testing.T) {
-	done := make(chan struct{})
-	SafeGo(func() {
-		close(done)
-	})
+func waitGuardedResult(t *testing.T, ch <-chan error) (error, bool) {
+	t.Helper()
 	select {
-	case <-done:
+	case err, ok := <-ch:
+		return err, ok
 	case <-time.After(2 * time.Second):
-		t.Fatal("SafeGo fn did not execute within timeout")
+		t.Fatal("timed out waiting for guarded result")
+		return nil, false
 	}
 }
 
-func TestSafeGo_PanicRecovered(t *testing.T) {
-	done := make(chan struct{})
-	SafeGo(func() {
-		defer close(done)
-		panic("test panic")
-	})
+func waitEvent(t *testing.T, ch <-chan Event) Event {
+	t.Helper()
 	select {
-	case <-done:
+	case evt := <-ch:
+		return evt
 	case <-time.After(2 * time.Second):
-		t.Fatal("SafeGo did not recover from panic within timeout")
+		t.Fatal("timed out waiting for event")
+		return Event{}
 	}
 }
 
-func TestSafeGo_CleanupsExecuteInOrder(t *testing.T) {
+func TestRunGuarded_ReturnErrorPreserved(t *testing.T) {
+	want := errors.New("primary failure")
+	var handled error
+
+	err := RunGuarded("return-error", func() error {
+		return want
+	}, func(err error) {
+		handled = err
+	})
+
+	if !errors.Is(err, want) {
+		t.Fatalf("RunGuarded error = %v, want %v", err, want)
+	}
+	if !errors.Is(handled, want) {
+		t.Fatalf("handler error = %v, want %v", handled, want)
+	}
+}
+
+func TestRunGuarded_PanicStringConvertedToPanicError(t *testing.T) {
+	err := RunGuarded("panic-string", func() error {
+		panic("boom")
+	}, func(error) {})
+
+	var panicErr *PanicError
+	if !errors.As(err, &panicErr) {
+		t.Fatalf("expected PanicError, got %T", err)
+	}
+	if panicErr.Label != "panic-string" {
+		t.Fatalf("panic label = %q, want %q", panicErr.Label, "panic-string")
+	}
+	if panicErr.Recovered != "boom" {
+		t.Fatalf("panic recovered = %#v, want %#v", panicErr.Recovered, "boom")
+	}
+	if len(panicErr.Stack) == 0 {
+		t.Fatal("expected panic stack")
+	}
+}
+
+func TestRunGuarded_PanicErrorPreservesCause(t *testing.T) {
+	want := errors.New("explode")
+	err := RunGuarded("panic-error", func() error {
+		panic(want)
+	}, func(error) {})
+
+	if !errors.Is(err, want) {
+		t.Fatalf("RunGuarded error = %v, want cause %v", err, want)
+	}
+
+	var panicErr *PanicError
+	if !errors.As(err, &panicErr) {
+		t.Fatalf("expected PanicError, got %T", err)
+	}
+	if panicErr.Cause == nil || panicErr.Cause.Error() != want.Error() {
+		t.Fatalf("panic cause = %v, want %v", panicErr.Cause, want)
+	}
+}
+
+func TestRunGuarded_CleanupsExecuteInOrderOnPanic(t *testing.T) {
 	var mu sync.Mutex
 	var order []int
-	done := make(chan struct{})
 
-	SafeGo(func() {
-		// fn body — nothing special
-	},
+	err := RunGuarded("cleanup-order", func() error {
+		panic("cleanup-order-panic")
+	}, func(error) {},
 		func() {
 			mu.Lock()
 			order = append(order, 1)
@@ -74,336 +125,313 @@ func TestSafeGo_CleanupsExecuteInOrder(t *testing.T) {
 			mu.Lock()
 			order = append(order, 3)
 			mu.Unlock()
-			close(done)
 		},
 	)
 
-	select {
-	case <-done:
-	case <-time.After(2 * time.Second):
-		t.Fatal("cleanups did not complete within timeout")
+	if err == nil {
+		t.Fatal("expected panic error")
 	}
 
 	mu.Lock()
 	defer mu.Unlock()
 	if len(order) != 3 {
-		t.Fatalf("expected 3 cleanups, got %d", len(order))
+		t.Fatalf("cleanup count = %d, want 3", len(order))
 	}
-	// cleanups are registered via reverse-loop defer, so they execute in passed order: 1,2,3
-	for i, v := range order {
-		if v != i+1 {
-			t.Errorf("cleanup order[%d] = %d, want %d", i, v, i+1)
+	for i, got := range order {
+		want := i + 1
+		if got != want {
+			t.Fatalf("cleanup order[%d] = %d, want %d", i, got, want)
 		}
 	}
 }
 
-func TestSafeGo_CleanupsRunOnPanic(t *testing.T) {
+func TestRunGuarded_CleanupPanicJoinedWithPrimaryError(t *testing.T) {
+	want := errors.New("primary")
 	var cleaned atomic.Int32
-	done := make(chan struct{})
 
-	SafeGo(func() {
-		panic("boom")
-	},
+	err := RunGuarded("cleanup-join", func() error {
+		return want
+	}, func(error) {},
 		func() { cleaned.Add(1) },
+		func() { panic("cleanup boom") },
 		func() { cleaned.Add(1) },
-		func() {
-			cleaned.Add(1)
-			close(done)
-		},
 	)
 
-	select {
-	case <-done:
-	case <-time.After(2 * time.Second):
-		t.Fatal("cleanups did not run after panic within timeout")
+	if !errors.Is(err, want) {
+		t.Fatalf("expected primary error to be preserved, got %v", err)
+	}
+	if cleaned.Load() != 2 {
+		t.Fatalf("cleanup count = %d, want 2", cleaned.Load())
 	}
 
-	if got := cleaned.Load(); got != 3 {
-		t.Fatalf("expected 3 cleanups to run after panic, got %d", got)
+	var panicErr *PanicError
+	if !errors.As(err, &panicErr) {
+		t.Fatalf("expected cleanup panic to be joined, got %T", err)
+	}
+	if panicErr.Label != "cleanup-join cleanup[1]" {
+		t.Fatalf("cleanup panic label = %q, want %q", panicErr.Label, "cleanup-join cleanup[1]")
 	}
 }
 
-func TestSafeGo_CleanupPanicAlsoRecovered(t *testing.T) {
-	done := make(chan struct{})
-
-	SafeGo(func() {
-		// normal fn
-	},
-		func() {
-			panic("cleanup panic")
+func TestRunGuarded_DestructiveRuntimePanics(t *testing.T) {
+	tests := []struct {
+		name string
+		fn   func()
+	}{
+		{
+			name: "send_on_closed_channel",
+			fn: func() {
+				ch := make(chan int)
+				close(ch)
+				ch <- 1
+			},
 		},
-		func() {
-			// this cleanup runs before the panicking one (defer LIFO within order group).
-			// The panicking cleanup will be caught by the outer recover.
-			close(done)
+		{
+			name: "nil_map_write",
+			fn: func() {
+				var m map[string]int
+				m["key"] = 1
+			},
 		},
-	)
+		{
+			name: "index_out_of_range",
+			fn: func() {
+				_ = []int{1}[9]
+			},
+		},
+		{
+			name: "nil_pointer_deref",
+			fn: func() {
+				var p *int
+				_ = *p
+			},
+		},
+		{
+			name: "bad_type_assertion",
+			fn: func() {
+				var value any = "string"
+				_ = value.(int)
+			},
+		},
+	}
 
-	select {
-	case <-done:
-	case <-time.After(2 * time.Second):
-		t.Fatal("process should survive a panic inside cleanup")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := RunGuarded(tt.name, func() error {
+				tt.fn()
+				return nil
+			}, func(error) {})
+
+			var panicErr *PanicError
+			if !errors.As(err, &panicErr) {
+				t.Fatalf("expected PanicError, got %T", err)
+			}
+			if len(panicErr.Stack) == 0 {
+				t.Fatal("expected stack trace")
+			}
+		})
 	}
 }
 
-func TestSafeGo_NoCleanups(t *testing.T) {
+func TestGoGuarded_ReturnsErrorAndInvokesHandlerOnce(t *testing.T) {
+	want := errors.New("guarded failure")
+	var calls atomic.Int32
+	var handled error
+
+	errCh := GoGuarded("go-guarded", func() error {
+		return want
+	}, func(err error) {
+		calls.Add(1)
+		handled = err
+	})
+
+	err, ok := waitGuardedResult(t, errCh)
+	if !ok {
+		t.Fatal("expected error result, channel closed early")
+	}
+	if !errors.Is(err, want) {
+		t.Fatalf("GoGuarded error = %v, want %v", err, want)
+	}
+	if !errors.Is(handled, want) {
+		t.Fatalf("handler error = %v, want %v", handled, want)
+	}
+	if calls.Load() != 1 {
+		t.Fatalf("handler calls = %d, want 1", calls.Load())
+	}
+
+	_, ok = waitGuardedResult(t, errCh)
+	if ok {
+		t.Fatal("expected channel to be closed after the first result")
+	}
+}
+
+func TestGoGuarded_ChannelClosesOnSuccess(t *testing.T) {
 	done := make(chan struct{})
-	SafeGo(func() {
+
+	errCh := GoGuarded("success", func() error {
 		close(done)
+		return nil
+	}, func(error) {
+		t.Fatal("handler must not run on success")
 	})
-	select {
-	case <-done:
-	case <-time.After(2 * time.Second):
-		t.Fatal("SafeGo without cleanups did not execute")
-	}
-}
-
-// ---------- SafeGoWithInfo ----------
-
-func TestSafeGoWithInfo_PanicRecovered(t *testing.T) {
-	done := make(chan struct{})
-	SafeGoWithInfo("test-goroutine", func() {
-		defer close(done)
-		panic("info panic")
-	})
-	select {
-	case <-done:
-	case <-time.After(2 * time.Second):
-		t.Fatal("SafeGoWithInfo did not recover from panic")
-	}
-}
-
-func TestSafeGoWithInfo_CleanupsRunOnPanic(t *testing.T) {
-	var cleaned atomic.Int32
-	done := make(chan struct{})
-
-	SafeGoWithInfo("test-goroutine", func() {
-		panic("info boom")
-	},
-		func() { cleaned.Add(1) },
-		func() {
-			cleaned.Add(1)
-			close(done)
-		},
-	)
 
 	select {
 	case <-done:
 	case <-time.After(2 * time.Second):
-		t.Fatal("cleanups did not run")
+		t.Fatal("guarded function did not finish")
 	}
-	if got := cleaned.Load(); got != 2 {
-		t.Fatalf("expected 2 cleanups, got %d", got)
+
+	err, ok := waitGuardedResult(t, errCh)
+	if ok || err != nil {
+		t.Fatalf("expected closed channel without error, got ok=%v err=%v", ok, err)
 	}
 }
 
-// ---------- SafeGoWithTask ----------
-
-func TestSafeGoWithTask_PanicPublishesEvent(t *testing.T) {
+func TestGoTask_ReturnErrorPublishesTaskEvent(t *testing.T) {
 	broker := newTestBroker()
 	oldBroker := EventBroker
 	EventBroker = broker
 	defer func() { EventBroker = oldBroker }()
 
 	task := &Task{
-		Id:        1,
-		SessionId: "test-session",
-		Type:      "test-type",
+		Id:        7,
+		SessionId: "session-a",
+		Type:      "exec",
 	}
 
-	SafeGoWithTask(task, func() {
+	errCh := GoTask(task, "task-return-error", func() error {
+		return errors.New("task failed")
+	})
+
+	err, ok := waitGuardedResult(t, errCh)
+	if !ok || err == nil {
+		t.Fatal("expected GoTask to return an error")
+	}
+
+	evt := waitEvent(t, broker.publish)
+	if evt.Op != consts.CtrlTaskError {
+		t.Fatalf("event op = %q, want %q", evt.Op, consts.CtrlTaskError)
+	}
+	if evt.Task == nil || evt.Task.TaskId != task.Id {
+		t.Fatalf("unexpected task event payload: %#v", evt.Task)
+	}
+	if evt.Err != "task failed" {
+		t.Fatalf("event err = %q, want %q", evt.Err, "task failed")
+	}
+}
+
+func TestGoTask_PanicPublishesTaskEvent(t *testing.T) {
+	broker := newTestBroker()
+	oldBroker := EventBroker
+	EventBroker = broker
+	defer func() { EventBroker = oldBroker }()
+
+	task := &Task{
+		Id:        8,
+		SessionId: "session-b",
+		Type:      "module",
+	}
+
+	errCh := GoTask(task, "task-panic", func() error {
 		panic("task panic")
 	})
 
-	// Read directly from the buffered publish channel (no Subscribe needed)
-	select {
-	case evt := <-broker.publish:
-		if evt.Err == "" {
-			t.Fatal("expected non-empty Err in event")
-		}
-		if evt.Task == nil {
-			t.Fatal("expected Task in event")
-		}
-		if evt.Task.TaskId != task.Id {
-			t.Errorf("event TaskId = %d, want %d", evt.Task.TaskId, task.Id)
-		}
-	case <-time.After(2 * time.Second):
-		t.Fatal("did not receive error event from SafeGoWithTask panic")
+	err, ok := waitGuardedResult(t, errCh)
+	if !ok || err == nil {
+		t.Fatal("expected GoTask to return a panic error")
+	}
+
+	var panicErr *PanicError
+	if !errors.As(err, &panicErr) {
+		t.Fatalf("expected PanicError, got %T", err)
+	}
+
+	evt := waitEvent(t, broker.publish)
+	if evt.Op != consts.CtrlTaskError {
+		t.Fatalf("event op = %q, want %q", evt.Op, consts.CtrlTaskError)
+	}
+	if evt.Err != "panic: task panic" {
+		t.Fatalf("event err = %q, want %q", evt.Err, "panic: task panic")
 	}
 }
 
-func TestSafeGoWithTask_NormalNoEvent(t *testing.T) {
-	broker := newTestBroker()
-	oldBroker := EventBroker
-	EventBroker = broker
-	defer func() { EventBroker = oldBroker }()
-
+func TestGoGuarded_ConvertsPanicToError(t *testing.T) {
 	done := make(chan struct{})
 
-	task := &Task{
-		Id:        2,
-		SessionId: "test-session",
-		Type:      "test-type",
-	}
-
-	SafeGoWithTask(task, func() {
-		close(done)
-	})
+	errCh := GoGuarded("panic-bridge", func() error {
+		defer close(done)
+		panic("guarded panic")
+	}, LogGuardedError("panic-bridge"))
 
 	select {
 	case <-done:
 	case <-time.After(2 * time.Second):
-		t.Fatal("SafeGoWithTask fn did not execute")
+		t.Fatal("guarded function did not run")
 	}
 
-	// give a short window — no event should arrive
-	select {
-	case evt := <-broker.publish:
-		t.Fatalf("unexpected event published on normal execution: %+v", evt)
-	case <-time.After(200 * time.Millisecond):
-		// good — no event
+	err, ok := waitGuardedResult(t, errCh)
+	if !ok || err == nil {
+		t.Fatal("expected GoGuarded to return an error")
 	}
-}
-
-func TestSafeGoWithTask_CleanupsRunOnPanic(t *testing.T) {
-	broker := newTestBroker()
-	oldBroker := EventBroker
-	EventBroker = broker
-	// Wait for the recovery handler to finish publishing before restoring broker.
-	// Recovery runs AFTER cleanups (defer LIFO), so we wait for the publish event.
-	defer func() { EventBroker = oldBroker }()
-
-	var cleaned atomic.Int32
-
-	task := &Task{
-		Id:        3,
-		SessionId: "test-session",
-		Type:      "test-type",
-	}
-
-	SafeGoWithTask(task, func() {
-		panic("task boom")
-	},
-		func() { cleaned.Add(1) },
-		func() { cleaned.Add(1) },
-	)
-
-	// Wait for the event published by the recovery handler — this guarantees
-	// the entire goroutine (cleanups + recovery) has completed.
-	select {
-	case <-broker.publish:
-	case <-time.After(2 * time.Second):
-		t.Fatal("recovery handler did not publish event after task panic")
-	}
-
-	if got := cleaned.Load(); got != 2 {
-		t.Fatalf("expected 2 cleanups, got %d", got)
+	if ErrorText(err) != "panic: guarded panic" {
+		t.Fatalf("error text = %q, want %q", ErrorText(err), "panic: guarded panic")
 	}
 }
 
-// ---------- Concurrency stress ----------
-
-func TestSafeGo_ConcurrentPanics(t *testing.T) {
-	const n = 100
+func TestGoGuarded_ConcurrentErrorStorm(t *testing.T) {
+	const workers = 200
 	var wg sync.WaitGroup
-	wg.Add(n)
+	var handled atomic.Int32
+	wg.Add(workers)
 
-	for i := 0; i < n; i++ {
-		SafeGo(func() {
+	for i := 0; i < workers; i++ {
+		i := i
+		GoGuarded(fmt.Sprintf("storm-%d", i), func() error {
 			defer wg.Done()
-			panic("concurrent panic")
+			if i%2 == 0 {
+				panic("storm panic")
+			}
+			return errors.New("storm error")
+		}, func(error) {
+			handled.Add(1)
 		})
 	}
 
-	ch := make(chan struct{})
+	done := make(chan struct{})
 	go func() {
 		wg.Wait()
-		close(ch)
+		close(done)
 	}()
 
 	select {
-	case <-ch:
-		// all 100 goroutines panicked and recovered — process alive
+	case <-done:
 	case <-time.After(5 * time.Second):
-		t.Fatal("not all concurrent panicking goroutines recovered within timeout")
+		t.Fatal("concurrent guarded workers did not finish")
+	}
+
+	deadline := time.After(2 * time.Second)
+	for handled.Load() != workers {
+		select {
+		case <-deadline:
+			t.Fatalf("handler count = %d, want %d", handled.Load(), workers)
+		default:
+			time.Sleep(10 * time.Millisecond)
+		}
 	}
 }
 
-// ---------- Real-world panic scenarios ----------
+func TestFatalGuardedErrorExitsOnError(t *testing.T) {
+	oldExit := guardedExit
+	defer func() { guardedExit = oldExit }()
 
-func TestSafeGo_SendOnClosedChannel(t *testing.T) {
-	ch := make(chan int)
-	close(ch)
-
-	done := make(chan struct{})
-	SafeGo(func() {
-		defer close(done)
-		ch <- 1 // send on closed channel
-	})
-
-	select {
-	case <-done:
-	case <-time.After(2 * time.Second):
-		t.Fatal("SafeGo did not recover from send-on-closed-channel panic")
+	var code atomic.Int32
+	guardedExit = func(exitCode int) {
+		code.Store(int32(exitCode))
 	}
-}
 
-func TestSafeGo_NilMapWrite(t *testing.T) {
-	done := make(chan struct{})
-	SafeGo(func() {
-		defer close(done)
-		var m map[string]int
-		m["key"] = 1
-	})
+	FatalGuardedError("fatal-test")(errors.New("boom"))
 
-	select {
-	case <-done:
-	case <-time.After(2 * time.Second):
-		t.Fatal("SafeGo did not recover from nil map write panic")
-	}
-}
-
-func TestSafeGo_IndexOutOfRange(t *testing.T) {
-	done := make(chan struct{})
-	SafeGo(func() {
-		defer close(done)
-		s := []int{1, 2, 3}
-		_ = s[10]
-	})
-
-	select {
-	case <-done:
-	case <-time.After(2 * time.Second):
-		t.Fatal("SafeGo did not recover from index out of range panic")
-	}
-}
-
-func TestSafeGo_NilPointerDeref(t *testing.T) {
-	done := make(chan struct{})
-	SafeGo(func() {
-		defer close(done)
-		var p *int
-		_ = *p
-	})
-
-	select {
-	case <-done:
-	case <-time.After(2 * time.Second):
-		t.Fatal("SafeGo did not recover from nil pointer dereference")
-	}
-}
-
-func TestSafeGo_TypeAssertionPanic(t *testing.T) {
-	done := make(chan struct{})
-	SafeGo(func() {
-		defer close(done)
-		var i interface{} = "string"
-		_ = i.(int)
-	})
-
-	select {
-	case <-done:
-	case <-time.After(2 * time.Second):
-		t.Fatal("SafeGo did not recover from type assertion panic")
+	if code.Load() != 1 {
+		t.Fatalf("exit code = %d, want 1", code.Load())
 	}
 }

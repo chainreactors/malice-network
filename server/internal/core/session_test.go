@@ -370,6 +370,9 @@ func init() {
 	// safe_test.go tests replace it per-test; we just need a default.
 	if EventBroker == nil {
 		EventBroker = newTestBroker()
-		SafeGo(EventBroker.Start)
+		GoGuarded("test-event-broker", func() error {
+			EventBroker.Start()
+			return nil
+		}, LogGuardedError("test-event-broker"))
 	}
 }

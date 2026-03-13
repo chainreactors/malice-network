@@ -229,15 +229,16 @@ func (rpc *Server) Polling(ctx context.Context, req *clientpb.Polling) (*clientp
 	if err != nil {
 		return nil, types.ErrNotFoundSession
 	}
-	core.SafeGo(func() {
+	label := fmt.Sprintf("polling:%s:%s", sess.ID, req.Id)
+	core.GoGuarded(label, func() error {
 		logs.Log.Debugf("polling:%s %s, interval %d", req.Id, sess.ID, req.Interval)
-		sess.Any[req.Id] = true
+		sess.SetAny(req.Id, true)
 		defer func() {
-			delete(sess.Any, req.Id)
+			sess.DeleteAny(req.Id)
 			logs.Log.Debugf("polling:%s %s done", req.Id, sess.ID)
 		}()
 		for {
-			if _, ok := sess.SessionContext.GetAny(req.Id); !ok {
+			if _, ok := sess.GetAny(req.Id); !ok {
 				break
 			}
 			if !req.Force {
@@ -257,18 +258,31 @@ func (rpc *Server) Polling(ctx context.Context, req *clientpb.Polling) (*clientp
 			}
 			streamVal, ok := pipelinesCh.Load(sess.PipelineID)
 			if !ok || streamVal == nil {
-				return
+				return fmt.Errorf("polling pipeline %s unavailable for session %s", sess.PipelineID, sess.ID)
 			}
 			err = sess.Request(
 				&clientpb.SpiteRequest{Session: sess.ToProtobufLite(), Task: nil, Spite: types.BuildPingSpite()},
 				streamVal.(grpc.ServerStream))
 			if err != nil {
-				return
+				return fmt.Errorf("polling request failed for session %s: %w", sess.ID, err)
 			}
 			time.Sleep(time.Duration(req.Interval))
 		}
-	})
-	return &clientpb.Empty{}, err
+		return nil
+	}, core.CombineErrorHandlers(
+		core.LogGuardedError(label),
+		func(err error) {
+			core.EventBroker.Publish(core.Event{
+				EventType: consts.EventSession,
+				Op:        consts.CtrlSessionError,
+				Session:   sess.ToProtobufLite(),
+				Message:   fmt.Sprintf("polling %s failed", req.Id),
+				Err:       core.ErrorText(err),
+				Important: true,
+			})
+		},
+	))
+	return &clientpb.Empty{}, nil
 }
 
 // triggerKeyExchange 自动触发密钥交换流程

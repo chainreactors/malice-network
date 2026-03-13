@@ -2,17 +2,26 @@ package listener
 
 import (
 	"context"
+	"fmt"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/listenerrpc"
 	"github.com/chainreactors/IoM-go/types"
 	"net"
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/server/internal/core"
+	"google.golang.org/grpc"
 )
 
-func NewBindPipeline(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline) (*BindPipeline, error) {
+type bindRPCClient interface {
+	SpiteStream(ctx context.Context, opts ...grpc.CallOption) (listenerrpc.ListenerRPC_SpiteStreamClient, error)
+	Register(ctx context.Context, in *clientpb.RegisterSession, opts ...grpc.CallOption) (*clientpb.Empty, error)
+	Checkin(ctx context.Context, in *implantpb.Ping, opts ...grpc.CallOption) (*clientpb.Empty, error)
+}
+
+func NewBindPipeline(rpc bindRPCClient, pipeline *clientpb.Pipeline) (*BindPipeline, error) {
 	pp := &BindPipeline{
 		rpc:            rpc,
 		Name:           pipeline.Name,
@@ -24,7 +33,7 @@ func NewBindPipeline(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipel
 }
 
 type BindPipeline struct {
-	rpc      listenerrpc.ListenerRPCClient
+	rpc      bindRPCClient
 	Name     string
 	Enable   bool
 	CertName string
@@ -59,14 +68,14 @@ func (pipeline *BindPipeline) Start() error {
 		return nil
 	}
 	forward, err := core.NewForward(pipeline.rpc, pipeline)
-	forward.ListenerId = pipeline.ListenerID
 	if err != nil {
 		return err
 	}
+	forward.ListenerId = pipeline.ListenerID
 	core.Forwarders.Add(forward)
 
 	logs.Log.Infof("[pipeline] starting TCP Bind pipeline")
-	core.SafeGo(func() { pipeline.handler() })
+	core.GoGuarded("bind-handler:"+pipeline.Name, pipeline.handler, pipeline.runtimeErrorHandler("handler loop"))
 
 	return nil
 }
@@ -76,19 +85,19 @@ func (pipeline *BindPipeline) Close() error {
 }
 
 func (pipeline *BindPipeline) handler() error {
-	defer logs.Log.Errorf("bind pipeline exit!!!")
+	defer logs.Log.Debugf("bind pipeline %s exit", pipeline.Name)
 	for {
 		forward := core.Forwarders.Get(pipeline.ID())
+		if forward == nil {
+			return fmt.Errorf("bind pipeline %s forwarder missing", pipeline.Name)
+		}
 		msg, err := forward.Stream.Recv()
 		if err != nil {
-			return err
+			return fmt.Errorf("bind pipeline %s recv failed: %w", pipeline.Name, err)
 		}
-		core.SafeGo(func() {
-			err = pipeline.handlerReq(msg)
-			if err != nil {
-				logs.Log.Errorf("[pipeline] %s", err.Error())
-			}
-		})
+		core.GoGuarded("bind-request:"+pipeline.Name, func() error {
+			return pipeline.handlerReq(msg)
+		}, core.LogGuardedError("bind-request:"+pipeline.Name))
 	}
 }
 
@@ -134,4 +143,24 @@ func (pipeline *BindPipeline) handlerReq(req *clientpb.SpiteRequest) error {
 		return err
 	}
 	return nil
+}
+
+func (pipeline *BindPipeline) runtimeErrorHandler(scope string) core.GoErrorHandler {
+	label := fmt.Sprintf("bind pipeline %s %s", pipeline.Name, scope)
+	return core.CombineErrorHandlers(
+		core.LogGuardedError(label),
+		func(err error) {
+			pipeline.Enable = false
+			if core.EventBroker != nil {
+				core.EventBroker.Publish(core.Event{
+					EventType: consts.EventListener,
+					Op:        consts.CtrlPipelineStop,
+					Listener:  &clientpb.Listener{Id: pipeline.ListenerID},
+					Message:   label,
+					Err:       core.ErrorText(err),
+					Important: true,
+				})
+			}
+		},
+	)
 }

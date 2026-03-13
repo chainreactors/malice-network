@@ -15,7 +15,7 @@ import (
 )
 
 type streamingPtySession struct {
-	inCh      chan *implantpb.Spite
+	inCh      *core.SpiteStreamWriter
 	task      *core.Task
 	sessionID string
 }
@@ -64,7 +64,7 @@ func (rpc *Server) handlePtyStart(ctx context.Context, greq *GenericRequest, req
 		sessionID: req.SessionId,
 	})
 
-	core.SafeGoWithTask(greq.Task, func() {
+	runTaskHandler(greq.Task, func() error {
 		for {
 			resp := <-out
 			if resp == nil {
@@ -75,7 +75,7 @@ func (rpc *Server) handlePtyStart(ctx context.Context, greq *GenericRequest, req
 
 			err := greq.HandlerSpite(resp)
 			if err != nil {
-				return
+				return err
 			}
 			greq.Task.Finish(resp, "")
 
@@ -92,7 +92,8 @@ func (rpc *Server) handlePtyStart(ctx context.Context, greq *GenericRequest, req
 				break
 			}
 		}
-	}, func() {
+		return nil
+	}, in.Close, func() {
 		greq.Task.Close()
 		ptyStreamingSessions.Delete(key)
 		logs.Log.Debugf("[pty-streaming] cleaned up session %s", key)
@@ -115,7 +116,9 @@ func (rpc *Server) handlePtyStop(ctx context.Context, req *implantpb.PtyRequest)
 			Body:   &implantpb.Spite_PtyRequest{PtyRequest: req},
 			TaskId: sess.task.Id,
 		}
-		sess.inCh <- spite
+		if err := sess.inCh.Send(spite); err != nil {
+			return nil, err
+		}
 		ptyStreamingSessions.Delete(key)
 		return sess.task.ToProtobuf(), nil
 	}
@@ -146,7 +149,9 @@ func (rpc *Server) handlePtyCommand(ctx context.Context, req *implantpb.PtyReque
 			Body:   &implantpb.Spite_PtyRequest{PtyRequest: req},
 			TaskId: sess.task.Id,
 		}
-		sess.inCh <- spite
+		if err := sess.inCh.Send(spite); err != nil {
+			return nil, err
+		}
 		return sess.task.ToProtobuf(), nil
 	}
 

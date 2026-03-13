@@ -1,8 +1,11 @@
 package core
 
 import (
+	"errors"
 	"fmt"
 	"sync"
+	"sync/atomic"
+	"time"
 
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
@@ -16,6 +19,12 @@ import (
 const (
 	// Size is arbitrary, just want to avoid weird cases where we'd block on channel sends
 	eventBufSize = 25
+)
+
+var (
+	ErrEventBrokerUnavailable = errors.New("event broker unavailable")
+	ErrEventBrokerQueueFull   = errors.New("event broker queue full")
+	eventBrokerRestartBackoff = 200 * time.Millisecond
 )
 
 // format produces plain-text structured messages (no ANSI colors).
@@ -200,17 +209,30 @@ type eventBroker struct {
 
 	lock  *sync.Mutex
 	cache *RingCache
+
+	alive     atomic.Bool
+	managed   atomic.Bool
+	startOnce sync.Once
 }
 
-func (broker *eventBroker) Start() {
+func (broker *eventBroker) run() error {
+	broker.alive.Store(true)
 	subscribers := map[chan Event]struct{}{}
+	defer func() {
+		broker.alive.Store(false)
+		for sub := range subscribers {
+			func(ch chan Event) {
+				defer func() {
+					_ = recover()
+				}()
+				close(ch)
+			}(sub)
+		}
+	}()
 	for {
 		select {
 		case <-broker.stop:
-			for sub := range subscribers {
-				close(sub)
-			}
-			return
+			return nil
 		case sub := <-broker.subscribe:
 			subscribers[sub] = struct{}{}
 		case sub := <-broker.unsubscribe:
@@ -223,11 +245,43 @@ func (broker *eventBroker) Start() {
 			}
 			broker.lock.Lock()
 			for sub := range subscribers {
-				sub <- event
+				if err := broker.dispatch(sub, event); err != nil {
+					delete(subscribers, sub)
+					logs.Log.Warnf("drop broken event subscriber: %s", ErrorText(err))
+				}
 			}
 			broker.lock.Unlock()
 		}
 	}
+}
+
+func (broker *eventBroker) dispatch(sub chan Event, event Event) (err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			err = RecoverError("event-dispatch", recovered)
+		}
+	}()
+	sub <- event
+	return nil
+}
+
+func (broker *eventBroker) Start() {
+	broker.startOnce.Do(func() {
+		broker.managed.Store(true)
+		go func() {
+			for {
+				err := RunGuarded("event-broker", broker.run, LogGuardedError("event-broker"))
+				if err == nil {
+					return
+				}
+				select {
+				case <-broker.stop:
+					return
+				case <-time.After(eventBrokerRestartBackoff):
+				}
+			}
+		}()
+	})
 }
 
 // Stop - Close the broker channel
@@ -250,13 +304,27 @@ func (broker *eventBroker) Unsubscribe(events chan Event) {
 
 // Publish - Push a message to all subscribers
 func (broker *eventBroker) Publish(event Event) {
+	if err := broker.TryPublish(event); err != nil && event.EventType != consts.EventHeartbeat {
+		logs.Log.Errorf("event publish failed [%s.%s]: %s", event.EventType, event.Op, err)
+	}
+}
+
+func (broker *eventBroker) TryPublish(event Event) error {
 	if event.Important {
 		broker.cache.Add(&event)
 	}
-	broker.publish <- event
+	if broker.managed.Load() && !broker.alive.Load() {
+		return ErrEventBrokerUnavailable
+	}
+	select {
+	case broker.publish <- event:
+	default:
+		return ErrEventBrokerQueueFull
+	}
 	if event.IsNotify {
 		broker.Notify(event)
 	}
+	return nil
 }
 
 func (broker *eventBroker) GetAll() []*Event {
@@ -270,7 +338,10 @@ func (broker *eventBroker) GetAll() []*Event {
 
 // Notify - Notify all third-patry services
 func (broker *eventBroker) Notify(event Event) {
-	SafeGo(func() { broker.notifier.Send(event.EventType, event.Op, event.Message) })
+	GoGuarded("event-notify", func() error {
+		broker.notifier.Send(event.EventType, event.Op, event.Message)
+		return nil
+	}, LogGuardedError("event-notify"))
 }
 
 func NewBroker() *eventBroker {
@@ -284,7 +355,7 @@ func NewBroker() *eventBroker {
 		cache:       NewMessageCache(eventBufSize),
 		lock:        &sync.Mutex{},
 	}
-	SafeGo(broker.Start)
+	broker.Start()
 	ticker := GlobalTicker
 
 	publishHeartbeat := func(interval string) {

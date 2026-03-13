@@ -287,7 +287,8 @@ func ReDownloadSaasArtifact() error {
 		if artifact.Status == consts.BuildStatusCompleted || artifact.Status == consts.BuildStatusFailure {
 			continue
 		}
-		core.SafeGo(func() {
+		artifact := artifact
+		core.GoGuarded("saas-redownload:"+artifact.Name, func() error {
 			statusPath := "/api/build/status/" + artifact.Name
 			downloadPath := "/api/build/download/" + artifact.Name
 			result := client.CheckAndDownloadArtifact(statusPath, downloadPath, artifact, 30*time.Second, 30*time.Minute)
@@ -297,7 +298,8 @@ func ReDownloadSaasArtifact() error {
 			if result.Status == consts.BuildStatusCompleted || result.Status == consts.BuildStatusFailure {
 				db.UpdateBuilderStatus(artifact.ID, result.Status)
 			}
-		})
+			return nil
+		}, core.LogGuardedError("saas-redownload:"+artifact.Name))
 	}
 	return nil
 }

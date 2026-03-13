@@ -249,11 +249,12 @@ func (d *DockerBuilder) Execute() error {
 	logs.Log.Infof("Container %s started successfully.", resp.ID)
 
 	// 3. 异步捕获日志
-	core.SafeGo(func() {
+	core.GoGuarded("docker-catch-logs:"+d.config.BuildName, func() error {
 		if err := catchLogs(cli, resp.ID, d.config.BuildName); err != nil {
 			logs.Log.Errorf("Error catching logs: %v", err)
 		}
-	})
+		return nil
+	}, core.LogGuardedError("docker-catch-logs:"+d.config.BuildName))
 
 	// 4. 等待容器结束并检查退出状态
 	statusCh, errCh := cli.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)

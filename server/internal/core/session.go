@@ -39,6 +39,7 @@ var (
 
 	// ErrImplantSendTimeout - The implant did not respond prior to timeout deadline
 	ErrImplantSendTimeout = errors.New("implant timeout")
+	ErrSpiteStreamClosed  = errors.New("spite stream writer closed")
 
 	// DB function variables — swappable in tests for mocking
 	sessionDBSave        = func(s *models.Session) error { return db.SaveSessionModel(s) }
@@ -262,9 +263,86 @@ type Session struct {
 
 	keepaliveMu      sync.Mutex
 	keepaliveEnabled bool
+	anyMu            sync.RWMutex
 
 	Ctx    context.Context
 	Cancel context.CancelFunc
+}
+
+type SpiteStreamWriter struct {
+	messages  chan *implantpb.Spite
+	done      chan struct{}
+	closeOnce sync.Once
+	doneOnce  sync.Once
+	errMu     sync.RWMutex
+	err       error
+}
+
+func newSpiteStreamWriter(buffer int) *SpiteStreamWriter {
+	return &SpiteStreamWriter{
+		messages: make(chan *implantpb.Spite, buffer),
+		done:     make(chan struct{}),
+	}
+}
+
+func (w *SpiteStreamWriter) Send(spite *implantpb.Spite) error {
+	if spite == nil {
+		return errors.New("spite is nil")
+	}
+
+	select {
+	case <-w.done:
+		return w.Err()
+	default:
+	}
+
+	select {
+	case <-w.done:
+		return w.Err()
+	case w.messages <- spite:
+		return nil
+	}
+}
+
+func (w *SpiteStreamWriter) Close() {
+	if w == nil {
+		return
+	}
+	w.closeOnce.Do(func() {
+		close(w.messages)
+	})
+}
+
+func (w *SpiteStreamWriter) Err() error {
+	if w == nil {
+		return ErrSpiteStreamClosed
+	}
+	w.errMu.RLock()
+	if w.err != nil {
+		defer w.errMu.RUnlock()
+		return w.err
+	}
+	w.errMu.RUnlock()
+	select {
+	case <-w.done:
+		return ErrSpiteStreamClosed
+	default:
+		return nil
+	}
+}
+
+func (w *SpiteStreamWriter) finish(err error) {
+	if w == nil {
+		return
+	}
+	w.doneOnce.Do(func() {
+		if err != nil {
+			w.errMu.Lock()
+			w.err = err
+			w.errMu.Unlock()
+		}
+		close(w.done)
+	})
 }
 
 func (s *Session) Abstract() string {
@@ -579,7 +657,7 @@ func (s *Session) RequestAndWait(msg *clientpb.SpiteRequest, stream grpc.ServerS
 }
 
 // RequestWithStream - 'async' means that the response is not returned immediately, but is returned through the channel 'ch
-func (s *Session) RequestWithStream(msg *clientpb.SpiteRequest, stream grpc.ServerStream, timeout time.Duration) (chan *implantpb.Spite, chan *implantpb.Spite, error) {
+func (s *Session) RequestWithStream(msg *clientpb.SpiteRequest, stream grpc.ServerStream, timeout time.Duration) (*SpiteStreamWriter, chan *implantpb.Spite, error) {
 	respCh := make(chan *implantpb.Spite, 16)
 	s.StoreResp(msg.Task.TaskId, respCh)
 	err := s.Request(msg, stream)
@@ -587,25 +665,28 @@ func (s *Session) RequestWithStream(msg *clientpb.SpiteRequest, stream grpc.Serv
 		return nil, nil, err
 	}
 
-	in := make(chan *implantpb.Spite)
-	SafeGo(func() {
+	writer := newSpiteStreamWriter(1)
+	GoGuarded("session-request-stream:"+s.ID, func() error {
 		defer close(respCh)
+		defer writer.finish(nil)
 		var c = 0
-		for spite := range in {
-			err := stream.SendMsg(&clientpb.SpiteRequest{
+		for spite := range writer.messages {
+			sendErr := stream.SendMsg(&clientpb.SpiteRequest{
 				Session: msg.Session,
 				Task:    msg.Task,
 				Spite:   spite,
 			})
-			if err != nil {
-				logs.Log.Debugf("%s", err.Error())
-				return
+			if sendErr != nil {
+				err = fmt.Errorf("session %s stream send failed for task %d: %w", s.ID, msg.Task.TaskId, sendErr)
+				writer.finish(err)
+				return err
 			}
 			logs.Log.Debugf("send message %s, %d", spite.Name, c)
 			c++
 		}
-	})
-	return in, respCh, nil
+		return nil
+	}, LogGuardedError("session-request-stream:"+s.ID))
+	return writer, respCh, nil
 }
 
 func (s *Session) RequestWithAsync(msg *clientpb.SpiteRequest, stream grpc.ServerStream, timeout time.Duration) (chan *implantpb.Spite, error) {
@@ -621,6 +702,37 @@ func (s *Session) RequestWithAsync(msg *clientpb.SpiteRequest, stream grpc.Serve
 
 func (s *Session) StoreResp(taskId uint32, ch chan *implantpb.Spite) {
 	s.responses.Store(taskId, ch)
+}
+
+func (s *Session) SetAny(id string, value interface{}) {
+	s.anyMu.Lock()
+	defer s.anyMu.Unlock()
+	if s.SessionContext == nil {
+		s.SessionContext = &client.SessionContext{}
+	}
+	if s.SessionContext.Any == nil {
+		s.SessionContext.Any = make(map[string]interface{})
+	}
+	s.SessionContext.Any[id] = value
+}
+
+func (s *Session) GetAny(id string) (interface{}, bool) {
+	s.anyMu.RLock()
+	defer s.anyMu.RUnlock()
+	if s.SessionContext == nil || s.SessionContext.Any == nil {
+		return nil, false
+	}
+	value, ok := s.SessionContext.Any[id]
+	return value, ok
+}
+
+func (s *Session) DeleteAny(id string) {
+	s.anyMu.Lock()
+	defer s.anyMu.Unlock()
+	if s.SessionContext == nil || s.SessionContext.Any == nil {
+		return
+	}
+	delete(s.SessionContext.Any, id)
 }
 
 func (s *Session) GetResp(taskId uint32) (chan *implantpb.Spite, bool) {

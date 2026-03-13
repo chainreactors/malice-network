@@ -28,6 +28,10 @@ var (
 	// ListenerSessions 在 listener 层维护的 Sessions map (rawID -> Session)
 )
 
+var openListenerJobStream = func(client listenerrpc.ListenerRPCClient, ctx context.Context) (listenerrpc.ListenerRPC_JobStreamClient, error) {
+	return client.JobStream(ctx)
+}
+
 func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig, serverEnable bool) error {
 	options, err := mtls.GetGrpcOptions([]byte(clientConf.CACertificate), []byte(clientConf.Certificate), []byte(clientConf.PrivateKey), clientConf.Type)
 	if err != nil {
@@ -65,7 +69,7 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig, ser
 	if err != nil {
 		return err
 	}
-	core.SafeGo(lns.Handler)
+	core.GoGuarded("listener-job-stream:"+lns.ID(), lns.Handler, core.LogGuardedError("listener-job-stream:"+lns.ID()))
 	Listener = lns
 
 	for _, tcpPipeline := range cfg.TcpPipelines {
@@ -251,17 +255,16 @@ func (lns *listener) Context() context.Context {
 	)
 }
 
-func (lns *listener) Handler() {
-	stream, err := lns.Rpc.JobStream(lns.Context())
+func (lns *listener) Handler() error {
+	stream, err := openListenerJobStream(lns.Rpc, lns.Context())
 	if err != nil {
-		return
+		return fmt.Errorf("open listener job stream: %w", err)
 	}
 
 	for {
 		msg, err := stream.Recv()
 		if err != nil {
-			logs.Log.Errorf("%s", err.Error())
-			continue
+			return fmt.Errorf("listener %s job stream recv: %w", lns.ID(), err)
 		}
 
 		var handlerErr error
@@ -314,8 +317,7 @@ func (lns *listener) Handler() {
 			logs.Log.Importantf("[listener.%s] job ctrl %d %s %s success", lns.ID(), msg.Id, msg.Job.Name, msg.Ctrl)
 		}
 		if err := stream.Send(status); err != nil {
-			logs.Log.Errorf("%s", err.Error())
-			return
+			return fmt.Errorf("listener %s job stream send: %w", lns.ID(), err)
 		}
 	}
 }

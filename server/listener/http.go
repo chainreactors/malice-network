@@ -116,11 +116,14 @@ func (pipeline *HTTPPipeline) Start() error {
 	}
 	forward.ListenerId = pipeline.ListenerID
 	core.Forwarders.Add(forward)
-	core.SafeGo(func() {
+	core.GoGuarded("http-forward-recv:"+pipeline.Name, func() error {
 		for {
 			msg, err := forward.Stream.Recv()
 			if err != nil {
-				return
+				if !pipeline.Enable {
+					return nil
+				}
+				return fmt.Errorf("http pipeline %s forward recv: %w", pipeline.Name, err)
 			}
 			connect := core.Connections.Get(msg.Session.SessionId)
 			if connect == nil {
@@ -129,7 +132,7 @@ func (pipeline *HTTPPipeline) Start() error {
 			}
 			connect.C <- msg
 		}
-	}, func() { logs.Log.Errorf("forwarder stream exit!!!") })
+	}, pipeline.runtimeErrorHandler("forward recv loop"))
 
 	ln, err := net.Listen("tcp", fmt.Sprintf("%s:%d", pipeline.Host, pipeline.Port))
 	if err != nil {
@@ -148,11 +151,12 @@ func (pipeline *HTTPPipeline) Start() error {
 		// 非 TLS 模式，使用原有逻辑
 		pipeline.srv = ln
 		server := NewHTTPServer(mux)
-		core.SafeGo(func() {
-			if err := server.Serve(ln); err != nil && err != http.ErrServerClosed {
-				logs.Log.Errorf("HTTP server error: %v", err)
+		core.GoGuarded("http-serve:"+pipeline.Name, func() error {
+			if err := serveHTTP(server, ln); err != nil && err != http.ErrServerClosed {
+				return fmt.Errorf("http pipeline %s serve: %w", pipeline.Name, err)
 			}
-		})
+			return nil
+		}, pipeline.runtimeErrorHandler("serve loop"))
 	}
 
 	logs.Log.Infof("[pipeline] starting HTTP pipeline on %s:%d, parser: %s, tls: %t",
@@ -169,7 +173,7 @@ func (pipeline *HTTPPipeline) startWithCmux(ln net.Listener, mux *http.ServeMux)
 		return err
 	}
 
-	_, err = StartCmuxHTTPListener(ln, tlsConfig, mux)
+	_, err = StartCmuxHTTPListener(ln, tlsConfig, mux, pipeline.runtimeErrorHandler("cmux"))
 	if err != nil {
 		return err
 	}
@@ -226,40 +230,45 @@ func (pipeline *HTTPPipeline) handleMalefic(w http.ResponseWriter, r *http.Reque
 	err = connect.HandlerSimplex(ctx, conn)
 	if err != nil {
 		if !errors.Is(err, io.EOF) {
-			logs.Log.Debugf("handler error: %s", err.Error())
+			logs.Log.Warnf("http pipeline %s handler error from %s: %s", pipeline.Name, r.RemoteAddr, err.Error())
 		}
 		return
 	}
 }
 
 func (pipeline *HTTPPipeline) handler(w http.ResponseWriter, r *http.Request) {
-	// 设置自定义响应头
-	for key, values := range pipeline.Headers {
-		for _, value := range values {
-			w.Header().Add(key, value)
+	err := core.RunGuarded("http-request:"+pipeline.Name, func() error {
+		// 设置自定义响应头
+		for key, values := range pipeline.Headers {
+			for _, value := range values {
+				w.Header().Add(key, value)
+			}
 		}
-	}
-	rw := &httpReadWriter{
-		body:       r.Body,
-		writer:     w,
-		remoteAddr: parseRemoteAddr(r.RemoteAddr),
-		bodyPrefix: pipeline.BodyPrefix,
-		bodySuffix: pipeline.BodySuffix,
-	}
+		rw := &httpReadWriter{
+			body:       r.Body,
+			writer:     w,
+			remoteAddr: parseRemoteAddr(r.RemoteAddr),
+			bodyPrefix: pipeline.BodyPrefix,
+			bodySuffix: pipeline.BodySuffix,
+		}
 
-	conn, err := pipeline.WrapConn(rw)
+		conn, err := pipeline.WrapConn(rw)
+		if err != nil {
+			return fmt.Errorf("http pipeline %s wrap conn: %w", pipeline.Name, err)
+		}
+
+		logs.Log.Debugf("[pipeline.%s] accept from %s", pipeline.Name, r.RemoteAddr)
+		switch conn.Parser.Implant {
+		case consts.ImplantMalefic:
+			pipeline.handleMalefic(w, r, conn)
+		case consts.ImplantPulse:
+			pipeline.handlePulse(w, r, conn)
+		default:
+			return fmt.Errorf("http pipeline %s unsupported implant: %s", pipeline.Name, conn.Parser.Implant)
+		}
+		return nil
+	}, core.LogGuardedError("http-request:"+pipeline.Name))
 	if err != nil {
-		pipeline.writeError(w, http.StatusInternalServerError, "Internal server error")
-		return
-	}
-
-	logs.Log.Debugf("[pipeline.%s] accept from %s", pipeline.Name, r.RemoteAddr)
-	switch conn.Parser.Implant {
-	case consts.ImplantMalefic:
-		pipeline.handleMalefic(w, r, conn)
-	case consts.ImplantPulse:
-		pipeline.handlePulse(w, r, conn)
-	default:
 		pipeline.writeError(w, http.StatusInternalServerError, "Internal server error")
 	}
 }
@@ -330,4 +339,27 @@ func (pipeline *HTTPPipeline) writeError(w http.ResponseWriter, statusCode int, 
 	} else {
 		http.Error(w, defaultMessage, statusCode)
 	}
+}
+
+func (pipeline *HTTPPipeline) runtimeErrorHandler(scope string) core.GoErrorHandler {
+	label := fmt.Sprintf("http pipeline %s %s", pipeline.Name, scope)
+	return core.CombineErrorHandlers(
+		core.LogGuardedError(label),
+		func(err error) {
+			pipeline.Enable = false
+			if pipeline.srv != nil {
+				_ = pipeline.srv.Close()
+			}
+			if core.EventBroker != nil {
+				core.EventBroker.Publish(core.Event{
+					EventType: consts.EventListener,
+					Op:        consts.CtrlPipelineStop,
+					Listener:  &clientpb.Listener{Id: pipeline.ListenerID},
+					Message:   label,
+					Err:       core.ErrorText(err),
+					Important: true,
+				})
+			}
+		},
+	)
 }
