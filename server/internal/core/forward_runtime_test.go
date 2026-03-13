@@ -56,7 +56,9 @@ func TestForwardHandlerReturnsStreamSendError(t *testing.T) {
 		ListenerRpc: testForwardRPC{},
 		Stream:      testForwardStream{sendErr: want},
 		implantC:    make(chan *Message, 1),
+		done:        make(chan struct{}),
 	}
+	forward.alive.Store(true)
 
 	forward.implantC <- &Message{
 		SessionID:  "session-a",
@@ -77,7 +79,9 @@ func TestForwardersRemoveDeletesOnCloseError(t *testing.T) {
 	forward := &Forward{
 		Pipeline: testPipeline{id: "pipe-remove", closeErr: want},
 		Stream:   testForwardStream{},
+		done:     make(chan struct{}),
 	}
+	forward.alive.Store(true)
 	store.Add(forward)
 
 	err := store.Remove(forward.ID())

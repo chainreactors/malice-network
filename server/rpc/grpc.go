@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"os"
 	"sync"
 
 	"github.com/chainreactors/IoM-go/consts"
@@ -112,7 +113,11 @@ func StartClientListener(address string) (*grpc.Server, net.Listener, error) {
 	}
 	core.GoGuarded("grpc-client-listener", func() error {
 		return normalizeClientListenerError(runClientListener(grpcServer, ln))
-	}, core.FatalGuardedError("grpc-client-listener"))
+	}, func(err error) {
+		core.LogGuardedError("grpc-client-listener")(err)
+		logs.Log.Errorf("grpc-client-listener fatal, exiting")
+		os.Exit(1)
+	})
 	return grpcServer, ln, nil
 }
 

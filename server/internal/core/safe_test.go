@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/chainreactors/IoM-go/consts"
 	inotify "github.com/chainreactors/malice-network/server/internal/notify"
 )
 
@@ -287,74 +286,6 @@ func TestGoGuarded_ChannelClosesOnSuccess(t *testing.T) {
 	}
 }
 
-func TestGoTask_ReturnErrorPublishesTaskEvent(t *testing.T) {
-	broker := newTestBroker()
-	oldBroker := EventBroker
-	EventBroker = broker
-	defer func() { EventBroker = oldBroker }()
-
-	task := &Task{
-		Id:        7,
-		SessionId: "session-a",
-		Type:      "exec",
-	}
-
-	errCh := GoTask(task, "task-return-error", func() error {
-		return errors.New("task failed")
-	})
-
-	err, ok := waitGuardedResult(t, errCh)
-	if !ok || err == nil {
-		t.Fatal("expected GoTask to return an error")
-	}
-
-	evt := waitEvent(t, broker.publish)
-	if evt.Op != consts.CtrlTaskError {
-		t.Fatalf("event op = %q, want %q", evt.Op, consts.CtrlTaskError)
-	}
-	if evt.Task == nil || evt.Task.TaskId != task.Id {
-		t.Fatalf("unexpected task event payload: %#v", evt.Task)
-	}
-	if evt.Err != "task failed" {
-		t.Fatalf("event err = %q, want %q", evt.Err, "task failed")
-	}
-}
-
-func TestGoTask_PanicPublishesTaskEvent(t *testing.T) {
-	broker := newTestBroker()
-	oldBroker := EventBroker
-	EventBroker = broker
-	defer func() { EventBroker = oldBroker }()
-
-	task := &Task{
-		Id:        8,
-		SessionId: "session-b",
-		Type:      "module",
-	}
-
-	errCh := GoTask(task, "task-panic", func() error {
-		panic("task panic")
-	})
-
-	err, ok := waitGuardedResult(t, errCh)
-	if !ok || err == nil {
-		t.Fatal("expected GoTask to return a panic error")
-	}
-
-	var panicErr *PanicError
-	if !errors.As(err, &panicErr) {
-		t.Fatalf("expected PanicError, got %T", err)
-	}
-
-	evt := waitEvent(t, broker.publish)
-	if evt.Op != consts.CtrlTaskError {
-		t.Fatalf("event op = %q, want %q", evt.Op, consts.CtrlTaskError)
-	}
-	if evt.Err != "panic: task panic" {
-		t.Fatalf("event err = %q, want %q", evt.Err, "panic: task panic")
-	}
-}
-
 func TestGoGuarded_ConvertsPanicToError(t *testing.T) {
 	done := make(chan struct{})
 
@@ -420,18 +351,3 @@ func TestGoGuarded_ConcurrentErrorStorm(t *testing.T) {
 	}
 }
 
-func TestFatalGuardedErrorExitsOnError(t *testing.T) {
-	oldExit := guardedExit
-	defer func() { guardedExit = oldExit }()
-
-	var code atomic.Int32
-	guardedExit = func(exitCode int) {
-		code.Store(int32(exitCode))
-	}
-
-	FatalGuardedError("fatal-test")(errors.New("boom"))
-
-	if code.Load() != 1 {
-		t.Fatalf("exit code = %d, want 1", code.Load())
-	}
-}

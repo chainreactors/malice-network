@@ -87,7 +87,10 @@ func (rpc *Server) PipeUpload(ctx context.Context, pipe *implantpb.PipeRequest) 
 		}
 		var blockId = 0
 		runTaskHandler(greq.Task, func() error {
-			stat := <-out
+			stat, ok := recvSpite(greq.Task.Ctx, out)
+			if !ok {
+				return ErrTaskContextCancelled
+			}
 			err := types.HandleMaleficError(stat)
 			if err != nil {
 				return buildTaskError(err)
@@ -109,7 +112,10 @@ func (rpc *Server) PipeUpload(ctx context.Context, pipe *implantpb.PipeRequest) 
 				if err := in.Send(spite); err != nil {
 					return err
 				}
-				resp := <-out
+				resp, ok := recvSpite(greq.Task.Ctx, out)
+				if !ok {
+					return ErrTaskContextCancelled
+				}
 				err = types.AssertSpite(resp, types.MsgAck)
 				if err != nil {
 					return buildTaskError(err)

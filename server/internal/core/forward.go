@@ -3,13 +3,15 @@ package core
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"sync"
+	"sync/atomic"
+	"time"
+	"unsafe"
+
 	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/listenerrpc"
 	types "github.com/chainreactors/IoM-go/types"
-	"strconv"
-	"sync"
-	"time"
-	"unsafe"
 
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/logs"
@@ -72,6 +74,7 @@ func (f *forwarders) Remove(id string) error {
 		return nil
 	}
 	f.forwarders.Delete(id)
+	fw.shutdown()
 	err := fw.Close()
 	if err != nil {
 		return err
@@ -95,7 +98,9 @@ func NewForward(rpc forwardClient, pipeline Pipeline) (*Forward, error) {
 		ListenerRpc: rpc,
 		Pipeline:    pipeline,
 		ctx:         context.Background(),
+		done:        make(chan struct{}),
 	}
+	forward.alive.Store(true)
 
 	forward.Stream, err = openForwardStream(rpc, metadata.NewOutgoingContext(context.Background(), metadata.Pairs(
 		"pipeline_id", pipeline.ID()),
@@ -104,7 +109,7 @@ func NewForward(rpc forwardClient, pipeline Pipeline) (*Forward, error) {
 		return nil, err
 	}
 
-	GoGuarded("forward:"+pipeline.ID(), forward.Handler, forward.handleRuntimeError())
+	GoGuarded("forward:"+pipeline.ID(), forward.Handler, forward.handleRuntimeError(), forward.shutdown)
 
 	return forward, nil
 }
@@ -119,11 +124,30 @@ type Forward struct {
 	implantC   chan *Message // data from implant
 
 	ListenerRpc forwardRPCClient
+
+	alive     atomic.Bool
+	done      chan struct{}
+	closeOnce sync.Once
 }
 
 func (f *Forward) Add(msg *Message) {
-	f.implantC <- msg
-	f.count++
+	if !f.alive.Load() {
+		logs.Log.Warnf("forward %s is not alive, dropping message from %s", f.ID(), msg.SessionID)
+		return
+	}
+	select {
+	case f.implantC <- msg:
+		f.count++
+	case <-f.done:
+		logs.Log.Warnf("forward %s closed, dropping message from %s", f.ID(), msg.SessionID)
+	}
+}
+
+func (f *Forward) shutdown() {
+	f.alive.Store(false)
+	f.closeOnce.Do(func() {
+		close(f.done)
+	})
 }
 
 func (f *Forward) Count() int {

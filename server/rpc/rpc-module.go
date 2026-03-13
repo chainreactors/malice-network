@@ -114,7 +114,11 @@ func (rpc *Server) ExecuteModule(ctx context.Context, req *implantpb.ExecuteModu
 		}
 
 		runTaskHandler(greq.Task, func() error {
-			for resp := range out {
+			for {
+				resp, ok := recvSpite(greq.Task.Ctx, out)
+				if !ok {
+					return ErrTaskContextCancelled
+				}
 				if resp == nil {
 					return nil
 				}
@@ -126,7 +130,6 @@ func (rpc *Server) ExecuteModule(ctx context.Context, req *implantpb.ExecuteModu
 					return err
 				}
 			}
-			return nil
 		}, greq.Task.Close)
 
 		return greq.Task.ToProtobuf(), nil

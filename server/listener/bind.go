@@ -135,7 +135,9 @@ func (pipeline *BindPipeline) handlerReq(req *clientpb.SpiteRequest) error {
 		if err != nil {
 			return err
 		}
-		connect.C <- req
+		if err := core.Connections.Push(connect.SessionID, req); err != nil {
+			return fmt.Errorf("bind pipeline %s push: %w", pipeline.Name, err)
+		}
 	}
 
 	err = connect.Handler(ctx, peekConn)

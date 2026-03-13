@@ -107,12 +107,10 @@ func (pipeline *TCPPipeline) Start() error {
 				}
 				return fmt.Errorf("tcp pipeline %s forward recv: %w", pipeline.Name, err)
 			}
-			connect := core.Connections.Get(msg.Session.SessionId)
-			if connect == nil {
-				logs.Log.Errorf("connection %s not found", msg.Session.SessionId)
+			if err := core.Connections.Push(msg.Session.SessionId, msg); err != nil {
+				logs.Log.Warnf("tcp pipeline %s push to %s: %s", pipeline.Name, msg.Session.SessionId, err)
 				continue
 			}
-			connect.C <- msg
 		}
 	}, pipeline.runtimeErrorHandler("forward recv loop"))
 

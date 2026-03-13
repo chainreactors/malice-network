@@ -6,7 +6,6 @@ import (
 	"os"
 	"runtime/debug"
 
-	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/logs"
 )
 
@@ -39,8 +38,6 @@ func (e *PanicError) Unwrap() error {
 }
 
 type GoErrorHandler func(error)
-
-var guardedExit = os.Exit
 
 func RecoverError(label string, recovered any) error {
 	var cause error
@@ -85,17 +82,6 @@ func LogGuardedError(label string) GoErrorHandler {
 			return
 		}
 		logs.Log.Errorf("%s: %v", label, err)
-	}
-}
-
-func FatalGuardedError(label string) GoErrorHandler {
-	return func(err error) {
-		if err == nil {
-			return
-		}
-		LogGuardedError(label)(err)
-		logs.Log.Errorf("%s fatal runtime failure, exiting", label)
-		guardedExit(1)
 	}
 }
 
@@ -169,20 +155,3 @@ func GoGuarded(label string, fn func() error, onError GoErrorHandler, cleanups .
 	return errCh
 }
 
-func GoTask(task *Task, label string, fn func() error, cleanups ...func()) <-chan error {
-	handler := CombineErrorHandlers(
-		LogGuardedError(label),
-		func(err error) {
-			if task == nil || EventBroker == nil {
-				return
-			}
-			EventBroker.Publish(Event{
-				EventType: consts.EventTask,
-				Op:        consts.CtrlTaskError,
-				Task:      task.ToProtobuf(),
-				Err:       ErrorText(err),
-			})
-		},
-	)
-	return GoGuarded(label, fn, handler, cleanups...)
-}

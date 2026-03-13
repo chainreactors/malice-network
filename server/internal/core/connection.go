@@ -330,8 +330,12 @@ func (c *connections) Push(sid string, msg *clientpb.SpiteRequest) error {
 	if !connect.IsAlive() {
 		return fmt.Errorf("connection %s is not alive", sid)
 	}
-	connect.C <- msg
-	return nil
+	select {
+	case connect.C <- msg:
+		return nil
+	default:
+		return fmt.Errorf("connection %s channel full", sid)
+	}
 }
 
 //func (c *connections) GetFromRawID(rawID string) *Connection {

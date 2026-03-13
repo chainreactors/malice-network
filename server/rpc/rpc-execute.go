@@ -145,7 +145,10 @@ func (rpc *Server) Execute(ctx context.Context, req *implantpb.ExecRequest) (*cl
 
 		runTaskHandler(greq.Task, func() error {
 			for {
-				resp := <-out
+				resp, ok := recvSpite(greq.Task.Ctx, out)
+				if !ok {
+					return ErrTaskContextCancelled
+				}
 				exec := resp.GetExecResponse()
 				err := types.AssertSpite(resp, types.MsgExec)
 				if err != nil {

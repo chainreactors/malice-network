@@ -66,8 +66,8 @@ func (rpc *Server) handlePtyStart(ctx context.Context, greq *GenericRequest, req
 
 	runTaskHandler(greq.Task, func() error {
 		for {
-			resp := <-out
-			if resp == nil {
+			resp, ok := recvSpite(greq.Task.Ctx, out)
+			if !ok || resp == nil {
 				break
 			}
 

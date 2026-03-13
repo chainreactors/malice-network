@@ -261,7 +261,11 @@ func (broker *eventBroker) dispatch(sub chan Event, event Event) (err error) {
 			err = RecoverError("event-dispatch", recovered)
 		}
 	}()
-	sub <- event
+	select {
+	case sub <- event:
+	default:
+		// channel full, drop event; subscriber may catch up later
+	}
 	return nil
 }
 

@@ -139,15 +139,33 @@ func (r *GenericRequest) HandlerSpite(spite *implantpb.Spite) error {
 }
 
 func runTaskHandler(task *core.Task, fn func() error, cleanups ...func()) <-chan error {
-	if task == nil {
-		return core.GoGuarded("rpc-task", fn, core.LogGuardedError("rpc-task"), cleanups...)
+	label := "rpc-task"
+	if task != nil {
+		label = "rpc-task:" + task.Name()
 	}
-	return core.GoTask(task, "rpc-task:"+task.Name(), fn, cleanups...)
+	handler := core.LogGuardedError(label)
+	if task != nil {
+		handler = core.CombineErrorHandlers(handler, func(err error) {
+			if core.EventBroker == nil {
+				return
+			}
+			core.EventBroker.Publish(core.Event{
+				EventType: consts.EventTask,
+				Op:        consts.CtrlTaskError,
+				Task:      task.ToProtobuf(),
+				Err:       core.ErrorText(err),
+			})
+		})
+	}
+	return core.GoGuarded(label, fn, handler, cleanups...)
 }
 
 func (r *GenericRequest) HandlerResponse(ch chan *implantpb.Spite, typ types.MsgName, callbacks ...func(spite *implantpb.Spite)) {
 	runTaskHandler(r.Task, func() error {
-		resp := <-ch
+		resp, ok := recvSpite(r.Task.Ctx, ch)
+		if !ok {
+			return ErrTaskContextCancelled
+		}
 
 		err := types.AssertStatusAndSpite(resp, typ)
 		if err != nil {
@@ -186,6 +204,19 @@ func buildTaskError(err error) error {
 		return types.ErrMissingRequestField
 	default:
 		return err
+	}
+}
+
+var ErrTaskContextCancelled = fmt.Errorf("task context cancelled")
+
+// recvSpite receives a single Spite from ch, respecting ctx cancellation.
+// Returns (nil, false) if context is done or channel is closed.
+func recvSpite(ctx context.Context, ch <-chan *implantpb.Spite) (*implantpb.Spite, bool) {
+	select {
+	case resp, ok := <-ch:
+		return resp, ok
+	case <-ctx.Done():
+		return nil, false
 	}
 }
 
