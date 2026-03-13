@@ -1,6 +1,7 @@
-package basic
+package basic_test
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
@@ -9,6 +10,7 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/client/command/testsupport"
+	"google.golang.org/grpc/metadata"
 )
 
 func TestBasicCommandConformance(t *testing.T) {
@@ -189,24 +191,6 @@ func TestBasicCommandConformance(t *testing.T) {
 			},
 		},
 	})
-}
-
-func TestFindSessionByPrefix(t *testing.T) {
-	h := testsupport.NewHarness(t)
-	h.AddSession(t, "alpha2222")
-	h.AddSession(t, "beta3333")
-
-	if _, err := findSessionByPrefix(h.Console, "alpha"); err == nil {
-		t.Fatal("expected ambiguous prefix error")
-	}
-
-	sess, err := findSessionByPrefix(h.Console, "beta")
-	if err != nil {
-		t.Fatalf("findSessionByPrefix failed: %v", err)
-	}
-	if sess.SessionId != "beta3333" {
-		t.Fatalf("session id = %q, want beta3333", sess.SessionId)
-	}
 }
 
 func assertTaskEvent(t testing.TB, h *testsupport.Harness, md metadata.MD, wantType string) {

@@ -130,6 +130,10 @@ func (r *RecorderRPC) Polling(ctx context.Context, in *clientpb.Polling, opts ..
 	return r.emptyResponse(ctx, "Polling", in)
 }
 
+func (r *RecorderRPC) Switch(ctx context.Context, in *implantpb.Switch, opts ...grpc.CallOption) (*clientpb.Task, error) {
+	return r.taskResponse(ctx, "Switch", in)
+}
+
 func (r *RecorderRPC) GetSession(ctx context.Context, in *clientpb.SessionRequest, opts ...grpc.CallOption) (*clientpb.Session, error) {
 	r.recordPrimary(ctx, "GetSession", in)
 	if responder, ok := r.sessionResponders["GetSession"]; ok {
@@ -345,22 +349,23 @@ func first(values []string) string {
 }
 
 var methodTaskTypes = map[string]string{
-	"Sleep":         consts.ModuleSleep,
-	"Keepalive":     consts.ModuleKeepalive,
-	"Suicide":       consts.ModuleSuicide,
-	"Ping":          consts.ModulePing,
-	"ServiceList":   consts.ModuleServiceList,
-	"ServiceCreate": consts.ModuleServiceCreate,
-	"ServiceStart":  consts.ModuleServiceStart,
-	"ServiceStop":   consts.ModuleServiceStop,
-	"ServiceQuery":  consts.ModuleServiceQuery,
-	"ServiceDelete": consts.ModuleServiceDelete,
-	"RegQuery":      consts.ModuleRegQuery,
-	"RegAdd":        consts.ModuleRegAdd,
-	"RegDelete":     consts.ModuleRegDelete,
-	"RegListKey":    consts.ModuleRegListKey,
-	"RegListValue":  consts.ModuleRegListValue,
-	"TaskSchdList":  consts.ModuleTaskSchdList,
+	"Sleep":          consts.ModuleSleep,
+	"Keepalive":      consts.ModuleKeepalive,
+	"Suicide":        consts.ModuleSuicide,
+	"Ping":           consts.ModulePing,
+	"Switch":         consts.ModuleSwitch,
+	"ServiceList":    consts.ModuleServiceList,
+	"ServiceCreate":  consts.ModuleServiceCreate,
+	"ServiceStart":   consts.ModuleServiceStart,
+	"ServiceStop":    consts.ModuleServiceStop,
+	"ServiceQuery":   consts.ModuleServiceQuery,
+	"ServiceDelete":  consts.ModuleServiceDelete,
+	"RegQuery":       consts.ModuleRegQuery,
+	"RegAdd":         consts.ModuleRegAdd,
+	"RegDelete":      consts.ModuleRegDelete,
+	"RegListKey":     consts.ModuleRegListKey,
+	"RegListValue":   consts.ModuleRegListValue,
+	"TaskSchdList":   consts.ModuleTaskSchdList,
 	"TaskSchdCreate": consts.ModuleTaskSchdCreate,
 	"TaskSchdStart":  consts.ModuleTaskSchdStart,
 	"TaskSchdStop":   consts.ModuleTaskSchdStop,

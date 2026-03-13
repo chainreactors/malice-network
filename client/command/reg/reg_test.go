@@ -1,4 +1,4 @@
-package reg
+package reg_test
 
 import (
 	"testing"

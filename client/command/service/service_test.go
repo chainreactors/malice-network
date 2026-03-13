@@ -1,4 +1,4 @@
-package service
+package service_test
 
 import (
 	"strings"
@@ -7,6 +7,7 @@ import (
 	"github.com/chainreactors/IoM-go/consts"
 	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/client/command/testsupport"
+	"google.golang.org/grpc/metadata"
 )
 
 func TestServiceCommandConformance(t *testing.T) {
