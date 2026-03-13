@@ -132,19 +132,104 @@ func RegisterTappingFunc(con *core.Console) {
 	)
 }
 
-const (
-	maxContentRunes = 120
-	maxArgsRunes    = 80
-)
+const indent = "  "
 
-// truncateText collapses whitespace and truncates to maxRunes.
-func truncateText(s string, maxRunes int) string {
-	s = strings.Join(strings.Fields(s), " ")
-	runes := []rune(s)
-	if len(runes) > maxRunes {
-		return string(runes[:maxRunes]) + "..."
+// indentBlock prepends each line of a multi-line string with the given prefix.
+func indentBlock(s, prefix string) string {
+	s = strings.TrimRight(s, "\n")
+	lines := strings.Split(s, "\n")
+	for i, l := range lines {
+		lines[i] = prefix + l
 	}
-	return s
+	return strings.Join(lines, "\n")
+}
+
+// toolResultMeta holds parsed metadata from a structured tool result.
+type toolResultMeta struct {
+	ExitCode string // e.g. "0", "1"
+	WallTime string // e.g. "2.7 seconds"
+	Output   string // actual output content
+}
+
+// parseToolResult tries to extract "Exit code: N", "Wall time: X", "Output: ..."
+// from structured tool result content (e.g. Claude Code Bash tool output).
+// Returns nil if the content doesn't match the pattern.
+func parseToolResult(content string) *toolResultMeta {
+	if !strings.HasPrefix(content, "Exit code:") {
+		return nil
+	}
+	meta := &toolResultMeta{}
+	remaining := content
+
+	// Extract "Exit code: N"
+	if idx := strings.Index(remaining, "Exit code:"); idx >= 0 {
+		after := remaining[idx+len("Exit code:"):]
+		if nl := strings.Index(after, "\n"); nl >= 0 {
+			meta.ExitCode = strings.TrimSpace(after[:nl])
+			remaining = after[nl+1:]
+		} else {
+			meta.ExitCode = strings.TrimSpace(after)
+			remaining = ""
+		}
+	}
+
+	// Extract "Wall time: X"
+	if idx := strings.Index(remaining, "Wall time:"); idx >= 0 {
+		after := remaining[idx+len("Wall time:"):]
+		if nl := strings.Index(after, "\n"); nl >= 0 {
+			meta.WallTime = strings.TrimSpace(after[:nl])
+			remaining = after[nl+1:]
+		} else {
+			meta.WallTime = strings.TrimSpace(after)
+			remaining = ""
+		}
+	}
+
+	// Extract "Output:" — everything after is the actual output
+	if idx := strings.Index(remaining, "Output:"); idx >= 0 {
+		after := remaining[idx+len("Output:"):]
+		meta.Output = strings.TrimSpace(after)
+		// If "Output:" was immediately followed by content on the same line
+		if meta.Output == "" && len(after) > 0 {
+			meta.Output = strings.TrimLeft(after, " ")
+		}
+	} else {
+		// No "Output:" label, remaining is the output
+		meta.Output = strings.TrimSpace(remaining)
+	}
+
+	return meta
+}
+
+// formatToolResult renders a tool result with metadata on the ↩ line
+// and actual output indented below.
+func formatToolResult(content string, s *strings.Builder) {
+	meta := parseToolResult(content)
+	if meta == nil {
+		// Not structured, render as-is
+		s.WriteString(fmt.Sprintf("%s↩\n", indent))
+		s.WriteString(indentBlock(content, indent+"  ") + "\n")
+		return
+	}
+
+	// Build compact metadata line: ↩ [exit:0 2.7s]
+	var metaParts []string
+	if meta.ExitCode != "" {
+		metaParts = append(metaParts, "exit:"+meta.ExitCode)
+	}
+	if meta.WallTime != "" {
+		metaParts = append(metaParts, meta.WallTime)
+	}
+	if len(metaParts) > 0 {
+		s.WriteString(fmt.Sprintf("%s↩ [%s]\n", indent, strings.Join(metaParts, " ")))
+	} else {
+		s.WriteString(fmt.Sprintf("%s↩\n", indent))
+	}
+
+	// Output body
+	if meta.Output != "" {
+		s.WriteString(indentBlock(meta.Output, indent+"  ") + "\n")
+	}
 }
 
 // eventSummary builds a compact type summary for the header line.
@@ -202,7 +287,7 @@ func formatLLMEvent(ev *implantpb.LLMEvent) string {
 		if msg.Role == "system" {
 			continue
 		}
-		content := truncateText(msg.Content, maxContentRunes)
+		content := strings.TrimSpace(msg.Content)
 		if content == "" {
 			continue
 		}
@@ -211,15 +296,16 @@ func formatLLMEvent(ev *implantpb.LLMEvent) string {
 			continue
 		}
 		if msg.Role == "assistant" && ev.Type == "response" {
-			s.WriteString(fmt.Sprintf("  %s\n", content))
+			s.WriteString(indentBlock(content, indent) + "\n")
 		} else {
-			s.WriteString(fmt.Sprintf("  %s: %s\n", msg.Role, content))
+			s.WriteString(fmt.Sprintf("%s%s:\n", indent, msg.Role))
+			s.WriteString(indentBlock(content, indent+"  ") + "\n")
 		}
 	}
 
 	for _, tc := range ev.ToolCalls {
-		args := truncateText(tc.Arguments, maxArgsRunes)
-		s.WriteString(fmt.Sprintf("  ⚡ %s(%s)\n", tc.Name, args))
+		args := strings.TrimSpace(tc.Arguments)
+		s.WriteString(fmt.Sprintf("%s⚡ %s(%s)\n", indent, tc.Name, args))
 	}
 
 	for _, tr := range ev.ToolResults {
@@ -227,11 +313,11 @@ func formatLLMEvent(ev *implantpb.LLMEvent) string {
 			continue
 		}
 		toolResultShown[tr.CallId] = true
-		content := truncateText(tr.Content, maxContentRunes)
+		content := strings.TrimSpace(tr.Content)
 		if content == "" {
 			continue
 		}
-		s.WriteString(fmt.Sprintf("  ↩ %s\n", content))
+		formatToolResult(content, &s)
 	}
 
 	return strings.TrimRight(s.String(), "\n")

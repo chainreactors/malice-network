@@ -92,10 +92,42 @@ func (rpc *Server) Clear(ctx context.Context, req *implantpb.Request) (*clientpb
 }
 
 // ExecuteModule passthrough for fully dynamic module execution.
+// For streaming modules (e.g. tapping/llm.observe), it uses a continuous
+// loop that keeps the task alive instead of finishing after one response.
 func (rpc *Server) ExecuteModule(ctx context.Context, req *implantpb.ExecuteModuleRequest) (*clientpb.Task, error) {
 	if req == nil || req.Spite == nil {
 		return nil, errors.New("spite required")
 	}
 
-	return Handler(ctx, rpc, req.Spite, types.MsgName(req.Expect))
+	expect := types.MsgName(req.Expect)
+
+	// Streaming module: keep reading from the channel until context is cancelled.
+	if req.Spite.Name == "tapping" || req.Spite.Name == "poison" {
+		greq, err := newGenericRequest(ctx, req.Spite)
+		if err != nil {
+			return nil, err
+		}
+		greq.Count = -1 // streaming mode, no auto-finish
+		out, err := rpc.GenericHandler(ctx, greq)
+		if err != nil {
+			return nil, err
+		}
+
+		core.SafeGoWithTask(greq.Task, func() {
+			for resp := range out {
+				if resp == nil {
+					return
+				}
+				err := types.AssertSpite(resp, expect)
+				if err != nil {
+					continue
+				}
+				_ = greq.HandlerSpite(resp)
+			}
+		}, greq.Task.Close)
+
+		return greq.Task.ToProtobuf(), nil
+	}
+
+	return Handler(ctx, rpc, req.Spite, expect)
 }

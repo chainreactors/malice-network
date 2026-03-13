@@ -15,6 +15,7 @@ import (
 
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/addon"
+	"github.com/chainreactors/malice-network/client/command/agent"
 	"github.com/chainreactors/malice-network/client/command/alias"
 	"github.com/chainreactors/malice-network/client/command/basic"
 	"github.com/chainreactors/malice-network/client/command/common"
@@ -196,7 +197,8 @@ func BindBuiltinCommands(con *core.Console, root *cobra.Command) *cobra.Command 
 	)
 
 	bind(consts.ExecuteGroup,
-		exec.Commands)
+		exec.Commands,
+		agent.Commands)
 
 	bind(consts.SysGroup,
 		sys.Commands,
@@ -317,6 +319,7 @@ func BindImplantCommands(con *core.Console) console.Commands {
 
 func RegisterImplantFunc(con *core.Console) {
 	tasks.Register(con)
+	agent.Register(con)
 	basic.Register(con)
 	sys.Register(con)
 	file.Register(con)
