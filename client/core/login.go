@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/chainreactors/IoM-go/consts"
@@ -214,7 +215,12 @@ func checkMCPHealth(host string, port int) bool {
 	}
 	defer resp.Body.Close()
 
-	return resp.StatusCode >= 200 && resp.StatusCode < 500
+	if resp.StatusCode != http.StatusOK {
+		return false
+	}
+
+	contentType := strings.ToLower(resp.Header.Get("Content-Type"))
+	return strings.Contains(contentType, "text/event-stream")
 }
 
 func NewConfigLogin(con *Console, yamlFile string) error {
