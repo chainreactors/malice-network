@@ -3,15 +3,16 @@ package assets
 import (
 	_ "embed"
 	"fmt"
-	"github.com/chainreactors/IoM-go/client"
-	"github.com/chainreactors/IoM-go/mtls"
-	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"os"
 	"os/user"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/chainreactors/IoM-go/client"
+	"github.com/chainreactors/IoM-go/mtls"
+	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 )
 
 //go:embed audit.html
@@ -175,6 +176,10 @@ func MvConfig(oldPath string) error {
 		}
 	}
 
-	// Use MoveFile which handles overwriting automatically via os.Create
-	return fileutils.MoveFile(oldPath, newPath)
+	err = fileutils.CopyFile(oldPath, newPath)
+	if err != nil {
+		logs.Log.Warnf("failed to copy config file %s: %s", newPath, err.Error())
+		return err
+	}
+	return nil
 }
