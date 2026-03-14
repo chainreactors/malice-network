@@ -42,6 +42,18 @@ go run ./client    # start client
 - **Encoding**: UTF-8 without BOM for all files
 - **Code & comments**: English only (variable names, function names, comments, commit messages)
 
+## Commit Convention
+
+Format: `type(scope): description`
+
+**Types:** `feat` | `fix` | `refactor` | `test` | `docs` | `chore` | `perf`
+
+**Rules:**
+- Lowercase type and description, English punctuation only (`:` not `：`, `,` not `、`)
+- Description must be meaningful — no bare words like `misc`, `update`, `fix`
+- Do not repeat the type in description (`fix(x): fix Y` → `fix(x): Y`)
+- Scope is optional but encouraged for large modules, e.g. `fix(pipeline): ...`
+
 ## Code Conventions
 
 ### File Organization

@@ -36,7 +36,7 @@ jobs:
         env:
           CGO_ENABLED: 0
 
-  integration:
+  core_race:
     needs: unit
     runs-on: ubuntu-22.04
     steps:
@@ -50,6 +50,30 @@ jobs:
         with:
           go-version: "1.24.13"
           cache: true
+
+      - name: Go mod tidy
+        run: go mod tidy
+
+      - name: Core race tests
+        run: go test -race ./server/internal/core -count=1 -timeout 300s
+
+  integration:
+    needs: [unit, core_race]
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.13"
+          cache: true
+
+      - name: Go mod tidy
+        run: go mod tidy
 
       - name: Client/Server integration tests
         run: go test -tags=integration ./server ./client/command/listener ./client/command/pipeline ./client/command/website ./client/command/sessions ./client/command/context -count=1 -timeout 300s
