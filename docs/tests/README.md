@@ -16,6 +16,9 @@ These documents are not API references. They capture:
 
 - `command-conformance-record.md`: implant command parsing and protobuf assembly coverage
 - `control-plane-regression-record.md`: client/server control-plane regressions and integration coverage
+- `module-management-regression-record.md`: addon, module load, and build-triggered module compilation regressions plus shared command harness extensions
+- `mock-implant-e2e.md`: server-facing mock implant transport, reusable scenario library, real task/request streaming `WaitTask*` E2E, and dead/reborn lifecycle edge coverage
+- `task-runtime-regression-record.md`: task wait semantics, streaming task finish state, recovery/runtime wiring, dead-sweep/task-cancel regressions, and task command regressions
 
 ## How To Use This Directory
 

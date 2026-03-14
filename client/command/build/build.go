@@ -12,6 +12,9 @@ import (
 )
 
 func CheckSource(con *core.Console, buildConfig *clientpb.BuildConfig) (string, error) {
+	if buildConfig == nil {
+		buildConfig = &clientpb.BuildConfig{}
+	}
 	source := buildConfig.Source
 	if source == consts.ArtifactFromPatch {
 		return source, nil

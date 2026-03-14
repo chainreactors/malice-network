@@ -8,11 +8,9 @@ import (
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	types "github.com/chainreactors/IoM-go/types"
-	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/build"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/helper/implanttypes"
 	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/spf13/cobra"
 	"os"
@@ -26,7 +24,27 @@ func LoadModuleCmd(cmd *cobra.Command, con *core.Console) error {
 	artifactName, _ := cmd.Flags().GetString("artifact")
 	modules, _ := cmd.Flags().GetString("modules")
 	thirdModules, _ := cmd.Flags().GetString("3rd")
+	if modules != "" && thirdModules != "" {
+		return errors.New("--modules and --3rd options are mutually exclusive. please specify only one of them")
+	}
+
+	selectedSources := 0
 	if artifactName != "" {
+		selectedSources++
+	}
+	if path != "" {
+		selectedSources++
+	}
+	if modules != "" || thirdModules != "" {
+		selectedSources++
+	}
+
+	switch {
+	case selectedSources == 0:
+		return errors.New("must specify one of --path, --artifact, --modules or --3rd")
+	case selectedSources > 1:
+		return errors.New("--path, --artifact, --modules and --3rd are mutually exclusive. please specify only one source")
+	case artifactName != "":
 		artifact, err := con.Rpc.DownloadArtifact(con.Context(), &clientpb.Artifact{
 			Name: artifactName,
 		})
@@ -44,19 +62,9 @@ func LoadModuleCmd(cmd *cobra.Command, con *core.Console) error {
 		}
 		con.GetInteractive().Console(task, string(*con.App.Shell().Line()))
 		return nil
-	} else if modules != "" || thirdModules != "" {
-		if modules != "" && thirdModules != "" {
-			return errors.New("--module and --3rd options are mutually exclusive. please specify only one of them")
-		} else {
-			go func() {
-				err := handleModuleBuild(cmd, con, strings.Split(modules, ","), strings.Split(thirdModules, ","))
-				if err != nil {
-					logs.Log.Errorf("Error loading modules: %s\n", err)
-				}
-			}()
-			return nil
-		}
-	} else if path != "" {
+	case modules != "" || thirdModules != "":
+		return handleModuleBuild(cmd, con, strings.Split(modules, ","), strings.Split(thirdModules, ","))
+	case path != "":
 		// Default bundle handling
 		if bundle == "" {
 			bundle = filepath.Base(path)
@@ -68,44 +76,47 @@ func LoadModuleCmd(cmd *cobra.Command, con *core.Console) error {
 		}
 		session.Console(task, string(*con.App.Shell().Line()))
 		return nil
-	} else {
-		return errors.New("must specify either --path, --modules or --3rd_modules. One of them is required")
 	}
+
+	return errors.New("unreachable module load input state")
 }
 
 // handleModuleBuild handles module build based on the builder resource (docker/action)
-func handleModuleBuild(cmd *cobra.Command, con *core.Console, modules, thirdModules []string) error {
-	source, err := build.CheckSource(con, nil)
+func handleModuleBuild(_ *cobra.Command, con *core.Console, modules, thirdModules []string) error {
+	sess := con.GetInteractive()
+	if sess == nil {
+		return errors.New("no active session")
+	}
+
+	source, err := build.CheckSource(con, &clientpb.BuildConfig{})
 	if err != nil {
 		return err
 	}
-	target, ok := consts.GetBuildTargetNameByArchOS(con.GetInteractive().Session.Os.Arch, con.Session.Os.Name)
+	target, ok := consts.GetBuildTargetNameByArchOS(sess.Os.Arch, sess.Os.Name)
 	if !ok {
 		return types.ErrInvalidateTarget
 	}
-	if len(modules) != 0 {
-		_ = &implanttypes.ProfileParams{
-			Modules: strings.Join(modules, ","),
-		}
-	} else if len(thirdModules) != 0 {
-		_ = &implanttypes.ProfileParams{
-			Enable3RD: true,
-			Modules:   strings.Join(modules, ","),
-		}
-	} else {
-		return errors.New("must specify either --modules or --3rd. One of them is required")
-	}
-	artifact, err := con.Rpc.SyncBuild(con.SyncBuildContext(), &clientpb.BuildConfig{
-		Target: target,
-		//ParamsBytes: []byte(params.String()),
-		BuildType: consts.CommandBuildModules,
-		Source:    source,
-	})
+
+	maleficConfig, err := build.BuildModuleMaleficConfig(modules, thirdModules)
 	if err != nil {
 		return err
 	}
 
-	sess := con.GetInteractive()
+	buildConfig := &clientpb.BuildConfig{
+		Target:        target,
+		BuildType:     consts.CommandBuildModules,
+		Source:        source,
+		MaleficConfig: maleficConfig,
+	}
+	if err := build.ValidateOutputType(buildConfig, false, false, false); err != nil {
+		return err
+	}
+
+	artifact, err := con.Rpc.SyncBuild(con.SyncBuildContext(), buildConfig)
+	if err != nil {
+		return err
+	}
+
 	task, err := con.Rpc.LoadModule(sess.Context(), &implantpb.LoadModule{
 		Bundle: artifact.Name,
 		Bin:    artifact.Bin,

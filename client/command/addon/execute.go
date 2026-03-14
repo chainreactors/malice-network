@@ -47,11 +47,11 @@ func ExecuteAddonCmd(cmd *cobra.Command, con *core.Console) {
 	}
 
 	task, err := ExecuteAddon(con.Rpc, session, addonName, execArgs, !quiet, timeout, arch, process, sac)
-	session.Console(task, string(*con.App.Shell().Line()))
 	if err != nil {
 		con.Log.Errorf("%s\n", err)
 		return
 	}
+	session.Console(task, string(*con.App.Shell().Line()))
 }
 func ExecuteAddon(rpc clientrpc.MaliceRPCClient, sess *client.Session, name string, args []string,
 	output bool, timeout uint32, arch string, process string,

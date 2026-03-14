@@ -33,6 +33,8 @@ type RecorderRPC struct {
 
 	taskResponders         map[string]func(context.Context, any) (*clientpb.Task, error)
 	emptyResponders        map[string]func(context.Context, any) (*clientpb.Empty, error)
+	artifactResponders     map[string]func(context.Context, any) (*clientpb.Artifact, error)
+	buildConfigResponders  map[string]func(context.Context, any) (*clientpb.BuildConfig, error)
 	taskContextResponders  map[string]func(context.Context, any) (*clientpb.TaskContext, error)
 	taskContextsResponders map[string]func(context.Context, any) (*clientpb.TaskContexts, error)
 	tasksResponders        map[string]func(context.Context, any) (*clientpb.Tasks, error)
@@ -52,6 +54,8 @@ func NewRecorderRPC() *RecorderRPC {
 	r := &RecorderRPC{
 		taskResponders:         map[string]func(context.Context, any) (*clientpb.Task, error){},
 		emptyResponders:        map[string]func(context.Context, any) (*clientpb.Empty, error){},
+		artifactResponders:     map[string]func(context.Context, any) (*clientpb.Artifact, error){},
+		buildConfigResponders:  map[string]func(context.Context, any) (*clientpb.BuildConfig, error){},
 		taskContextResponders:  map[string]func(context.Context, any) (*clientpb.TaskContext, error){},
 		taskContextsResponders: map[string]func(context.Context, any) (*clientpb.TaskContexts, error){},
 		tasksResponders:        map[string]func(context.Context, any) (*clientpb.Tasks, error){},
@@ -104,6 +108,14 @@ func (r *RecorderRPC) OnTask(method string, fn func(context.Context, any) (*clie
 
 func (r *RecorderRPC) OnEmpty(method string, fn func(context.Context, any) (*clientpb.Empty, error)) {
 	r.emptyResponders[method] = fn
+}
+
+func (r *RecorderRPC) OnArtifact(method string, fn func(context.Context, any) (*clientpb.Artifact, error)) {
+	r.artifactResponders[method] = fn
+}
+
+func (r *RecorderRPC) OnBuildConfig(method string, fn func(context.Context, any) (*clientpb.BuildConfig, error)) {
+	r.buildConfigResponders[method] = fn
 }
 
 func (r *RecorderRPC) OnTaskContext(method string, fn func(context.Context, any) (*clientpb.TaskContext, error)) {
@@ -176,6 +188,38 @@ func (r *RecorderRPC) Suicide(ctx context.Context, in *implantpb.Request, opts .
 
 func (r *RecorderRPC) Ping(ctx context.Context, in *implantpb.Ping, opts ...grpc.CallOption) (*clientpb.Task, error) {
 	return r.taskResponse(ctx, "Ping", in)
+}
+
+func (r *RecorderRPC) ListModule(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error) {
+	return r.taskResponse(ctx, "ListModule", in)
+}
+
+func (r *RecorderRPC) LoadModule(ctx context.Context, in *implantpb.LoadModule, opts ...grpc.CallOption) (*clientpb.Task, error) {
+	return r.taskResponse(ctx, "LoadModule", in)
+}
+
+func (r *RecorderRPC) RefreshModule(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error) {
+	return r.taskResponse(ctx, "RefreshModule", in)
+}
+
+func (r *RecorderRPC) ExecuteModule(ctx context.Context, in *implantpb.ExecuteModuleRequest, opts ...grpc.CallOption) (*clientpb.Task, error) {
+	return r.taskResponse(ctx, "ExecuteModule", in)
+}
+
+func (r *RecorderRPC) ListAddon(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error) {
+	return r.taskResponse(ctx, "ListAddon", in)
+}
+
+func (r *RecorderRPC) LoadAddon(ctx context.Context, in *implantpb.LoadAddon, opts ...grpc.CallOption) (*clientpb.Task, error) {
+	return r.taskResponse(ctx, "LoadAddon", in)
+}
+
+func (r *RecorderRPC) ExecuteAddon(ctx context.Context, in *implantpb.ExecuteAddon, opts ...grpc.CallOption) (*clientpb.Task, error) {
+	return r.taskResponse(ctx, "ExecuteAddon", in)
+}
+
+func (r *RecorderRPC) Clear(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error) {
+	return r.taskResponse(ctx, "Clear", in)
 }
 
 func (r *RecorderRPC) WaitTaskFinish(ctx context.Context, in *clientpb.Task, opts ...grpc.CallOption) (*clientpb.TaskContext, error) {
@@ -448,6 +492,33 @@ func (r *RecorderRPC) GenerateSelfCert(ctx context.Context, in *clientpb.Pipelin
 	return r.emptyResponse(ctx, "GenerateSelfCert", in)
 }
 
+func (r *RecorderRPC) Build(ctx context.Context, in *clientpb.BuildConfig, opts ...grpc.CallOption) (*clientpb.Artifact, error) {
+	return r.artifactResponse(ctx, "Build", in)
+}
+
+func (r *RecorderRPC) SyncBuild(ctx context.Context, in *clientpb.BuildConfig, opts ...grpc.CallOption) (*clientpb.Artifact, error) {
+	return r.artifactResponse(ctx, "SyncBuild", in)
+}
+
+func (r *RecorderRPC) CheckSource(ctx context.Context, in *clientpb.BuildConfig, opts ...grpc.CallOption) (*clientpb.BuildConfig, error) {
+	r.recordPrimary(ctx, "CheckSource", in)
+	if responder, ok := r.buildConfigResponders["CheckSource"]; ok {
+		return responder(ctx, in)
+	}
+	if in == nil {
+		return &clientpb.BuildConfig{Source: consts.ArtifactFromDocker}, nil
+	}
+	cfg := cloneRequest(in).(*clientpb.BuildConfig)
+	if cfg.Source == "" {
+		cfg.Source = consts.ArtifactFromDocker
+	}
+	return cfg, nil
+}
+
+func (r *RecorderRPC) DownloadArtifact(ctx context.Context, in *clientpb.Artifact, opts ...grpc.CallOption) (*clientpb.Artifact, error) {
+	return r.artifactResponse(ctx, "DownloadArtifact", in)
+}
+
 func (r *RecorderRPC) taskResponse(ctx context.Context, method string, request any) (*clientpb.Task, error) {
 	r.recordPrimary(ctx, method, request)
 	if responder, ok := r.taskResponders[method]; ok {
@@ -462,6 +533,29 @@ func (r *RecorderRPC) emptyResponse(ctx context.Context, method string, request 
 		return responder(ctx, request)
 	}
 	return &clientpb.Empty{}, nil
+}
+
+func (r *RecorderRPC) artifactResponse(ctx context.Context, method string, request any) (*clientpb.Artifact, error) {
+	r.recordPrimary(ctx, method, request)
+	if responder, ok := r.artifactResponders[method]; ok {
+		return responder(ctx, request)
+	}
+	if in, ok := request.(*clientpb.BuildConfig); ok && in != nil {
+		return &clientpb.Artifact{
+			Name:   fmt.Sprintf("%s-%s", in.BuildType, in.Target),
+			Type:   in.BuildType,
+			Target: in.Target,
+			Source: in.Source,
+			Bin:    []byte("artifact-bin"),
+		}, nil
+	}
+	if in, ok := request.(*clientpb.Artifact); ok && in != nil {
+		return &clientpb.Artifact{
+			Name: in.Name,
+			Bin:  []byte("artifact-bin"),
+		}, nil
+	}
+	return &clientpb.Artifact{Name: method, Bin: []byte("artifact-bin")}, nil
 }
 
 func (r *RecorderRPC) defaultTask(ctx context.Context, method string) *clientpb.Task {
@@ -524,6 +618,13 @@ var methodTaskTypes = map[string]string{
 	"Keepalive":      consts.ModuleKeepalive,
 	"Suicide":        consts.ModuleSuicide,
 	"Ping":           consts.ModulePing,
+	"ListModule":     consts.ModuleListModule,
+	"LoadModule":     consts.ModuleLoadModule,
+	"RefreshModule":  consts.ModuleRefreshModule,
+	"ListAddon":      consts.ModuleListAddon,
+	"LoadAddon":      consts.ModuleLoadAddon,
+	"ExecuteAddon":   consts.ModuleExecuteAddon,
+	"Clear":          consts.ModuleClear,
 	"Switch":         consts.ModuleSwitch,
 	"ServiceList":    consts.ModuleServiceList,
 	"ServiceCreate":  consts.ModuleServiceCreate,
