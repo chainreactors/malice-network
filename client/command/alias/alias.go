@@ -18,21 +18,15 @@ import (
 
 // AliasesCmd - The alias command
 func AliasesCmd(cmd *cobra.Command, con *core.Console) {
-	isStatic, err := cmd.Flags().GetBool("static")
-	if err != nil {
-		con.Log.Errorf("Error getting static flag: %v", err)
-		return
-	}
-	isStatic = isStatic || common.ShouldUseStaticOutput(cmd)
 	if 0 < len(loadedAliases) {
-		PrintAliases(con, isStatic)
+		PrintAliases(con)
 	} else {
 		con.Log.Infof("No aliases installed, use the 'armory' command to automatically install some\n")
 	}
 }
 
 // PrintAliases - Print a list of loaded aliases
-func PrintAliases(con *core.Console, isStatic bool) {
+func PrintAliases(con *core.Console) {
 	var rowEntries []table.Row
 	var row table.Row
 	tableModel := tui.NewTable([]table.Column{
@@ -45,7 +39,7 @@ func PrintAliases(con *core.Console, isStatic bool) {
 		table.NewColumn("Reflective", "Reflective", 10),
 		table.NewFlexColumn("Tool Author", "Tool Author", 1),
 		table.NewFlexColumn("Repository", "Repository", 1),
-	}, true)
+	}, common.ShouldUseStaticOutput(con))
 
 	installedManifests := getInstalledManifests()
 	for _, aliasPkg := range loadedAliases {
@@ -70,13 +64,11 @@ func PrintAliases(con *core.Console, isStatic bool) {
 
 	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
-	if isStatic {
-		con.Log.Console(tableModel.View())
+	rendered, err := common.RunTable(con, tableModel)
+	if err != nil {
 		return
 	}
-
-	err := tableModel.Run()
-	if err != nil {
+	if rendered {
 		return
 	}
 }

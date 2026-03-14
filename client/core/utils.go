@@ -100,6 +100,18 @@ func resolveSessionID(con *Console, sessionID string) (string, error) {
 	return "", fmt.Errorf("session id is required")
 }
 
+func currentSessionID(con *Console, sessionID string) (string, bool) {
+	if sessionID != "" {
+		return sessionID, true
+	}
+
+	if sess := con.GetInteractive(); sess != nil {
+		return sess.SessionId, true
+	}
+
+	return "", false
+}
+
 func getLatestTaskID(con *Console, sessionID string) (uint32, bool, error) {
 	tasks, err := con.Rpc.GetTasks(con.Context(), &clientpb.TaskRequest{
 		SessionId: sessionID,
@@ -158,18 +170,25 @@ func executeRPCCommand(con *Console, command, sessionID string) (string, error) 
 	commandExecMu.Lock()
 	defer commandExecMu.Unlock()
 
+	restore := con.WithNonInteractiveExecution(true)
+	defer restore()
+
 	if err := switchSessionWithCallee(con, sessionID, consts.CalleeRPC); err != nil {
 		return "", err
 	}
 
-	resolvedSessionID, err := resolveSessionID(con, sessionID)
-	if err != nil {
-		return "", err
-	}
+	resolvedSessionID, hasSession := currentSessionID(con, sessionID)
 
-	beforeTaskID, beforeExists, err := getLatestTaskID(con, resolvedSessionID)
-	if err != nil {
-		return "", err
+	var (
+		beforeTaskID uint32
+		beforeExists bool
+		err          error
+	)
+	if hasSession {
+		beforeTaskID, beforeExists, err = getLatestTaskID(con, resolvedSessionID)
+		if err != nil {
+			return "", err
+		}
 	}
 
 	args, err := shellquote.Split(command)
@@ -178,8 +197,14 @@ func executeRPCCommand(con *Console, command, sessionID string) (string, error) 
 	}
 
 	args = stripWaitFlag(args)
+	start := time.Now()
 	if err := con.App.Execute(con.Context(), con.App.ActiveMenu(), args, false); err != nil {
 		return "", err
+	}
+	syncOutput := strings.TrimSpace(client.RemoveANSI(client.Stdout.Range(start, time.Now())))
+
+	if !hasSession {
+		return syncOutput, nil
 	}
 
 	var targetTaskID uint32
@@ -206,7 +231,7 @@ func executeRPCCommand(con *Console, command, sessionID string) (string, error) 
 
 	if !found {
 		client.Log.Debugf("LocalRPC: no new task detected (session=%s, command=%q)\n", resolvedSessionID, command)
-		return "", fmt.Errorf("command executed but no new task detected")
+		return syncOutput, nil
 	}
 
 	taskCtx, err := con.Rpc.WaitTaskFinish(con.Context(), &clientpb.Task{
@@ -228,7 +253,7 @@ func executeRPCCommand(con *Console, command, sessionID string) (string, error) 
 		return client.RemoveANSI(eventMessage), nil
 	}
 	if rendered == "" {
-		return "", fmt.Errorf("task finished without renderable output")
+		return syncOutput, nil
 	}
 
 	return client.RemoveANSI(rendered), nil

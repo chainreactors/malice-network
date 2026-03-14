@@ -73,6 +73,10 @@ func (s *Server) popTaskMessage(sessionID string, taskID uint32) string {
 
 // NewServer wraps client.ServerState into core.ServerState
 func NewServer(conn *grpc.ClientConn, config *mtls.ClientConfig) (*Server, error) {
+	return NewServerWithOptions(conn, config, false)
+}
+
+func NewServerWithOptions(conn *grpc.ClientConn, config *mtls.ClientConfig, suppressStartupOutput bool) (*Server, error) {
 	s, err := client.NewServerStatus(conn, config)
 	if err != nil {
 		return nil, err
@@ -83,6 +87,10 @@ func NewServer(conn *grpc.ClientConn, config *mtls.ClientConfig) (*Server, error
 		return nil, err
 	}
 	for _, event := range events.GetEvents() {
+		if suppressStartupOutput {
+			ser.ReconcileEvent(event)
+			continue
+		}
 		ser.HandlerEvent(event)
 	}
 	return ser, nil

@@ -3,6 +3,7 @@ package mal
 import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/mals/m"
 	"github.com/chainreactors/tui"
@@ -71,7 +72,7 @@ func printMals(maljson m.MalsYaml, malHttpConfig m.MalHTTPConfig, con *core.Cons
 		table.NewColumn("Version", "Version", 10),
 		table.NewFlexColumn("Repo_url", "Repo URL", 1),
 		table.NewFlexColumn("Help", "Help", 1),
-	}, false)
+	}, common.ShouldUseStaticOutput(con))
 	for _, mal := range maljson.Mals {
 		row = table.NewRow(
 			table.RowData{
@@ -95,9 +96,12 @@ func printMals(maljson m.MalsYaml, malHttpConfig m.MalHTTPConfig, con *core.Cons
 			selectRow.Data["Name"].(string),
 			selectRow.Data["Version"].(string), tableModel.Buffer, malHttpConfig, con)
 	})
-	err := tableModel.Run()
+	rendered, err := common.RunTable(con, tableModel)
 	if err != nil {
 		return err
+	}
+	if rendered {
+		return nil
 	}
 	tui.Reset()
 	return nil
@@ -116,6 +120,6 @@ func InstallMal(repoUrl, name, version string, writer io.Writer, malHttpConfig m
 		return false, err
 	}
 	tarGzPath := filepath.Join(assets.GetMalsDir(), name+".tar.gz")
-	updated, err := InstallFromDir(tarGzPath, true, con)
+	updated, err := InstallFromDir(tarGzPath, true, con, nil)
 	return updated, err
 }

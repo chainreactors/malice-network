@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/chainreactors/IoM-go/client"
@@ -41,9 +40,8 @@ func Start() error {
 	if err != nil {
 		return err
 	}
-	fmt.Print("\x1b[0m")
 	if err := cmd.Execute(); err != nil {
-		fmt.Printf("root command: %s\n", err)
+		os.Stderr.WriteString("root command: " + err.Error() + "\n")
 		os.Exit(1)
 	}
 

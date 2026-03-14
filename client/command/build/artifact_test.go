@@ -11,6 +11,8 @@ import (
 
 func TestPrintArtifactsStaticDoesNotBlock(t *testing.T) {
 	con := &core.Console{Log: iomclient.Log}
+	restore := con.WithNonInteractiveExecution(true)
+	defer restore()
 	artifacts := &clientpb.Artifacts{
 		Artifacts: []*clientpb.Artifact{
 			{
@@ -27,7 +29,7 @@ func TestPrintArtifactsStaticDoesNotBlock(t *testing.T) {
 		},
 	}
 
-	if err := PrintArtifacts(artifacts, con, true); err != nil {
+	if err := PrintArtifacts(artifacts, con); err != nil {
 		t.Fatalf("PrintArtifacts static returned error: %v", err)
 	}
 }

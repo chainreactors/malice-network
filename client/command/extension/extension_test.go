@@ -28,7 +28,7 @@ func TestInstallFromDirResolvesInstalledFileByManifestName(t *testing.T) {
 		},
 	})
 
-	installPath, err := InstallFromDir(srcDir, false, h.Console, false)
+	installPath, err := InstallFromDir(srcDir, false, h.Console, false, nil)
 	if err != nil {
 		t.Fatalf("install failed: %v", err)
 	}
@@ -68,11 +68,11 @@ func TestInstallFromDirForceOverwriteRemovesStaleFiles(t *testing.T) {
 		},
 	})
 
-	installPath, err := InstallFromDir(first, false, h.Console, true)
+	installPath, err := InstallFromDir(first, false, h.Console, true, nil)
 	if err != nil {
 		t.Fatalf("first install failed: %v", err)
 	}
-	_, err = InstallFromDir(second, false, h.Console, true)
+	_, err = InstallFromDir(second, false, h.Console, true, nil)
 	if err != nil {
 		t.Fatalf("second install failed: %v", err)
 	}
@@ -97,7 +97,7 @@ func TestInstallFromDirTarGzAcceptsWindowsManifestPaths(t *testing.T) {
 		},
 	})
 
-	installPath, err := InstallFromDir(archivePath, false, h.Console, true)
+	installPath, err := InstallFromDir(archivePath, false, h.Console, true, nil)
 	if err != nil {
 		t.Fatalf("install failed: %v", err)
 	}
@@ -118,7 +118,7 @@ func TestRemoveExtensionByCommandNameRemovesManifestDirectoryAndProfileEntry(t *
 		},
 	})
 
-	installPath, err := InstallFromDir(srcDir, false, h.Console, false)
+	installPath, err := InstallFromDir(srcDir, false, h.Console, false, nil)
 	if err != nil {
 		t.Fatalf("install failed: %v", err)
 	}
@@ -174,7 +174,7 @@ func TestGetInstalledManifestsIndexesCommandNames(t *testing.T) {
 		},
 	})
 
-	installPath, err := InstallFromDir(srcDir, false, h.Console, false)
+	installPath, err := InstallFromDir(srcDir, false, h.Console, false, nil)
 	if err != nil {
 		t.Fatalf("install failed: %v", err)
 	}

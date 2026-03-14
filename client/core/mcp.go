@@ -143,6 +143,9 @@ func (c *Console) registerTool(cmd *cobra.Command, toolName, cmdPath string) {
 		}
 
 		// 执行命令
+		restore := c.WithNonInteractiveExecution(true)
+		defer restore()
+
 		response, err := RunCommand(c, cmdLine)
 		if err != nil {
 			logs.Log.Errorf("Error executing command: %v", err)
@@ -171,6 +174,9 @@ func (c *Console) registerResource(cmd *cobra.Command, cmdPath, parentPath strin
 		cmdLine := buildResourceCommandLine(cmd, cmdPath, parentPath)
 
 		// 执行命令
+		restore := c.WithNonInteractiveExecution(true)
+		defer restore()
+
 		response, err := RunCommand(c, cmdLine)
 		if err != nil {
 			logs.Log.Errorf("Error executing command: %v", err)
@@ -196,9 +202,9 @@ func (c *Console) registerResource(cmd *cobra.Command, cmdPath, parentPath strin
 // buildResourceCommandLine 构建资源命令行
 func buildResourceCommandLine(cmd *cobra.Command, cmdPath, parentPath string) string {
 	if cmd.Use == consts.CommandSession {
-		return cmdPath + " --all --static"
+		return cmdPath + " --all"
 	} else if parentPath == consts.CommandArtifact {
-		return cmdPath + " --static"
+		return cmdPath
 	}
 	return cmdPath
 }
@@ -258,13 +264,11 @@ func (m *MCPServer) registerExecuteCommandTool() {
 		mcp.WithDescription(`Execute any client command as if you were typing in the console.
 
 Examples:
-- "session --all --static" - List all sessions (use --static for non-interactive output)
+- "session --all" - List all sessions
 - "use <session_id>" - Switch to a session
 - "whoami" - Execute whoami in current session (requires active session)
 - "ls" - List files in current directory (requires active session)
 - "download /path/to/file" - Download a file (requires active session)
-
-Important: For commands that are normally interactive (like 'session'), add '--static' flag to get non-interactive output.
 
 The command will be executed in the current context (client or implant mode).
 Commands are automatically routed to client menu or implant menu based on whether there's an active session.`),

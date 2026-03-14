@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/alias"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/extension"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
@@ -382,7 +383,7 @@ func PrintArmoryPackages(aliases []*alias.AliasManifest, exts []*extension.Exten
 		table.NewColumn("Type", "Type", 10),
 		table.NewFlexColumn("Help", "Help", 2),
 		table.NewFlexColumn("URL", "URL", 2),
-	}, false)
+	}, common.ShouldUseStaticOutput(con))
 
 	type pkgInfo struct {
 		Armory      string
@@ -437,9 +438,12 @@ func PrintArmoryPackages(aliases []*alias.AliasManifest, exts []*extension.Exten
 	tableModel.SetRows(rowEntries)
 	tableModel.SetMultiline()
 	tableModel.SetHandle(DownloadArmoryCallback(tableModel, tableModel.Buffer, con, clientConfig))
-	err := tableModel.Run()
+	rendered, err := common.RunTable(con, tableModel)
 	if err != nil {
 		con.Log.Errorf("Failed to run table model: %s\n", err)
+		return
+	}
+	if rendered {
 		return
 	}
 }
@@ -453,7 +457,7 @@ func DownloadArmoryCallback(tableModel *tui.TableModel, writer io.Writer, con *c
 		}
 	}
 	armoryPK := getArmoryPublicKey(selected.Data["Armory"].(string))
-	err := installPackageByName(selected.Data["Command Name"].(string), armoryPK, false,
+	err := installPackageByName(nil, selected.Data["Command Name"].(string), armoryPK, false,
 		true, clientConfig, con)
 	if err == nil {
 		return func() {
@@ -491,7 +495,7 @@ func PrintArmoryBundles(bundles []*ArmoryBundle, con *core.Console) {
 	tableModel := tui.NewTable([]table.Column{
 		table.NewFlexColumn("Name", "Name", 1),
 		table.NewFlexColumn("Contains", "Contains", 3),
-	}, true)
+	}, common.ShouldUseStaticOutput(con))
 	for _, bundle := range bundles {
 		if len(bundle.Packages) < 1 {
 			continue
@@ -519,7 +523,7 @@ func PrintArmoryBundles(bundles []*ArmoryBundle, con *core.Console) {
 	}
 	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
-	err := tableModel.Run()
+	_, err := common.RunTable(con, tableModel)
 	if err != nil {
 		return
 	}

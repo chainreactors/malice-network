@@ -57,7 +57,7 @@ func TestRealGitHubMalInstallSmoke(t *testing.T) {
 				continue
 			}
 
-			updated, err := InstallFromDir(archivePath, false, con)
+			updated, err := InstallFromDir(archivePath, false, con, nil)
 			if err != nil {
 				failures = append(failures, fmt.Sprintf("%s@%s: install: %v", name, release.TagName, err))
 				continue

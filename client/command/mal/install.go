@@ -1,6 +1,7 @@
 package mal
 
 import (
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/plugin"
 	"os"
@@ -10,7 +11,6 @@ import (
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/mals/m"
-	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
 )
 
@@ -45,7 +45,7 @@ func MalInstallCmd(cmd *cobra.Command, con *core.Console) error {
 			return err
 		}
 	} else {
-		if _, err := InstallFromDir(localPath, true, con); err != nil {
+		if _, err := InstallFromDir(localPath, true, con, cmd); err != nil {
 			return err
 		}
 	}
@@ -70,7 +70,7 @@ func MalInstallCmd(cmd *cobra.Command, con *core.Console) error {
 	return nil
 }
 
-func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *core.Console) (bool, error) {
+func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *core.Console, cmd *cobra.Command) (bool, error) {
 	var manifestData []byte
 	var err error
 
@@ -103,12 +103,11 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *core.Conso
 		}
 		if promptToOverwrite {
 			con.Log.Infof("Mal '%s' already exists\n", manifest.Name)
-			confirmModel := tui.NewConfirm("Overwrite current install?")
-			err = confirmModel.Run()
+			confirmed, err := common.Confirm(cmd, con, "Overwrite current install?")
 			if err != nil {
 				return false, err
 			}
-			if !confirmModel.GetConfirmed() {
+			if !confirmed {
 				return false, nil
 			}
 		}

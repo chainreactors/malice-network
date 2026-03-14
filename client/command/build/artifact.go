@@ -31,7 +31,7 @@ func ListArtifactCmd(cmd *cobra.Command, con *core.Console) error {
 		return err
 	}
 	if len(artifacts.Artifacts) > 0 {
-		err = PrintArtifacts(artifacts, con, common.ShouldUseStaticOutput(cmd))
+		err = PrintArtifacts(artifacts, con)
 		if err != nil {
 			return err
 		}
@@ -41,7 +41,7 @@ func ListArtifactCmd(cmd *cobra.Command, con *core.Console) error {
 	return nil
 }
 
-func PrintArtifacts(artifacts *clientpb.Artifacts, con *core.Console, isStatic bool) error {
+func PrintArtifacts(artifacts *clientpb.Artifacts, con *core.Console) error {
 	var rowEntries []table.Row
 	var row table.Row
 
@@ -88,18 +88,16 @@ func PrintArtifacts(artifacts *clientpb.Artifacts, con *core.Console, isStatic b
 		table.NewColumn("Profile", "Profile", 12),
 		table.NewColumn("Status", "Status", 10),
 		table.NewColumn("CreatedAt", "Created At", 16),
-	}, false)
+	}, common.ShouldUseStaticOutput(con))
 	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
-	if isStatic {
-		con.Log.Console(tableModel.View())
-		return nil
-	}
-
 	tableModel.SetHandle(func() {})
-	err := tableModel.Run()
+	rendered, err := common.RunTable(con, tableModel)
 	if err != nil {
 		return err
+	}
+	if rendered {
+		return nil
 	}
 
 	tui.Reset()

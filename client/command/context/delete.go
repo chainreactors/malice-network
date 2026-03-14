@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
 )
 
@@ -15,19 +15,16 @@ func DeleteContextCmd(cmd *cobra.Command, con *core.Console) error {
 		return fmt.Errorf("context_id is required")
 	}
 
-	yes, _ := cmd.Flags().GetBool("yes")
-	if !yes {
-		confirmModel := tui.NewConfirm(fmt.Sprintf("Delete context '%s'?", contextID))
-		if err := confirmModel.Run(); err != nil {
-			return fmt.Errorf("confirm error: %w", err)
-		}
-		if !confirmModel.GetConfirmed() {
-			con.Log.Infof("Cancelled\n")
-			return nil
-		}
+	confirmed, err := common.Confirm(cmd, con, fmt.Sprintf("Delete context '%s'?", contextID))
+	if err != nil {
+		return fmt.Errorf("confirm error: %w", err)
+	}
+	if !confirmed {
+		con.Log.Infof("Cancelled\n")
+		return nil
 	}
 
-	_, err := con.Rpc.DeleteContext(con.Context(), &clientpb.Context{
+	_, err = con.Rpc.DeleteContext(con.Context(), &clientpb.Context{
 		Id: contextID,
 	})
 	if err != nil {

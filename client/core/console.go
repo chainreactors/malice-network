@@ -68,8 +68,6 @@ type BindCmds func(console *Console) console.Commands
 // Start - Console entrypoint
 func NewConsole() (*Console, error) {
 	//assets.Setup(false, false)
-
-	tui.Reset()
 	//settings, _ := assets.LoadSettings()
 	//assets.SetInputrc()
 	con := &Console{
@@ -139,6 +137,8 @@ func (c *Console) NewConsole() {
 }
 
 func (c *Console) Start(bindCmds ...BindCmds) error {
+	tui.Reset()
+
 	go func() {
 		for {
 			if c.Server != nil && !c.Server.EventStatus {

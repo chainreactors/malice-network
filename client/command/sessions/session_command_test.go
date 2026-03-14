@@ -3,6 +3,7 @@ package sessions
 import (
 	"strings"
 	"testing"
+	"time"
 
 	iomclient "github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
@@ -102,6 +103,21 @@ func TestBackGroundClearsInteractiveSessionAndReturnsToClientMenu(t *testing.T) 
 func TestShortSessionIDLeavesShortValuesUnchanged(t *testing.T) {
 	if got := shortSessionID("abc123"); got != "abc123" {
 		t.Fatalf("shortSessionID = %q, want %q", got, "abc123")
+	}
+}
+
+func TestPrintSessionsUsesStaticOutputWhenConsoleIsNonInteractive(t *testing.T) {
+	con := newSessionTestConsole(t)
+	sess := addSessionFixture(t, con, "sess12")
+	restore := con.WithNonInteractiveExecution(true)
+	t.Cleanup(restore)
+
+	start := time.Now()
+	PrintSessions(con.Sessions, con, true)
+	output := iomclient.RemoveANSI(iomclient.Stdout.Range(start, time.Now()))
+
+	if !strings.Contains(output, sess.SessionId) {
+		t.Fatalf("session output = %q, want it to contain %q", output, sess.SessionId)
 	}
 }
 

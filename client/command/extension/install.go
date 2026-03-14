@@ -3,9 +3,9 @@ package extension
 import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
-	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
 	"io/ioutil"
 	"os"
@@ -21,14 +21,14 @@ func ExtensionsInstallCmd(cmd *cobra.Command, con *core.Console) {
 		con.Log.Errorf("Extension path '%s' does not exist", extLocalPath)
 		return
 	}
-	_, err = InstallFromDir(extLocalPath, true, con, strings.HasSuffix(extLocalPath, ".tar.gz"))
+	_, err = InstallFromDir(extLocalPath, true, con, strings.HasSuffix(extLocalPath, ".tar.gz"), cmd)
 	if err != nil {
 		con.Log.Errorf("Error installing extension: %s\n", err)
 	}
 }
 
 // Install an extension from a directory
-func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *core.Console, isGz bool) (string, error) {
+func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *core.Console, isGz bool, cmd *cobra.Command) (string, error) {
 	var manifestData []byte
 	var err error
 
@@ -50,18 +50,16 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *core.Conso
 	if _, err := os.Stat(installPath); !os.IsNotExist(err) {
 		if promptToOverwrite {
 			con.Log.Infof("Extension '%s' already exists", manifest.Name)
-			confirmModel := tui.NewConfirm("Overwrite current install?")
-			confirmModel.SetHandle(func() {
-				fileutils.ForceRemoveAll(installPath)
-			})
-			err = confirmModel.Run()
+			var confirmed bool
+			confirmed, err = common.Confirm(cmd, con, "Overwrite current install?")
 			if err != nil {
 				con.Log.Errorf("Error running confirm model: %s", err)
 				return "", err
 			}
-			if !confirmModel.GetConfirmed() {
+			if !confirmed {
 				return "", nil
 			}
+			fileutils.ForceRemoveAll(installPath)
 		} else {
 			fileutils.ForceRemoveAll(installPath)
 		}

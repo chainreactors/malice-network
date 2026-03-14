@@ -4,13 +4,14 @@ import (
 	"testing"
 
 	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/spf13/cobra"
 )
 
 func TestShouldStartConsoleRequiresTTYForLogin(t *testing.T) {
-	old := stdinIsTerminal
-	stdinIsTerminal = func() bool { return false }
-	t.Cleanup(func() { stdinIsTerminal = old })
+	old := common.StdinIsTerminal
+	common.StdinIsTerminal = func() bool { return false }
+	t.Cleanup(func() { common.StdinIsTerminal = old })
 
 	cmd := &cobra.Command{Use: consts.CommandLogin}
 	cmd.Flags().Bool("console", false, "")
@@ -21,9 +22,9 @@ func TestShouldStartConsoleRequiresTTYForLogin(t *testing.T) {
 }
 
 func TestShouldStartConsoleAllowsExplicitConsoleFlag(t *testing.T) {
-	old := stdinIsTerminal
-	stdinIsTerminal = func() bool { return false }
-	t.Cleanup(func() { stdinIsTerminal = old })
+	old := common.StdinIsTerminal
+	common.StdinIsTerminal = func() bool { return false }
+	t.Cleanup(func() { common.StdinIsTerminal = old })
 
 	cmd := &cobra.Command{Use: "version"}
 	cmd.Flags().Bool("console", false, "")
@@ -33,5 +34,18 @@ func TestShouldStartConsoleAllowsExplicitConsoleFlag(t *testing.T) {
 
 	if !shouldStartConsole(cmd) {
 		t.Fatal("--console should force console startup")
+	}
+}
+
+func TestShouldStartConsoleDoesNotStartRootInNonInteractiveMode(t *testing.T) {
+	old := common.StdinIsTerminal
+	common.StdinIsTerminal = func() bool { return false }
+	t.Cleanup(func() { common.StdinIsTerminal = old })
+
+	cmd := &cobra.Command{Use: consts.ClientMenu}
+	cmd.Flags().Bool("console", false, "")
+
+	if shouldStartConsole(cmd) {
+		t.Fatal("root command should not start the console in non-interactive mode")
 	}
 }

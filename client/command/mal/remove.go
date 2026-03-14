@@ -3,8 +3,8 @@ package mal
 import (
 	"errors"
 	"fmt"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/tui"
 	"os"
 	"path/filepath"
 
@@ -18,12 +18,11 @@ func RemoveMalCmd(cmd *cobra.Command, con *core.Console) error {
 	if name == "" {
 		return errors.New("mal name is required")
 	}
-	confirmModel := tui.NewConfirm(fmt.Sprintf("Remove '%s' mal?", name))
-	err := confirmModel.Run()
+	confirmed, err := common.Confirm(cmd, con, fmt.Sprintf("Remove '%s' mal?", name))
 	if err != nil {
 		return err
 	}
-	if !confirmModel.GetConfirmed() {
+	if !confirmed {
 		return nil
 	}
 	err = RemoveMal(name, con)

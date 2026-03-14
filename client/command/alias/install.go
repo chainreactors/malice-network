@@ -3,9 +3,9 @@ package alias
 import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
-	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
 	"os"
 	"path/filepath"
@@ -21,7 +21,7 @@ func AliasesInstallCmd(cmd *cobra.Command, con *core.Console) {
 		return
 	}
 	if !fi.IsDir() {
-		InstallFromFile(aliasLocalPath, "", false, con)
+		InstallFromFile(aliasLocalPath, "", false, con, cmd)
 	} else {
 		installFromDir(aliasLocalPath, con)
 	}
@@ -82,7 +82,7 @@ func installFromDir(aliasLocalPath string, con *core.Console) {
 }
 
 // Install an extension from a .tar.gz file
-func InstallFromFile(aliasGzFilePath string, aliasName string, promptToOverwrite bool, con *core.Console) *string {
+func InstallFromFile(aliasGzFilePath string, aliasName string, promptToOverwrite bool, con *core.Console, cmd *cobra.Command) *string {
 	manifestData, err := fileutils.ReadFileFromTarGz(aliasGzFilePath, fmt.Sprintf("./%s", ManifestFileName))
 	if err != nil {
 		con.Log.Errorf("Failed to read %s from '%s': %s\n", ManifestFileName, aliasGzFilePath, err)
@@ -103,18 +103,15 @@ func InstallFromFile(aliasGzFilePath string, aliasName string, promptToOverwrite
 	if _, err := os.Stat(installPath); !os.IsNotExist(err) {
 		if promptToOverwrite {
 			con.Log.Infof("Alias '%s' already exists\n", manifest.CommandName)
-			confirmModel := tui.NewConfirm("Overwrite current install?")
-			confirmModel.SetHandle(func() {
-				fileutils.ForceRemoveAll(installPath)
-			})
-			err := confirmModel.Run()
+			confirmed, err := common.Confirm(cmd, con, "Overwrite current install?")
 			if err != nil {
 				con.Log.Errorf("Failed to run confirm model: %s\n", err)
 				return nil
 			}
-			if !confirmModel.GetConfirmed() {
+			if !confirmed {
 				return nil
 			}
+			fileutils.ForceRemoveAll(installPath)
 		}
 	}
 

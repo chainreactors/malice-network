@@ -118,7 +118,7 @@ func LoadMalWithManifest(con *core.Console, rootCmd *cobra.Command, manifest *pl
 	return nil
 }
 
-func ListMalManifest(cmd *cobra.Command, con *core.Console) {
+func ListMalManifest(_ *cobra.Command, con *core.Console) {
 	manager, err := ensureMalManager(con)
 	if err != nil {
 		con.Log.Errorf("%s\n", err)
@@ -141,7 +141,7 @@ func ListMalManifest(cmd *cobra.Command, con *core.Console) {
 		table.NewColumn("Version", "Version", 7),
 		table.NewFlexColumn("Author", "Author", 1),
 		table.NewColumn("Source", "Source", 10),
-	}, true)
+	}, common.ShouldUseStaticOutput(con))
 
 	// 添加嵌入式插件
 	for _, plug := range embeddedPlugins {
@@ -175,14 +175,12 @@ func ListMalManifest(cmd *cobra.Command, con *core.Console) {
 
 	tableModel.SetRows(rows)
 	tableModel.SetMultiline()
-	if common.ShouldUseStaticOutput(cmd) {
-		con.Log.Console(tableModel.View())
-		return
-	}
-
-	err = tableModel.Run()
+	rendered, err := common.RunTable(con, tableModel)
 	if err != nil {
 		con.Log.Errorf("Error running table: %s", err)
+		return
+	}
+	if rendered {
 		return
 	}
 }

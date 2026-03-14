@@ -58,19 +58,11 @@ func updateCommand(con *core.Console, c *cobra.Command, group string, isSubCmd b
 	}
 	if c.Annotations["opsec"] != "" {
 		c.PreRunE = func(cmd *cobra.Command, args []string) error {
-			err := common.OpsecConfirm(cmd)
+			err := common.OpsecConfirm(cmd, con)
 			if err != nil {
 				return err
 			}
 			return nil
-		}
-	}
-
-	// 根据 "static" annotation 自动添加 --static flag
-	if c.Annotations["static"] != "" {
-		// 检查是否已经定义了 static flag
-		if c.Flags().Lookup("static") == nil {
-			c.Flags().BoolP("static", "s", false, "non-interactive mode")
 		}
 	}
 

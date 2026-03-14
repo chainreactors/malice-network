@@ -5,6 +5,7 @@ import (
 	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/alias"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/extension"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
@@ -64,8 +65,8 @@ func ArmoryUpdateCmd(cmd *cobra.Command, con *core.Console) {
 	// Display a table of results
 	if len(aliasUpdates) > 0 || len(extUpdates) > 0 {
 		updateKeys := sortUpdateIdentifiers(aliasUpdates, extUpdates)
-		displayAvailableUpdates(updateKeys, aliasUpdates, extUpdates)
-		selectedUpdates, err = getUpdatesFromUser(updateKeys)
+		displayAvailableUpdates(con, updateKeys, aliasUpdates, extUpdates)
+		selectedUpdates, err = getUpdatesFromUser(con, updateKeys)
 		if err != nil {
 			con.Log.Errorf("%s\n", err.Error())
 			return
@@ -85,12 +86,12 @@ func ArmoryUpdateCmd(cmd *cobra.Command, con *core.Console) {
 			if !ok {
 				continue
 			}
-			updatePackage, err := getPackageForCommand(update.Name, armoryPK, aliasVersionInfo.NewVersion)
+			updatePackage, err := getPackageForCommand(con, update.Name, armoryPK, aliasVersionInfo.NewVersion)
 			if err != nil {
 				con.Log.Errorf("Could not get update package for alias %s: %s\n", update.Name, err)
 				continue
 			}
-			err = installAliasPackage(updatePackage, false, clientConfig, con)
+			err = installAliasPackage(cmd, updatePackage, false, clientConfig, con)
 			if err != nil {
 				con.Log.Errorf("Failed to update %s: %s\n", update.Name, err)
 			}
@@ -99,12 +100,12 @@ func ArmoryUpdateCmd(cmd *cobra.Command, con *core.Console) {
 			if !ok {
 				continue
 			}
-			updatedPackage, err := getPackageForCommand(update.Name, armoryPK, extVersionInfo.NewVersion)
+			updatedPackage, err := getPackageForCommand(con, update.Name, armoryPK, extVersionInfo.NewVersion)
 			if err != nil {
 				con.Log.Errorf("Could not get update package for extension %s: %s\n", update.Name, err)
 				continue
 			}
-			err = installExtensionPackage(updatedPackage, false, clientConfig, con)
+			err = installExtensionPackage(cmd, updatedPackage, false, clientConfig, con)
 			if err != nil {
 				con.Log.Errorf("Failed to update %s: %s\n", update.Name, err)
 			}
@@ -200,7 +201,7 @@ func sortUpdateIdentifiers(aliasUpdates, extensionUpdates map[string]VersionInfo
 	return result
 }
 
-func displayAvailableUpdates(updateKeys []UpdateIdentifier,
+func displayAvailableUpdates(con *core.Console, updateKeys []UpdateIdentifier,
 	aliasUpdates, extensionUpdates map[string]VersionInformation) {
 	var (
 		aliasSuffix     string
@@ -260,14 +261,19 @@ func displayAvailableUpdates(updateKeys []UpdateIdentifier,
 	}
 	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
-	err := tableModel.Run()
+	_, err := common.RunTable(con, tableModel)
 	if err != nil {
 		return
 	}
 }
 
-func getUpdatesFromUser(updateKeys []UpdateIdentifier) (chosenUpdates []UpdateIdentifier, selectionError error) {
+func getUpdatesFromUser(con *core.Console, updateKeys []UpdateIdentifier) (chosenUpdates []UpdateIdentifier, selectionError error) {
 	chosenUpdates = []UpdateIdentifier{}
+
+	if common.ShouldUseStaticOutput(con) {
+		selectionError = fmt.Errorf("armory update selection requires an interactive terminal")
+		return
+	}
 
 	var updateResponse string
 	title := fmt.Sprintf("You can apply all, none, or some updates.\nTo apply some updates, " +

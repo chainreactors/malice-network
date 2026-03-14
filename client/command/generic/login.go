@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/chainreactors/malice-network/client/assets"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/tui"
@@ -14,32 +15,37 @@ import (
 
 func LoginCmd(cmd *cobra.Command, con *core.Console) error {
 	var err error
+	quiet := common.ShouldSuppressStartupOutput(cmd)
 
 	// 处理 --mcp flag
 	mcpAddr, _ := cmd.Flags().GetString("mcp")
 	if mcpAddr != "" {
-		con.Log.Importantf("MCP will start at %s after login", mcpAddr)
+		if !quiet {
+			con.Log.Importantf("MCP will start at %s after login", mcpAddr)
+		}
 		con.MCPAddr = mcpAddr
 	}
 
 	// 处理 --rpc flag
 	rpcAddr, _ := cmd.Flags().GetString("rpc")
 	if rpcAddr != "" {
-		con.Log.Importantf("Local RPC will start at %s after login", rpcAddr)
+		if !quiet {
+			con.Log.Importantf("Local RPC will start at %s after login", rpcAddr)
+		}
 		con.RPCAddr = rpcAddr
 	}
 
 	// Prefer explicit --auth flag to avoid misinterpreting subcommand arguments
 	// (e.g. `build beacon`) as an auth file.
 	if filename, _ := cmd.Flags().GetString("auth"); filename != "" {
-		return Login(con, filename)
+		return loginWithMode(con, filename, quiet)
 	}
 
 	// Only check Arg(0) as auth file for root command or login command
 	// Avoid treating subcommand arguments (e.g., 'beacon' in 'build beacon') as auth file
 	if cmd.Parent() == nil || cmd.Use == "client" || cmd.Use == "login" {
 		if filename := cmd.Flags().Arg(0); strings.HasSuffix(filename, ".auth") {
-			return Login(con, filename)
+			return loginWithMode(con, filename, quiet)
 		}
 	}
 	files, err := assets.GetConfigs()
@@ -62,21 +68,24 @@ func LoginCmd(cmd *cobra.Command, con *core.Console) error {
 	// After the interactive list is completed, check the selected item
 	if m.Selected != "" {
 		tui.ClearLines(2)
-		return Login(con, m.Selected)
+		return loginWithMode(con, m.Selected, quiet)
 	} else {
 		return errors.New("no user selected")
 	}
 }
 
-func Login(con *core.Console, authFile string) error {
-	// 显示配置信息
-	assets.PrintProfileSettings()
+func loginWithMode(con *core.Console, authFile string, quiet bool) error {
+	if !quiet {
+		assets.PrintProfileSettings()
+	}
 
 	config, err := assets.LoadConfig(authFile)
 	if err != nil {
 		return err
 	}
-	err = core.Login(con, config)
+	err = core.LoginWithOptions(con, config, core.LoginOptions{
+		SuppressStartupOutput: quiet,
+	})
 	if err != nil {
 		return err
 	}

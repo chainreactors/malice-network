@@ -1,8 +1,6 @@
 package command
 
 import (
-	"os"
-
 	"github.com/carapace-sh/carapace"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/malice-network/client/command/ai"
@@ -11,7 +9,6 @@ import (
 	"github.com/reeflective/console"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"golang.org/x/term"
 
 	"github.com/chainreactors/malice-network/client/command/alias"
 	"github.com/chainreactors/malice-network/client/command/armory"
@@ -31,17 +28,8 @@ import (
 	"github.com/chainreactors/malice-network/client/command/website"
 )
 
-var stdinIsTerminal = func() bool {
-	return term.IsTerminal(int(os.Stdin.Fd()))
-}
-
 func shouldStartConsole(cmd *cobra.Command) bool {
-	run, _ := cmd.Flags().GetBool("console")
-	if run {
-		return true
-	}
-
-	return cmd.Use == consts.CommandLogin && stdinIsTerminal()
+	return common.ShouldStartConsole(cmd)
 }
 
 func BindCommonCommands(bind BindFunc) {
@@ -77,6 +65,7 @@ func ConsoleRunnerCmd(con *core.Console, cmd *cobra.Command) (pre, post func(cmd
 	common.Bind(cmd.Use, true, cmd, func(f *pflag.FlagSet) {
 		f.String("auth", "", "auth token")
 		f.Bool("console", false, "run console")
+		f.Bool("yes", false, "skip confirmation prompts")
 	})
 
 	pre = func(cmd *cobra.Command, args []string) error {
@@ -88,6 +77,10 @@ func ConsoleRunnerCmd(con *core.Console, cmd *cobra.Command) (pre, post func(cmd
 
 	// Close the RPC connection once exiting
 	post = func(cmd *cobra.Command, _ []string) error {
+		if cmd == cmd.Root() {
+			return nil
+		}
+
 		if shouldStartConsole(cmd) {
 			return con.Start(BindClientsCommands, BindImplantCommands)
 		}
@@ -107,6 +100,9 @@ func BindClientsCommands(con *core.Console) console.Commands {
 				HiddenDefaultCmd: true,
 			},
 		}
+		common.Bind(client.Use, true, client, func(f *pflag.FlagSet) {
+			f.Bool("yes", false, "skip confirmation prompts")
+		})
 
 		bind := MakeBind(client, con, "golang")
 

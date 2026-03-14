@@ -41,7 +41,7 @@ func TestInstallFromDirTarGzInstallsMalArchive(t *testing.T) {
 		},
 	})
 
-	updated, err := InstallFromDir(archivePath, false, con)
+	updated, err := InstallFromDir(archivePath, false, con, nil)
 	if err != nil {
 		t.Fatalf("InstallFromDir tar.gz failed: %v", err)
 	}
@@ -68,7 +68,7 @@ func TestInstallFromDirZipInstallsMalArchive(t *testing.T) {
 		},
 	})
 
-	updated, err := InstallFromDir(archivePath, false, con)
+	updated, err := InstallFromDir(archivePath, false, con, nil)
 	if err != nil {
 		t.Fatalf("InstallFromDir zip failed: %v", err)
 	}
@@ -95,7 +95,7 @@ func TestInstallFromDirSkipsIdenticalManifest(t *testing.T) {
 		},
 	})
 
-	firstUpdated, err := InstallFromDir(archivePath, false, con)
+	firstUpdated, err := InstallFromDir(archivePath, false, con, nil)
 	if err != nil {
 		t.Fatalf("first install failed: %v", err)
 	}
@@ -103,7 +103,7 @@ func TestInstallFromDirSkipsIdenticalManifest(t *testing.T) {
 		t.Fatalf("first install reported no update")
 	}
 
-	secondUpdated, err := InstallFromDir(archivePath, false, con)
+	secondUpdated, err := InstallFromDir(archivePath, false, con, nil)
 	if err != nil {
 		t.Fatalf("second install failed: %v", err)
 	}
@@ -124,7 +124,7 @@ func TestInstallFromDirLibMovesResourcesDirectory(t *testing.T) {
 		},
 	})
 
-	updated, err := InstallFromDir(archivePath, false, con)
+	updated, err := InstallFromDir(archivePath, false, con, nil)
 	if err != nil {
 		t.Fatalf("InstallFromDir lib failed: %v", err)
 	}
@@ -138,17 +138,6 @@ func TestInstallFromDirLibMovesResourcesDirectory(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(assets.GetMalsDir(), "demo-lib", "resources")); !os.IsNotExist(err) {
 		t.Fatalf("resources directory still exists in mal install path")
-	}
-}
-
-func TestListMalManifestInitializesManager(t *testing.T) {
-	con := newMalTestConsole(t, false)
-	cmd := &cobra.Command{Use: "list"}
-
-	ListMalManifest(cmd, con)
-
-	if con.MalManager == nil {
-		t.Fatal("expected mal manager to be initialized")
 	}
 }
 

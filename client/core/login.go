@@ -16,25 +16,41 @@ import (
 	"google.golang.org/grpc"
 )
 
+type LoginOptions struct {
+	SuppressStartupOutput bool
+}
+
 func Login(con *Console, config *mtls.ClientConfig) error {
+	return LoginWithOptions(con, config, LoginOptions{})
+}
+
+func LoginWithOptions(con *Console, config *mtls.ClientConfig, options LoginOptions) error {
 	conn, err := mtls.Connect(config)
 	if err != nil {
 		logs.Log.Errorf("Failed to connect to server %s: %v\n", config.Address(), err)
 		return err
 	}
-	logs.Log.Info("Initial connection established, initializing state...\n")
-	if err := initState(con, conn, config); err != nil {
+	if !options.SuppressStartupOutput {
+		logs.Log.Info("Initial connection established, initializing state...\n")
+	}
+	if err := initStateWithOptions(con, conn, config, options); err != nil {
 		return err
 	}
 	con.ActiveTarget.Background()
 	con.App.SwitchMenu(consts.ClientMenu)
-	logs.Log.Importantf("Connected to server %s\n", config.Address())
+	if !options.SuppressStartupOutput {
+		logs.Log.Importantf("Connected to server %s\n", config.Address())
+	}
 	return nil
 }
 
 func initState(con *Console, conn *grpc.ClientConn, config *mtls.ClientConfig) error {
+	return initStateWithOptions(con, conn, config, LoginOptions{})
+}
+
+func initStateWithOptions(con *Console, conn *grpc.ClientConn, config *mtls.ClientConfig, options LoginOptions) error {
 	var err error
-	con.Server, err = NewServer(conn, config)
+	con.Server, err = NewServerWithOptions(conn, config, options.SuppressStartupOutput)
 	if err != nil {
 		logs.Log.Errorf("init server failed : %v\n", err)
 		return err
@@ -51,8 +67,10 @@ func initState(con *Console, conn *grpc.ClientConn, config *mtls.ClientConfig) e
 			alive++
 		}
 	}
-	logs.Log.Importantf("%d listeners, %d pipelines, %d clients, %d sessions (%d alive)\n",
-		len(con.Listeners), pipelineCount, len(con.Clients), len(con.Sessions), alive)
+	if !options.SuppressStartupOutput {
+		logs.Log.Importantf("%d listeners, %d pipelines, %d clients, %d sessions (%d alive)\n",
+			len(con.Listeners), pipelineCount, len(con.Clients), len(con.Sessions), alive)
+	}
 
 	return nil
 }

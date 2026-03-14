@@ -49,8 +49,14 @@ The most useful assertions are:
 - invalid input makes zero RPC calls
 - task-producing commands emit one `SessionEvent`
 
-## Future E2E Reuse
+## E2E Follow-On
 
-The current backend is a recorder because it is fast and deterministic.
+The recorder backend remains the primary command-layer guard because it is fast and deterministic.
 
-The case shape is intentionally command-path driven instead of calling helper functions directly. When a real implant E2E backend is added later, the same `Argv` and most setup logic can be reused while swapping the recorder for a live transport backend.
+For deeper task transport realism, the repository now also has a server-facing mock implant harness:
+
+- `server/testsupport/mock_implant.go`
+
+That harness is documented in `docs/tests/mock-implant-e2e.md`.
+
+The command test case shape is still intentionally command-path driven, so the same `Argv`-first approach can later be reused when command suites are moved from recorder-backed assertions to live mock-implant execution.

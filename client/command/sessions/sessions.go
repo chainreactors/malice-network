@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/chainreactors/IoM-go/client"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
@@ -54,23 +55,19 @@ func SessionsCmd(cmd *cobra.Command, con *core.Console) error {
 	if err != nil {
 		return err
 	}
-	isStatic, err := cmd.Flags().GetBool("static")
-	if err != nil {
-		return err
-	}
 	err = con.UpdateSessions(isAll)
 	if err != nil {
 		return err
 	}
 	if 0 < len(con.Sessions) {
-		PrintSessions(con.Sessions, con, isAll, isStatic)
+		PrintSessions(con.Sessions, con, isAll)
 	} else {
 		con.Log.Info("No sessions\n")
 	}
 	return nil
 }
 
-func PrintSessions(sessions map[string]*client.Session, con *core.Console, isAll bool, isStatic bool) {
+func PrintSessions(sessions map[string]*client.Session, con *core.Console, isAll bool) {
 	//var colorIndex = 1
 	var rowEntries []table.Row
 	var row table.Row
@@ -145,15 +142,18 @@ func PrintSessions(sessions map[string]*client.Session, con *core.Console, isAll
 		table.NewColumn("Last", "Last", 8),
 		table.NewColumn("LastRaw", "", 0),
 		table.NewColumn("CreatedAt", "Created At", 16),
-	}, isStatic)
+	}, common.ShouldUseStaticOutput(con))
 	tableModel.SetAscSort("LastRaw")
 	tableModel.SetRows(rowEntries)
 	tableModel.SetMultiline()
 	tableModel.SetHandle(func() {
 		SessionLogin(tableModel, con)()
 	})
-	err := tableModel.Run()
+	rendered, err := common.RunTable(con, tableModel)
 	if err != nil {
+		return
+	}
+	if rendered {
 		return
 	}
 	tui.Reset()

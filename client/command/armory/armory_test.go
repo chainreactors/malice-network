@@ -33,7 +33,7 @@ func TestInstallPackageByNameReturnsBuildInstallListError(t *testing.T) {
 	resetArmoryState(t)
 	con := newArmoryTestConsole(t)
 
-	err := installPackageByName("missing-command", "", false, false, ArmoryHTTPConfig{}, con)
+	err := installPackageByName(nil, "missing-command", "", false, false, ArmoryHTTPConfig{}, con)
 	if !errors.Is(err, ErrPackageNotFound) {
 		t.Fatalf("installPackageByName error = %v, want %v", err, ErrPackageNotFound)
 	}
@@ -232,7 +232,7 @@ func TestInstallExtensionPackageRegistersCommand(t *testing.T) {
 		Extension: manifest,
 	}
 
-	if err := installExtensionPackage(entry, false, ArmoryHTTPConfig{Timeout: time.Second}, con); err != nil {
+	if err := installExtensionPackage((*cobra.Command)(nil), entry, false, ArmoryHTTPConfig{Timeout: time.Second}, con); err != nil {
 		t.Fatalf("installExtensionPackage failed: %v", err)
 	}
 

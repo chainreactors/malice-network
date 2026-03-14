@@ -31,9 +31,6 @@ session
 
 // List all sessions, including those that have been disconnected
 session -a
-
-// List all sessions, and shown in static table for mcp server
-session -a --static
 ~~~`,
 	}
 

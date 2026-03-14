@@ -11,6 +11,7 @@ import (
 
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/extension"
+	"github.com/spf13/cobra"
 )
 
 func TestRealGitHubArmoryExtensionInstallSmoke(t *testing.T) {
@@ -78,7 +79,7 @@ func TestRealGitHubArmoryExtensionInstallSmoke(t *testing.T) {
 			Pkg:          *pkg,
 			Extension:    manifest,
 		}
-		if err := installExtensionPackage(entry, false, clientConfig, con); err != nil {
+		if err := installExtensionPackage((*cobra.Command)(nil), entry, false, clientConfig, con); err != nil {
 			failures = append(failures, fmt.Sprintf("%s: install: %v", pkg.CommandName, err))
 			continue
 		}

@@ -13,6 +13,7 @@ import (
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/client/assets"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
@@ -20,7 +21,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/chainreactors/mals"
-	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"golang.org/x/text/encoding/unicode"
@@ -143,13 +143,13 @@ func ExtensionLoadCmd(cmd *cobra.Command, con *core.Console) {
 	for _, extCmd := range manifest.ExtCommand {
 		if repl.CmdExist(con.ImplantMenu(), extCmd.CommandName) {
 			con.Log.Errorf("%s command already exists\n", extCmd.CommandName)
-			confirmModel := tui.NewConfirm(fmt.Sprintf("%s command already exists. Overwrite?", extCmd.CommandName))
-			err = confirmModel.Run()
+			var confirmed bool
+			confirmed, err = common.Confirm(cmd, con, fmt.Sprintf("%s command already exists. Overwrite?", extCmd.CommandName))
 			if err != nil {
 				con.Log.Errorf("Error running confirm model: %s\n", err)
 				return
 			}
-			if !confirmModel.GetConfirmed() {
+			if !confirmed {
 				return
 			}
 		}

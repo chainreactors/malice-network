@@ -1,6 +1,7 @@
 package tasks
 
 import (
+	"fmt"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/client/core"
@@ -11,14 +12,22 @@ import (
 )
 
 func GetTasksCmd(cmd *cobra.Command, con *core.Console) error {
-	err := con.UpdateTasks(con.GetInteractive())
+	session := con.GetInteractive()
+	if session == nil {
+		return fmt.Errorf("session is nil")
+	}
+
+	isAll, _ := cmd.Flags().GetBool("all")
+	tasks, err := con.Rpc.GetTasks(session.Context(), &clientpb.TaskRequest{
+		SessionId: session.SessionId,
+		All:       isAll,
+	})
 	if err != nil {
 		return err
 	}
-	isAll, _ := cmd.Flags().GetBool("all")
-	tasks := con.GetInteractive().Tasks.GetTasks()
-	if 0 < len(tasks) {
-		printTasks(tasks, con, isAll)
+	session.Tasks = &clientpb.Tasks{Tasks: tasks.GetTasks()}
+	if 0 < len(session.Tasks.GetTasks()) {
+		printTasks(session.Tasks.GetTasks(), con, isAll)
 	} else {
 		con.Log.Info("No tasks\n")
 	}
@@ -70,14 +79,14 @@ func fetchTaskByID(idStr string, con *core.Console) (*clientpb.TaskContexts, err
 
 	taskId, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		con.Log.Errorf("Invalid task ID '%s': %v", idStr, err)
+		return nil, fmt.Errorf("invalid task ID %q: %w", idStr, err)
 	}
 	task := &clientpb.Task{
 		SessionId: con.GetInteractive().SessionId,
 		TaskId:    uint32(taskId),
 		Need:      -1,
 	}
-	tasksContext, err := con.Rpc.GetAllTaskContent(con.Context(), task)
+	tasksContext, err := con.Rpc.GetAllTaskContent(con.GetInteractive().Context(), task)
 
 	return tasksContext, err
 }

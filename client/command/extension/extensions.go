@@ -17,14 +17,14 @@ import (
 // ExtensionsCmd - List information about installed extensions
 func ExtensionsCmd(cmd *cobra.Command, con *core.Console) {
 	if 0 < len(getInstalledManifests()) {
-		PrintExtensions(con, common.ShouldUseStaticOutput(cmd))
+		PrintExtensions(con)
 	} else {
 		con.Log.Infof("No extensions installed, use the 'armory' command to automatically install some\n")
 	}
 }
 
 // PrintExtensions - Print a list of loaded extensions
-func PrintExtensions(con *core.Console, isStatic bool) {
+func PrintExtensions(con *core.Console) {
 	var rowEntries []table.Row
 
 	tableModel := tui.NewTable([]table.Column{
@@ -36,7 +36,7 @@ func PrintExtensions(con *core.Console, isStatic bool) {
 		table.NewFlexColumn("Extension Author", "Extension Author", 1),
 		table.NewFlexColumn("Original Author", "Original Author", 1),
 		table.NewFlexColumn("Repository", "Repository", 1),
-	}, true)
+	}, common.ShouldUseStaticOutput(con))
 
 	installedManifests := getInstalledManifests()
 	for _, ext := range loadedExtensions {
@@ -59,14 +59,12 @@ func PrintExtensions(con *core.Console, isStatic bool) {
 	}
 	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
-	if isStatic {
-		con.Log.Console(tableModel.View())
-		return
-	}
-
-	err := tableModel.Run()
+	rendered, err := common.RunTable(con, tableModel)
 	if err != nil {
 		con.Log.Errorf("Error running table: %s", err)
+		return
+	}
+	if rendered {
 		return
 	}
 }

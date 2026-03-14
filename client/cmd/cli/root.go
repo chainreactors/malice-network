@@ -3,6 +3,7 @@ package cli
 import (
 	"github.com/carapace-sh/carapace"
 	"github.com/chainreactors/malice-network/client/command"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/generic"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/spf13/cobra"
@@ -15,7 +16,10 @@ func rootCmd(con *core.Console) (*cobra.Command, error) {
 			if err := generic.LoginCmd(cmd, con); err != nil {
 				return err
 			}
-			return con.Start(command.BindClientsCommands, command.BindImplantCommands)
+			if common.ShouldStartConsole(cmd) {
+				return con.Start(command.BindClientsCommands, command.BindImplantCommands)
+			}
+			return nil
 		},
 	}
 	cmd.TraverseChildren = true
