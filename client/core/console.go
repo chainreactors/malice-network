@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -102,6 +103,9 @@ type Console struct {
 	Helpers map[string]*cobra.Command
 
 	MalManager *plugin.MalManager
+
+	forceNonInteractive atomic.Int32
+	replActive          atomic.Bool
 }
 
 func (c *Console) NewConsole() {
@@ -187,6 +191,9 @@ func (c *Console) Start(bindCmds ...BindCmds) error {
 	client.Stdout.SetWriter(safeWriter)
 	logs.Log.SetOutput(client.Stdout)
 
+	restoreREPL := c.WithREPLExecution(true)
+	defer restoreREPL()
+
 	return c.App.Start()
 }
 
@@ -206,6 +213,46 @@ func (c *Console) SyncBuildContext() context.Context {
 	return metadata.NewOutgoingContext(ctx, metadata.Pairs(
 		"client_id", fmt.Sprintf("%s_%d", c.Client.Name, c.Client.ID)),
 	)
+}
+
+func (c *Console) WithNonInteractiveExecution(enabled bool) func() {
+	if c == nil {
+		return func() {}
+	}
+
+	if enabled {
+		c.forceNonInteractive.Add(1)
+	}
+	return func() {
+		if enabled {
+			c.forceNonInteractive.Add(-1)
+		}
+	}
+}
+
+func (c *Console) WithREPLExecution(enabled bool) func() {
+	if c == nil {
+		return func() {}
+	}
+
+	prev := c.replActive.Load()
+	c.replActive.Store(enabled)
+
+	return func() {
+		c.replActive.Store(prev)
+	}
+}
+
+func (c *Console) IsNonInteractiveExecution() bool {
+	if c == nil {
+		return !term.IsTerminal(int(os.Stdin.Fd()))
+	}
+
+	if c.forceNonInteractive.Load() > 0 {
+		return true
+	}
+
+	return !c.replActive.Load()
 }
 
 func (c *Console) GetPrompt() string {

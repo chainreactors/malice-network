@@ -18,15 +18,17 @@ import (
 
 // CallProvider forwards a BridgeLlmRequest to the specified LLM provider and returns BridgeLlmResponse.
 // Configuration priority: opts fields > environment variables > provider presets.
-func CallProvider(opts ProviderOpts, req *implantpb.BridgeLlmRequest) *implantpb.BridgeLlmResponse {
+func CallProvider(ctx context.Context, opts ProviderOpts, req *implantpb.BridgeLlmRequest) *implantpb.BridgeLlmResponse {
 	baseURL, apiKey, err := resolve(opts)
 	if err != nil {
 		return &implantpb.BridgeLlmResponse{Error: err.Error()}
 	}
 
 	endpoint := strings.TrimSuffix(baseURL, "/") + "/chat/completions"
+	reqCtx, cancel := context.WithTimeout(ctx, 120*time.Second)
+	defer cancel()
 	httpReq, err := http.NewRequestWithContext(
-		context.Background(), "POST", endpoint, bytes.NewReader(req.GetData()),
+		reqCtx, "POST", endpoint, bytes.NewReader(req.GetData()),
 	)
 	if err != nil {
 		return &implantpb.BridgeLlmResponse{Error: fmt.Sprintf("create request: %s", err)}
@@ -34,8 +36,7 @@ func CallProvider(opts ProviderOpts, req *implantpb.BridgeLlmRequest) *implantpb
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Authorization", "Bearer "+apiKey)
 
-	client := &http.Client{Timeout: 120 * time.Second}
-	resp, err := client.Do(httpReq)
+	resp, err := http.DefaultClient.Do(httpReq)
 	if err != nil {
 		return &implantpb.BridgeLlmResponse{Error: fmt.Sprintf("http request: %s", err)}
 	}

@@ -97,11 +97,7 @@ func RegisterAddonCmd(addon *implantpb.Addon, con *core.Console) (*loadedAddon, 
 
 func RefreshAddonCommand(addons []*implantpb.Addon, con *core.Console) error {
 	implantCmd := con.ImplantMenu()
-	for _, c := range implantCmd.Commands() {
-		if c.GroupID == consts.AddonGroup {
-			implantCmd.RemoveCommand(c)
-		}
-	}
+	common.RemoveCommandsByGroup(implantCmd, consts.AddonGroup)
 	for _, addon := range addons {
 		loaded, err := RegisterAddonCmd(addon, con)
 		if err != nil {

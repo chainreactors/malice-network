@@ -28,23 +28,11 @@ func LoadModuleCmd(cmd *cobra.Command, con *core.Console) error {
 		return errors.New("--modules and --3rd options are mutually exclusive. please specify only one of them")
 	}
 
-	selectedSources := 0
-	if artifactName != "" {
-		selectedSources++
-	}
-	if path != "" {
-		selectedSources++
-	}
-	if modules != "" || thirdModules != "" {
-		selectedSources++
-	}
-
 	switch {
-	case selectedSources == 0:
-		return errors.New("must specify one of --path, --artifact, --modules or --3rd")
-	case selectedSources > 1:
-		return errors.New("--path, --artifact, --modules and --3rd are mutually exclusive. please specify only one source")
 	case artifactName != "":
+		if path != "" || modules != "" || thirdModules != "" {
+			return errors.New("--artifact cannot be combined with --path, --modules or --3rd")
+		}
 		artifact, err := con.Rpc.DownloadArtifact(con.Context(), &clientpb.Artifact{
 			Name: artifactName,
 		})
@@ -63,6 +51,9 @@ func LoadModuleCmd(cmd *cobra.Command, con *core.Console) error {
 		con.GetInteractive().Console(task, string(*con.App.Shell().Line()))
 		return nil
 	case modules != "" || thirdModules != "":
+		if path != "" {
+			return errors.New("--modules/--3rd cannot be combined with --path")
+		}
 		return handleModuleBuild(cmd, con, strings.Split(modules, ","), strings.Split(thirdModules, ","))
 	case path != "":
 		// Default bundle handling
@@ -76,9 +67,9 @@ func LoadModuleCmd(cmd *cobra.Command, con *core.Console) error {
 		}
 		session.Console(task, string(*con.App.Shell().Line()))
 		return nil
+	default:
+		return errors.New("must specify one of --path, --artifact, --modules or --3rd")
 	}
-
-	return errors.New("unreachable module load input state")
 }
 
 // handleModuleBuild handles module build based on the builder resource (docker/action)

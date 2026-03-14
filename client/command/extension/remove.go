@@ -4,9 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
-	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
 	"os"
 	"path/filepath"
@@ -19,13 +19,12 @@ func ExtensionsRemoveCmd(cmd *cobra.Command, con *core.Console) {
 		con.Log.Errorf("Extension name is required\n")
 		return
 	}
-	confirmModel := tui.NewConfirm(fmt.Sprintf("Remove '%s' extension?", name))
-	err := confirmModel.Run()
+	confirmed, err := common.Confirm(cmd, con, fmt.Sprintf("Remove '%s' extension?", name))
 	if err != nil {
 		con.Log.Errorf("Error running confirm model: %s", err)
 		return
 	}
-	if !confirmModel.GetConfirmed() {
+	if !confirmed {
 		return
 	}
 	err = RemoveExtensionByCommandName(name, con)
@@ -48,11 +47,7 @@ func RemoveExtensionByCommandName(commandName string, con *core.Console) error {
 	}
 	delete(loadedExtensions, commandName)
 	implantMenu := con.ImplantMenu()
-	for _, cmd := range implantMenu.Commands() {
-		if cmd.Name() == commandName {
-			implantMenu.RemoveCommand(cmd)
-		}
-	}
+	common.RemoveCommandByName(implantMenu, commandName)
 	if loadedExt.Manifest != nil && loadedExt.Manifest.Manifest != nil {
 		delete(loadedManifests, loadedExt.Manifest.Manifest.Name)
 	}

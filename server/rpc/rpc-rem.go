@@ -158,11 +158,12 @@ func (rpc *Server) StopRem(ctx context.Context, req *clientpb.CtrlPipeline) (*cl
 		return nil, err
 	}
 
-	if existing := lns.GetPipeline(req.Name); existing != nil {
+	pipe := lns.GetPipeline(req.Name)
+	if pipe != nil {
 		job := &core.Job{
 			ID:       core.NextJobID(),
 			Name:     req.Name,
-			Pipeline: existing,
+			Pipeline: pipe,
 		}
 
 		ctrlID := lns.PushCtrl(&clientpb.JobCtrl{
@@ -175,12 +176,11 @@ func (rpc *Server) StopRem(ctx context.Context, req *clientpb.CtrlPipeline) (*cl
 		}
 	}
 
-	err = db.DisablePipelineByListener(req.Name, listenerID)
-	if err != nil {
+	if err := db.DisablePipelineByListener(req.Name, listenerID); err != nil {
 		return nil, err
 	}
-	if existing := lns.GetPipeline(req.Name); existing != nil {
-		lns.RemovePipeline(existing)
+	if pipe != nil {
+		lns.RemovePipeline(pipe)
 	}
 	return &clientpb.Empty{}, nil
 }

@@ -38,7 +38,7 @@ func (rpc *Server) BridgeAgentChat(ctx context.Context, req *implantpb.BridgeAge
 		for resp := range out {
 			// BridgeLlmRequest: implant is asking for an LLM completion
 			if llmReq := resp.GetBridgeLlmRequest(); llmReq != nil {
-				llmResp := llm.CallProvider(providerOpts, llmReq)
+				llmResp := llm.CallProvider(greq.Task.Ctx, providerOpts, llmReq)
 				reply, buildErr := greq.NewSpite(llmResp)
 				if buildErr != nil {
 					logs.Log.Errorf("bridge agent: build spite error: %s", buildErr)

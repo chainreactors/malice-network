@@ -9,6 +9,7 @@ import (
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 )
@@ -216,7 +217,9 @@ func (t *Task) Done(spite *implantpb.Spite, msg string) {
 	cur := t.Cur
 	t.progressMu.Unlock()
 
-	_ = taskDBUpdateCur(t.TaskID(), cur)
+	if err := taskDBUpdateCur(t.TaskID(), cur); err != nil {
+		logs.Log.Warnf("task %s: update cur failed: %v", t.TaskID(), err)
+	}
 	t.Publish(consts.CtrlTaskCallback, spite, msg)
 	select {
 	case t.DoneCh <- true:
@@ -235,13 +238,17 @@ func (t *Task) Finish(spite *implantpb.Spite, msg string) {
 	t.progressMu.Unlock()
 
 	if needsUpdate {
-		_ = taskDBUpdate(t.ToProtobuf())
+		if err := taskDBUpdate(t.ToProtobuf()); err != nil {
+			logs.Log.Warnf("task %s: update failed: %v", t.TaskID(), err)
+		}
 	}
 	t.Publish(consts.CtrlTaskFinish, spite, msg)
 	if t.Callback != nil {
 		t.Callback()
 	}
-	_ = taskDBUpdateFinish(t.TaskID())
+	if err := taskDBUpdateFinish(t.TaskID()); err != nil {
+		logs.Log.Warnf("task %s: update finish failed: %v", t.TaskID(), err)
+	}
 	select {
 	case t.DoneCh <- true:
 	default:

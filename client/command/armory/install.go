@@ -7,6 +7,7 @@ import (
 	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/alias"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/extension"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
@@ -94,20 +95,19 @@ func ArmoryInstallCmd(cmd *cobra.Command, con *core.Console) {
 		if extCount == 1 {
 			pluralExtensions = ""
 		}
-		confirmModel := tui.NewConfirm(fmt.Sprintf("Install %d alias%s and %d extension%s?",
+		confirmed, err := common.Confirm(cmd, con, fmt.Sprintf("Install %d alias%s and %d extension%s?",
 			aliasCount, pluralAliases, extCount, pluralExtensions,
 		))
-		err := confirmModel.Run()
 		if err != nil {
 			con.Log.Errorf("Error running confirm model: %s\n", err)
 			return
 		}
-		if !confirmModel.GetConfirmed() {
+		if !confirmed {
 			return
 		}
 		promptToOverwrite = false
 	}
-	err := installPackageByName(name, armoryPK, forceInstallation, promptToOverwrite, clientConfig, con)
+	err := installPackageByName(cmd, name, armoryPK, forceInstallation, promptToOverwrite, clientConfig, con)
 	if err == nil {
 		con.Log.Infof("\n%s install complete\n", name)
 		return
@@ -116,7 +116,7 @@ func ArmoryInstallCmd(cmd *cobra.Command, con *core.Console) {
 		bundles := bundlesInCache()
 		for _, bundle := range bundles {
 			if bundle.Name == name {
-				installBundle(bundle, armoryPK, forceInstallation, clientConfig, con)
+				installBundle(cmd, bundle, armoryPK, forceInstallation, clientConfig, con)
 				return
 			}
 		}
@@ -132,13 +132,13 @@ func ArmoryInstallCmd(cmd *cobra.Command, con *core.Console) {
 	}
 }
 
-func installBundle(bundle *ArmoryBundle, armoryPK string, forceInstallation bool, clientConfig ArmoryHTTPConfig,
+func installBundle(cmd *cobra.Command, bundle *ArmoryBundle, armoryPK string, forceInstallation bool, clientConfig ArmoryHTTPConfig,
 	con *core.Console) {
 	installList := []string{}
 	pendingPackages := make(map[string]string)
 
 	for _, bundlePkgName := range bundle.Packages {
-		packageInstallList, err := buildInstallList(bundlePkgName, armoryPK, forceInstallation, pendingPackages)
+		packageInstallList, err := buildInstallList(con, bundlePkgName, armoryPK, forceInstallation, pendingPackages)
 		if err != nil {
 			if errors.Is(err, ErrPackageAlreadyInstalled) {
 				con.Log.Infof("Package %s is already installed. Skipping...\n", bundlePkgName)
@@ -161,13 +161,13 @@ func installBundle(bundle *ArmoryBundle, armoryPK string, forceInstallation bool
 			return
 		}
 		if packageEntry.Pkg.IsAlias {
-			err := installAliasPackage(packageEntry, false, clientConfig, con)
+			err := installAliasPackage(cmd, packageEntry, false, clientConfig, con)
 			if err != nil {
 				con.Log.Errorf("Failed to install alias '%s': %s\n", packageEntry.Alias.CommandName, err)
 				return
 			}
 		} else {
-			err := installExtensionPackage(packageEntry, false, clientConfig, con)
+			err := installExtensionPackage(cmd, packageEntry, false, clientConfig, con)
 			if err != nil {
 				con.Log.Errorf("Failed to install extension '%s': %s\n", packageEntry.Extension.Name, err)
 				return
@@ -176,10 +176,10 @@ func installBundle(bundle *ArmoryBundle, armoryPK string, forceInstallation bool
 	}
 }
 
-func installPackageByName(name, armoryPK string, forceInstallation, promptToOverwrite bool,
+func installPackageByName(cmd *cobra.Command, name, armoryPK string, forceInstallation, promptToOverwrite bool,
 	clientConfig ArmoryHTTPConfig, con *core.Console) error {
 	pendingPackages := make(map[string]string)
-	packageInstallList, err := buildInstallList(name, armoryPK, forceInstallation, pendingPackages)
+	packageInstallList, err := buildInstallList(con, name, armoryPK, forceInstallation, pendingPackages)
 	if err != nil {
 		return err
 	}
@@ -190,12 +190,12 @@ func installPackageByName(name, armoryPK string, forceInstallation, promptToOver
 				return errors.New("cache consistency error - please refresh the cache and try again")
 			}
 			if entry.Pkg.IsAlias {
-				err := installAliasPackage(entry, promptToOverwrite, clientConfig, con)
+				err := installAliasPackage(cmd, entry, promptToOverwrite, clientConfig, con)
 				if err != nil {
 					return fmt.Errorf("failed to install alias '%s': %s", entry.Alias.CommandName, err)
 				}
 			} else {
-				err := installExtensionPackage(entry, promptToOverwrite, clientConfig, con)
+				err := installExtensionPackage(cmd, entry, promptToOverwrite, clientConfig, con)
 				if err != nil {
 					return fmt.Errorf("failed to install extension '%s': %s", entry.Extension.Name, err)
 				}
@@ -323,7 +323,11 @@ func getPackagesWithCommandName(name, armoryPK, minimumVersion string) []*pkgCac
 	return packages
 }
 
-func getPackageIDFromUser(name string, options map[string]string) string {
+func getPackageIDFromUser(con *core.Console, name string, options map[string]string) (string, error) {
+	if common.ShouldUseStaticOutput(con) {
+		return "", fmt.Errorf("multiple armory packages match %q; rerun interactively or choose a more specific package", name)
+	}
+
 	optionKeys := repl.Keys(options)
 	slices.Sort(optionKeys)
 	// Add a cancel option
@@ -334,17 +338,17 @@ func getPackageIDFromUser(name string, options map[string]string) string {
 	err := selectModel.Run()
 	if err != nil {
 		client.Log.Errorf("Failed to run select model: %s\n", err)
-		return ""
+		return "", err
 	}
 	if selectModel.SelectedItem >= 0 && selectModel.SelectedItem < len(selectModel.Choices) {
 		selectedPackageKey := selectModel.Choices[selectModel.SelectedItem]
 		selectedPackageID := options[selectedPackageKey]
-		return selectedPackageID
+		return selectedPackageID, nil
 	}
-	return ""
+	return "", nil
 }
 
-func getPackageForCommand(name, armoryPK, minimumVersion string) (*pkgCacheEntry, error) {
+func getPackageForCommand(con *core.Console, name, armoryPK, minimumVersion string) (*pkgCacheEntry, error) {
 	packagesWithCommand := getPackagesWithCommandName(name, armoryPK, minimumVersion)
 
 	if len(packagesWithCommand) > 1 {
@@ -370,7 +374,10 @@ func getPackageForCommand(name, armoryPK, minimumVersion string) (*pkgCacheEntry
 			}
 			optionMap[optionName] = packageEntry.ID
 		}
-		selectedPackageID := getPackageIDFromUser(name, optionMap)
+		selectedPackageID, err := getPackageIDFromUser(con, name, optionMap)
+		if err != nil {
+			return nil, err
+		}
 		if selectedPackageID == doNotInstallPackageName {
 			return nil, fmt.Errorf("user cancelled installation")
 		}
@@ -385,7 +392,7 @@ func getPackageForCommand(name, armoryPK, minimumVersion string) (*pkgCacheEntry
 	return nil, ErrPackageNotFound
 }
 
-func buildInstallList(name, armoryPK string, forceInstallation bool, pendingPackages map[string]string) ([]string, error) {
+func buildInstallList(con *core.Console, name, armoryPK string, forceInstallation bool, pendingPackages map[string]string) ([]string, error) {
 	packageInstallList := []string{}
 	installedPackages := getInstalledPackageNames()
 
@@ -423,7 +430,7 @@ func buildInstallList(name, armoryPK string, forceInstallation bool, pendingPack
 			// We are already going to install a package with this name, so do not try to resolve it
 			continue
 		}
-		packageEntry, err := getPackageForCommand(packageName, armoryPK, "")
+		packageEntry, err := getPackageForCommand(con, packageName, armoryPK, "")
 		if err != nil {
 			return nil, err
 		}
@@ -434,7 +441,7 @@ func buildInstallList(name, armoryPK string, forceInstallation bool, pendingPack
 
 		if !packageEntry.Pkg.IsAlias {
 			dependencies := make(map[string]*pkgCacheEntry)
-			//err = resolveExtensionPackageDependencies(packageEntry, dependencies, pendingPackages)
+			//err = resolveExtensionPackageDependencies(con, packageEntry, dependencies, pendingPackages)
 			//if err != nil {
 			//	return nil, err
 			//}
@@ -452,7 +459,7 @@ func buildInstallList(name, armoryPK string, forceInstallation bool, pendingPack
 	return packageInstallList, nil
 }
 
-func installAliasPackage(entry *pkgCacheEntry, promptToOverwrite bool, clientConfig ArmoryHTTPConfig,
+func installAliasPackage(cmd *cobra.Command, entry *pkgCacheEntry, promptToOverwrite bool, clientConfig ArmoryHTTPConfig,
 	con *core.Console) error {
 	if entry == nil {
 		return errors.New("package not found")
@@ -504,7 +511,7 @@ func installAliasPackage(entry *pkgCacheEntry, promptToOverwrite bool, clientCon
 	tmpFile.Close()
 	tui.Clear()
 
-	installPath := alias.InstallFromFile(tmpFile.Name(), entry.Alias.CommandName, promptToOverwrite, con)
+	installPath := alias.InstallFromFile(tmpFile.Name(), entry.Alias.CommandName, promptToOverwrite, con, cmd)
 	if installPath == nil {
 		return errors.New("failed to install alias")
 	}
@@ -521,7 +528,7 @@ func installAliasPackage(entry *pkgCacheEntry, promptToOverwrite bool, clientCon
 
 const maxDepDepth = 10 // Arbitrary recursive limit for dependencies
 
-func resolveExtensionPackageDependencies(pkg *pkgCacheEntry, deps map[string]*pkgCacheEntry, pendingPackages map[string]string) error {
+func resolveExtensionPackageDependencies(con *core.Console, pkg *pkgCacheEntry, deps map[string]*pkgCacheEntry, pendingPackages map[string]string) error {
 	for _, multiExt := range pkg.Extension.ExtCommand {
 		if multiExt.DependsOn == "" {
 			continue // Avoid adding empty dependency
@@ -542,12 +549,12 @@ func resolveExtensionPackageDependencies(pkg *pkgCacheEntry, deps map[string]*pk
 			continue
 		}
 		// Figure out what package we need for the dependency
-		dependencyEntry, err := getPackageForCommand(multiExt.DependsOn, "", "")
+		dependencyEntry, err := getPackageForCommand(con, multiExt.DependsOn, "", "")
 		if err != nil {
 			return fmt.Errorf("could not resolve dependency %s for %s: %s", multiExt.DependsOn, pkg.Extension.Name, err)
 		}
 		deps[multiExt.DependsOn] = dependencyEntry
-		err = resolveExtensionPackageDependencies(dependencyEntry, deps, pendingPackages)
+		err = resolveExtensionPackageDependencies(con, dependencyEntry, deps, pendingPackages)
 		if err != nil {
 			return err
 		}
@@ -555,7 +562,7 @@ func resolveExtensionPackageDependencies(pkg *pkgCacheEntry, deps map[string]*pk
 	return nil
 }
 
-func installExtensionPackage(entry *pkgCacheEntry, promptToOverwrite bool, clientConfig ArmoryHTTPConfig, con *core.Console) error {
+func installExtensionPackage(cmd *cobra.Command, entry *pkgCacheEntry, promptToOverwrite bool, clientConfig ArmoryHTTPConfig, con *core.Console) error {
 	if entry == nil {
 		return errors.New("package not found")
 	}
@@ -610,7 +617,7 @@ func installExtensionPackage(entry *pkgCacheEntry, promptToOverwrite bool, clien
 
 	tui.Clear()
 
-	installPath, err := extension.InstallFromDir(tmpFile.Name(), promptToOverwrite, con, true)
+	installPath, err := extension.InstallFromDir(tmpFile.Name(), promptToOverwrite, con, true, cmd)
 	if err != nil {
 		return err
 	}
@@ -619,11 +626,7 @@ func installExtensionPackage(entry *pkgCacheEntry, promptToOverwrite bool, clien
 		return err
 	}
 	for _, extCmd := range manifest.ExtCommand {
-		for _, existing := range con.ImplantMenu().Commands() {
-			if existing.Name() == extCmd.CommandName {
-				con.ImplantMenu().RemoveCommand(existing)
-			}
-		}
+		common.RemoveCommandByName(con.ImplantMenu(), extCmd.CommandName)
 		extension.ExtensionRegisterCommand(extCmd, con.ImplantMenu(), con)
 	}
 

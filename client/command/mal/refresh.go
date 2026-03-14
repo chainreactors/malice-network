@@ -2,6 +2,7 @@ package mal
 
 import (
 	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/spf13/cobra"
 )
@@ -14,12 +15,7 @@ func RefreshMalCmd(cmd *cobra.Command, con *core.Console) error {
 
 	implantCmd := con.ImplantMenu()
 
-	// 移除所有mal组的命令
-	for _, c := range implantCmd.Commands() {
-		if c.GroupID == consts.MalGroup {
-			implantCmd.RemoveCommand(c)
-		}
-	}
+	common.RemoveCommandsByGroup(implantCmd, consts.MalGroup)
 
 	// 获取所有外部插件名称
 	externalPlugins := manager.GetAllExternalPlugins()
