@@ -10,6 +10,7 @@ import (
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/types"
 	"github.com/chainreactors/malice-network/server/internal/core"
+	"github.com/chainreactors/malice-network/server/internal/db"
 )
 
 func waitEventBrokerReady(t testing.TB, broker interface{ TryPublish(core.Event) error }) {
@@ -79,5 +80,41 @@ func TestGenericRequestHandlerResponsePublishesTaskError(t *testing.T) {
 		case <-deadline:
 			t.Fatal("timed out waiting for task error event")
 		}
+	}
+}
+
+func TestGenericRequestHandlerSpitePersistsIncrementalProgress(t *testing.T) {
+	env := newRPCTestEnv(t)
+	sess := env.seedSession(t, "rpc-handler-progress", "rpc-handler-progress-pipe", true)
+	task := sess.NewTask("multi-stage-task", 3)
+	t.Cleanup(task.Close)
+
+	if err := db.AddTask(task.ToProtobuf()); err != nil {
+		t.Fatalf("AddTask failed: %v", err)
+	}
+
+	req := &GenericRequest{
+		Task:    task,
+		Session: sess,
+	}
+	spite := &implantpb.Spite{
+		TaskId: task.Id,
+		Name:   task.Type,
+		Body:   &implantpb.Spite_Empty{Empty: &implantpb.Empty{}},
+	}
+
+	if err := req.HandlerSpite(spite); err != nil {
+		t.Fatalf("HandlerSpite failed: %v", err)
+	}
+
+	stored, err := db.GetTask(task.TaskID())
+	if err != nil {
+		t.Fatalf("GetTask failed: %v", err)
+	}
+	if stored.Cur != 1 {
+		t.Fatalf("persisted task cur = %d, want 1 after first callback", stored.Cur)
+	}
+	if task.Cur != 1 {
+		t.Fatalf("in-memory task cur = %d, want 1 after first callback", task.Cur)
 	}
 }

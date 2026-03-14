@@ -61,7 +61,7 @@ func (t *Task) ToProtobuf() *clientpb.Task {
 		Description: t.Description,
 		Callby:      t.ClientName,
 		Timeout:     time.Now().After(t.Deadline),
-		Finished:    t.Cur == t.Total,
+		Finished:    !t.FinishTime.IsZero() || t.Cur == t.Total,
 		CreatedAt:   t.Created.Unix(),
 		FinishedAt:  t.FinishTime.Unix(),
 	}

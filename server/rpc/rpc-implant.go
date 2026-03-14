@@ -25,7 +25,7 @@ func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) 
 		if err != nil {
 			return nil, err
 		}
-		sess.LastCheckin = getTimestamp(ctx)
+		sess.SetLastCheckin(getTimestamp(ctx))
 		err = db.CreateOrRecoverSession(sess.ToModel())
 		if err != nil {
 			return nil, err
@@ -77,6 +77,7 @@ func (rpc *Server) Checkin(ctx context.Context, req *implantpb.Ping) (*clientpb.
 		return nil, err
 	}
 	var sess *core.Session
+	reborn := false
 	if sess, err = core.Sessions.Get(sid); err != nil {
 		dbSess, err := db.FindSession(sid)
 		if err != nil {
@@ -95,12 +96,17 @@ func (rpc *Server) Checkin(ctx context.Context, req *implantpb.Ping) (*clientpb.
 			return nil, err
 		}
 		core.Sessions.Add(sess)
-		sess.Publish(consts.CtrlSessionReborn, fmt.Sprintf("session %s from %s reborn at %s", sess.Abstract(), sess.Target, sess.PipelineID), true, true)
+		reborn = true
 		logs.Log.Debugf("recover session %s", sid)
+	} else if sess.MarkAlive() {
+		reborn = true
 	}
-	sess.LastCheckin = getTimestamp(ctx)
+	sess.SetLastCheckin(getTimestamp(ctx))
 	if err := sess.Save(); err != nil {
 		logs.Log.Errorf("save session %s checkin failed: %s", sess.ID, err.Error())
+	}
+	if reborn {
+		sess.Publish(consts.CtrlSessionReborn, fmt.Sprintf("session %s from %s reborn at %s", sess.Abstract(), sess.Target, sess.PipelineID), true, true)
 	}
 	sess.Publish(consts.CtrlSessionCheckin, "", false, false)
 

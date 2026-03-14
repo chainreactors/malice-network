@@ -243,7 +243,7 @@ func TestCheckinRecoversRemovedSession(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected recovered session in memory: %v", err)
 	}
-	if recovered.LastCheckin == 0 {
+	if recovered.LastCheckinUnix() == 0 {
 		t.Fatal("expected recovered session last checkin to be updated")
 	}
 	model, err := env.getSession(sess.ID)
@@ -373,7 +373,7 @@ func (e *rpcTestEnv) seedSession(t testing.TB, sessionID, pipelineName string, a
 	if err != nil {
 		t.Fatalf("RegisterSession failed: %v", err)
 	}
-	sess.LastCheckin = time.Now().Unix()
+	sess.SetLastCheckin(time.Now().Unix())
 	if err := sess.Save(); err != nil {
 		t.Fatalf("session.Save failed: %v", err)
 	}

@@ -10,6 +10,23 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/server/internal/db"
+	"github.com/chainreactors/malice-network/server/internal/db/models"
+)
+
+// test-swappable DB functions (overridden in task_runtime_test.go)
+var (
+	taskDBGetBySessionAndSeq = func(sessionID string, seq uint32) (*models.Task, error) {
+		return db.GetTaskBySessionAndSeq(sessionID, seq)
+	}
+	taskDBUpdate = func(task *clientpb.Task) error {
+		return db.UpdateTask(task)
+	}
+	taskDBUpdateCur = func(taskID string, cur int) error {
+		return db.UpdateTaskCur(taskID, cur)
+	}
+	taskDBUpdateFinish = func(taskID string) error {
+		return db.UpdateTaskFinish(taskID)
+	}
 )
 
 func NewTasks() *Tasks {
@@ -54,17 +71,21 @@ func (t *Tasks) GetOrRecover(sess *Session, taskID uint32) *Task {
 	if task := t.Get(taskID); task != nil {
 		return task
 	}
-	dbTask, err := db.GetTaskBySessionAndSeq(sess.ID, taskID)
+	dbTask, err := taskDBGetBySessionAndSeq(sess.ID, taskID)
 	if err != nil {
 		return nil
 	}
 	recovered := FromTaskProtobuf(dbTask.ToProtobuf())
 	recovered.Session = sess
-	recovered.Ctx, recovered.Cancel = context.WithCancel(context.Background())
-	recovered.DoneCh = make(chan bool)
-	recovered.Closed = true
-	close(recovered.DoneCh)
+	parentCtx := context.Background()
+	if sess != nil && sess.Ctx != nil {
+		parentCtx = sess.Ctx
+	}
+	recovered.Ctx, recovered.Cancel = context.WithCancel(parentCtx)
+	recovered.DoneCh = make(chan bool, 1)
 	if recovered.Finished() {
+		recovered.Closed = true
+		close(recovered.DoneCh)
 		recovered.Cancel()
 	}
 	t.Add(recovered)
@@ -108,6 +129,7 @@ type Task struct {
 	CallBy     string
 	CreatedAt  time.Time
 	FinishedAt time.Time
+	progressMu sync.RWMutex
 	closeOnce  sync.Once
 }
 
@@ -116,39 +138,65 @@ func (t *Task) TaskID() string {
 }
 
 func (t *Task) ToProtobuf() *clientpb.Task {
+	cur, total, createdAt, finishedAt := t.snapshot()
 	task := &clientpb.Task{
 		TaskId:     t.Id,
 		SessionId:  t.SessionId,
 		Type:       t.Type,
-		Cur:        int32(t.Cur),
-		Total:      int32(t.Total),
+		Cur:        int32(cur),
+		Total:      int32(total),
 		Timeout:    t.Timeout(),
 		Finished:   t.Finished(),
 		Callby:     t.CallBy,
-		CreatedAt:  t.CreatedAt.Unix(),
-		FinishedAt: t.FinishedAt.Unix(),
+		CreatedAt:  createdAt.Unix(),
+		FinishedAt: finishedAt.Unix(),
 	}
 	return task
 }
 
 func FromTaskProtobuf(task *clientpb.Task) *Task {
-	return &Task{
-		Id:         task.TaskId,
-		Type:       task.Type,
-		SessionId:  task.SessionId,
-		Cur:        int(task.Cur),
-		Total:      int(task.Total),
-		CallBy:     task.Callby,
-		CreatedAt:  time.Unix(task.CreatedAt, 0),
-		FinishedAt: time.Unix(task.FinishedAt, 0),
+	t := &Task{
+		Id:        task.TaskId,
+		Type:      task.Type,
+		SessionId: task.SessionId,
+		Cur:       int(task.Cur),
+		Total:     int(task.Total),
+		CallBy:    task.Callby,
+		CreatedAt: time.Unix(task.CreatedAt, 0),
 	}
+	// Only set FinishedAt when the protobuf carries a positive timestamp;
+	// zero-time.Unix() is negative and would produce a non-zero time.Time,
+	// causing Finished() to return true for tasks that never completed.
+	if task.FinishedAt > 0 {
+		t.FinishedAt = time.Unix(task.FinishedAt, 0)
+	}
+	return t
 }
 
 func (t *Task) Name() string {
 	return fmt.Sprintf("%s_%v_%s", t.SessionId, t.Id, t.Type)
 }
 func (t *Task) String() string {
-	return fmt.Sprintf("%d/%d", t.Cur, t.Total)
+	cur, total := t.Progress()
+	return fmt.Sprintf("%d/%d", cur, total)
+}
+
+func (t *Task) snapshot() (cur, total int, createdAt, finishedAt time.Time) {
+	t.progressMu.RLock()
+	defer t.progressMu.RUnlock()
+	return t.Cur, t.Total, t.CreatedAt, t.FinishedAt
+}
+
+func (t *Task) Progress() (cur, total int) {
+	t.progressMu.RLock()
+	defer t.progressMu.RUnlock()
+	return t.Cur, t.Total
+}
+
+func (t *Task) FinishedAtTime() time.Time {
+	t.progressMu.RLock()
+	defer t.progressMu.RUnlock()
+	return t.FinishedAt
 }
 
 func (t *Task) Publish(op string, spite *implantpb.Spite, msg string) {
@@ -163,21 +211,50 @@ func (t *Task) Publish(op string, spite *implantpb.Spite, msg string) {
 	})
 }
 func (t *Task) Done(spite *implantpb.Spite, msg string) {
+	t.progressMu.Lock()
 	t.Cur++
-	db.UpdateTaskCur(t.TaskID(), t.Cur)
+	cur := t.Cur
+	t.progressMu.Unlock()
+
+	_ = taskDBUpdateCur(t.TaskID(), cur)
 	t.Publish(consts.CtrlTaskCallback, spite, msg)
+	select {
+	case t.DoneCh <- true:
+	default:
+	}
 }
 
 func (t *Task) Finish(spite *implantpb.Spite, msg string) {
+	needsUpdate := false
+	t.progressMu.Lock()
+	if t.Total < 0 {
+		t.Total = t.Cur
+		needsUpdate = true
+	}
+	t.FinishedAt = time.Now()
+	t.progressMu.Unlock()
+
+	if needsUpdate {
+		_ = taskDBUpdate(t.ToProtobuf())
+	}
 	t.Publish(consts.CtrlTaskFinish, spite, msg)
 	if t.Callback != nil {
 		t.Callback()
 	}
-	db.UpdateTaskFinish(t.TaskID())
+	_ = taskDBUpdateFinish(t.TaskID())
+	select {
+	case t.DoneCh <- true:
+	default:
+	}
 }
 
 func (t *Task) Finished() bool {
-	return t.Cur == t.Total
+	t.progressMu.RLock()
+	defer t.progressMu.RUnlock()
+	if !t.FinishedAt.IsZero() {
+		return true
+	}
+	return t.Total >= 0 && t.Cur == t.Total
 }
 
 func (t *Task) Timeout() bool {
@@ -198,4 +275,3 @@ func (t *Task) Close() {
 		}
 	})
 }
-

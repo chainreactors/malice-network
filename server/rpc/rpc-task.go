@@ -174,6 +174,15 @@ func (rpc *Server) GetTasks(ctx context.Context, req *clientpb.TaskRequest) (*cl
 	}
 }
 
+// tryGetContent tries to find task content from cache first, then from disk.
+func tryGetContent(sess *core.Session, task *core.Task, index int32) (*clientpb.TaskContext, error) {
+	content, err := getTaskContext(sess, task, index)
+	if err == nil || !errors.Is(err, types.ErrNotFoundTaskContent) {
+		return content, err
+	}
+	return getTaskContextFromDisk(sess, task, index)
+}
+
 func (rpc *Server) GetTaskContent(ctx context.Context, req *clientpb.Task) (*clientpb.TaskContext, error) {
 	sess, err := core.Sessions.Get(req.SessionId)
 	if err != nil {
@@ -184,23 +193,7 @@ func (rpc *Server) GetTaskContent(ctx context.Context, req *clientpb.Task) (*cli
 		return nil, types.ErrNotFoundTask
 	}
 
-	content, err := getTaskContext(sess, task, req.Need)
-	if err == nil {
-		return content, nil
-	}
-	if !errors.Is(err, types.ErrNotFoundTaskContent) {
-		return nil, err
-	}
-
-	content, err = getTaskContextFromDisk(sess, task, req.Need)
-	if err == nil {
-		return content, nil
-	}
-	if !errors.Is(err, types.ErrNotFoundTaskContent) {
-		return nil, err
-	}
-
-	return nil, types.ErrNotFoundTaskContent
+	return tryGetContent(sess, task, req.Need)
 }
 
 func (rpc *Server) WaitTaskContent(ctx context.Context, req *clientpb.Task) (*clientpb.TaskContext, error) {
@@ -213,27 +206,39 @@ func (rpc *Server) WaitTaskContent(ctx context.Context, req *clientpb.Task) (*cl
 		return nil, types.ErrNotFoundTask
 	}
 
-	if int(req.Need) > task.Total {
+	_, total := task.Progress()
+	if req.Need >= 0 && total >= 0 && int(req.Need) >= total {
 		return nil, types.ErrTaskIndexExceed
 	}
 
-	content, err := getTaskContext(sess, task, req.Need)
-	if err == nil {
-		return content, nil
-	}
-
 	for {
+		if content, err := tryGetContent(sess, task, req.Need); err == nil {
+			return content, nil
+		} else if !errors.Is(err, types.ErrNotFoundTaskContent) {
+			return nil, err
+		}
+
 		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
 		case _, ok := <-task.DoneCh:
-			if !ok {
-				return nil, types.ErrNotFoundTaskContent
-			}
-			content, err = getTaskContext(sess, task, req.Need)
-			if err != nil {
+			if ok {
 				continue
 			}
-			return content, nil
+		case <-task.Ctx.Done():
 		}
+
+		// Final attempt after signal
+		if content, err := tryGetContent(sess, task, req.Need); err == nil {
+			return content, nil
+		} else if !errors.Is(err, types.ErrNotFoundTaskContent) {
+			return nil, err
+		}
+
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+		return nil, types.ErrNotFoundTaskContent
 	}
 }
 
@@ -248,6 +253,8 @@ func (rpc *Server) WaitTaskFinish(ctx context.Context, req *clientpb.Task) (*cli
 	}
 
 	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
 	case <-task.Ctx.Done():
 		msg, ok := sess.GetLastMessage(int(task.Id))
 		if ok {

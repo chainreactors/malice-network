@@ -60,7 +60,12 @@ func (rpc *Server) Cd(ctx context.Context, req *implantpb.Request) (*clientpb.Ta
 		return nil, err
 	}
 
-	greq.HandlerResponse(ch, types.MsgResponse)
+	greq.HandlerResponse(ch, types.MsgResponse, func(spite *implantpb.Spite) {
+		if output := spite.GetResponse().GetOutput(); output != "" {
+			greq.Session.WorkDir = output
+			_ = greq.Session.SaveAndNotify("")
+		}
+	})
 	return greq.Task.ToProtobuf(), nil
 }
 

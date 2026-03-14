@@ -192,11 +192,11 @@ func TestLifecycle_RegisterCheckinDeadReborn(t *testing.T) {
 	}
 
 	// Step 2: Checkin — update LastCheckin
-	sess.LastCheckin = time.Now().Unix()
+	sess.SetLastCheckin(time.Now().Unix())
 	sess.Save()
 
 	// Step 3: Expire — set old LastCheckin
-	sess.LastCheckin = time.Now().Add(-10 * time.Minute).Unix()
+	sess.SetLastCheckin(time.Now().Add(-10 * time.Minute).Unix())
 
 	// Step 4: Ticker detects dead
 	for _, session := range s.All() {
@@ -309,7 +309,7 @@ func TestLifecycle_ConcurrentCheckinAndTicker(t *testing.T) {
 				}
 			}()
 			for j := 0; j < 100; j++ {
-				sess.LastCheckin = time.Now().Unix()
+				sess.SetLastCheckin(time.Now().Unix())
 			}
 		}()
 	}
@@ -483,7 +483,7 @@ func TestEdge_RegisterLongSilenceThenReborn(t *testing.T) {
 	s.Add(sess)
 
 	// Step 2: NO checkin for a long time — simulate by backdating LastCheckin
-	sess.LastCheckin = time.Now().Add(-30 * time.Minute).Unix()
+	sess.SetLastCheckin(time.Now().Add(-30 * time.Minute).Unix())
 
 	// Step 3: Ticker detects dead
 	runTicker(s)
@@ -683,7 +683,7 @@ func TestEdge_isAlived_ZeroJitter(t *testing.T) {
 	}
 
 	// Now expire it
-	sess.LastCheckin = time.Now().Add(-10 * time.Minute).Unix()
+	sess.SetLastCheckin(time.Now().Add(-10 * time.Minute).Unix())
 	if sess.isAlived() {
 		t.Fatal("expired session with zero jitter should be dead")
 	}
@@ -702,12 +702,12 @@ func TestEdge_isAlived_Boundary(t *testing.T) {
 	)
 	sess.SessionContext.Jitter = 0.0
 
-	sess.LastCheckin = time.Now().Add(-89 * time.Second).Unix()
+	sess.SetLastCheckin(time.Now().Add(-89 * time.Second).Unix())
 	if !sess.isAlived() {
 		t.Fatal("session 89s ago should be alive (within 90s window)")
 	}
 
-	sess.LastCheckin = time.Now().Add(-91 * time.Second).Unix()
+	sess.SetLastCheckin(time.Now().Add(-91 * time.Second).Unix())
 	if sess.isAlived() {
 		t.Fatal("session 91s ago should be dead (beyond 90s window)")
 	}
@@ -748,8 +748,8 @@ func TestEdge_AddReplacesExistingSession(t *testing.T) {
 	s.Add(sess2)
 
 	got, _ := s.Get("replace-1")
-	if got.LastCheckin != 200 {
-		t.Fatalf("Add should replace: LastCheckin=%d, want 200", got.LastCheckin)
+	if got.LastCheckinUnix() != 200 {
+		t.Fatalf("Add should replace: LastCheckin=%d, want 200", got.LastCheckinUnix())
 	}
 
 	// Old session's context is NOT cancelled by Add — only Remove cancels
@@ -793,7 +793,7 @@ func TestEdge_RapidFlapping(t *testing.T) {
 		}
 
 		// Expire it
-		sess.LastCheckin = time.Now().Add(-10 * time.Minute).Unix()
+		sess.SetLastCheckin(time.Now().Add(-10 * time.Minute).Unix())
 
 		// Ticker kills it
 		runTicker(s)
@@ -985,7 +985,7 @@ func TestEdge_CheckinSavePersistsNewTimestamp(t *testing.T) {
 
 	// Simulate checkin: update LastCheckin then Save
 	newTime := time.Now().Unix()
-	sess.LastCheckin = newTime
+	sess.SetLastCheckin(newTime)
 	sess.Save()
 
 	if len(savedModels) == 0 {
@@ -1048,7 +1048,7 @@ func TestLifecycle_SaveOnCheckin(t *testing.T) {
 
 	sess := newTestSession("checkin-save")
 	checkinTime := time.Now().Unix()
-	sess.LastCheckin = checkinTime
+	sess.SetLastCheckin(checkinTime)
 	sess.Save()
 
 	if len(savedModels) == 0 {

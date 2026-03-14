@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/chainreactors/IoM-go/client"
@@ -74,15 +75,7 @@ func NewSessions() *sessions {
 		active: &sync.Map{},
 	}
 	_, err := GlobalTicker.Start(consts.DefaultCacheInterval, func() {
-		for _, session := range newSessions.All() {
-			if !session.isAlived() {
-				if err := session.Save(); err != nil {
-					logs.Log.Errorf("save dead session %s failed: %s", session.ID, err.Error())
-				}
-				session.Publish(consts.CtrlSessionDead, fmt.Sprintf("session %s from %s at %s may have left ", session.ID, session.Target, session.PipelineID), true, true)
-				newSessions.Remove(session.ID)
-			}
-		}
+		newSessions.SweepInactive()
 	})
 	if err != nil {
 		logs.Log.Errorf("cannot start ticker, %s", err.Error())
@@ -186,7 +179,6 @@ func RecoverSession(sess *models.Session) (*Session, error) {
 		ListenerID:     sess.ListenerID,
 		Target:         sess.Target,
 		Initialized:    sess.Initialized,
-		LastCheckin:    sess.LastCheckin,
 		CreatedAt:      sess.CreatedAt,
 		Tasks:          NewTasks(),
 		SessionContext: sessionContext,
@@ -204,6 +196,7 @@ func RecoverSession(sess *models.Session) (*Session, error) {
 	if err != nil {
 		return nil, err
 	}
+	s.SetLastCheckin(sess.LastCheckin)
 
 	s.Ctx, s.Cancel = context.WithCancel(context.Background())
 	tasks, tid, err := db.FindTaskAndMaxTasksID(s.ID)
@@ -223,8 +216,12 @@ func RecoverSession(sess *models.Session) (*Session, error) {
 	for _, task := range tasks {
 		taskPb := task.ToProtobuf()
 		recoverTask := FromTaskProtobuf(taskPb)
+		recoverTask.Session = s
+		recoverTask.DoneCh = make(chan bool, 1)
 		recoverTask.Ctx, recoverTask.Cancel = context.WithCancel(s.Ctx)
-		if recoverTask.Total == recoverTask.Cur {
+		if recoverTask.Finished() {
+			recoverTask.Closed = true
+			close(recoverTask.DoneCh)
 			recoverTask.Cancel()
 		}
 		s.Tasks.Add(recoverTask)
@@ -248,7 +245,6 @@ type Session struct {
 	Note        string
 	Target      string
 	Initialized bool
-	LastCheckin int64
 	CreatedAt   time.Time
 	Tasks       *Tasks // task manager
 	*client.SessionContext
@@ -260,6 +256,9 @@ type Session struct {
 	Taskseq   uint32
 	responses *sync.Map
 	rpcLog    *logs.Logger
+
+	lastCheckin atomic.Int64
+	deadState   atomic.Bool
 
 	keepaliveMu      sync.Mutex
 	keepaliveEnabled bool
@@ -382,7 +381,8 @@ func (s *Session) TaskLog(task *Task, spite *implantpb.Spite) error {
 	if err != nil {
 		return err
 	}
-	filePath, err := fileutils.SafeJoin(configs.ContextPath, filepath.Join(s.ID, consts.TaskPath, fmt.Sprintf("%d_%d", task.Id, task.Cur)))
+	cur, _ := task.Progress()
+	filePath, err := fileutils.SafeJoin(configs.ContextPath, filepath.Join(s.ID, consts.TaskPath, fmt.Sprintf("%d_%d", task.Id, cur)))
 	if err != nil {
 		return err
 	}
@@ -400,7 +400,8 @@ func (s *Session) TaskLog(task *Task, spite *implantpb.Spite) error {
 
 func (s *Session) Recover() error {
 	for _, task := range s.Tasks.All() {
-		if task.Cur < task.Total {
+		cur, total := task.Progress()
+		if cur < total {
 			ch := make(chan *implantpb.Spite, 16)
 			s.responses.Store(task.Id, ch)
 		}
@@ -438,6 +439,38 @@ func (s *Session) RecoverTaskIDByLog() (int, error) {
 	return maxTaskID, nil
 }
 
+func (s *Session) SetLastCheckin(ts int64) {
+	s.lastCheckin.Store(ts)
+}
+
+func (s *Session) MarkDead() bool {
+	return s.deadState.CompareAndSwap(false, true)
+}
+
+func (s *Session) MarkAlive() bool {
+	return s.deadState.CompareAndSwap(true, false)
+}
+
+func (s *Session) IsMarkedDead() bool {
+	return s.deadState.Load()
+}
+
+func (s *Session) HasUnfinishedTasks() bool {
+	if s.Tasks == nil {
+		return false
+	}
+	for _, task := range s.Tasks.All() {
+		if task != nil && !task.Finished() {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *Session) LastCheckinUnix() int64 {
+	return s.lastCheckin.Load()
+}
+
 func (s *Session) isAlived() bool {
 	if s == nil {
 		return false
@@ -454,7 +487,7 @@ func (s *Session) isAlived() bool {
 		remainingSeconds := int64(nextTime.Sub(time.Now()).Seconds())
 		remainingSeconds = int64(float64(remainingSeconds) * (1 + s.Jitter))
 		allowedOffline := utils.Max(remainingSeconds+30, int64(90)) // values are in seconds
-		return time.Now().Unix()-s.LastCheckin <= allowedOffline
+		return time.Now().Unix()-s.LastCheckinUnix() <= allowedOffline
 	}
 }
 
@@ -473,7 +506,7 @@ func (s *Session) ToProtobuf() *clientpb.Session {
 		ListenerId:  s.ListenerID,
 		Os:          s.Os,
 		Process:     s.Process,
-		LastCheckin: s.LastCheckin,
+		LastCheckin: s.LastCheckinUnix(),
 		Filepath:    s.SessionContext.Filepath,
 		Workdir:     s.SessionContext.WorkDir,
 		Locate:      s.SessionContext.Locale,
@@ -503,7 +536,7 @@ func (s *Session) ToProtobufLite() *clientpb.Session {
 		ListenerId:  s.ListenerID,
 		Os:          s.Os,
 		Process:     s.Process,
-		LastCheckin: s.LastCheckin,
+		LastCheckin: s.LastCheckinUnix(),
 		Filepath:    s.SessionContext.Filepath,
 		Workdir:     s.SessionContext.WorkDir,
 		Locate:      s.SessionContext.Locale,
@@ -533,7 +566,7 @@ func (s *Session) ToModel() *models.Session {
 		PipelineID:  s.PipelineID,
 		ListenerID:  s.ListenerID,
 		IsAlive:     s.isAlived(),
-		LastCheckin: s.LastCheckin,
+		LastCheckin: s.LastCheckinUnix(),
 		DataString:  s.Marshal(),
 	}
 	artifact, err := sessionDBGetArtifact(s.Name)
@@ -627,13 +660,16 @@ func (s *Session) Publish(Op string, msg string, notify bool, important bool) {
 
 func (s *Session) NewTask(name string, total int) *Task {
 	s.Taskseq++
+	now := time.Now()
 	task := &Task{
 		Type:      name,
 		Total:     total,
 		Id:        s.Taskseq,
 		SessionId: s.ID,
 		Session:   s,
-		DoneCh:    make(chan bool),
+		DoneCh:    make(chan bool, 1),
+		CreatedAt: now,
+		Deadline:  now.Add(consts.MinTimeout),
 	}
 	task.Ctx, task.Cancel = context.WithCancel(s.Ctx)
 	s.Tasks.Add(task)
@@ -821,6 +857,7 @@ func (s *sessions) Add(session *Session) *Session {
 		logs.Log.Errorf("session is nil")
 		return nil
 	}
+	session.MarkAlive()
 	s.active.Store(session.ID, session)
 	return session
 }
@@ -834,6 +871,39 @@ func (s *sessions) Remove(sessionID string) {
 	parentSession.ResetKeepalive()
 	parentSession.Cancel()
 	s.active.Delete(parentSession.ID)
+}
+
+func SweepInactiveSessions() {
+	if Sessions == nil {
+		return
+	}
+	Sessions.SweepInactive()
+}
+
+func (s *sessions) SweepInactive() {
+	if s == nil {
+		return
+	}
+	for _, session := range s.All() {
+		if session == nil || session.isAlived() {
+			continue
+		}
+		if err := session.Save(); err != nil {
+			logs.Log.Errorf("save dead session %s failed: %s", session.ID, err.Error())
+		}
+		if session.MarkDead() {
+			session.Publish(
+				consts.CtrlSessionDead,
+				fmt.Sprintf("session %s from %s at %s may have left ", session.ID, session.Target, session.PipelineID),
+				true,
+				true,
+			)
+		}
+		if session.HasUnfinishedTasks() {
+			continue
+		}
+		s.Remove(session.ID)
+	}
 }
 
 // initializePipelineKeyPair 从pipeline获取预分发的密钥对

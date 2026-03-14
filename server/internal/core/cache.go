@@ -239,6 +239,7 @@ func (c *Cache) GetLastMessage(taskID int) (*implantpb.Spite, bool) {
 }
 
 type RingCache struct {
+	mu       sync.RWMutex
 	capacity int
 	messages []interface{}
 }
@@ -251,6 +252,8 @@ func NewMessageCache(capacity int) *RingCache {
 }
 
 func (mc *RingCache) Add(message interface{}) {
+	mc.mu.Lock()
+	defer mc.mu.Unlock()
 	if len(mc.messages) == mc.capacity {
 		mc.messages = mc.messages[1:]
 	}
@@ -259,10 +262,16 @@ func (mc *RingCache) Add(message interface{}) {
 }
 
 func (mc *RingCache) GetAll() []interface{} {
-	return mc.messages
+	mc.mu.RLock()
+	defer mc.mu.RUnlock()
+	all := make([]interface{}, len(mc.messages))
+	copy(all, mc.messages)
+	return all
 }
 
 func (mc *RingCache) GetLast() interface{} {
+	mc.mu.RLock()
+	defer mc.mu.RUnlock()
 	if len(mc.messages) == 0 {
 		return nil
 	}
@@ -271,11 +280,15 @@ func (mc *RingCache) GetLast() interface{} {
 
 // GetN 返回最后 N 条消息
 func (mc *RingCache) GetN(n int) []interface{} {
+	mc.mu.RLock()
+	defer mc.mu.RUnlock()
 	if n <= 0 {
 		return nil
 	}
 	if n > len(mc.messages) {
 		n = len(mc.messages)
 	}
-	return mc.messages[len(mc.messages)-n:]
+	items := make([]interface{}, n)
+	copy(items, mc.messages[len(mc.messages)-n:])
+	return items
 }

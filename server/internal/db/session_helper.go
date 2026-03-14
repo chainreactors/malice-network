@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/mtls"
@@ -253,7 +254,11 @@ func UpdateTask(task *clientpb.Task) error {
 	taskModel := &models.Task{
 		ID: task.SessionId + "-" + utils.ToString(task.TaskId),
 	}
-	return taskModel.UpdateCur(Session(), int(task.Total))
+	return Session().Model(taskModel).Updates(map[string]interface{}{
+		"cur":       int(task.Cur),
+		"total":     int(task.Total),
+		"last_time": time.Now(),
+	}).Error
 }
 
 func UpdateTaskCur(taskID string, cur int) error {

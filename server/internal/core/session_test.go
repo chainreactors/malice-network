@@ -27,10 +27,10 @@ func newTestSession(id string, opts ...func(*Session)) *Session {
 				Jitter:     0.1,
 			},
 		},
-		LastCheckin: time.Now().Unix(),
 		responses:   &sync.Map{},
 	}
 	sess.Ctx, sess.Cancel = context.WithCancel(context.Background())
+	sess.SetLastCheckin(time.Now().Unix())
 	for _, opt := range opts {
 		opt(sess)
 	}
@@ -44,7 +44,7 @@ func withType(t string) func(*Session) {
 
 // withLastCheckin returns an option that sets the last checkin timestamp.
 func withLastCheckin(ts int64) func(*Session) {
-	return func(s *Session) { s.LastCheckin = ts }
+	return func(s *Session) { s.SetLastCheckin(ts) }
 }
 
 // withExpression returns an option that sets the cron expression.
@@ -358,6 +358,58 @@ func TestSession_Keepalive(t *testing.T) {
 	sess.ResetKeepalive()
 	if sess.IsKeepaliveEnabled() {
 		t.Fatal("keepalive should be disabled after Reset")
+	}
+}
+
+func TestSessions_SweepInactiveKeepsPendingTasks(t *testing.T) {
+	cleanup := installTestDBMocks()
+	defer cleanup()
+
+	s := &sessions{active: &sync.Map{}}
+	sess := newTestSession("sweep-pending",
+		withExpression("*/1 * * * *"),
+		withLastCheckin(time.Now().Add(-10*time.Minute).Unix()),
+	)
+	task := sess.NewTask("sleep", 1)
+	s.Add(sess)
+
+	s.SweepInactive()
+
+	if _, err := s.Get("sweep-pending"); err != nil {
+		t.Fatalf("session with unfinished tasks should remain in memory: %v", err)
+	}
+	if !sess.IsMarkedDead() {
+		t.Fatal("session with unfinished tasks should still be marked dead")
+	}
+	if sess.Ctx.Err() != nil {
+		t.Fatal("session context should stay alive while unfinished tasks exist")
+	}
+	if task.Ctx.Err() != nil {
+		t.Fatal("unfinished task context should stay alive while session is retained")
+	}
+}
+
+func TestSessions_SweepInactiveRemovesIdleSessions(t *testing.T) {
+	cleanup := installTestDBMocks()
+	defer cleanup()
+
+	s := &sessions{active: &sync.Map{}}
+	sess := newTestSession("sweep-idle",
+		withExpression("*/1 * * * *"),
+		withLastCheckin(time.Now().Add(-10*time.Minute).Unix()),
+	)
+	s.Add(sess)
+
+	s.SweepInactive()
+
+	if _, err := s.Get("sweep-idle"); err == nil {
+		t.Fatal("idle dead session should be removed from memory")
+	}
+	if !sess.IsMarkedDead() {
+		t.Fatal("removed idle session should have been marked dead first")
+	}
+	if sess.Ctx.Err() == nil {
+		t.Fatal("removed idle session context should be cancelled")
 	}
 }
 

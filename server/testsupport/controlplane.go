@@ -713,7 +713,7 @@ func (h *ControlPlaneHarness) SeedSession(t testing.TB, sessionID, pipelineName 
 	if err != nil {
 		t.Fatalf("RegisterSession failed: %v", err)
 	}
-	sess.LastCheckin = time.Now().Unix()
+	sess.SetLastCheckin(time.Now().Unix())
 	if err := sess.Save(); err != nil {
 		t.Fatalf("session.Save failed: %v", err)
 	}
@@ -818,16 +818,53 @@ func (h *ControlPlaneHarness) WriteTempFile(name string, content []byte) (string
 }
 
 func (h *ControlPlaneHarness) Connect(ctx context.Context) (*grpc.ClientConn, error) {
+	return h.ConnectWithConfig(ctx, h.Admin)
+}
+
+func (h *ControlPlaneHarness) ConnectWithConfig(ctx context.Context, config *mtls.ClientConfig) (*grpc.ClientConn, error) {
+	if config == nil {
+		return nil, errors.New("client config is nil")
+	}
 	options, err := mtls.GetGrpcOptions(
-		[]byte(h.Admin.CACertificate),
-		[]byte(h.Admin.Certificate),
-		[]byte(h.Admin.PrivateKey),
-		h.Admin.Type,
+		[]byte(config.CACertificate),
+		[]byte(config.Certificate),
+		[]byte(config.PrivateKey),
+		config.Type,
 	)
 	if err != nil {
 		return nil, err
 	}
 	return grpc.DialContext(ctx, h.Address, options...)
+}
+
+func (h *ControlPlaneHarness) NewListenerClientConfig(t testing.TB, name string) *mtls.ClientConfig {
+	t.Helper()
+
+	if name == "" {
+		t.Fatal("listener name is empty")
+	}
+
+	cfg := configs.GetServerConfig()
+	clientConf, fingerprint, err := certutils.GenerateListenerCert(cfg.IP, name, int(cfg.GRPCPort))
+	if err != nil {
+		t.Fatalf("GenerateListenerCert failed: %v", err)
+	}
+
+	if err := db.CreateOperator(&models.Operator{
+		Name:             name,
+		Type:             mtls.Listener,
+		Role:             models.RoleListener,
+		Fingerprint:      fingerprint,
+		CAType:           certs.ListenerCA,
+		KeyType:          certs.RSAKey,
+		CaCertificatePEM: clientConf.CACertificate,
+		CertificatePEM:   clientConf.Certificate,
+		PrivateKeyPEM:    clientConf.PrivateKey,
+	}); err != nil {
+		t.Fatalf("CreateOperator(listener) failed: %v", err)
+	}
+
+	return clientConf
 }
 
 func WaitForCondition(t testing.TB, timeout time.Duration, cond func() bool, description string) {
