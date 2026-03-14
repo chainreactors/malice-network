@@ -2,9 +2,12 @@
 
 package fileutils
 
-import "path/filepath"
+import (
+	"path/filepath"
+	"strings"
+)
 
 // ResolvePath - Resolve a path from an assumed root path
 func ResolvePath(in string) string {
-	return filepath.Clean("/" + in)
+	return filepath.Clean("/" + strings.ReplaceAll(in, `\`, "/"))
 }

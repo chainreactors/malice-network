@@ -11,6 +11,7 @@ import (
 // TestAllLuaFilesCompile verifies that every .lua file in UnifiedFS
 // can be parsed and compiled without errors (L1 syntax verification).
 func TestAllLuaFilesCompile(t *testing.T) {
+	requireCommunityFixture(t, "community/main.lua")
 	files, err := GetAllLuaFiles()
 	if err != nil {
 		t.Fatalf("failed to enumerate lua files: %v", err)
@@ -46,6 +47,7 @@ func TestAllLuaFilesCompile(t *testing.T) {
 // and all its required modules can be loaded and executed in the mock VM
 // without errors. This is the key integration test for the harness.
 func TestCommunityMainLoads(t *testing.T) {
+	requireCommunityFixture(t, "community/main.lua")
 	harness := NewTestHarness()
 	vm := harness.NewMockVM()
 	defer vm.Close()

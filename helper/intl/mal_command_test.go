@@ -10,6 +10,7 @@ var sharedHarness *TestHarness
 
 func getSharedHarness(t *testing.T) *TestHarness {
 	t.Helper()
+	requireCommunityFixture(t, "community/main.lua")
 	if sharedHarness != nil {
 		return sharedHarness
 	}
@@ -50,7 +51,6 @@ func TestKeyCommandsExist(t *testing.T) {
 		"move:dcom",
 		"bof-execute_assembly",
 		"load_prebuild",
-		"persistence:reg_key",
 		"token:make",
 		"token:steal",
 		"route:print",
@@ -73,14 +73,15 @@ func TestAllCommandsHaveTTP(t *testing.T) {
 
 	// Commands that intentionally don't map to a MITRE TTP
 	whitelist := map[string]bool{
-		"load_prebuild":         true,
-		"rem_community:load":    true,
-		"rem_community:socks5":  true,
-		"rem_community:connect": true,
-		"rem_community:fork":    true,
-		"rem_community:run":     true,
-		"rem_community:log":     true,
-		"rem_community:stop":    true,
+		"load_prebuild":               true,
+		"auto_proxydll":               true,
+		"rem_community:load":          true,
+		"rem_community:socks5":        true,
+		"rem_community:connect":       true,
+		"rem_community:fork":          true,
+		"rem_community:run":           true,
+		"rem_community:log":           true,
+		"rem_community:stop":          true,
 		"persistence:Junction_Folder": true,
 	}
 

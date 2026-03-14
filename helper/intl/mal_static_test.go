@@ -10,6 +10,7 @@ import (
 // from Lua source files and validates that each character is a known BOF
 // pack format specifier.
 func TestBofPackFormatsValid(t *testing.T) {
+	requireCommunityFixture(t, "community/main.lua")
 	files, err := GetAllLuaFiles()
 	if err != nil {
 		t.Fatalf("failed to enumerate lua files: %v", err)
@@ -47,6 +48,7 @@ func TestBofPackFormatsValid(t *testing.T) {
 // in each bof_pack call matches the number of subsequent arguments.
 // It uses depth-aware parenthesis counting to handle nested function calls.
 func TestBofPackArgCountMatch(t *testing.T) {
+	requireCommunityFixture(t, "community/main.lua")
 	files, err := GetAllLuaFiles()
 	if err != nil {
 		t.Fatalf("failed to enumerate lua files: %v", err)
@@ -198,6 +200,7 @@ func countTopLevelArgs(s string) int {
 // TestScriptResourcePathsResolve validates that script_resource paths
 // referenced in Lua source code correspond to actual files in UnifiedFS.
 func TestScriptResourcePathsResolve(t *testing.T) {
+	requireCommunityFixture(t, "community/main.lua")
 	// Load all modules in the mock VM so we can capture script_resource calls
 	harness := NewTestHarness()
 	vm := harness.NewMockVM()
@@ -228,6 +231,7 @@ func TestScriptResourcePathsResolve(t *testing.T) {
 // TestTTPFormatValid validates that all TTP annotations follow the MITRE
 // ATT&CK format (T followed by digits, optionally with sub-technique).
 func TestTTPFormatValid(t *testing.T) {
+	requireCommunityFixture(t, "community/main.lua")
 	harness := NewTestHarness()
 	vm := harness.NewMockVM()
 	defer vm.Close()

@@ -12,6 +12,7 @@ import (
 // The caller is responsible for closing the VM.
 func newL4Harness(t *testing.T) (*TestHarness, *lua.LState) {
 	t.Helper()
+	requireCommunityFixture(t, "community/main.lua")
 	h := NewTestHarness()
 	vm := h.NewMockVM()
 
@@ -56,6 +57,7 @@ func callHandler(t *testing.T, h *TestHarness, vm *lua.LState, name string, args
 // TestReadfileRequiresFilepath verifies that the readfile command errors
 // when no filepath is provided.
 func TestReadfileRequiresFilepath(t *testing.T) {
+	requireCommunityFixture(t, "community/main.lua")
 	h, vm := newL4Harness(t)
 	defer vm.Close()
 
@@ -72,6 +74,7 @@ func TestReadfileRequiresFilepath(t *testing.T) {
 // TestCurlRequiresHost verifies that the curl command errors when
 // no host is provided.
 func TestCurlRequiresHost(t *testing.T) {
+	requireCommunityFixture(t, "community/main.lua")
 	h, vm := newL4Harness(t)
 	defer vm.Close()
 
@@ -88,6 +91,7 @@ func TestCurlRequiresHost(t *testing.T) {
 // TestTrustedpathRequiresDll verifies that the uac-bypass:trustedpath command
 // errors when no DLL file is provided.
 func TestTrustedpathRequiresDll(t *testing.T) {
+	requireCommunityFixture(t, "community/main.lua")
 	h, vm := newL4Harness(t)
 	defer vm.Close()
 
@@ -104,6 +108,7 @@ func TestTrustedpathRequiresDll(t *testing.T) {
 // TestCmstpElevatedCOMRequiresArg verifies that uac-bypass:elevatedcom
 // errors when no command argument is provided.
 func TestCmstpElevatedCOMRequiresArg(t *testing.T) {
+	requireCommunityFixture(t, "community/main.lua")
 	h, vm := newL4Harness(t)
 	defer vm.Close()
 
@@ -119,6 +124,7 @@ func TestCmstpElevatedCOMRequiresArg(t *testing.T) {
 
 // TestValidArgsNoError verifies that commands succeed when given valid arguments.
 func TestValidArgsNoError(t *testing.T) {
+	requireCommunityFixture(t, "community/main.lua")
 	h, vm := newL4Harness(t)
 	defer vm.Close()
 

@@ -1,13 +1,12 @@
 package fileutils
 
 import (
-	"path/filepath"
 	"regexp"
 	"strings"
 )
 
 func FormatWindowPath(path string) string {
-	return filepath.FromSlash(path)
+	return strings.ReplaceAll(path, "/", `\`)
 }
 
 func CheckWindowsPath(path string) bool {

@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"strings"
 	"sync"
+	"testing"
 
 	"github.com/chainreactors/mals"
 	"github.com/spf13/cobra"
@@ -69,6 +70,29 @@ func NewTestHarness() *TestHarness {
 	}
 }
 
+func requireCommunityFixture(t *testing.T, path string) {
+	t.Helper()
+	if FileExists(path) {
+		return
+	}
+	t.Skipf("community fixture %q not present in repository checkout", path)
+}
+
+func readCommunityFixture(path string) ([]byte, error) {
+	candidates := []string{
+		path,
+		"community/" + path,
+		"community/community/" + path,
+	}
+	for _, candidate := range candidates {
+		content, err := UnifiedFS.ReadFile(candidate)
+		if err == nil {
+			return content, nil
+		}
+	}
+	return nil, fmt.Errorf("embedded fixture not found: %s", path)
+}
+
 // NewMockVM creates a gopher-lua VM with all standard libraries from mals
 // and all Go functions replaced by mock implementations that capture metadata.
 func (h *TestHarness) NewMockVM() *lua.LState {
@@ -82,7 +106,7 @@ func (h *TestHarness) NewMockVM() *lua.LState {
 // LoadCommunityMain loads and executes community/community/main.lua,
 // which triggers require() of all sub-modules and registers all commands.
 func (h *TestHarness) LoadCommunityMain(vm *lua.LState) error {
-	content, err := UnifiedFS.ReadFile("community/community/main.lua")
+	content, err := readCommunityFixture("main.lua")
 	if err != nil {
 		return fmt.Errorf("failed to read main.lua: %w", err)
 	}
@@ -162,11 +186,11 @@ func (h *TestHarness) registerMockFunctions(vm *lua.LState) {
 
 		h.mu.Lock()
 		h.Commands[name] = &CapturedCommand{
-			Name:    name,
-			Short:   short,
-			TTP:     ttp,
+			Name:     name,
+			Short:    short,
+			TTP:      ttp,
 			CobraCmd: cmd,
-			LuaFunc: fn,
+			LuaFunc:  fn,
 		}
 		h.mu.Unlock()
 
@@ -602,9 +626,7 @@ func (h *TestHarness) addEmbedLoader(vm *lua.LState) {
 		name := L.CheckString(1)
 		luaPath := strings.Replace(name, ".", "/", -1) + ".lua"
 
-		// Try community/community/ prefix (matches embed structure)
-		fullPath := "community/community/" + luaPath
-		content, err := UnifiedFS.ReadFile(fullPath)
+		content, err := readCommunityFixture(luaPath)
 		if err != nil {
 			L.Push(lua.LString(fmt.Sprintf("no embedded module '%s'", name)))
 			return 1

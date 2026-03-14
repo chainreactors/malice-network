@@ -119,12 +119,27 @@ func buildFallbackEmbedCandidates(namespace, filePath string) []string {
 		candidates = append(candidates, path)
 	}
 
+	normalizedFilePath := strings.Trim(filePath, "/")
+	for {
+		prefix := namespace + "/"
+		if !strings.HasPrefix(normalizedFilePath, prefix) {
+			break
+		}
+		normalizedFilePath = strings.TrimPrefix(normalizedFilePath, prefix)
+	}
+
+	add(namespace + "/" + normalizedFilePath)
 	for _, level := range levels {
+		add(level + "/" + filePath)
+		add(level + "/" + normalizedFilePath)
 		add(level + "/" + namespace + "/" + filePath)
+		add(level + "/" + namespace + "/" + normalizedFilePath)
 	}
 
 	if isKnownLevel(namespace) {
+		add(namespace + "/" + filePath)
 		add(namespace + "/" + namespace + "/" + filePath)
+		add(namespace + "/" + namespace + "/" + normalizedFilePath)
 	}
 
 	return candidates

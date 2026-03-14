@@ -3,6 +3,7 @@ package intl
 import "testing"
 
 func TestReadEmbedResourceCanonicalPath(t *testing.T) {
+	requireCommunityFixture(t, "community/resources/bof/ipconfig/ipconfig.x64.o")
 	path := "embed://community/community/resources/bof/ipconfig/ipconfig.x64.o"
 	content, err := ReadEmbedResource(path)
 	if err != nil {
@@ -14,6 +15,7 @@ func TestReadEmbedResourceCanonicalPath(t *testing.T) {
 }
 
 func TestReadEmbedResourceLegacyPathFallback(t *testing.T) {
+	requireCommunityFixture(t, "community/resources/bof/ipconfig/ipconfig.x64.o")
 	path := "embed://community/resources/bof/ipconfig/ipconfig.x64.o"
 	content, err := ReadEmbedResource(path)
 	if err != nil {
