@@ -112,23 +112,10 @@ func TestMockImplantRealtimeExecuteTaskE2E(t *testing.T) {
 		secondDelay = 100 * time.Millisecond
 	)
 	mock.On(consts.ModuleExecute, func(ctx context.Context, req *clientpb.SpiteRequest, send func(*implantpb.Spite) error) error {
-		time.Sleep(firstDelay)
-		if err := send(&implantpb.Spite{
-			Body: &implantpb.Spite_ExecResponse{ExecResponse: &implantpb.ExecResponse{
-				Stdout: []byte("alpha"),
-				End:    false,
-			}},
-		}); err != nil {
-			return err
-		}
-
-		time.Sleep(secondDelay)
-		return send(&implantpb.Spite{
-			Body: &implantpb.Spite_ExecResponse{ExecResponse: &implantpb.ExecResponse{
-				Stdout: []byte("omega"),
-				End:    true,
-			}},
-		})
+		return testsupport.SendRealisticExecStream(ctx, send, 4242, 0,
+			testsupport.MockExecChunk{Delay: firstDelay, Stdout: []byte("alpha")},
+			testsupport.MockExecChunk{Delay: secondDelay, Stdout: []byte("omega")},
+		)
 	})
 
 	if err := mock.Start(); err != nil {
@@ -217,11 +204,14 @@ func TestMockImplantRealtimeExecuteTaskE2E(t *testing.T) {
 	if !finished.Task.Finished {
 		t.Fatalf("finished task = %#v, want finished state", finished.Task)
 	}
-	if finished.Task.Cur != 2 || finished.Task.Total != 2 {
-		t.Fatalf("finished task progress = %d/%d, want 2/2", finished.Task.Cur, finished.Task.Total)
+	if finished.Task.Cur != 3 || finished.Task.Total != 3 {
+		t.Fatalf("finished task progress = %d/%d, want 3/3", finished.Task.Cur, finished.Task.Total)
 	}
-	if got := string(finished.GetSpite().GetExecResponse().GetStdout()); got != "omega" {
-		t.Fatalf("finished exec chunk = %q, want omega", got)
+	if got := string(finished.GetSpite().GetExecResponse().GetStdout()); got != "" {
+		t.Fatalf("finished exec chunk = %q, want empty terminal marker", got)
+	}
+	if !finished.GetSpite().GetExecResponse().GetEnd() {
+		t.Fatal("finished exec chunk should be a terminal end marker")
 	}
 
 	if errs := mock.Errors(); len(errs) != 0 {

@@ -102,6 +102,72 @@ func TestWaitTaskContentReturnsWhenCallerContextCancels(t *testing.T) {
 	}
 }
 
+func TestWaitTaskContentWaitsForNextDiskBackedCallbackIndex(t *testing.T) {
+	env := newRPCTestEnv(t)
+	sess := env.seedSession(t, "rpc-wait-disk-index", "rpc-wait-disk-index-pipe", true)
+	task := sess.NewTask("wait-disk-index", 2)
+	t.Cleanup(task.Close)
+
+	first := &implantpb.Spite{
+		TaskId: task.Id,
+		Name:   task.Type,
+		Body:   &implantpb.Spite_Ping{Ping: &implantpb.Ping{Nonce: 11}},
+	}
+	sess.AddMessage(first, 0)
+	task.Done(first, "first")
+	if err := sess.TaskLog(task, first); err != nil {
+		t.Fatalf("TaskLog(first) failed: %v", err)
+	}
+
+	resultCh := make(chan struct {
+		ctx *clientpb.TaskContext
+		err error
+	}, 1)
+	go func() {
+		ctx, err := (&Server{}).WaitTaskContent(context.Background(), &clientpb.Task{
+			SessionId: sess.ID,
+			TaskId:    task.Id,
+			Need:      1,
+		})
+		resultCh <- struct {
+			ctx *clientpb.TaskContext
+			err error
+		}{ctx: ctx, err: err}
+	}()
+
+	select {
+	case result := <-resultCh:
+		t.Fatalf("WaitTaskContent returned early with %#v / %v, want to wait for callback index 1", result.ctx, result.err)
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	second := &implantpb.Spite{
+		TaskId: task.Id,
+		Name:   task.Type,
+		Body:   &implantpb.Spite_Ping{Ping: &implantpb.Ping{Nonce: 22}},
+	}
+	sess.AddMessage(second, 1)
+	task.Done(second, "second")
+	if err := sess.TaskLog(task, second); err != nil {
+		t.Fatalf("TaskLog(second) failed: %v", err)
+	}
+
+	select {
+	case result := <-resultCh:
+		if result.err != nil {
+			t.Fatalf("WaitTaskContent returned error: %v", result.err)
+		}
+		if result.ctx == nil || result.ctx.Spite == nil {
+			t.Fatalf("WaitTaskContent result = %#v, want second task content", result.ctx)
+		}
+		if got := result.ctx.Spite.GetPing().GetNonce(); got != 22 {
+			t.Fatalf("WaitTaskContent nonce = %d, want 22", got)
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("WaitTaskContent did not return after callback index 1 arrived")
+	}
+}
+
 func TestWaitTaskFinishReturnsWhenCallerContextCancels(t *testing.T) {
 	env := newRPCTestEnv(t)
 	sess := env.seedSession(t, "rpc-wait-finish-cancel", "rpc-wait-finish-cancel-pipe", true)

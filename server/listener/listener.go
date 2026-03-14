@@ -196,6 +196,50 @@ type listener struct {
 	websites  map[string]*Website
 }
 
+func (lns *listener) Close() error {
+	if lns == nil {
+		return nil
+	}
+
+	var errs []error
+
+	for _, pipeline := range lns.pipelines.ToProtobuf().GetPipelines() {
+		if pipeline == nil {
+			continue
+		}
+		runtime := lns.pipelines.Get(pipeline.Name)
+		if runtime == nil {
+			continue
+		}
+		if err := runtime.Close(); err != nil {
+			errs = append(errs, err)
+		}
+		lns.pipelines.Delete(pipeline.Name)
+	}
+
+	for name, website := range lns.websites {
+		if website == nil {
+			continue
+		}
+		if err := website.Close(); err != nil {
+			errs = append(errs, fmt.Errorf("close website %s: %w", name, err))
+		}
+		delete(lns.websites, name)
+	}
+
+	if lns.conn != nil {
+		if err := lns.conn.Close(); err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	if Listener == lns {
+		Listener = nil
+	}
+
+	return errors.Join(errs...)
+}
+
 func (lns *listener) RegisterAndStart(pipeline *clientpb.Pipeline) error {
 	if !pipeline.Enable {
 		return nil

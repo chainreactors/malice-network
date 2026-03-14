@@ -107,11 +107,17 @@ func NewControlPlaneHarness(t testing.TB) *ControlPlaneHarness {
 
 	oldBroker := core.EventBroker
 	oldSessions := core.Sessions
+	oldConnections := core.Connections
+	oldForwarders := core.Forwarders
+	oldListenerSessions := core.ListenerSessions
 	oldListenerMap := core.Listeners.Map
 	oldJobsMap := core.Jobs.Map
 	t.Cleanup(func() {
 		core.EventBroker = oldBroker
 		core.Sessions = oldSessions
+		core.Connections = oldConnections
+		core.Forwarders = oldForwarders
+		core.ListenerSessions = oldListenerSessions
 		core.Listeners.Map = oldListenerMap
 		core.Jobs.Map = oldJobsMap
 		for _, client := range core.Clients.ActiveClients() {
@@ -123,6 +129,8 @@ func NewControlPlaneHarness(t testing.TB) *ControlPlaneHarness {
 	core.Jobs.Map = &sync.Map{}
 	core.NewBroker()
 	core.NewSessions()
+	core.ResetTransientTransportState()
+	rpc.ResetTransientRPCState()
 
 	if err := certutils.GenerateRootCert(); err != nil {
 		t.Fatalf("GenerateRootCert failed: %v", err)
@@ -173,6 +181,8 @@ func NewControlPlaneHarness(t testing.TB) *ControlPlaneHarness {
 		core.Listeners.Remove(h.control)
 		grpcServer.GracefulStop()
 		_ = ln.Close()
+		core.ResetTransientTransportState()
+		rpc.ResetTransientRPCState()
 		rpc.CloseLogs()
 	})
 

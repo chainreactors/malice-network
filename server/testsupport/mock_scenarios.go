@@ -1010,22 +1010,20 @@ func (s *MockScenarioLibrary) handleQueryTask(ctx context.Context, req *clientpb
 func (s *MockScenarioLibrary) handleExecute(ctx context.Context, req *clientpb.SpiteRequest, send func(*implantpb.Spite) error) error {
 	request := req.GetSpite().GetExecRequest()
 	realtime := request != nil && request.GetRealtime()
-	if realtime {
-		if err := send(&implantpb.Spite{
-			Body: &implantpb.Spite_ExecResponse{ExecResponse: &implantpb.ExecResponse{
-				Stdout: []byte("mock stream: begin"),
-				Pid:    4242,
-				End:    false,
-			}},
-		}); err != nil {
-			return err
-		}
-		time.Sleep(50 * time.Millisecond)
+	output := request != nil && request.GetOutput()
+
+	s.mu.Lock()
+	chunks, stdout := s.execOutputLocked(request)
+	s.mu.Unlock()
+
+	if realtime && output {
+		return SendRealisticExecStream(ctx, send, 4242, 0, chunks...)
 	}
+
 	return send(&implantpb.Spite{
 		Body: &implantpb.Spite_ExecResponse{ExecResponse: &implantpb.ExecResponse{
 			StatusCode: 0,
-			Stdout:     []byte("mock stream: done"),
+			Stdout:     stdout,
 			Pid:        4242,
 			End:        true,
 		}},
@@ -1223,6 +1221,69 @@ func (s *MockScenarioLibrary) normPath(path string) string {
 		path += `\`
 	}
 	return strings.ToLower(path)
+}
+
+func (s *MockScenarioLibrary) execOutputLocked(request *implantpb.ExecRequest) ([]MockExecChunk, []byte) {
+	if request == nil {
+		return nil, nil
+	}
+
+	stdout := s.renderExecStdoutLocked(request)
+	if request.GetRealtime() && request.GetOutput() {
+		commandLine := strings.ToLower(strings.Join(request.GetArgs(), " "))
+		chunks := make([]MockExecChunk, 0, 2)
+		switch {
+		case strings.Contains(commandLine, "echo alpha") && strings.Contains(commandLine, "echo omega"):
+			chunks = append(chunks,
+				MockExecChunk{Delay: 50 * time.Millisecond, Stdout: []byte("alpha\r\n")},
+				MockExecChunk{Delay: 50 * time.Millisecond, Stdout: []byte("omega\r\n")},
+			)
+		case len(stdout) > 0:
+			chunks = append(chunks, MockExecChunk{Delay: 50 * time.Millisecond, Stdout: stdout})
+		}
+		return chunks, nil
+	}
+
+	if !request.GetOutput() {
+		return nil, nil
+	}
+	return nil, stdout
+}
+
+func (s *MockScenarioLibrary) renderExecStdoutLocked(request *implantpb.ExecRequest) []byte {
+	if request == nil {
+		return nil
+	}
+
+	path := strings.ToLower(strings.TrimSpace(request.GetPath()))
+	args := request.GetArgs()
+	joinedArgs := strings.Join(args, " ")
+	lowerArgs := strings.ToLower(joinedArgs)
+
+	switch {
+	case strings.HasSuffix(path, "cmd.exe") && strings.Contains(lowerArgs, "hostname"):
+		host := "mock-host"
+		if s.sysInfo != nil && s.sysInfo.GetOs() != nil && s.sysInfo.GetOs().GetHostname() != "" {
+			host = s.sysInfo.GetOs().GetHostname()
+		}
+		return []byte(host + "\r\n")
+	case strings.HasSuffix(path, "cmd.exe") && strings.Contains(lowerArgs, "echo alpha") && strings.Contains(lowerArgs, "echo omega"):
+		return []byte("alpha\r\nomega\r\n")
+	case strings.HasSuffix(path, "cmd.exe") && strings.Contains(lowerArgs, "echo "):
+		echoIndex := strings.Index(lowerArgs, "echo ")
+		if echoIndex >= 0 {
+			raw := strings.TrimSpace(joinedArgs[echoIndex+len("echo "):])
+			if raw != "" {
+				return []byte(raw + "\r\n")
+			}
+		}
+	}
+
+	commandLine := strings.TrimSpace(strings.Join(append([]string{request.GetPath()}, request.GetArgs()...), " "))
+	if commandLine == "" {
+		return nil
+	}
+	return []byte(fmt.Sprintf("executed: %s\r\n", commandLine))
 }
 
 func containsString(values []string, needle string) bool {

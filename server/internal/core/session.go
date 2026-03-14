@@ -382,7 +382,14 @@ func (s *Session) TaskLog(task *Task, spite *implantpb.Spite) error {
 		return err
 	}
 	cur, _ := task.Progress()
-	filePath, err := fileutils.SafeJoin(configs.ContextPath, filepath.Join(s.ID, consts.TaskPath, fmt.Sprintf("%d_%d", task.Id, cur)))
+	index := cur
+	if index > 0 {
+		index--
+	}
+	// Task cache uses zero-based callback indexes. Persist the same index so
+	// WaitTaskContent/GetTaskContent do not return the wrong callback when they
+	// fall back from memory to disk.
+	filePath, err := fileutils.SafeJoin(configs.ContextPath, filepath.Join(s.ID, consts.TaskPath, fmt.Sprintf("%d_%d", task.Id, index)))
 	if err != nil {
 		return err
 	}

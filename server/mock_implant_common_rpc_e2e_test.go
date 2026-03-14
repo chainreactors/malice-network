@@ -1310,8 +1310,8 @@ func TestMockImplantControlAndExecutionRPCsE2E(t *testing.T) {
 		t.Fatal("execute request should preserve realtime=false")
 	}
 	execContent := waitTaskFinish(t, f.rpc, f.mock.SessionID, execTask.TaskId)
-	if got := string(execContent.GetSpite().GetExecResponse().GetStdout()); got != "mock stream: done" {
-		t.Fatalf("execute stdout = %q, want mock stream: done", got)
+	if got := strings.TrimSpace(string(execContent.GetSpite().GetExecResponse().GetStdout())); got != "mock-host" {
+		t.Fatalf("execute stdout = %q, want mock-host", got)
 	}
 	if !execContent.GetSpite().GetExecResponse().GetEnd() {
 		t.Fatal("execute response should end the stream")

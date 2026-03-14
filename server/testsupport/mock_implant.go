@@ -8,8 +8,12 @@ import (
 	"io"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/chainreactors/malice-network/helper/encoders"
+	"github.com/chainreactors/malice-network/helper/encoders/hash"
 
 	"github.com/chainreactors/IoM-go/mtls"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
@@ -22,10 +26,23 @@ import (
 
 type MockImplantHandler func(context.Context, *clientpb.SpiteRequest, func(*implantpb.Spite) error) error
 
+var mockRawIDCounter atomic.Uint32
+
+func nextMockRawID() uint32 {
+	for {
+		rawID := mockRawIDCounter.Add(1)
+		if rawID != 0 {
+			return rawID
+		}
+	}
+}
+
 type MockImplant struct {
 	Harness  *ControlPlaneHarness
 	Pipeline *clientpb.Pipeline
 	Config   *mtls.ClientConfig
+
+	AutoCheckinInterval time.Duration
 
 	SessionID string
 	RawID     uint32
@@ -41,6 +58,8 @@ type MockImplant struct {
 
 	sendMu sync.Mutex
 	wg     sync.WaitGroup
+
+	periodicCheckinsPaused atomic.Bool
 
 	mu       sync.Mutex
 	requests []*clientpb.SpiteRequest
@@ -62,13 +81,15 @@ func NewMockImplant(t testing.TB, h *ControlPlaneHarness, pipeline *clientpb.Pip
 	h.SeedPipeline(t, pipeline, true)
 
 	name := fmt.Sprintf("mock-listener-%d", time.Now().UnixNano())
+	rawID := nextMockRawID()
 	mock := &MockImplant{
-		Harness:   h,
-		Pipeline:  pipeline,
-		Config:    h.NewListenerClientConfig(t, name),
-		SessionID: fmt.Sprintf("mock-session-%d", time.Now().UnixNano()),
-		RawID:     1,
-		Target:    "127.0.0.1",
+		Harness:             h,
+		Pipeline:            pipeline,
+		Config:              h.NewListenerClientConfig(t, name),
+		AutoCheckinInterval: time.Second,
+		SessionID:           hash.Md5Hash(encoders.Uint32ToBytes(rawID)),
+		RawID:               rawID,
+		Target:              "127.0.0.1",
 		Register: &implantpb.Register{
 			Name: "mock-implant",
 			Timer: &implantpb.Timer{
@@ -152,6 +173,16 @@ func (m *MockImplant) Start() error {
 		return err
 	}
 
+	if err := m.Checkin(); err != nil {
+		_ = m.Close()
+		return fmt.Errorf("mock implant initial checkin: %w", err)
+	}
+
+	if m.AutoCheckinInterval > 0 {
+		m.wg.Add(1)
+		go m.autoCheckinLoop()
+	}
+
 	return nil
 }
 
@@ -165,6 +196,20 @@ func (m *MockImplant) Checkin() error {
 
 	_, err := m.Client.Checkin(ctx, &implantpb.Ping{Nonce: 1})
 	return err
+}
+
+func (m *MockImplant) PauseAutoCheckins() {
+	if m == nil {
+		return
+	}
+	m.periodicCheckinsPaused.Store(true)
+}
+
+func (m *MockImplant) ResumeAutoCheckins() {
+	if m == nil {
+		return
+	}
+	m.periodicCheckinsPaused.Store(false)
 }
 
 func (m *MockImplant) Requests() []*clientpb.SpiteRequest {
@@ -256,6 +301,30 @@ func (m *MockImplant) recvLoop() {
 				m.appendError(err)
 			}
 		}(proto.Clone(req).(*clientpb.SpiteRequest), handler)
+	}
+}
+
+func (m *MockImplant) autoCheckinLoop() {
+	defer m.wg.Done()
+
+	ticker := time.NewTicker(m.AutoCheckinInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			if m.periodicCheckinsPaused.Load() {
+				continue
+			}
+			if err := m.Checkin(); err != nil {
+				if m.ctx != nil && m.ctx.Err() != nil {
+					return
+				}
+				m.appendError(fmt.Errorf("mock implant auto checkin: %w", err))
+			}
+		case <-m.ctx.Done():
+			return
+		}
 	}
 }
 

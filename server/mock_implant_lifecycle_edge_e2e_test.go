@@ -109,15 +109,9 @@ func TestMockImplantDeadSweepKeepsPendingStreamingTaskAlive(t *testing.T) {
 		case <-time.After(5 * time.Second):
 			return context.DeadlineExceeded
 		}
-
-		return send(&implantpb.Spite{
-			Body: &implantpb.Spite_ExecResponse{ExecResponse: &implantpb.ExecResponse{
-				Stdout:     []byte("omega"),
-				Pid:        7001,
-				StatusCode: 0,
-				End:        true,
-			}},
-		})
+		return testsupport.SendRealisticExecStream(ctx, send, 7001, 0,
+			testsupport.MockExecChunk{Stdout: []byte("omega")},
+		)
 	})
 
 	execBefore := len(f.mock.RequestsByName(consts.ModuleExecute))
@@ -166,8 +160,8 @@ func TestMockImplantDeadSweepKeepsPendingStreamingTaskAlive(t *testing.T) {
 
 	close(releaseFinal)
 	finished := waitTaskFinish(t, f.rpc, f.mock.SessionID, task.TaskId)
-	if got := string(finished.GetSpite().GetExecResponse().GetStdout()); got != "omega" {
-		t.Fatalf("finished exec stdout = %q, want omega", got)
+	if got := string(finished.GetSpite().GetExecResponse().GetStdout()); got != "" {
+		t.Fatalf("finished exec stdout = %q, want empty terminal marker", got)
 	}
 	if !finished.GetTask().GetFinished() {
 		t.Fatal("streaming task should finish after final callback")

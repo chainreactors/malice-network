@@ -72,9 +72,29 @@ It works with `server/testsupport/controlplane.go`:
 - creates a real listener-role mTLS identity
 - opens `ListenerRPC.SpiteStream` with `pipeline_id` metadata
 - registers a session with `ListenerRPC.Register`
+- immediately performs the first `ListenerRPC.Checkin`, so the session is in a
+  post-register ready state before task assertions begin
+- keeps an optional periodic checkin loop enabled by default to simulate the
+  normal beacon cadence more closely
 - receives `SpiteRequest` values from the server
 - dispatches them to per-module scripted handlers
 - sends `SpiteResponse` values back over the same stream
+
+Recent changes intentionally moved the mock closer to the real implant runtime
+at the process level:
+
+- mock `SessionID` now follows the real `raw id -> session id` derivation model
+- startup is modeled as `register -> first checkin -> task-ready session`
+- periodic checkins can be paused per test with `PauseAutoCheckins()` when an
+  edge case needs a forced stale/dead window
+- realtime `exec` now uses the same visible-output-then-terminal-marker shape as
+  the real implant
+
+This is the current priority order:
+
+1. simulate register/checkin/task flow correctly
+2. simulate task wait/progress/finish/recovery correctly
+3. only then add richer per-module behavior
 
 ## Current E2E Guards
 
@@ -148,12 +168,13 @@ They now prove that:
   - `Rev2Self`
 - session state transitions are validated across runtime memory and DB persistence:
   - register-time sysinfo/workdir initialization
+  - post-register checkin updates the session into a task-ready state
   - `Sleep` timer update
   - `Cd` working-directory update
   - `Info` sysinfo refresh and normalization
 - task state transitions are validated across gRPC return values, runtime memory, DB rows, and task-content APIs:
   - single-response tasks: created -> pending -> finished -> closed
-  - streaming tasks: `Total=-1` pending -> callback progress -> finish normalization -> recovery from persisted state
+  - streaming tasks: `Total=-1` pending -> visible callback progress -> empty terminal end marker -> finish normalization -> recovery from persisted state
   - `GetTasks`, `GetTaskContent`, `GetAllTaskContent`, and `WaitTaskFinish` all reflect the same state progression
 - session/task lifecycle edge behavior is validated through the real listener stream:
   - a dead sweep does not remove a session that still owns unfinished tasks
@@ -207,6 +228,23 @@ This is now fixed by splitting dead marking from runtime removal:
   - late implant responses refresh `LastCheckin`, persist the session, and clear the dead marker
 - `server/rpc/rpc-implant.go`
   - checkins for retained dead sessions now also clear the dead marker and publish reborn state correctly
+
+The closer-to-real streaming shape exposed another task-runtime bug:
+
+- runtime cache used zero-based callback indexes, but on-disk `TaskLog` content
+  was persisted with one-based indexes after `task.Done()`
+- that let `WaitTaskContent(need=1)` incorrectly return the first callback as
+  soon as disk fallback was consulted, before callback index `1` had really
+  arrived
+
+This is now fixed in:
+
+- `server/internal/core/session.go`
+  - persisted task-content indexes now match the in-memory zero-based callback
+    indexes
+- `server/rpc/rpc_task_wait_test.go`
+  - added a regression test to ensure disk fallback waits for the correct next
+    callback index
 
 ## Scenario Library
 

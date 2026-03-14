@@ -19,6 +19,7 @@ These documents are not API references. They capture:
 - `module-management-regression-record.md`: addon, module load, and build-triggered module compilation regressions plus shared command harness extensions
 - `mock-implant-e2e.md`: server-facing mock implant transport, reusable scenario library, real task/request streaming `WaitTask*` E2E, and dead/reborn lifecycle edge coverage
 - `task-runtime-regression-record.md`: task wait semantics, streaming task finish state, recovery/runtime wiring, dead-sweep/task-cancel regressions, and task command regressions
+- `implant-e2e-testing.md`: real implant module E2E testing guide — compilation, proto round-trip, bridge transport simulation, response normalization, and reusable patterns for any `malefic-3rd` module
 
 ## How To Use This Directory
 

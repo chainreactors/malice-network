@@ -76,6 +76,13 @@ func CloseLogs() {
 	}
 }
 
+// ResetTransientRPCState clears process-global RPC stream state that should
+// not leak across isolated in-process test harnesses.
+func ResetTransientRPCState() {
+	pipelinesCh = sync.Map{}
+	ptyStreamingSessions = sync.Map{}
+}
+
 func RegisterRPCServices(grpcServer *grpc.Server) {
 	clientrpc.RegisterMaliceRPCServer(grpcServer, NewServer())
 	clientrpc.RegisterRootRPCServer(grpcServer, NewServer())

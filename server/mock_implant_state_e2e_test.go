@@ -65,6 +65,9 @@ func TestMockImplantSessionStateTransitionsE2E(t *testing.T) {
 	if runtimeSession.WorkDir != f.lib.WorkDir {
 		t.Fatalf("initial runtime workdir = %q, want %q", runtimeSession.WorkDir, f.lib.WorkDir)
 	}
+	if runtimeSession.LastCheckinUnix() == 0 {
+		t.Fatal("runtime session should already have a post-register checkin timestamp")
+	}
 	if runtimeSession.Os == nil || runtimeSession.Os.GetName() != "windows" {
 		t.Fatalf("initial runtime os = %#v, want windows", runtimeSession.Os)
 	}
@@ -75,6 +78,9 @@ func TestMockImplantSessionStateTransitionsE2E(t *testing.T) {
 	}
 	if storedSession.GetWorkdir() != f.lib.WorkDir {
 		t.Fatalf("initial stored workdir = %q, want %q", storedSession.GetWorkdir(), f.lib.WorkDir)
+	}
+	if !storedSession.GetIsAlive() {
+		t.Fatal("stored session should already be alive after register + first checkin")
 	}
 	if storedSession.GetTimer().GetExpression() != "* * * * *" {
 		t.Fatalf("initial stored timer = %q, want * * * * *", storedSession.GetTimer().GetExpression())
@@ -312,26 +318,10 @@ func TestMockImplantStreamingTaskStateAndRecoveryE2E(t *testing.T) {
 		secondDelay = 120 * time.Millisecond
 	)
 	f.mock.On(consts.ModuleExecute, func(ctx context.Context, req *clientpb.SpiteRequest, send func(*implantpb.Spite) error) error {
-		time.Sleep(firstDelay)
-		if err := send(&implantpb.Spite{
-			Body: &implantpb.Spite_ExecResponse{ExecResponse: &implantpb.ExecResponse{
-				Stdout: []byte("alpha"),
-				Pid:    4242,
-				End:    false,
-			}},
-		}); err != nil {
-			return err
-		}
-
-		time.Sleep(secondDelay)
-		return send(&implantpb.Spite{
-			Body: &implantpb.Spite_ExecResponse{ExecResponse: &implantpb.ExecResponse{
-				Stdout:     []byte("omega"),
-				Pid:        4242,
-				StatusCode: 0,
-				End:        true,
-			}},
-		})
+		return testsupport.SendRealisticExecStream(ctx, send, 4242, 0,
+			testsupport.MockExecChunk{Delay: firstDelay, Stdout: []byte("alpha")},
+			testsupport.MockExecChunk{Delay: secondDelay, Stdout: []byte("omega")},
+		)
 	})
 
 	execBefore := len(f.mock.RequestsByName(consts.ModuleExecute))
@@ -414,8 +404,8 @@ func TestMockImplantStreamingTaskStateAndRecoveryE2E(t *testing.T) {
 	if !finished.GetTask().GetFinished() {
 		t.Fatal("finished streaming task should report finished=true")
 	}
-	if finished.GetTask().GetCur() != 2 || finished.GetTask().GetTotal() != 2 {
-		t.Fatalf("finished streaming task progress = %d/%d, want 2/2", finished.GetTask().GetCur(), finished.GetTask().GetTotal())
+	if finished.GetTask().GetCur() != 3 || finished.GetTask().GetTotal() != 3 {
+		t.Fatalf("finished streaming task progress = %d/%d, want 3/3", finished.GetTask().GetCur(), finished.GetTask().GetTotal())
 	}
 	if finished.GetTask().GetFinishedAt() == 0 {
 		t.Fatal("finished streaming task should have finished_at set")
@@ -423,20 +413,26 @@ func TestMockImplantStreamingTaskStateAndRecoveryE2E(t *testing.T) {
 	if finished.GetTask().GetTimeout() {
 		t.Fatal("finished streaming task should not be timed out immediately")
 	}
+	if got := string(finished.GetSpite().GetExecResponse().GetStdout()); got != "" {
+		t.Fatalf("finished streaming terminal chunk = %q, want empty end marker", got)
+	}
+	if !finished.GetSpite().GetExecResponse().GetEnd() {
+		t.Fatal("finished streaming task should return a terminal end marker")
+	}
 
 	testsupport.WaitForCondition(t, 5*time.Second, func() bool {
 		return runtimeTask.Closed && runtimeTask.Ctx.Err() != nil
 	}, "streaming task close")
-	if cur, total := runtimeTask.Progress(); cur != 2 || total != 2 {
-		t.Fatalf("runtime streaming task progress after finish = %d/%d, want 2/2", cur, total)
+	if cur, total := runtimeTask.Progress(); cur != 3 || total != 3 {
+		t.Fatalf("runtime streaming task progress after finish = %d/%d, want 3/3", cur, total)
 	}
 	if !runtimeTask.Finished() {
 		t.Fatal("runtime streaming task should be finished")
 	}
 
 	dbTask = getDBTask(t, f.mock.SessionID, task.TaskId)
-	if dbTask.Cur != 2 || dbTask.Total != 2 {
-		t.Fatalf("db streaming task progress after finish = %d/%d, want 2/2", dbTask.Cur, dbTask.Total)
+	if dbTask.Cur != 3 || dbTask.Total != 3 {
+		t.Fatalf("db streaming task progress after finish = %d/%d, want 3/3", dbTask.Cur, dbTask.Total)
 	}
 	if dbTask.FinishTime.IsZero() {
 		t.Fatal("db streaming task should have finish_time set after completion")
@@ -449,8 +445,12 @@ func TestMockImplantStreamingTaskStateAndRecoveryE2E(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetAllTaskContent failed: %v", err)
 	}
-	if len(allContent.GetSpites()) != 2 {
-		t.Fatalf("GetAllTaskContent count = %d, want 2", len(allContent.GetSpites()))
+	if len(allContent.GetSpites()) != 3 {
+		t.Fatalf("GetAllTaskContent count = %d, want 3", len(allContent.GetSpites()))
+	}
+	lastSpite := allContent.GetSpites()[len(allContent.GetSpites())-1]
+	if !lastSpite.GetExecResponse().GetEnd() {
+		t.Fatalf("last exec spite = %#v, want terminal end marker", lastSpite.GetExecResponse())
 	}
 
 	runtimeSession := getRuntimeSession(t, f.mock.SessionID)
@@ -468,6 +468,18 @@ func TestMockImplantStreamingTaskStateAndRecoveryE2E(t *testing.T) {
 		t.Fatalf("recovered first stdout = %q, want alpha", got)
 	}
 
+	recoveredSecond, err := f.rpc.GetTaskContent(context.Background(), &clientpb.Task{
+		SessionId: f.mock.SessionID,
+		TaskId:    task.TaskId,
+		Need:      1,
+	})
+	if err != nil {
+		t.Fatalf("GetTaskContent(recovered second) failed: %v", err)
+	}
+	if got := string(recoveredSecond.GetSpite().GetExecResponse().GetStdout()); got != "omega" {
+		t.Fatalf("recovered second stdout = %q, want omega", got)
+	}
+
 	recoveredFinished, err := f.rpc.WaitTaskFinish(context.Background(), &clientpb.Task{
 		SessionId: f.mock.SessionID,
 		TaskId:    task.TaskId,
@@ -478,8 +490,11 @@ func TestMockImplantStreamingTaskStateAndRecoveryE2E(t *testing.T) {
 	if !recoveredFinished.GetTask().GetFinished() {
 		t.Fatal("recovered streaming task should stay finished")
 	}
-	if got := string(recoveredFinished.GetSpite().GetExecResponse().GetStdout()); got != "omega" {
-		t.Fatalf("recovered final stdout = %q, want omega", got)
+	if got := string(recoveredFinished.GetSpite().GetExecResponse().GetStdout()); got != "" {
+		t.Fatalf("recovered final stdout = %q, want empty terminal marker", got)
+	}
+	if !recoveredFinished.GetSpite().GetExecResponse().GetEnd() {
+		t.Fatal("recovered final spite should stay a terminal end marker")
 	}
 
 	tasksAfterFinish, err := f.rpc.GetTasks(context.Background(), &clientpb.TaskRequest{SessionId: f.mock.SessionID})
@@ -490,7 +505,7 @@ func TestMockImplantStreamingTaskStateAndRecoveryE2E(t *testing.T) {
 	if listedTask == nil {
 		t.Fatalf("GetTasks(after finish) did not return task %d", task.TaskId)
 	}
-	if !listedTask.GetFinished() || listedTask.GetCur() != 2 || listedTask.GetTotal() != 2 {
-		t.Fatalf("listed task after finish = %#v, want finished 2/2", listedTask)
+	if !listedTask.GetFinished() || listedTask.GetCur() != 3 || listedTask.GetTotal() != 3 {
+		t.Fatalf("listed task after finish = %#v, want finished 3/3", listedTask)
 	}
 }
