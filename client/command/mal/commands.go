@@ -57,8 +57,11 @@ func Commands(con *core.Console) []*cobra.Command {
 	cmd.AddCommand(&cobra.Command{
 		Use:   consts.CommandMalList,
 		Short: "List mal manifests",
+		Annotations: map[string]string{
+			"static": "true",
+		},
 		Run: func(cmd *cobra.Command, args []string) {
-			ListMalManifest(con)
+			ListMalManifest(cmd, con)
 		},
 	})
 

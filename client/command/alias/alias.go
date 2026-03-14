@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
@@ -22,6 +23,7 @@ func AliasesCmd(cmd *cobra.Command, con *core.Console) {
 		con.Log.Errorf("Error getting static flag: %v", err)
 		return
 	}
+	isStatic = isStatic || common.ShouldUseStaticOutput(cmd)
 	if 0 < len(loadedAliases) {
 		PrintAliases(con, isStatic)
 	} else {
@@ -68,6 +70,11 @@ func PrintAliases(con *core.Console, isStatic bool) {
 
 	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
+	if isStatic {
+		con.Log.Console(tableModel.View())
+		return
+	}
+
 	err := tableModel.Run()
 	if err != nil {
 		return

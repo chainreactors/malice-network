@@ -38,11 +38,16 @@ func RemoveMal(name string, con *core.Console) error {
 		return errors.New("mal name is required")
 	}
 
-	if _, exists := con.MalManager.GetEmbedPlugin(name); exists {
+	manager, err := ensureMalManager(con)
+	if err != nil {
+		return err
+	}
+
+	if _, exists := manager.GetEmbedPlugin(name); exists {
 		return errors.New("cannot remove embedded mal")
 	}
 
-	plug, exists := con.MalManager.GetExternalPlugin(name)
+	plug, exists := manager.GetExternalPlugin(name)
 	if !exists {
 		return errors.New("mal not found")
 	}
@@ -52,7 +57,7 @@ func RemoveMal(name string, con *core.Console) error {
 		implantMenu.RemoveCommand(cmd.Command)
 	}
 
-	err := con.MalManager.RemoveExternalMal(name)
+	err = manager.RemoveExternalMal(name)
 	if err != nil {
 		return err
 	}

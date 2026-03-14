@@ -16,7 +16,7 @@ func Commands(con *core.Console) []*cobra.Command {
 			"resource": "true",
 			"static":   "true",
 		},
-		Short: "List and Choice sessions",
+		Short: "List and select sessions",
 		Long: `Display a table of active sessions on the server, 
 allowing you to navigate up and down to select a desired session. 
 Press the Enter key to use the selected session. 
@@ -43,7 +43,7 @@ session -a --static
 
 	bindSessNewCmd := &cobra.Command{
 		Use:   consts.CommandNewBindSession + " [session]",
-		Short: "new bind session",
+		Short: "Create a new bind session",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return NewBindSessionCmd(cmd, con)
 		},
@@ -127,8 +127,8 @@ remove 08d6c05a21512a79a1dfeb9d2a8f262f
 	sessCmd.AddCommand(bindSessNewCmd, noteCommand, groupCommand, removeCommand)
 	useCommand := &cobra.Command{
 		Use:           consts.CommandUse + " [session]",
-		Short:         "Use session",
-		Long:          "use",
+		Short:         "Use a session",
+		Long:          "Switch to the specified session for implant-scoped commands.",
 		Args:          cobra.MinimumNArgs(1),
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -146,7 +146,7 @@ use 08d6c05a21512a79a1dfeb9d2a8f262f
 
 	backCommand := &cobra.Command{
 		Use:   consts.CommandBackground,
-		Short: "back to root context",
+		Short: "Return to the root context",
 		Long:  "Exit the current session and return to the root context.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return BackGround(cmd, con)
@@ -155,7 +155,7 @@ use 08d6c05a21512a79a1dfeb9d2a8f262f
 
 	observeCmd := &cobra.Command{
 		Use:   consts.CommandObverse,
-		Short: "observe manager",
+		Short: "Manage observers",
 		Long:  "Control observers to listen session in the background.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ObserveCmd(cmd, con)
@@ -178,7 +178,7 @@ obverse -r
 
 	historyCommand := &cobra.Command{
 		Use:   consts.CommandHistory,
-		Short: "show log history",
+		Short: "Show session log history",
 		Long:  "Displays the specified number of log lines of the current session.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

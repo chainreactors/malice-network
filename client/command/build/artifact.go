@@ -8,6 +8,7 @@ import (
 
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	output2 "github.com/chainreactors/malice-network/helper/utils/output"
@@ -30,7 +31,7 @@ func ListArtifactCmd(cmd *cobra.Command, con *core.Console) error {
 		return err
 	}
 	if len(artifacts.Artifacts) > 0 {
-		err = PrintArtifacts(artifacts, con)
+		err = PrintArtifacts(artifacts, con, common.ShouldUseStaticOutput(cmd))
 		if err != nil {
 			return err
 		}
@@ -40,7 +41,7 @@ func ListArtifactCmd(cmd *cobra.Command, con *core.Console) error {
 	return nil
 }
 
-func PrintArtifacts(artifacts *clientpb.Artifacts, con *core.Console) error {
+func PrintArtifacts(artifacts *clientpb.Artifacts, con *core.Console, isStatic bool) error {
 	var rowEntries []table.Row
 	var row table.Row
 
@@ -90,6 +91,11 @@ func PrintArtifacts(artifacts *clientpb.Artifacts, con *core.Console) error {
 	}, false)
 	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
+	if isStatic {
+		con.Log.Console(tableModel.View())
+		return nil
+	}
+
 	tableModel.SetHandle(func() {})
 	err := tableModel.Run()
 	if err != nil {

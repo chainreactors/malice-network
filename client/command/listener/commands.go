@@ -12,8 +12,8 @@ import (
 func Commands(con *core.Console) []*cobra.Command {
 	listenerCmd := &cobra.Command{
 		Use:   consts.CommandListener,
-		Short: "List listeners in server",
-		Long:  "Use a table to list listeners on the server",
+		Short: "List listeners on the server",
+		Long:  "List listeners on the server in table form.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ListenerCmd(cmd, con)
 		},
@@ -27,8 +27,8 @@ listener
 
 	jobCmd := &cobra.Command{
 		Use:   consts.CommandJob,
-		Short: "List jobs in server",
-		Long:  "Use a table to list jobs on the server",
+		Short: "List jobs on the server",
+		Long:  "List jobs on the server in table form.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ListJobsCmd(cmd, con)
 		},
@@ -42,7 +42,8 @@ job
 
 	pipelineCmd := &cobra.Command{
 		Use:   consts.CommandPipeline,
-		Short: "manage pipeline",
+		Short: "Manage pipelines",
+		Long:  "Start, stop, list, and delete server pipelines.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
@@ -50,9 +51,9 @@ job
 
 	startPipelineCmd := &cobra.Command{
 		Use:   consts.CommandPipelineStart,
-		Short: "Start a TCP pipeline",
+		Short: "Start a pipeline",
 		Args:  cobra.ExactArgs(1),
-		Long:  "Start a TCP pipeline with the specified name and listener ID",
+		Long:  "Start the specified pipeline.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return StartPipelineCmd(cmd, con)
 		},
@@ -71,9 +72,9 @@ pipeline start tcp_test
 
 	stopPipelineCmd := &cobra.Command{
 		Use:   consts.CommandPipelineStop,
-		Short: "Stop pipeline",
+		Short: "Stop a pipeline",
 		Args:  cobra.ExactArgs(1),
-		Long:  "Stop pipeline with the specified name and listener ID",
+		Long:  "Stop the specified pipeline.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return StopPipelineCmd(cmd, con)
 		},
@@ -86,7 +87,8 @@ pipeline stop tcp_test
 
 	listPipelineCmd := &cobra.Command{
 		Use:   consts.CommandPipelineList,
-		Short: "List pipelines in listener",
+		Short: "List pipelines",
+		Long:  "List pipelines for all listeners or for a specific listener.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ListPipelineCmd(cmd, con)

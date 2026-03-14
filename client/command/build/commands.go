@@ -20,7 +20,8 @@ import (
 func Commands(con *core.Console) []*cobra.Command {
 	profileCmd := &cobra.Command{
 		Use:   consts.CommandProfile,
-		Short: "compile profile ",
+		Short: "Manage build profiles",
+		Long:  "Create, load, inspect, and delete build profiles.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
@@ -28,7 +29,7 @@ func Commands(con *core.Console) []*cobra.Command {
 
 	listCmd := &cobra.Command{
 		Use:   consts.CommandProfileList,
-		Short: "List all compile profile",
+		Short: "List build profiles",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ProfileShowCmd(cmd, con)
 		},
@@ -40,7 +41,7 @@ profile list
 
 	loadProfileCmd := &cobra.Command{
 		Use:   consts.CommandProfileLoad,
-		Short: "Load exist implant profile",
+		Short: "Load an existing implant profile",
 		Long: `
 The **profile load** command requires a valid configuration file path (e.g., **config.yaml**) to load settings. This file specifies attributes necessary for generating the compile profile.
 `,
@@ -76,7 +77,7 @@ profile load /path/to/profile.zip --name my_profile --pipeline pipeline_name
 
 	newProfileCmd := &cobra.Command{
 		Use:   consts.CommandProfileNew,
-		Short: "Create new compile profile with default profile",
+		Short: "Create a build profile from defaults",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ProfileNewCmd(cmd, con)
 		},
@@ -101,7 +102,7 @@ profile new --name rem_profile_demo --pipeline tcp_default --rem rem_default
 
 	deleteProfileCmd := &cobra.Command{
 		Use:   consts.CommandProfileDelete,
-		Short: "Delete a compile profile in server",
+		Short: "Delete a build profile from the server",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ProfileDeleteCmd(cmd, con)
@@ -135,7 +136,8 @@ profile show my_profile
 
 	buildCmd := &cobra.Command{
 		Use:   consts.CommandBuild,
-		Short: "build",
+		Short: "Build implants and modules",
+		Long:  "Build beacons, bind payloads, preludes, modules, and stage-0 artifacts.",
 	}
 
 	buildCmd.PersistentFlags().Bool("auto-download", false, "auto download artifact")
@@ -321,7 +323,7 @@ build modules --target x86_64-pc-windows-gnu --profile tcp_default --source saas
 
 	pulseCmd := &cobra.Command{
 		Use:   consts.CommandBuildPulse,
-		Short: "stage 0 shellcode generate",
+		Short: "Build a stage-0 shellcode payload",
 		Long: `Generate 'pulse' payload,a minimized shellcode template, corresponding to CS artifact, very suitable for loading by various loaders
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -377,18 +379,19 @@ build log artifact_name --limit 70
 
 	artifactCmd := &cobra.Command{
 		Use:   consts.CommandArtifact,
-		Short: "artifact manage",
+		Short: "Manage build artifacts",
 		Long:  "Manage build output files on the server. Use the **list** command to view all available artifacts, **download** to retrieve a specific artifact, and **upload** to add a new artifact to the server.",
 	}
 
 	listArtifactCmd := &cobra.Command{
 		Use:   consts.CommandArtifactList,
-		Short: "list build output file in server",
+		Short: "List build artifacts on the server",
 		Long: `Retrieve a list of all build output files currently stored on the server.
 
-This command fetches metadata about artifacts, such as their names, IDs, and associated build configurations. The artifacts are displayed in a table format for easy navigation.`,
+This command fetches metadata about artifacts, such as their names, IDs, and associated build configurations. In an interactive terminal you can select a completed artifact to download; in non-interactive mode the command prints the table and exits.`,
 		Annotations: map[string]string{
 			"resource": "true",
+			"static":   "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ListArtifactCmd(cmd, con)
@@ -397,12 +400,13 @@ This command fetches metadata about artifacts, such as their names, IDs, and ass
 // List all available build artifacts on the server
 artifact list
 
-// Navigate the artifact table and press enter to download a specific artifact
+// Download a specific artifact non-interactively
+artifact download MAGIC_TOOL
 ~~~`,
 	}
 	showArtifactCmd := &cobra.Command{
 		Use:   consts.CommandArtifactShow,
-		Short: "show artifact info and profile",
+		Short: "Show artifact metadata and profile",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ArtifactShowCmd(cmd, con)
 		},
@@ -482,7 +486,7 @@ artifact upload /path/to/artifact --type DLL
 
 	deleteCommand := &cobra.Command{
 		Use:   consts.CommandArtifactDelete,
-		Short: "Delete a artifact file in the server",
+		Short: "Delete an artifact from the server",
 		Long: `Delete a specify artifact in the server.
 
 `,

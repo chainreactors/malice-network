@@ -18,15 +18,14 @@ func BroadcastCmd(cmd *cobra.Command, con *core.Console) error {
 			Message: []byte(strings.Join(msg, " ")),
 		})
 		return err
-	} else {
-		_, err := Broadcast(con, &clientpb.Event{
-			Type:    consts.EventBroadcast,
-			Client:  con.Client,
-			Message: []byte(strings.Join(msg, " ")),
-		})
-		return err
 	}
-	return nil
+
+	_, err := Broadcast(con, &clientpb.Event{
+		Type:    consts.EventBroadcast,
+		Client:  con.Client,
+		Message: []byte(strings.Join(msg, " ")),
+	})
+	return err
 }
 
 func Broadcast(con *core.Console, event *clientpb.Event) (bool, error) {

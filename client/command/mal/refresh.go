@@ -7,6 +7,11 @@ import (
 )
 
 func RefreshMalCmd(cmd *cobra.Command, con *core.Console) error {
+	manager, err := ensureMalManager(con)
+	if err != nil {
+		return err
+	}
+
 	implantCmd := con.ImplantMenu()
 
 	// 移除所有mal组的命令
@@ -17,7 +22,7 @@ func RefreshMalCmd(cmd *cobra.Command, con *core.Console) error {
 	}
 
 	// 获取所有外部插件名称
-	externalPlugins := con.MalManager.GetAllExternalPlugins()
+	externalPlugins := manager.GetAllExternalPlugins()
 	var pluginNames []string
 	for name := range externalPlugins {
 		pluginNames = append(pluginNames, name)
@@ -25,14 +30,14 @@ func RefreshMalCmd(cmd *cobra.Command, con *core.Console) error {
 
 	// 移除所有外部插件
 	for _, name := range pluginNames {
-		err := con.MalManager.RemoveExternalMal(name)
+		err := manager.RemoveExternalMal(name)
 		if err != nil {
 			con.Log.Warnf("Failed to remove plugin %s: %s\n", name, err)
 		}
 	}
 
 	// 重新加载所有外部mal插件
-	for _, manifest := range con.MalManager.GetPluginManifests() {
+	for _, manifest := range manager.GetPluginManifests() {
 		err := LoadMalWithManifest(con, implantCmd, manifest)
 		if err != nil {
 			con.Log.Errorf("Failed to load mal %s: %s\n", manifest.Name, err)

@@ -111,7 +111,9 @@ bind --listener listener
 	})
 
 	remCmd := &cobra.Command{
-		Use: consts.CommandRem,
+		Use:   consts.CommandRem,
+		Short: "Manage REM pipelines",
+		Long:  "List, create, start, stop, and delete REM pipelines.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},

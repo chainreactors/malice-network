@@ -55,8 +55,8 @@ website web_test --listener tcp_default --root /webtest --tls --cert /path/to/ce
 
 	websiteListCmd := &cobra.Command{
 		Use:   consts.CommandPipelineList,
-		Short: "List website in listener",
-		Long:  "Use a table to list websites along with their corresponding listeners",
+		Short: "List websites",
+		Long:  "List websites along with their corresponding listeners.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ListWebsitesCmd(cmd, con)
 		},

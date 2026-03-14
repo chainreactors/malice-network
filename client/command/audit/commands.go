@@ -11,8 +11,8 @@ import (
 func Commands(con *core.Console) []*cobra.Command {
 	auditCommand := &cobra.Command{
 		Use:   consts.CommandAudit,
-		Short: "audit func",
-		Long:  "audit func .",
+		Short: "Manage audit logs",
+		Long:  "Download audit logs for server sessions.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
@@ -20,8 +20,8 @@ func Commands(con *core.Console) []*cobra.Command {
 
 	sessionCommand := &cobra.Command{
 		Use:   consts.CommandSession,
-		Short: "download audit log",
-		Long:  "Download specified session audit .",
+		Short: "Download a session audit log",
+		Long:  "Download the audit log for the specified session.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return AuditSessionCmd(cmd, con)
