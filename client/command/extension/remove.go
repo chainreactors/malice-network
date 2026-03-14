@@ -42,7 +42,8 @@ func RemoveExtensionByCommandName(commandName string, con *core.Console) error {
 	if commandName == "" {
 		return errors.New("command name is required")
 	}
-	if _, ok := loadedExtensions[commandName]; !ok {
+	loadedExt, ok := loadedExtensions[commandName]
+	if !ok {
 		return errors.New("extension not loaded")
 	}
 	delete(loadedExtensions, commandName)
@@ -52,7 +53,18 @@ func RemoveExtensionByCommandName(commandName string, con *core.Console) error {
 			implantMenu.RemoveCommand(cmd)
 		}
 	}
-	extPath := filepath.Join(assets.GetExtensionsDir(), filepath.Base(commandName))
+	if loadedExt.Manifest != nil && loadedExt.Manifest.Manifest != nil {
+		delete(loadedManifests, loadedExt.Manifest.Manifest.Name)
+	}
+	profile, err := assets.GetProfile()
+	installName := commandName
+	if loadedExt.Manifest != nil && loadedExt.Manifest.Manifest != nil && loadedExt.Manifest.Manifest.Name != "" {
+		installName = loadedExt.Manifest.Manifest.Name
+	}
+	if err == nil {
+		profile.RemoveExtension(installName)
+	}
+	extPath := filepath.Join(assets.GetExtensionsDir(), filepath.Base(installName))
 	if _, err := os.Stat(extPath); os.IsNotExist(err) {
 		return nil
 	}

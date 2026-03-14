@@ -113,7 +113,11 @@ func (e *ExtCommand) getFileForTarget(targetOS string, targetArch string) (strin
 	filePath := ""
 	for _, extFile := range e.Files {
 		if targetOS == extFile.OS && targetArch == extFile.Arch {
-			filePath = filepath.Join(assets.GetExtensionsDir(), e.CommandName, extFile.Path)
+			rootPath := e.Manifest.RootPath
+			if rootPath == "" && e.Manifest != nil {
+				rootPath = filepath.Join(assets.GetExtensionsDir(), e.Manifest.Name)
+			}
+			filePath = filepath.Join(rootPath, extFile.Path)
 			break
 		}
 	}
@@ -279,7 +283,11 @@ func ExtensionRegisterCommand(extCmd *ExtCommand, cmd *cobra.Command, con *core.
 		con.Log.Errorf("Error getting profile: %s\n", err)
 		return
 	}
-	profile.AddExtension(extCmd.CommandName)
+	installName := extCmd.CommandName
+	if extCmd.Manifest != nil && extCmd.Manifest.Name != "" {
+		installName = extCmd.Manifest.Name
+	}
+	profile.AddExtension(installName)
 	cmd.AddCommand(extensionCmd)
 }
 

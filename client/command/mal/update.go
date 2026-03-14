@@ -1,16 +1,20 @@
 package mal
 
 import (
+	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/plugin"
 	"github.com/chainreactors/mals/m"
 	"github.com/spf13/cobra"
 	"os"
 )
 
 func UpdateMalCmd(cmd *cobra.Command, con *core.Console) error {
+	if _, err := ensureMalManager(con); err != nil {
+		return err
+	}
+
 	name := cmd.Flags().Arg(0)
 	malHttpConfig := parseMalHTTPConfig(cmd)
 
@@ -35,24 +39,32 @@ func UpdateMalCmd(cmd *cobra.Command, con *core.Console) error {
 }
 
 func updateMal(con *core.Console, name string, malHttpConfig m.MalHTTPConfig) error {
-	var plug plugin.Plugin
+	manager, err := ensureMalManager(con)
+	if err != nil {
+		return err
+	}
+	plug, exists := manager.GetExternalPlugin(name)
+	if !exists {
+		return fmt.Errorf("mal %s is not loaded", name)
+	}
 	tag, err := m.GithubTagParser(RepoUrl, MalLatest, malHttpConfig)
 	if err != nil {
 		return err
 	}
-	if _, exists := con.MalManager.GetExternalPlugin(name); exists {
-		updated := InstallMal(RepoUrl, name, tag, os.Stdout, malHttpConfig, con)
-		if updated {
-			err := con.MalManager.ReloadExternalMal(name)
-			if err != nil {
-				return err
-			}
-			plug, _ = con.MalManager.GetExternalPlugin(name)
-		} else {
-			return nil
-		}
-
-		plug, _ = con.MalManager.GetExternalPlugin(name)
+	updated, err := InstallMal(RepoUrl, name, tag, os.Stdout, malHttpConfig, con)
+	if err != nil {
+		return err
+	}
+	if !updated {
+		return nil
+	}
+	err = manager.ReloadExternalMal(name)
+	if err != nil {
+		return err
+	}
+	plug, exists = manager.GetExternalPlugin(name)
+	if !exists {
+		return fmt.Errorf("mal %s reload completed but plugin is unavailable", name)
 	}
 	for event, fn := range plug.GetEvents() {
 		con.AddEventHook(event, fn)

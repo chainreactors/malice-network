@@ -41,9 +41,13 @@ func MalInstallCmd(cmd *cobra.Command, con *core.Console) error {
 				}
 			}
 		}
-		InstallMal(RepoUrl, name, version, os.Stdout, malHttpConfig, con)
+		if _, err := InstallMal(RepoUrl, name, version, os.Stdout, malHttpConfig, con); err != nil {
+			return err
+		}
 	} else {
-		InstallFromDir(localPath, true, con)
+		if _, err := InstallFromDir(localPath, true, con); err != nil {
+			return err
+		}
 	}
 
 	// 使用统一的MalManager加载插件
@@ -66,14 +70,13 @@ func MalInstallCmd(cmd *cobra.Command, con *core.Console) error {
 	return nil
 }
 
-func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *core.Console) bool {
+func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *core.Console) (bool, error) {
 	var manifestData []byte
 	var err error
 
 	format, err := fileutils.DetectArchiveFormat(extLocalPath)
 	if err != nil {
-		con.Log.Errorf("Error detecting archive format: %s\n", err)
-		return false
+		return false, err
 	}
 	switch format {
 	case fileutils.ArchiveZip:
@@ -82,13 +85,11 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *core.Conso
 		manifestData, err = fileutils.ReadFileFromTarGz(extLocalPath, m.ManifestFileName)
 	}
 	if err != nil {
-		con.Log.Errorf("Error reading %s from archive: %s\n", m.ManifestFileName, err)
-		return false
+		return false, err
 	}
 	manifest, err := plugin.ParseMalManifest(manifestData)
 	if err != nil {
-		con.Log.Errorf("Error parsing %s: %s\n", m.ManifestFileName, err)
-		return false
+		return false, err
 	}
 
 	installPath := filepath.Join(assets.GetMalsDir(), filepath.Base(manifest.Name))
@@ -98,18 +99,17 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *core.Conso
 		newHashStr := fileutils.CalculateSHA256Byte(manifestData)
 		if oldErr == nil && oldHash == newHashStr {
 			con.Log.Infof("Mal '%s' is latest version.\n", manifest.Name)
-			return false
+			return false, nil
 		}
 		if promptToOverwrite {
 			con.Log.Infof("Mal '%s' already exists\n", manifest.Name)
 			confirmModel := tui.NewConfirm("Overwrite current install?")
 			err = confirmModel.Run()
 			if err != nil {
-				con.Log.Errorf("Error running confirm model: %s\n", err)
-				return false
+				return false, err
 			}
 			if !confirmModel.GetConfirmed() {
-				return false
+				return false, nil
 			}
 		}
 		fileutils.ForceRemoveAll(installPath)
@@ -118,8 +118,7 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *core.Conso
 	con.Log.Infof("Installing Mal '%s' (%s) ... \n", manifest.Name, manifest.Version)
 	err = os.MkdirAll(installPath, 0700)
 	if err != nil {
-		con.Log.Errorf("\nError creating mal directory: %s\n", err)
-		return false
+		return false, err
 	}
 	switch format {
 	case fileutils.ArchiveZip:
@@ -128,16 +127,24 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *core.Conso
 		err = fileutils.ExtractTarGz(extLocalPath, installPath)
 	}
 	if err != nil {
-		con.Log.Errorf("\nFailed to extract archive to %s: %s\n", installPath, err)
 		fileutils.ForceRemoveAll(installPath)
-		return false
+		return false, err
 	}
 	if manifest.Lib {
-		err := fileutils.MoveFile(filepath.Join(installPath, "resources"), assets.GetResourceDir())
-		if err != nil {
-			con.Log.Errorf("\nFailed to move resources to %s: %s\n", assets.GetResourceDir(), err)
-			return false
+		resourcePath := filepath.Join(installPath, "resources")
+		if info, statErr := os.Stat(resourcePath); statErr == nil {
+			if info.IsDir() {
+				err = fileutils.MoveDirectory(resourcePath, assets.GetResourceDir())
+				if err == nil {
+					_ = fileutils.ForceRemoveAll(resourcePath)
+				}
+			} else {
+				err = fileutils.MoveFile(resourcePath, filepath.Join(assets.GetResourceDir(), info.Name()))
+			}
+			if err != nil {
+				return false, err
+			}
 		}
 	}
-	return true
+	return true, nil
 }

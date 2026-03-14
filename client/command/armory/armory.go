@@ -302,8 +302,9 @@ func packageHashLookupByArmory(armoryPublicKey string) []string {
 			// Keep going
 			return true
 		}
-		//if cacheEntry.ArmoryConfig.PublicKey == armoryPublicKey {
-		result = append(result, cacheEntry.ID)
+		if cacheEntry.ArmoryConfig != nil && cacheEntry.ArmoryConfig.PublicKey == armoryPublicKey {
+			result = append(result, cacheEntry.ID)
+		}
 
 		return true
 	})
@@ -685,15 +686,12 @@ func makePackageCacheConsistent(index ArmoryIndex) {
 	cacheHashesForArmory := packageHashLookupByArmory(index.ArmoryConfig.PublicKey)
 	indexHashesForArmory := calculateHashesForIndex(index)
 
-	if len(cacheHashesForArmory) > len(indexHashesForArmory) {
-		// Then there are packages in the cache that do not exist in the armory
-		if len(indexHashesForArmory) == 0 {
-			packagesToRemove = cacheHashesForArmory
-		} else {
-			for _, packageHash := range indexHashesForArmory {
-				if !slices.Contains(cacheHashesForArmory, packageHash) {
-					packagesToRemove = append(packagesToRemove, packageHash)
-				}
+	if len(indexHashesForArmory) == 0 {
+		packagesToRemove = cacheHashesForArmory
+	} else {
+		for _, packageHash := range cacheHashesForArmory {
+			if !slices.Contains(indexHashesForArmory, packageHash) {
+				packagesToRemove = append(packagesToRemove, packageHash)
 			}
 		}
 	}
@@ -769,15 +767,22 @@ func fetchPackageSignature(wg *sync.WaitGroup, requestChannel chan struct{}, arm
 	}
 	if armoryPkg.IsAlias {
 		pkgCacheEntry.Alias, err = alias.ParseAliasManifest(manifestData)
-		pkgCacheEntry.Alias.ArmoryName = armoryConfig.Name
-		pkgCacheEntry.Alias.ArmoryPK = armoryConfig.PublicKey
 	} else {
 		pkgCacheEntry.Extension, err = extension.ParseExtensionManifest(manifestData)
-		pkgCacheEntry.Extension.ArmoryName = armoryConfig.Name
-		pkgCacheEntry.Extension.ArmoryPK = armoryConfig.PublicKey
 	}
 	if err != nil {
 		pkgCacheEntry.LastErr = fmt.Errorf("failed to parse trusted manifest in pkg signature: %s", err)
+		return
+	}
+	if armoryConfig != nil {
+		if pkgCacheEntry.Alias != nil {
+			pkgCacheEntry.Alias.ArmoryName = armoryConfig.Name
+			pkgCacheEntry.Alias.ArmoryPK = armoryConfig.PublicKey
+		}
+		if pkgCacheEntry.Extension != nil {
+			pkgCacheEntry.Extension.ArmoryName = armoryConfig.Name
+			pkgCacheEntry.Extension.ArmoryPK = armoryConfig.PublicKey
+		}
 	}
 }
 

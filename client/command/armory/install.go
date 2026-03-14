@@ -181,7 +181,7 @@ func installPackageByName(name, armoryPK string, forceInstallation, promptToOver
 	pendingPackages := make(map[string]string)
 	packageInstallList, err := buildInstallList(name, armoryPK, forceInstallation, pendingPackages)
 	if err != nil {
-		return nil
+		return err
 	}
 	if len(packageInstallList) != 0 {
 		for _, packageID := range packageInstallList {
@@ -477,6 +477,12 @@ func installAliasPackage(entry *pkgCacheEntry, promptToOverwrite bool, clientCon
 	if err != nil {
 		return err
 	}
+	if sig == nil {
+		return errors.New("package signature not found")
+	}
+	if len(tarGz) == 0 {
+		return errors.New("package archive not found")
+	}
 
 	var publicKey minisign.PublicKey
 	publicKey.UnmarshalText([]byte(entry.Pkg.PublicKey))
@@ -570,6 +576,12 @@ func installExtensionPackage(entry *pkgCacheEntry, promptToOverwrite bool, clien
 	if err != nil {
 		return err
 	}
+	if sig == nil {
+		return errors.New("package signature not found")
+	}
+	if len(tarGz) == 0 {
+		return errors.New("package archive not found")
+	}
 
 	var publicKey minisign.PublicKey
 	publicKey.UnmarshalText([]byte(entry.Pkg.PublicKey))
@@ -592,10 +604,28 @@ func installExtensionPackage(entry *pkgCacheEntry, promptToOverwrite bool, clien
 	if err != nil {
 		return err
 	}
+	if err := tmpFile.Close(); err != nil {
+		return err
+	}
 
 	tui.Clear()
 
-	extension.InstallFromDir(tmpFile.Name(), promptToOverwrite, con, true)
+	installPath, err := extension.InstallFromDir(tmpFile.Name(), promptToOverwrite, con, true)
+	if err != nil {
+		return err
+	}
+	manifest, err := extension.LoadExtensionManifest(filepath.Join(installPath, extension.ManifestFileName))
+	if err != nil {
+		return err
+	}
+	for _, extCmd := range manifest.ExtCommand {
+		for _, existing := range con.ImplantMenu().Commands() {
+			if existing.Name() == extCmd.CommandName {
+				con.ImplantMenu().RemoveCommand(existing)
+			}
+		}
+		extension.ExtensionRegisterCommand(extCmd, con.ImplantMenu(), con)
+	}
 
 	return nil
 }

@@ -21,11 +21,14 @@ func ExtensionsInstallCmd(cmd *cobra.Command, con *core.Console) {
 		con.Log.Errorf("Extension path '%s' does not exist", extLocalPath)
 		return
 	}
-	InstallFromDir(extLocalPath, true, con, strings.HasSuffix(extLocalPath, ".tar.gz"))
+	_, err = InstallFromDir(extLocalPath, true, con, strings.HasSuffix(extLocalPath, ".tar.gz"))
+	if err != nil {
+		con.Log.Errorf("Error installing extension: %s\n", err)
+	}
 }
 
 // Install an extension from a directory
-func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *core.Console, isGz bool) {
+func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *core.Console, isGz bool) (string, error) {
 	var manifestData []byte
 	var err error
 
@@ -35,14 +38,12 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *core.Conso
 		manifestData, err = os.ReadFile(filepath.Join(extLocalPath, ManifestFileName))
 	}
 	if err != nil {
-		con.Log.Errorf("Error reading %s: %s", ManifestFileName, err)
-		return
+		return "", fmt.Errorf("read %s: %w", ManifestFileName, err)
 	}
 
 	manifest, err := ParseExtensionManifest(manifestData)
 	if err != nil {
-		con.Log.Errorf("Error parsing %s: %s", ManifestFileName, err)
-		return
+		return "", fmt.Errorf("parse %s: %w", ManifestFileName, err)
 	}
 
 	installPath := filepath.Join(assets.GetExtensionsDir(), filepath.Base(manifest.Name))
@@ -56,25 +57,25 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *core.Conso
 			err = confirmModel.Run()
 			if err != nil {
 				con.Log.Errorf("Error running confirm model: %s", err)
-				return
+				return "", err
 			}
 			if !confirmModel.GetConfirmed() {
-				return
+				return "", nil
 			}
+		} else {
+			fileutils.ForceRemoveAll(installPath)
 		}
 	}
 
 	con.Log.Infof("Installing extension '%s' (%s) ... ", manifest.Name, manifest.Version)
 	err = os.MkdirAll(installPath, 0700)
 	if err != nil {
-		con.Log.Errorf("\nError creating extension directory: %s\n", err)
-		return
+		return "", fmt.Errorf("create extension directory: %w", err)
 	}
 	err = os.WriteFile(filepath.Join(installPath, ManifestFileName), manifestData, 0o600)
 	if err != nil {
-		con.Log.Errorf("\nFailed to write %s: %s\n", ManifestFileName, err)
 		fileutils.ForceRemoveAll(installPath)
-		return
+		return "", fmt.Errorf("write %s: %w", ManifestFileName, err)
 	}
 	for _, manifestCmd := range manifest.ExtCommand {
 		newInstallPath := filepath.Join(installPath)
@@ -87,9 +88,8 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *core.Conso
 					dst := filepath.Join(newInstallPath, fileutils.ResolvePath(manifestFile.Path))
 					err = os.MkdirAll(filepath.Dir(dst), 0700) //required for extensions with multiple dirs between the .o file and the manifest
 					if err != nil {
-						con.Log.Errorf("\nError creating extension directory: %s\n", err)
 						fileutils.ForceRemoveAll(newInstallPath)
-						return
+						return "", fmt.Errorf("create extension subdirectory: %w", err)
 					}
 					err = fileutils.CopyFile(src, dst)
 					if err != nil {
@@ -97,13 +97,13 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *core.Conso
 					}
 				}
 				if err != nil {
-					con.Log.Errorf("Error installing command: %s\n", err)
 					fileutils.ForceRemoveAll(newInstallPath)
-					return
+					return "", err
 				}
 			}
 		}
 	}
+	return installPath, nil
 }
 
 // InstallFromFilePath - Install an extension from a .tar.gz file
@@ -179,10 +179,13 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *core.Conso
 //}
 
 func installArtifact(extGzFilePath string, installPath string, artifactPath string) error {
-	artifactPath = strings.ReplaceAll(artifactPath, `\`, "")
+	artifactPath = strings.TrimPrefix(strings.ReplaceAll(artifactPath, `\`, `/`), "/")
 	data, err := fileutils.ReadFileFromTarGz(extGzFilePath, artifactPath)
 	if err != nil {
-		return err
+		data, err = fileutils.ReadFileFromTarGz(extGzFilePath, "./"+artifactPath)
+		if err != nil {
+			return err
+		}
 	}
 	if len(data) == 0 {
 		return fmt.Errorf("archive path '%s' is empty", "."+artifactPath)

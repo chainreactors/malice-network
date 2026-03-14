@@ -281,10 +281,15 @@ func GithubAPIArmoryPackageParser(armoryConfig *assets.ArmoryConfig, armoryPkg *
 	if err != nil {
 		return nil, nil, err
 	}
+	if len(releases) == 0 {
+		return nil, nil, errors.New("no releases found")
+	}
 	release := releases[0] // Latest only right now
 
 	var sig *minisign.Signature
 	var tarGz []byte
+	foundSig := false
+	foundArchive := sigOnly
 	for _, asset := range release.Assets {
 		if asset.Name == fmt.Sprintf("%s.minisig", armoryPkg.CommandName) {
 			body, err := downloadRequest(clientConfig, asset.URL, armoryConfig)
@@ -295,13 +300,24 @@ func GithubAPIArmoryPackageParser(armoryConfig *assets.ArmoryConfig, armoryPkg *
 			if err != nil {
 				break
 			}
+			foundSig = true
 		}
 		if asset.Name == fmt.Sprintf("%s.tar.gz", armoryPkg.CommandName) && !sigOnly {
 			tarGz, err = downloadRequest(clientConfig, asset.URL, armoryConfig)
 			if err != nil {
 				break
 			}
+			foundArchive = true
 		}
+	}
+	if err != nil {
+		return nil, nil, err
+	}
+	if !foundSig {
+		return nil, nil, fmt.Errorf("missing minisig asset for %s", armoryPkg.CommandName)
+	}
+	if !foundArchive {
+		return nil, nil, fmt.Errorf("missing archive asset for %s", armoryPkg.CommandName)
 	}
 	return sig, tarGz, err
 }

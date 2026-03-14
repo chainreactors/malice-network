@@ -1,9 +1,9 @@
 package extension
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
@@ -17,14 +17,14 @@ import (
 // ExtensionsCmd - List information about installed extensions
 func ExtensionsCmd(cmd *cobra.Command, con *core.Console) {
 	if 0 < len(getInstalledManifests()) {
-		PrintExtensions(con)
+		PrintExtensions(con, common.ShouldUseStaticOutput(cmd))
 	} else {
 		con.Log.Infof("No extensions installed, use the 'armory' command to automatically install some\n")
 	}
 }
 
 // PrintExtensions - Print a list of loaded extensions
-func PrintExtensions(con *core.Console) {
+func PrintExtensions(con *core.Console, isStatic bool) {
 	var rowEntries []table.Row
 
 	tableModel := tui.NewTable([]table.Column{
@@ -59,6 +59,11 @@ func PrintExtensions(con *core.Console) {
 	}
 	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
+	if isStatic {
+		con.Log.Console(tableModel.View())
+		return
+	}
+
 	err := tableModel.Run()
 	if err != nil {
 		con.Log.Errorf("Error running table: %s", err)
@@ -86,12 +91,14 @@ func getInstalledManifests() map[string]*ExtensionManifest {
 		if err != nil {
 			continue
 		}
-		manifest := &ExtensionManifest{}
-		err = json.Unmarshal(data, manifest)
+		manifest, err := ParseExtensionManifest(data)
 		if err != nil {
 			continue
 		}
 		installedManifests[manifest.Name] = manifest
+		for _, extCmd := range manifest.ExtCommand {
+			installedManifests[extCmd.CommandName] = manifest
+		}
 	}
 	return installedManifests
 }
