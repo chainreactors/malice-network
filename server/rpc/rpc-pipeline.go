@@ -111,6 +111,14 @@ func (rpc *Server) StartPipeline(ctx context.Context, req *clientpb.CtrlPipeline
 	if err != nil {
 		return nil, err
 	}
+
+	// REM pipelines have their own start path; delegate transparently so
+	// callers (e.g. WebUI) that always use StartPipeline still work.
+	if pipelineDB.Type == consts.RemPipeline {
+		req.ListenerId = listenerID
+		return rpc.StartRem(ctx, req)
+	}
+
 	if pipelineDB.PipelineParams == nil {
 		pipelineDB.PipelineParams = &implanttypes.PipelineParams{}
 	}
@@ -169,6 +177,17 @@ func (rpc *Server) StopPipeline(ctx context.Context, req *clientpb.CtrlPipeline)
 		return nil, err
 	}
 
+	pipelineDB, err := db.FindPipelineByListener(req.Name, listenerID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Delegate REM pipelines to their dedicated handler.
+	if pipelineDB.Type == consts.RemPipeline {
+		req.ListenerId = listenerID
+		return rpc.StopRem(ctx, req)
+	}
+
 	lns, err := core.Listeners.Get(listenerID)
 	if err != nil {
 		return nil, err
@@ -214,6 +233,13 @@ func (rpc *Server) DeletePipeline(ctx context.Context, req *clientpb.CtrlPipelin
 	if err != nil {
 		return nil, err
 	}
+
+	// Delegate REM pipelines to their dedicated handler.
+	if pipelineDB.Type == consts.RemPipeline {
+		req.ListenerId = listenerID
+		return rpc.DeleteRem(ctx, req)
+	}
+
 	lns, err := core.Listeners.Get(listenerID)
 	if err != nil {
 		return nil, err

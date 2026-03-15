@@ -101,7 +101,10 @@ func (rpc *Server) StartRem(ctx context.Context, req *clientpb.CtrlPipeline) (*c
 	if err := db.EnablePipelineByListener(rem.Name, listenerID); err != nil {
 		return nil, err
 	}
-	core.Jobs.AddPipeline(rem)
+	// Do not call core.Jobs.AddPipeline(rem) here: the listener's
+	// handleStartRem already invoked SyncPipeline with the runtime-
+	// populated pipeline (Link, Subscribe, Port). Calling AddPipeline
+	// again with the stale DB snapshot would overwrite those values.
 
 	return &clientpb.Empty{}, nil
 }

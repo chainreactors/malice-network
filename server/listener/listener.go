@@ -679,8 +679,15 @@ func (lns *listener) handleStartRem(job *clientpb.Job) error {
 
 	// Idempotency: REM already started in this listener process.
 	if existing := lns.pipelines.Get(pipe.Name); existing != nil {
-		_, err := lns.Rpc.SyncPipeline(lns.Context(), existing.ToProtobuf())
-		return err
+		remPipeline, ok := existing.(*REM)
+		if ok && remPipeline.Enable {
+			// Still healthy — just sync its current state.
+			_, err := lns.Rpc.SyncPipeline(lns.Context(), existing.ToProtobuf())
+			return err
+		}
+		// Dead pipeline (crashed via runtimeErrorHandler) — remove the stale
+		// entry so we can create a fresh one below.
+		lns.pipelines.Delete(existing.ID())
 	}
 
 	rem, err := NewRem(lns.Rpc, pipe)
