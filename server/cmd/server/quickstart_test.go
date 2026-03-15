@@ -128,8 +128,7 @@ func TestDetectLocalIP(t *testing.T) {
 }
 
 func TestBuildNotifyConfig_Lark(t *testing.T) {
-	params := map[string]string{"webhook_url": "https://example.com/hook"}
-	cfg := buildNotifyConfig("lark", params)
+	cfg := buildNotifyConfig("lark", "https://example.com/hook", "")
 	if !cfg.Enable {
 		t.Error("Enable should be true")
 	}
@@ -148,8 +147,7 @@ func TestBuildNotifyConfig_Lark(t *testing.T) {
 }
 
 func TestBuildNotifyConfig_Telegram(t *testing.T) {
-	params := map[string]string{"api_key": "bot123:ABC", "chat_id": "-100123456"}
-	cfg := buildNotifyConfig("telegram", params)
+	cfg := buildNotifyConfig("telegram", "bot123:ABC", "-100123456")
 	if cfg.Telegram == nil {
 		t.Fatal("Telegram config should not be nil")
 	}
@@ -162,8 +160,7 @@ func TestBuildNotifyConfig_Telegram(t *testing.T) {
 }
 
 func TestBuildNotifyConfig_DingTalk(t *testing.T) {
-	params := map[string]string{"token": "tok123", "secret": "SEC456"}
-	cfg := buildNotifyConfig("dingtalk", params)
+	cfg := buildNotifyConfig("dingtalk", "tok123", "SEC456")
 	if cfg.DingTalk == nil {
 		t.Fatal("DingTalk config should not be nil")
 	}
@@ -176,8 +173,7 @@ func TestBuildNotifyConfig_DingTalk(t *testing.T) {
 }
 
 func TestBuildNotifyConfig_ServerChan(t *testing.T) {
-	params := map[string]string{"url": "https://sc.ftqq.com/key.send"}
-	cfg := buildNotifyConfig("serverchan", params)
+	cfg := buildNotifyConfig("serverchan", "https://sc.ftqq.com/key.send", "")
 	if cfg.ServerChan == nil {
 		t.Fatal("ServerChan config should not be nil")
 	}
@@ -187,8 +183,7 @@ func TestBuildNotifyConfig_ServerChan(t *testing.T) {
 }
 
 func TestBuildNotifyConfig_PushPlus(t *testing.T) {
-	params := map[string]string{"token": "pp_tok", "topic": "my_topic", "channel": "wechat"}
-	cfg := buildNotifyConfig("pushplus", params)
+	cfg := buildNotifyConfig("pushplus", "pp_tok", "my_topic")
 	if cfg.PushPlus == nil {
 		t.Fatal("PushPlus config should not be nil")
 	}
@@ -230,5 +225,38 @@ func TestBuildPipelineOptions(t *testing.T) {
 	opts = buildPipelineOptions([]string{"tcp", "http", "rem"}, nil, nil, nil)
 	if len(opts) != 0 {
 		t.Errorf("expected 0 options for nil slices, got %d", len(opts))
+	}
+}
+
+func TestCollectPipelineNames(t *testing.T) {
+	tcp := []*configs.TcpPipelineConfig{{Name: "tcp1"}}
+	http := []*configs.HttpPipelineConfig{{Name: "http1"}}
+	rem := []*configs.REMConfig{{Name: "rem1"}}
+
+	names := collectPipelineNames(tcp, http, rem)
+	if len(names) != 3 {
+		t.Errorf("expected 3 names, got %d", len(names))
+	}
+
+	// nil slices
+	names = collectPipelineNames(nil, nil, nil)
+	if len(names) != 0 {
+		t.Errorf("expected 0 names for nil slices, got %d", len(names))
+	}
+}
+
+func TestContainsString(t *testing.T) {
+	slice := []string{"tcp", "http", "rem"}
+	if !containsString(slice, "tcp") {
+		t.Error("should contain tcp")
+	}
+	if !containsString(slice, "TCP") {
+		t.Error("should contain TCP (case-insensitive)")
+	}
+	if containsString(slice, "websocket") {
+		t.Error("should not contain websocket")
+	}
+	if containsString(nil, "tcp") {
+		t.Error("nil slice should not contain anything")
 	}
 }
