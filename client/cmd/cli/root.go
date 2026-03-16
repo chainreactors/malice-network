@@ -13,10 +13,15 @@ func rootCmd(con *core.Console) (*cobra.Command, error) {
 	var cmd = &cobra.Command{
 		Use: "client",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := common.ValidateExecutionModeFlags(cmd); err != nil {
+				return err
+			}
 			if err := generic.LoginCmd(cmd, con); err != nil {
 				return err
 			}
-			if common.ShouldStartConsole(cmd) {
+			if common.ShouldStartRuntime(cmd) {
+				restoreDaemon := con.WithDaemonExecution(common.ShouldStartDaemon(cmd))
+				defer restoreDaemon()
 				return con.Start(command.BindClientsCommands, command.BindImplantCommands)
 			}
 			return nil
@@ -28,6 +33,7 @@ func rootCmd(con *core.Console) (*cobra.Command, error) {
 	cmd.PersistentFlags().String("mcp", "", "enable MCP server with address (e.g., 127.0.0.1:5005)")
 	// Add --rpc flag
 	cmd.PersistentFlags().String("rpc", "", "enable local gRPC server with address (e.g., 127.0.0.1:15004)")
+	cmd.PersistentFlags().Bool("daemon", false, "keep background services alive without entering the interactive console")
 	bind := command.MakeBind(cmd, con, "golang")
 	command.BindCommonCommands(bind)
 	// Setup console runner

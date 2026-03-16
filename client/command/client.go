@@ -69,6 +69,9 @@ func ConsoleRunnerCmd(con *core.Console, cmd *cobra.Command) (pre, post func(cmd
 	})
 
 	pre = func(cmd *cobra.Command, args []string) error {
+		if err := common.ValidateExecutionModeFlags(cmd); err != nil {
+			return err
+		}
 		if cmd.Use == consts.CommandLogin || cmd.Use == consts.ClientMenu {
 			return nil
 		}
@@ -81,7 +84,9 @@ func ConsoleRunnerCmd(con *core.Console, cmd *cobra.Command) (pre, post func(cmd
 			return nil
 		}
 
-		if shouldStartConsole(cmd) {
+		if common.ShouldStartRuntime(cmd) {
+			restoreDaemon := con.WithDaemonExecution(common.ShouldStartDaemon(cmd))
+			defer restoreDaemon()
 			return con.Start(BindClientsCommands, BindImplantCommands)
 		}
 

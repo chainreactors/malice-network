@@ -104,6 +104,7 @@ type Console struct {
 	MalManager *plugin.MalManager
 
 	forceNonInteractive atomic.Int32
+	daemonMode          atomic.Int32
 	replActive          atomic.Bool
 }
 
@@ -170,9 +171,14 @@ func (c *Console) Start(bindCmds ...BindCmds) error {
 	}
 
 	// Headless mode: stdin is not a terminal (e.g., launched by GUI with /dev/null).
+	// Daemon mode follows the same runtime path even when a terminal is available.
 	// Skip readline loop to avoid busy-spin on MakeRaw(ENOTTY), block on signal instead.
-	if !term.IsTerminal(int(os.Stdin.Fd())) {
-		logs.Log.Importantf("running in headless mode (no terminal detected), waiting for signal...")
+	if c.IsDaemonExecution() || !term.IsTerminal(int(os.Stdin.Fd())) {
+		if c.IsDaemonExecution() {
+			logs.Log.Importantf("running in daemon mode, waiting for signal...")
+		} else {
+			logs.Log.Importantf("running in headless mode (no terminal detected), waiting for signal...")
+		}
 		sig := make(chan os.Signal, 1)
 		signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 		<-sig
@@ -229,6 +235,31 @@ func (c *Console) WithNonInteractiveExecution(enabled bool) func() {
 			c.forceNonInteractive.Add(-1)
 		}
 	}
+}
+
+func (c *Console) WithDaemonExecution(enabled bool) func() {
+	if c == nil {
+		return func() {}
+	}
+
+	prev := c.daemonMode.Load()
+	if enabled {
+		c.daemonMode.Store(1)
+	} else {
+		c.daemonMode.Store(0)
+	}
+
+	return func() {
+		c.daemonMode.Store(prev)
+	}
+}
+
+func (c *Console) IsDaemonExecution() bool {
+	if c == nil {
+		return false
+	}
+
+	return c.daemonMode.Load() > 0
 }
 
 func (c *Console) WithREPLExecution(enabled bool) func() {
