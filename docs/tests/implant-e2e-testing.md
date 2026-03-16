@@ -35,11 +35,34 @@ real `malefic.exe` process:
 - `sleep`
 - `keepalive`
 - `pwd`
+- `ls`
+- `sysinfo`
+- `run`
 - `exec` realtime streaming
 - task progress transition `0/-1 -> 1/-1 -> 2/2`
 - dead-session mark while a task is still pending
 - late task response reborning a dead session
 - database/runtime consistency for session alive state and task finish state
+
+It also now covers the client command closure for the same real transport path:
+
+- `implant --use <sid> --wait sleep 7 --jitter 0.15`
+- `implant --use <sid> --wait keepalive enable|disable`
+- `implant --use <sid> --wait sysinfo`
+- `implant --use <sid> --wait pwd`
+- `implant --use <sid> --wait ls <workdir>`
+- `implant --use <sid> --wait run cmd.exe /c echo ...`
+- `implant --use <sid> --wait mkdir/cd/pwd/touch/cp/cat/mv/ls/rm`
+- `implant --use <sid> --wait upload|download`
+- `implant --use <sid> --wait env`, `env set`, `env unset`, `whoami`, `ps`, `netstat`, `enum_drivers`
+- `implant --use <sid> --wait kill`, `bypass`
+- `implant --use <sid> --wait reg ...` on `HKCU`
+- `implant --use <sid> --wait service list|query`
+- `implant --use <sid> --wait taskschd list|query`
+- `implant --use <sid> --wait wmi_query|wmi_execute`
+- `implant --use <sid> --wait privs`
+- `implant --use <sid> --wait runas` invalid-credential diagnostic path
+- `implant --use <sid> --wait getsystem` diagnostic path
 
 This is intentionally smaller than the `mockimplant` matrix.
 
@@ -47,6 +70,36 @@ The rule is:
 
 - mock tests cover breadth
 - real implant tests cover transport reality and state-machine truth
+
+## Current Findings
+
+Keep confirmed implant-side defects in:
+
+- [implant-bugs.md](/D:/Programing/go/chainreactors/malice-network/docs/tests/implant-bugs.md)
+
+One separate server-side bootstrap issue is still visible in real runs:
+
+- the first listener-side `Checkin` can race ahead of `Register`, producing a
+  transient `record not found` warning during session bootstrap
+
+## Privilege Split
+
+Default real-implant regression should stay non-admin. The current non-admin
+path includes:
+
+- basic control: `sleep`, `keepalive`, `sysinfo`
+- filesystem: `mkdir`, `cd`, `pwd`, `touch`, `cp`, `cat`, `mv`, `ls`, `rm`
+- system inventory: `env`, `setenv`, `unsetenv`, `whoami`, `ps`, `netstat`, `enum_drivers`
+- Windows management without elevation: `reg` on `HKCU`, `service list|query`, `taskschd list|query`, `wmi_query`, `wmi_execute`
+
+Admin-required scenarios are tracked separately and should not block the
+default non-admin pass:
+
+- `taskschd create|run|delete`
+- future `service create|start|stop|delete`
+- registry writes under privileged hives such as `HKLM`
+- fully successful token/elevation flows that require real credentials or an
+  elevated implant
 
 ## Real Runtime Differences From Mock
 
@@ -85,7 +138,9 @@ to connect to.
 Main implementation files:
 
 - [server/testsupport/real_implant.go](/D:/Programing/go/chainreactors/malice-network/server/testsupport/real_implant.go)
+- [server/testsupport/runtime_inspect.go](/D:/Programing/go/chainreactors/malice-network/server/testsupport/runtime_inspect.go)
 - [server/real_implant_e2e_test.go](/D:/Programing/go/chainreactors/malice-network/server/real_implant_e2e_test.go)
+- [client/command/real_implant_command_e2e_test.go](/D:/Programing/go/chainreactors/malice-network/client/command/real_implant_command_e2e_test.go)
 
 The existing mock state suites that the real tests were derived from:
 
@@ -132,6 +187,27 @@ Run only the real implant suite:
 ```powershell
 $env:MALICE_REAL_IMPLANT_RUN = "1"
 go test ./server -tags realimplant -run TestRealImplant -count=1 -timeout 300s
+```
+
+Run the client command closure against the same real implant path:
+
+```powershell
+$env:MALICE_REAL_IMPLANT_RUN = "1"
+go test ./client/command -tags realimplant -run TestRealImplantCommand -count=1 -timeout 300s
+```
+
+Run only the default non-admin command suites:
+
+```powershell
+$env:MALICE_REAL_IMPLANT_RUN = "1"
+go test ./client/command -tags realimplant -run "TestRealImplantCommand(BasicModulesE2E|FilesystemModulesE2E|SystemInventoryModulesE2E|WindowsManagementModulesE2E)$" -count=1 -timeout 300s
+```
+
+Run the privileged command suite explicitly:
+
+```powershell
+$env:MALICE_REAL_IMPLANT_RUN = "1"
+go test ./client/command -tags realimplant -run TestRealImplantCommandWindowsPrivilegedModulesE2E -count=1 -timeout 300s
 ```
 
 Run a single case:
@@ -290,6 +366,21 @@ all at once would have hidden the actual failure source. The useful order is to
 prove plain transport and state-machine behavior first, then layer additional
 transport features later.
 
+### Prefer absolute paths and existing fixture files in filesystem E2E
+
+The first filesystem command suite used `shell` redirection to create a source
+file inside the implant. That added avoidable `cmd.exe` quoting noise and
+produced a false negative before `cp` ever ran.
+
+The stable pattern is:
+
+- use absolute paths
+- create empty files with `touch`
+- copy an existing real text file such as the generated implant YAML
+
+This keeps the failure signal on the filesystem module under test instead of on
+shell escaping.
+
 ### Preserve implant stdout and stderr in failures
 
 When a real implant exits early, the binary's own output is often the only fast
@@ -322,6 +413,7 @@ Use real implant tests for:
 
 - session registration truth
 - listener/pipeline transport truth
+- Cobra command -> RPC -> implant closure
 - task callback timing
 - wait/task completion behavior
 - dead/reborn lifecycle transitions

@@ -32,6 +32,19 @@ They do not prove that a task can actually traverse:
 
 The mock implant closes that gap.
 
+The intended defect-detection chain is:
+
+1. command conformance tests catch flag parsing and protobuf assembly bugs
+2. mock implant E2E catches task/runtime/listener-stream bugs on the real server path
+3. real implant E2E catches command -> RPC -> implant behavior drift
+
+The point of this stack is to expose problems early, not to hide them with a
+forgiving mock.
+
+If a failure is caused by the implant implementation itself, keep the test
+signal, document the mismatch, and fix the implant separately. Do not weaken
+the server or mock harness just to make an implant bug disappear.
+
 ## Scope
 
 The mock implant currently simulates:
@@ -95,6 +108,17 @@ This is the current priority order:
 1. simulate register/checkin/task flow correctly
 2. simulate task wait/progress/finish/recovery correctly
 3. only then add richer per-module behavior
+
+Closer to real does not mean more permissive. The mock should mirror the real
+implant's normal request/response shape, but it should not silently normalize:
+
+- wrong command argument order
+- wrong protobuf field mapping
+- missing state transitions
+- server-side assumptions that only pass against a fake happy path
+
+When the real implant later disagrees with the mock, update the documentation
+first, then decide whether the mock or the implant is wrong.
 
 ## Current E2E Guards
 
@@ -246,6 +270,14 @@ This is now fixed in:
   - added a regression test to ensure disk fallback waits for the correct next
     callback index
 
+The broader command -> RPC -> implant effort also exposed real-implant issues
+that should stay documented instead of being hidden behind mock behavior:
+
+- scheduled-task behavior previously had real implant mismatches around task
+  scheduler lifecycle/path semantics and required implant-side fixes
+- these should be treated as implant defects, not reasons to relax the server
+  or mock expectations
+
 ## Scenario Library
 
 The reusable scenario library lives in:
@@ -284,12 +316,20 @@ Typical entrypoints:
 - `server/rpc` and `server/internal/core`: still the main runtime regression layer
 - `server/testsupport/mock_implant.go`: new server-facing E2E layer for task transport realism
 - `server/testsupport/mock_scenarios.go`: reusable realistic implant-state layer for multi-step RPC scenarios
+- `client/command/real_implant_command_e2e_test.go`: real command -> RPC -> implant closure for final confirmation
 
 The intended progression is:
 
 1. recorder-backed command tests catch parsing/assembly bugs fast
 2. runtime tests catch task-state and wait bugs directly
 3. mock implant E2E proves the task can survive the real listener stream boundary
+4. real implant E2E confirms the same command path against a real binary
+
+Failure handling rule:
+
+- server/mock issue: fix it here and add coverage
+- command assembly issue: fix the command test and command code
+- implant issue: record it in docs and hand it back to implant development
 
 ## Current Limitation
 
