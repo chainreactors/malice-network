@@ -1,14 +1,15 @@
-//go:build integration
-
-package context
+package context_test
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/client/assets"
+	ctxcmd "github.com/chainreactors/malice-network/client/command/context"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/malice-network/server/testsupport"
 	"github.com/spf13/cobra"
@@ -30,7 +31,7 @@ func TestDownloadContextLifecycleIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("WriteTempFile failed: %v", err)
 	}
-	added, err := AddDownload(clientHarness.Console, clientSession, task.ToProtobuf(), &output.FileDescriptor{
+	added, err := ctxcmd.AddDownload(clientHarness.Console, clientSession, task.ToProtobuf(), &output.FileDescriptor{
 		Name:       "download.txt",
 		TargetPath: "C:\\temp\\download.txt",
 		FilePath:   filePath,
@@ -43,7 +44,7 @@ func TestDownloadContextLifecycleIntegration(t *testing.T) {
 		t.Fatal("expected AddDownload to report success")
 	}
 
-	downloads, err := GetDownloads(clientHarness.Console)
+	downloads, err := ctxcmd.GetDownloads(clientHarness.Console)
 	if err != nil {
 		t.Fatalf("GetDownloads failed: %v", err)
 	}
@@ -53,7 +54,7 @@ func TestDownloadContextLifecycleIntegration(t *testing.T) {
 
 	downloadCmd := &cobra.Command{Use: "download"}
 	downloadOutput := testsupport.CaptureOutput(func() {
-		err = GetDownloadsCmd(downloadCmd, clientHarness.Console)
+		err = ctxcmd.GetDownloadsCmd(downloadCmd, clientHarness.Console)
 	})
 	if err != nil {
 		t.Fatalf("GetDownloadsCmd failed: %v", err)
@@ -64,7 +65,7 @@ func TestDownloadContextLifecycleIntegration(t *testing.T) {
 
 	contextCmd := &cobra.Command{Use: "context"}
 	contextOutput := testsupport.CaptureOutput(func() {
-		err = ListContexts(contextCmd, clientHarness.Console)
+		err = ctxcmd.ListContexts(contextCmd, clientHarness.Console)
 	})
 	if err != nil {
 		t.Fatalf("ListContexts failed: %v", err)
@@ -73,7 +74,7 @@ func TestDownloadContextLifecycleIntegration(t *testing.T) {
 		t.Fatalf("context output missing expected values:\n%s", contextOutput)
 	}
 
-	contexts, err := GetContextsByType(clientHarness.Console, consts.ContextDownload)
+	contexts, err := ctxcmd.GetContextsByType(clientHarness.Console, consts.ContextDownload)
 	if err != nil {
 		t.Fatalf("GetContextsByType failed: %v", err)
 	}
@@ -94,7 +95,7 @@ func TestGetContextsByTaskRespectsTypeFilter(t *testing.T) {
 	})
 	clientHarness := testsupport.NewClientHarness(t, h)
 
-	contexts, err := GetContextsByTask(clientHarness.Console, consts.ContextDownload, task.ToProtobuf())
+	contexts, err := ctxcmd.GetContextsByTask(clientHarness.Console, consts.ContextDownload, task.ToProtobuf())
 	if err != nil {
 		t.Fatalf("GetContextsByTask failed: %v", err)
 	}
@@ -103,6 +104,58 @@ func TestGetContextsByTaskRespectsTypeFilter(t *testing.T) {
 	}
 	if contexts.Contexts[0].Type != consts.ContextDownload {
 		t.Fatalf("GetContextsByTask type = %s, want %s", contexts.Contexts[0].Type, consts.ContextDownload)
+	}
+}
+
+func TestGetCredentialsCmdDoesNotCollapseDistinctTargets(t *testing.T) {
+	h := testsupport.NewControlPlaneHarness(t)
+	h.SeedPipeline(t, h.NewTCPPipeline(t, "ctx-cred-pipe"), true)
+	serverSession := h.SeedSession(t, "ctx-cred-session", "ctx-cred-pipe", true)
+	task := h.SeedTask(t, serverSession, "credential-filter")
+	clientHarness := testsupport.NewClientHarness(t, h)
+
+	_, err := clientHarness.Console.Rpc.AddContext(clientHarness.Console.Context(), &clientpb.Context{
+		Session: task.Session.ToProtobufLite(),
+		Task:    task.ToProtobuf(),
+		Type:    consts.ContextCredential,
+		Value: output.MarshalContext(&output.CredentialContext{
+			CredentialType: output.UserPassCredential,
+			Target:         "server-a.local",
+			Params: map[string]string{
+				"username": "alice",
+				"password": "secret",
+			},
+		}),
+	})
+	if err != nil {
+		t.Fatalf("AddContext first credential failed: %v", err)
+	}
+	_, err = clientHarness.Console.Rpc.AddContext(clientHarness.Console.Context(), &clientpb.Context{
+		Session: task.Session.ToProtobufLite(),
+		Task:    task.ToProtobuf(),
+		Type:    consts.ContextCredential,
+		Value: output.MarshalContext(&output.CredentialContext{
+			CredentialType: output.UserPassCredential,
+			Target:         "server-b.local",
+			Params: map[string]string{
+				"username": "alice",
+				"password": "secret",
+			},
+		}),
+	})
+	if err != nil {
+		t.Fatalf("AddContext second credential failed: %v", err)
+	}
+
+	credentialCmd := &cobra.Command{Use: "credential"}
+	outputText := testsupport.CaptureOutput(func() {
+		err = ctxcmd.GetCredentialsCmd(credentialCmd, clientHarness.Console)
+	})
+	if err != nil {
+		t.Fatalf("GetCredentialsCmd failed: %v", err)
+	}
+	if !strings.Contains(outputText, "server-a.local") || !strings.Contains(outputText, "server-b.local") {
+		t.Fatalf("credential output missing distinct targets:\n%s", outputText)
 	}
 }
 
@@ -127,13 +180,49 @@ func TestListContextsHandlesContextWithoutSessionOrTask(t *testing.T) {
 
 	contextCmd := &cobra.Command{Use: "context"}
 	outputText := testsupport.CaptureOutput(func() {
-		err = ListContexts(contextCmd, clientHarness.Console)
+		err = ctxcmd.ListContexts(contextCmd, clientHarness.Console)
 	})
 	if err != nil {
 		t.Fatalf("ListContexts failed: %v", err)
 	}
 	if !strings.Contains(outputText, consts.ContextCredential) {
 		t.Fatalf("context output missing credential context:\n%s", outputText)
+	}
+}
+
+func TestSyncCommandIntegrationWritesContextContent(t *testing.T) {
+	h := testsupport.NewControlPlaneHarness(t)
+	h.SeedPipeline(t, h.NewTCPPipeline(t, "ctx-sync-pipe"), true)
+	serverSession := h.SeedSession(t, "ctx-sync-session", "ctx-sync-pipe", true)
+	task := h.SeedTask(t, serverSession, "download")
+	ctxModel := h.SeedDownloadContext(t, task, "sync-me.txt", []byte("sync-body"))
+	clientHarness := testsupport.NewClientHarness(t, h)
+
+	oldDir := assets.MaliceDirName
+	assets.MaliceDirName = t.TempDir()
+	assets.InitLogDir()
+	t.Cleanup(func() {
+		assets.MaliceDirName = oldDir
+		assets.InitLogDir()
+	})
+
+	syncCmd := mustNamedCommand(t, ctxcmd.Commands(clientHarness.Console), consts.CommandSync)
+	syncCmd.SetArgs([]string{ctxModel.Id})
+	if err := syncCmd.Execute(); err != nil {
+		t.Fatalf("sync execute failed: %v", err)
+	}
+
+	downloadCtx, err := output.ToContext[*output.DownloadContext](ctxModel)
+	if err != nil {
+		t.Fatalf("ToContext failed: %v", err)
+	}
+	savePath := filepath.Join(assets.GetTempDir(), ctxModel.Id+"_"+downloadCtx.Name)
+	content, err := os.ReadFile(savePath)
+	if err != nil {
+		t.Fatalf("expected synced file at %s: %v", savePath, err)
+	}
+	if string(content) != "sync-body" {
+		t.Fatalf("synced content = %q, want sync-body", content)
 	}
 }
 
@@ -158,7 +247,7 @@ func TestGetDownloadsCmdHandlesContextWithoutSession(t *testing.T) {
 
 	downloadCmd := &cobra.Command{Use: "download"}
 	outputText := testsupport.CaptureOutput(func() {
-		err = GetDownloadsCmd(downloadCmd, clientHarness.Console)
+		err = ctxcmd.GetDownloadsCmd(downloadCmd, clientHarness.Console)
 	})
 	if err != nil {
 		t.Fatalf("GetDownloadsCmd failed: %v", err)
@@ -181,7 +270,7 @@ func TestContextDeleteCommandSmokeIntegration(t *testing.T) {
 		t.Fatalf("ToContext failed: %v", err)
 	}
 
-	root := mustContextRoot(t, Commands(clientHarness.Console))
+	root := mustContextRoot(t, ctxcmd.Commands(clientHarness.Console))
 	root.SetArgs([]string{"delete", ctxModel.Id, "--yes"})
 	if err := root.Execute(); err != nil {
 		t.Fatalf("context delete execute failed: %v", err)
@@ -204,5 +293,17 @@ func mustContextRoot(t testing.TB, commands []*cobra.Command) *cobra.Command {
 		}
 	}
 	t.Fatalf("context root command not found")
+	return nil
+}
+
+func mustNamedCommand(t testing.TB, commands []*cobra.Command, name string) *cobra.Command {
+	t.Helper()
+
+	for _, cmd := range commands {
+		if cmd.Name() == name {
+			return cmd
+		}
+	}
+	t.Fatalf("command %s not found", name)
 	return nil
 }

@@ -56,6 +56,15 @@ func TestSysCommandConformance(t *testing.T) {
 			},
 		},
 		{
+			Name:    "env rejects unknown subcommand",
+			Argv:    []string{consts.ModuleEnv, "rotate"},
+			WantErr: "unknown cmd 'rotate'",
+			Assert: func(t testing.TB, h *testsupport.Harness, err error) {
+				testsupport.RequireNoPrimaryCalls(t, h)
+				testsupport.RequireNoSessionEvents(t, h)
+			},
+		},
+		{
 			Name: "setenv forwards key and value",
 			Argv: []string{consts.ModuleEnv, "set", "TMP", `C:\Temp`},
 			Assert: func(t testing.TB, h *testsupport.Harness, err error) {
@@ -106,6 +115,17 @@ func TestSysCommandConformance(t *testing.T) {
 				req, md := testsupport.MustSingleCall[*implantpb.BypassRequest](t, h, "Bypass")
 				if !req.AMSI || !req.ETW || req.BlockDll {
 					t.Fatalf("bypass request = %#v, want AMSI/ETW true and BlockDll false", req)
+				}
+				assertSysTaskEvent(t, h, md, consts.ModuleBypass)
+			},
+		},
+		{
+			Name: "bypass defaults to disabled flags",
+			Argv: []string{consts.ModuleBypass},
+			Assert: func(t testing.TB, h *testsupport.Harness, err error) {
+				req, md := testsupport.MustSingleCall[*implantpb.BypassRequest](t, h, "Bypass")
+				if req.AMSI || req.ETW || req.BlockDll {
+					t.Fatalf("default bypass request = %#v, want all flags false", req)
 				}
 				assertSysTaskEvent(t, h, md, consts.ModuleBypass)
 			},
