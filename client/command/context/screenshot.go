@@ -59,13 +59,15 @@ func GetScreenshots(con *core.Console) ([]*clientpb.Context, error) {
 }
 
 func AddScreenshot(con *core.Console, sess *client.Session, task *clientpb.Task, data []byte) (bool, error) {
+	if err := requireContextTask(sess, task); err != nil {
+		return false, err
+	}
+
 	_, err := con.Rpc.AddScreenShot(con.Context(), &clientpb.Context{
 		Session: sess.Session,
 		Task:    task,
 		Type:    consts.ContextScreenShot,
-		Value: output.MarshalContext(&output.ScreenShotContext{
-			Content: data,
-		}),
+		Content: data,
 	})
 	if err != nil {
 		return false, err

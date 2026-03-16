@@ -30,7 +30,7 @@ func GetCredentialsCmd(cmd *cobra.Command, con *core.Console) error {
 		}
 
 		// Create deduplication key
-		dedupKey := fmt.Sprintf("%s:%s:%s", cred.CredentialType, cred.Params["username"], cred.Params["password"])
+		dedupKey := fmt.Sprintf("%s:%s:%s:%s", cred.CredentialType, cred.Target, cred.Params["username"], cred.Params["password"])
 
 		// Check if we've already seen this combination
 		if _, exists := seen[dedupKey]; exists {
@@ -44,6 +44,7 @@ func GetCredentialsCmd(cmd *cobra.Command, con *core.Console) error {
 			"ID":       ctx.Id,
 			"Session":  getSessionID(ctx.Session),
 			"Task":     getTaskId(ctx.Task),
+			"Target":   cred.Target,
 			"Type":     cred.CredentialType,
 			"Username": cred.Params["username"],
 			"Password": cred.Params["password"],
@@ -55,6 +56,7 @@ func GetCredentialsCmd(cmd *cobra.Command, con *core.Console) error {
 		table.NewFlexColumn("ID", "ID", 1),
 		table.NewColumn("Session", "Session", 10),
 		table.NewColumn("Task", "Task", 6),
+		table.NewFlexColumn("Target", "Target", 2),
 		table.NewColumn("Type", "Type", 10),
 		table.NewColumn("Username", "Username", 15),
 		table.NewFlexColumn("Password", "Password", 2),
@@ -74,6 +76,10 @@ func GetCredentials(con *core.Console) ([]*clientpb.Context, error) {
 }
 
 func AddCredential(con *core.Console, sess *client.Session, task *clientpb.Task, credType string, params map[string]string) (bool, error) {
+	if err := requireContextTask(sess, task); err != nil {
+		return false, err
+	}
+
 	_, err := con.Rpc.AddCredential(con.Context(), &clientpb.Context{
 		Session: sess.Session,
 		Task:    task,

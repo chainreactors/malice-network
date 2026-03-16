@@ -62,6 +62,10 @@ func GetPorts(con *core.Console) ([]*clientpb.Context, error) {
 }
 
 func AddPort(con *core.Console, sess *client.Session, task *clientpb.Task, ports []*output.Port) (bool, error) {
+	if err := requireContextTask(sess, task); err != nil {
+		return false, err
+	}
+
 	_, err := con.Rpc.AddPort(con.Context(), &clientpb.Context{
 		Session: sess.Session,
 		Task:    task,

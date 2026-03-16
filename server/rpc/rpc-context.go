@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
+	"google.golang.org/protobuf/proto"
 )
 
 func (rpc *Server) GetContexts(ctx context.Context, req *clientpb.Context) (*clientpb.Contexts, error) {
@@ -50,17 +52,24 @@ func (rpc *Server) GetContexts(ctx context.Context, req *clientpb.Context) (*cli
 
 // getTaskFromContext 从Context请求中获取Session和Task
 func getTaskFromContext(req *clientpb.Context) (*core.Task, error) {
-	if req.Session == nil {
+	if req == nil || req.Task == nil {
 		return nil, nil
 	}
 
-	sess, err := core.Sessions.Get(req.Session.SessionId)
+	sessionID := ""
+	if req.Session != nil {
+		sessionID = req.Session.SessionId
+	}
+	if sessionID == "" {
+		sessionID = req.Task.SessionId
+	}
+	if sessionID == "" {
+		return nil, errors.New("task session id is required")
+	}
+
+	sess, err := core.Sessions.Get(sessionID)
 	if err != nil {
 		return nil, err
-	}
-
-	if req.Task == nil {
-		return nil, nil
 	}
 
 	task := sess.Tasks.Get(req.Task.TaskId)
@@ -71,20 +80,30 @@ func getTaskFromContext(req *clientpb.Context) (*core.Task, error) {
 	return task, nil
 }
 
+func bindResolvedTask(req *clientpb.Context, task *core.Task) *clientpb.Context {
+	if req == nil || task == nil || task.Session == nil {
+		return req
+	}
+
+	clone := proto.Clone(req).(*clientpb.Context)
+	clone.Task = task.ToProtobuf()
+	clone.Session = task.Session.ToProtobufLite()
+	return clone
+}
+
 func (rpc *Server) AddScreenShot(ctx context.Context, req *clientpb.Context) (*clientpb.Empty, error) {
 	task, err := getTaskFromContext(req)
 	if err != nil {
 		return nil, err
 	}
 
-	screenshot, err := output.NewScreenShot(req.Value)
-	if err != nil {
-		return nil, err
-	}
-
-	content := screenshot.Content
-	if len(req.Content) > 0 {
-		content = req.Content
+	content := req.Content
+	if len(content) == 0 {
+		screenshot, err := output.NewScreenShot(req.Value)
+		if err != nil {
+			return nil, err
+		}
+		content = screenshot.Content
 	}
 
 	err = core.HandleScreenshot(content, task)
@@ -103,6 +122,15 @@ func (rpc *Server) AddContext(ctx context.Context, req *clientpb.Context) (*clie
 	return &clientpb.Empty{}, nil
 }
 
+func (rpc *Server) AddUpload(ctx context.Context, req *clientpb.Context) (*clientpb.Empty, error) {
+	ictx, err := db.SaveContext(req)
+	if err != nil {
+		return nil, err
+	}
+	core.PushContextEvent(consts.ContextUpload, ictx)
+	return &clientpb.Empty{}, nil
+}
+
 func (rpc *Server) AddDownload(ctx context.Context, req *clientpb.Context) (*clientpb.Empty, error) {
 	task, err := getTaskFromContext(req)
 	if err != nil {
@@ -113,8 +141,9 @@ func (rpc *Server) AddDownload(ctx context.Context, req *clientpb.Context) (*cli
 	if err != nil {
 		return nil, err
 	}
+	_ = download
 
-	_, err = core.SaveContext(download, task)
+	_, err = db.SaveContext(bindResolvedTask(req, task))
 	if err != nil {
 		return nil, err
 	}
@@ -132,8 +161,9 @@ func (rpc *Server) AddCredential(ctx context.Context, req *clientpb.Context) (*c
 	if err != nil {
 		return nil, err
 	}
+	_ = cred
 
-	dctx, err := core.SaveContext(cred, task)
+	dctx, err := db.SaveContext(bindResolvedTask(req, task))
 	if err != nil {
 		return nil, err
 	}
@@ -151,12 +181,29 @@ func (rpc *Server) AddPort(ctx context.Context, req *clientpb.Context) (*clientp
 	if err != nil {
 		return nil, err
 	}
+	_ = port
 
-	dctx, err := core.SaveContext(port, task)
+	dctx, err := db.SaveContext(bindResolvedTask(req, task))
 	if err != nil {
 		return nil, err
 	}
 	core.PushContextEvent(consts.CtrlContextPort, dctx)
+	return &clientpb.Empty{}, nil
+}
+
+func (rpc *Server) AddKeylogger(ctx context.Context, req *clientpb.Context) (*clientpb.Empty, error) {
+	task, err := getTaskFromContext(req)
+	if err != nil {
+		return nil, err
+	}
+
+	content := req.Content
+	if len(content) == 0 {
+		content = req.Value
+	}
+	if err := core.HandleKeylogger(content, task, "", "", req.Nonce); err != nil {
+		return nil, err
+	}
 	return &clientpb.Empty{}, nil
 }
 
@@ -194,6 +241,10 @@ func (rpc *Server) DeleteContext(ctx context.Context, req *clientpb.Context) (*c
 }
 
 func (rpc *Server) Sync(ctx context.Context, req *clientpb.Sync) (*clientpb.Context, error) {
+	if req.TaskId == "" && req.ContextId == "" {
+		return nil, fmt.Errorf("context id or task id is required")
+	}
+
 	var ictx *models.Context
 	var err error
 	if req.TaskId != "" {

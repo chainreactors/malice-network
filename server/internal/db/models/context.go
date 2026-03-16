@@ -50,6 +50,7 @@ func (c *Context) ToProtobuf() *clientpb.Context {
 		Pipeline:  c.Pipeline.ToProtobuf(),
 		Task:      c.Task.ToProtobuf(),
 		Type:      c.Type,
+		Nonce:     c.Nonce,
 		Value:     c.Value,
 		CreatedAt: c.CreatedAt.Unix(),
 		UpdatedAt: c.UpdatedAt.Unix(),
@@ -70,7 +71,10 @@ func FromContextProtobuf(ctx *clientpb.Context) (*Context, error) {
 	if ctx.Session != nil {
 		context.SessionID = ctx.Session.SessionId
 	}
-	if ctx.Task != nil && ctx.Session != nil {
+	if context.SessionID == "" && ctx.Task != nil {
+		context.SessionID = ctx.Task.SessionId
+	}
+	if ctx.Task != nil {
 		context.TaskID = ctx.Task.SessionId + "-" + strconv.Itoa(int(ctx.Task.TaskId))
 	}
 

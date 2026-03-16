@@ -60,6 +60,10 @@ func GetUploads(con *core.Console) ([]*clientpb.Context, error) {
 }
 
 func AddUpload(con *core.Console, sess *client.Session, task *clientpb.Task, fileDesc *output.FileDescriptor) (bool, error) {
+	if err := requireContextTask(sess, task); err != nil {
+		return false, err
+	}
+
 	_, err := con.Rpc.AddUpload(con.Context(), &clientpb.Context{
 		Session: sess.Session,
 		Task:    task,
