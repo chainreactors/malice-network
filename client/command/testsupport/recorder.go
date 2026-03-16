@@ -35,6 +35,7 @@ type RecorderRPC struct {
 	emptyResponders        map[string]func(context.Context, any) (*clientpb.Empty, error)
 	artifactResponders     map[string]func(context.Context, any) (*clientpb.Artifact, error)
 	buildConfigResponders  map[string]func(context.Context, any) (*clientpb.BuildConfig, error)
+	contextResponders      map[string]func(context.Context, any) (*clientpb.Context, error)
 	taskContextResponders  map[string]func(context.Context, any) (*clientpb.TaskContext, error)
 	taskContextsResponders map[string]func(context.Context, any) (*clientpb.TaskContexts, error)
 	tasksResponders        map[string]func(context.Context, any) (*clientpb.Tasks, error)
@@ -56,6 +57,7 @@ func NewRecorderRPC() *RecorderRPC {
 		emptyResponders:        map[string]func(context.Context, any) (*clientpb.Empty, error){},
 		artifactResponders:     map[string]func(context.Context, any) (*clientpb.Artifact, error){},
 		buildConfigResponders:  map[string]func(context.Context, any) (*clientpb.BuildConfig, error){},
+		contextResponders:      map[string]func(context.Context, any) (*clientpb.Context, error){},
 		taskContextResponders:  map[string]func(context.Context, any) (*clientpb.TaskContext, error){},
 		taskContextsResponders: map[string]func(context.Context, any) (*clientpb.TaskContexts, error){},
 		tasksResponders:        map[string]func(context.Context, any) (*clientpb.Tasks, error){},
@@ -116,6 +118,10 @@ func (r *RecorderRPC) OnArtifact(method string, fn func(context.Context, any) (*
 
 func (r *RecorderRPC) OnBuildConfig(method string, fn func(context.Context, any) (*clientpb.BuildConfig, error)) {
 	r.buildConfigResponders[method] = fn
+}
+
+func (r *RecorderRPC) OnContext(method string, fn func(context.Context, any) (*clientpb.Context, error)) {
+	r.contextResponders[method] = fn
 }
 
 func (r *RecorderRPC) OnTaskContext(method string, fn func(context.Context, any) (*clientpb.TaskContext, error)) {
@@ -218,8 +224,36 @@ func (r *RecorderRPC) ExecuteAddon(ctx context.Context, in *implantpb.ExecuteAdd
 	return r.taskResponse(ctx, "ExecuteAddon", in)
 }
 
+func (r *RecorderRPC) ListTasks(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error) {
+	return r.taskResponse(ctx, "ListTasks", in)
+}
+
+func (r *RecorderRPC) QueryTask(ctx context.Context, in *implantpb.TaskCtrl, opts ...grpc.CallOption) (*clientpb.Task, error) {
+	return r.taskResponse(ctx, "QueryTask", in)
+}
+
+func (r *RecorderRPC) CancelTask(ctx context.Context, in *implantpb.TaskCtrl, opts ...grpc.CallOption) (*clientpb.Task, error) {
+	return r.taskResponse(ctx, "CancelTask", in)
+}
+
 func (r *RecorderRPC) Clear(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error) {
 	return r.taskResponse(ctx, "Clear", in)
+}
+
+func (r *RecorderRPC) Execute(ctx context.Context, in *implantpb.ExecRequest, opts ...grpc.CallOption) (*clientpb.Task, error) {
+	return r.taskResponse(ctx, "Execute", in)
+}
+
+func (r *RecorderRPC) Upload(ctx context.Context, in *implantpb.UploadRequest, opts ...grpc.CallOption) (*clientpb.Task, error) {
+	return r.taskResponse(ctx, "Upload", in)
+}
+
+func (r *RecorderRPC) Download(ctx context.Context, in *implantpb.DownloadRequest, opts ...grpc.CallOption) (*clientpb.Task, error) {
+	return r.taskResponse(ctx, "Download", in)
+}
+
+func (r *RecorderRPC) DownloadDir(ctx context.Context, in *implantpb.DownloadRequest, opts ...grpc.CallOption) (*clientpb.Task, error) {
+	return r.taskResponse(ctx, "DownloadDir", in)
 }
 
 func (r *RecorderRPC) WaitTaskFinish(ctx context.Context, in *clientpb.Task, opts ...grpc.CallOption) (*clientpb.TaskContext, error) {
@@ -304,6 +338,14 @@ func (r *RecorderRPC) GetContexts(ctx context.Context, in *clientpb.Context, opt
 	return &clientpb.Contexts{}, nil
 }
 
+func (r *RecorderRPC) Sync(ctx context.Context, in *clientpb.Sync, opts ...grpc.CallOption) (*clientpb.Context, error) {
+	r.recordPrimary(ctx, "Sync", in)
+	if responder, ok := r.contextResponders["Sync"]; ok {
+		return responder(ctx, in)
+	}
+	return &clientpb.Context{Id: in.GetContextId()}, nil
+}
+
 func (r *RecorderRPC) GetAllTaskContent(ctx context.Context, in *clientpb.Task, opts ...grpc.CallOption) (*clientpb.TaskContexts, error) {
 	r.recordPrimary(ctx, "GetAllTaskContent", in)
 	if responder, ok := r.taskContextsResponders["GetAllTaskContent"]; ok {
@@ -354,6 +396,38 @@ func (r *RecorderRPC) DownloadCertificate(ctx context.Context, in *clientpb.Cert
 
 func (r *RecorderRPC) ObtainAcmeCert(ctx context.Context, in *clientpb.AcmeRequest, opts ...grpc.CallOption) (*clientpb.Empty, error) {
 	return r.emptyResponse(ctx, "ObtainAcmeCert", in)
+}
+
+func (r *RecorderRPC) AddContext(ctx context.Context, in *clientpb.Context, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+	return r.emptyResponse(ctx, "AddContext", in)
+}
+
+func (r *RecorderRPC) AddScreenShot(ctx context.Context, in *clientpb.Context, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+	return r.emptyResponse(ctx, "AddScreenShot", in)
+}
+
+func (r *RecorderRPC) AddCredential(ctx context.Context, in *clientpb.Context, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+	return r.emptyResponse(ctx, "AddCredential", in)
+}
+
+func (r *RecorderRPC) AddKeylogger(ctx context.Context, in *clientpb.Context, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+	return r.emptyResponse(ctx, "AddKeylogger", in)
+}
+
+func (r *RecorderRPC) AddPort(ctx context.Context, in *clientpb.Context, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+	return r.emptyResponse(ctx, "AddPort", in)
+}
+
+func (r *RecorderRPC) AddUpload(ctx context.Context, in *clientpb.Context, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+	return r.emptyResponse(ctx, "AddUpload", in)
+}
+
+func (r *RecorderRPC) AddDownload(ctx context.Context, in *clientpb.Context, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+	return r.emptyResponse(ctx, "AddDownload", in)
+}
+
+func (r *RecorderRPC) DeleteContext(ctx context.Context, in *clientpb.Context, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+	return r.emptyResponse(ctx, "DeleteContext", in)
 }
 
 func (r *RecorderRPC) GetAcmeConfig(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.AcmeConfig, error) {
@@ -440,8 +514,64 @@ func (r *RecorderRPC) TaskSchdRun(ctx context.Context, in *implantpb.TaskSchedul
 	return r.taskResponse(ctx, "TaskSchdRun", in)
 }
 
+func (r *RecorderRPC) Pwd(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error) {
+	return r.taskResponse(ctx, "Pwd", in)
+}
+
+func (r *RecorderRPC) Ls(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error) {
+	return r.taskResponse(ctx, "Ls", in)
+}
+
+func (r *RecorderRPC) Cd(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error) {
+	return r.taskResponse(ctx, "Cd", in)
+}
+
+func (r *RecorderRPC) Rm(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error) {
+	return r.taskResponse(ctx, "Rm", in)
+}
+
+func (r *RecorderRPC) Mv(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error) {
+	return r.taskResponse(ctx, "Mv", in)
+}
+
+func (r *RecorderRPC) Cp(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error) {
+	return r.taskResponse(ctx, "Cp", in)
+}
+
+func (r *RecorderRPC) Cat(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error) {
+	return r.taskResponse(ctx, "Cat", in)
+}
+
+func (r *RecorderRPC) Mkdir(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error) {
+	return r.taskResponse(ctx, "Mkdir", in)
+}
+
+func (r *RecorderRPC) Touch(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error) {
+	return r.taskResponse(ctx, "Touch", in)
+}
+
+func (r *RecorderRPC) EnumDrivers(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error) {
+	return r.taskResponse(ctx, "EnumDrivers", in)
+}
+
 func (r *RecorderRPC) Whoami(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error) {
 	return r.taskResponse(ctx, "Whoami", in)
+}
+
+func (r *RecorderRPC) Runas(ctx context.Context, in *implantpb.RunAsRequest, opts ...grpc.CallOption) (*clientpb.Task, error) {
+	return r.taskResponse(ctx, "Runas", in)
+}
+
+func (r *RecorderRPC) Privs(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error) {
+	return r.taskResponse(ctx, "Privs", in)
+}
+
+func (r *RecorderRPC) Rev2Self(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error) {
+	return r.taskResponse(ctx, "Rev2Self", in)
+}
+
+func (r *RecorderRPC) GetSystem(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error) {
+	return r.taskResponse(ctx, "GetSystem", in)
 }
 
 func (r *RecorderRPC) Kill(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error) {
@@ -624,7 +754,14 @@ var methodTaskTypes = map[string]string{
 	"ListAddon":      consts.ModuleListAddon,
 	"LoadAddon":      consts.ModuleLoadAddon,
 	"ExecuteAddon":   consts.ModuleExecuteAddon,
+	"ListTasks":      consts.ModuleListTask,
+	"QueryTask":      consts.ModuleQueryTask,
+	"CancelTask":     consts.ModuleCancelTask,
 	"Clear":          consts.ModuleClear,
+	"Execute":        consts.ModuleExecute,
+	"Upload":         consts.ModuleUpload,
+	"Download":       consts.ModuleDownload,
+	"DownloadDir":    consts.ModuleDownload,
 	"Switch":         consts.ModuleSwitch,
 	"ServiceList":    consts.ModuleServiceList,
 	"ServiceCreate":  consts.ModuleServiceCreate,
@@ -644,6 +781,20 @@ var methodTaskTypes = map[string]string{
 	"TaskSchdDelete": consts.ModuleTaskSchdDelete,
 	"TaskSchdQuery":  consts.ModuleTaskSchdQuery,
 	"TaskSchdRun":    consts.ModuleTaskSchdRun,
+	"Pwd":            consts.ModulePwd,
+	"Ls":             consts.ModuleLs,
+	"Cd":             consts.ModuleCd,
+	"Rm":             consts.ModuleRm,
+	"Mv":             consts.ModuleMv,
+	"Cp":             consts.ModuleCp,
+	"Cat":            consts.ModuleCat,
+	"Mkdir":          consts.ModuleMkdir,
+	"Touch":          consts.ModuleTouch,
+	"EnumDrivers":    consts.ModuleEnumDrivers,
+	"Runas":          consts.ModuleRunas,
+	"Privs":          consts.ModulePrivs,
+	"Rev2Self":       consts.ModuleRev2Self,
+	"GetSystem":      consts.ModuleGetSystem,
 	"Whoami":         consts.ModuleWhoami,
 	"Kill":           consts.ModuleKill,
 	"Ps":             consts.ModulePs,

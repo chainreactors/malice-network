@@ -4,6 +4,8 @@ package testsupport
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"path/filepath"
 	"sort"
@@ -121,6 +123,8 @@ func NewMockScenarioLibrary() *MockScenarioLibrary {
 		consts.ModuleChmod,
 		consts.ModuleChown,
 		consts.ModuleEnumDrivers,
+		consts.ModuleUpload,
+		consts.ModuleDownload,
 		consts.ModulePs,
 		consts.ModuleEnv,
 		consts.ModuleSetEnv,
@@ -160,6 +164,7 @@ func NewMockScenarioLibrary() *MockScenarioLibrary {
 		consts.ModuleGetSystem,
 		consts.ModuleListTask,
 		consts.ModuleQueryTask,
+		consts.ModuleCancelTask,
 		consts.ModuleExecute,
 	}
 	s.addons = []*implantpb.Addon{
@@ -318,6 +323,8 @@ func (s *MockScenarioLibrary) Install(mock *MockImplant) {
 	mock.On(consts.ModuleChmod, s.handleEmpty)
 	mock.On(consts.ModuleChown, s.handleResponseStatus)
 	mock.On(consts.ModuleEnumDrivers, s.handleEnumDrivers)
+	mock.On(consts.ModuleUpload, s.handleUpload)
+	mock.On(consts.ModuleDownload, s.handleDownload)
 
 	mock.On(consts.ModulePs, s.handlePs)
 	mock.On(consts.ModuleEnv, s.handleEnv)
@@ -363,6 +370,7 @@ func (s *MockScenarioLibrary) Install(mock *MockImplant) {
 	mock.On(consts.ModuleGetSystem, s.handleResponseStatus)
 	mock.On(consts.ModuleListTask, s.handleListTasks)
 	mock.On(consts.ModuleQueryTask, s.handleQueryTask)
+	mock.On(consts.ModuleCancelTask, s.handleEmpty)
 	mock.On(consts.ModuleExecute, s.handleExecute)
 }
 
@@ -467,6 +475,53 @@ func (s *MockScenarioLibrary) handleCat(ctx context.Context, req *clientpb.Spite
 	content := append([]byte(nil), s.fileContents[s.normPath(path)]...)
 	return send(&implantpb.Spite{
 		Body: &implantpb.Spite_BinaryResponse{BinaryResponse: &implantpb.BinaryResponse{Data: content, Status: 200}},
+	})
+}
+
+func (s *MockScenarioLibrary) handleUpload(ctx context.Context, req *clientpb.SpiteRequest, send func(*implantpb.Spite) error) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	request := req.GetSpite().GetUploadRequest()
+	if request != nil && request.GetTarget() != "" {
+		s.setFile(request.GetTarget(), request.GetData())
+	}
+	return send(&implantpb.Spite{
+		Body: &implantpb.Spite_Ack{Ack: &implantpb.ACK{Success: true}},
+	})
+}
+
+func (s *MockScenarioLibrary) handleDownload(ctx context.Context, req *clientpb.SpiteRequest, send func(*implantpb.Spite) error) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	request := req.GetSpite().GetDownloadRequest()
+	if request == nil {
+		return s.handleResponseStatus(ctx, req, send)
+	}
+
+	path := s.normPath(request.GetPath())
+	content := append([]byte(nil), s.fileContents[path]...)
+	if content == nil {
+		content = []byte{}
+	}
+
+	if request.GetCur() <= 0 {
+		return send(&implantpb.Spite{
+			Body: &implantpb.Spite_DownloadResponse{DownloadResponse: &implantpb.DownloadResponse{
+				Checksum: checksumBytes(content),
+				Size:     uint64(len(content)),
+			}},
+		})
+	}
+
+	return send(&implantpb.Spite{
+		Body: &implantpb.Spite_DownloadResponse{DownloadResponse: &implantpb.DownloadResponse{
+			Checksum: checksumBytes(content),
+			Size:     uint64(len(content)),
+			Cur:      request.GetCur(),
+			Content:  content,
+		}},
 	})
 }
 
@@ -1293,4 +1348,9 @@ func containsString(values []string, needle string) bool {
 		}
 	}
 	return false
+}
+
+func checksumBytes(data []byte) string {
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:])
 }

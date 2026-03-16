@@ -17,6 +17,7 @@ import (
 	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/certs"
 	"github.com/chainreactors/malice-network/helper/implanttypes"
+	"github.com/chainreactors/malice-network/helper/utils/configutil"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
@@ -73,16 +74,24 @@ func NewControlPlaneHarness(t testing.TB) *ControlPlaneHarness {
 		GRPCPort:      0,
 		IP:            "127.0.0.1",
 		EncryptionKey: "integration-secret",
+		MiscConfig: &configs.MiscConfig{
+			PacketLength: 4 * 1024 * 1024,
+		},
 		DatabaseConfig: &configs.DatabaseConfig{
 			Dialect: configs.Sqlite,
 		},
 	}
-	config.Set("server", serverCfg)
-	config.Set("listeners", &configs.ListenerConfig{
+	if err := configutil.SetStructByTag("server", serverCfg, "config"); err != nil {
+		t.Fatalf("SetStructByTag(server) failed: %v", err)
+	}
+	listenerCfg := &configs.ListenerConfig{
 		Enable: true,
 		Name:   "fixture-listener",
 		IP:     "127.0.0.1",
-	})
+	}
+	if err := configutil.SetStructByTag("listeners", listenerCfg, "config"); err != nil {
+		t.Fatalf("SetStructByTag(listeners) failed: %v", err)
+	}
 	config.Set("debug", false)
 
 	oldDBClient := db.Client
