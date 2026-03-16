@@ -1,0 +1,91 @@
+listeners:
+  auth: listener.auth
+  auto_build:
+    build_pulse: true
+    enable: true
+    pipeline:
+    - tcp
+    - http
+    target:
+    - x86_64-pc-windows-gnu
+  bind:
+  - enable: false
+    encryption:
+      enable: true
+      key: maliceofinternal
+      type: aes
+    name: bind_pipelines
+  enable: true
+  http:
+  - enable: true
+    encryption:
+    - enable: true
+      key: maliceofinternal
+      type: aes
+    - enable: true
+      key: maliceofinternal
+      type: xor
+    error_page: ""
+    host: 0.0.0.0
+    name: http
+    parser: auto
+    port: 8080
+    secure:
+      enable: false
+    tls:
+      enable: true
+  ip: 127.0.0.1
+  name: listener
+  rem:
+  - console: null
+    enable: true
+    name: rem_default
+  tcp:
+  - enable: true
+    encryption:
+    - enable: true
+      key: maliceofinternal
+      type: aes
+    - enable: true
+      key: maliceofinternal
+      type: xor
+    host: 0.0.0.0
+    name: tcp
+    parser: auto
+    port: 5001
+    protocol: tcp
+    secure:
+      enable: false
+    tls:
+      enable: true
+  website:
+  - enable: true
+    name: default-website
+    port: 80
+    root: /
+server:
+  audit: 1
+  config:
+    certificate: null
+    certificate_key: null
+    packet_length: 10485760
+  enable: true
+  encryption_key: maliceofinternal
+  github:
+    owner: null
+    repo: malefic
+    token: null
+    workflow: generate.yml
+  grpc_host: 0.0.0.0
+  grpc_port: 5004
+  ip: 127.0.0.1
+  notify:
+    enable: false
+    lark:
+      enable: false
+      webhook_url: null
+  saas:
+    enable: true
+    url: https://build.chainreactors.red
+    token: null
+

@@ -12,11 +12,7 @@ import (
 )
 
 func TestRepositoryRootConfigParses(t *testing.T) {
-	path := repoPath(t, "config.yaml")
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		t.Skipf("root config.yaml not present (not committed to repo)")
-	}
-	loadTestConfig(t, path)
+	loadTestConfig(t, repoPath(t, "config.yaml"))
 
 	serverCfg := GetServerConfig()
 	listenerCfg := GetListenerConfig()
