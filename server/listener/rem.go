@@ -4,12 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
+	"sync"
+	"time"
+
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/services/listenerrpc"
-	"strconv"
-	"time"
-
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/third/rem"
 	"github.com/chainreactors/malice-network/server/internal/core"
@@ -61,6 +62,7 @@ type REM struct {
 	Enable     bool
 	CertName   string
 	*core.PipelineConfig
+	ownAgents sync.Map // agent.ID → struct{}: tracks agents belonging to this pipeline
 }
 
 func (rem *REM) ID() string {
@@ -92,7 +94,14 @@ func (rem *REM) ToProtobuf() *clientpb.Pipeline {
 	if rem.con != nil && rem.con.ConsoleURL != nil {
 		host = rem.con.ConsoleURL.Hostname()
 		port = uint32(rem.con.ConsoleURL.IntPort())
-		agents = rem.con.ToProtobuf()
+		allAgents := rem.con.ToProtobuf()
+		rem.ownAgents.Range(func(key, value interface{}) bool {
+			id := key.(string)
+			if a, ok := allAgents[id]; ok {
+				agents[id] = a
+			}
+			return true
+		})
 	}
 
 	var tlsConfig *clientpb.TLS
@@ -181,7 +190,7 @@ func (rem *REM) Close() error {
 
 func (rem *REM) acceptLoop() error {
 	for rem.Enable {
-		agent, err := rem.con.Accept()
+		ag, err := rem.con.Accept()
 		if err != nil {
 			if !rem.Enable {
 				return nil
@@ -193,8 +202,17 @@ func (rem *REM) acceptLoop() error {
 			continue
 		}
 
+		rem.ownAgents.Store(ag.ID, struct{}{})
+
+		// Trigger an immediate health check so the new agent's PivotingContext
+		// is created in DB right away instead of waiting for the periodic loop.
+		if err := remHealthCheck(rem.rpc, context.Background(), rem.ToProtobuf()); err != nil {
+			logs.Log.Warnf("rem %s post-accept health check failed: %v", rem.Name, err)
+		}
+
 		core.GoGuarded("rem-agent:"+rem.Name, func() error {
-			rem.con.Handler(agent)
+			rem.con.Handler(ag)
+			rem.ownAgents.Delete(ag.ID)
 			return nil
 		}, core.LogGuardedError("rem-agent:"+rem.Name))
 	}
@@ -282,6 +300,7 @@ func (lns *listener) handlerRemAgentCtrl(job *clientpb.Job) error {
 	if err != nil {
 		return err
 	}
+	rem.(*REM).ownAgents.Store(a.ID, struct{}{})
 	job.Body = &clientpb.Job_RemAgent{
 		RemAgent: &clientpb.REMAgent{
 			Id:     a.Name(),

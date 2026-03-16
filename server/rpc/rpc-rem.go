@@ -379,8 +379,12 @@ func (rpc *Server) HealthCheckRem(ctx context.Context, req *clientpb.Pipeline) (
 	}
 
 	agents := req.GetRem().Agents
+
+	// Build a set of agent IDs already tracked in DB for reverse lookup.
+	knownAgents := make(map[string]struct{}, len(ctxs))
 	for _, c := range ctxs {
 		piv := c.Context.(*output.PivotingContext)
+		knownAgents[piv.RemAgentID] = struct{}{}
 		if _, ok := agents[piv.RemAgentID]; !ok && piv.Enable {
 			piv.Enable = false
 			c.Value = piv.Marshal()
@@ -397,5 +401,29 @@ func (rpc *Server) HealthCheckRem(ctx context.Context, req *clientpb.Pipeline) (
 			}
 		}
 	}
+
+	// Create PivotingContext for agents present in memory but missing from DB
+	// (e.g. agents accepted via acceptLoop that were never explicitly dialed/forked).
+	for id, agent := range agents {
+		if _, exists := knownAgents[id]; exists {
+			continue
+		}
+		pivot := output.NewPivotingWithRem(agent, req)
+		_, err = db.SaveContext(&clientpb.Context{
+			Pipeline: req,
+			Type:     consts.ContextPivoting,
+			Value:    output.MarshalContext(pivot),
+		})
+		if err != nil {
+			return nil, err
+		}
+		core.EventBroker.Publish(core.Event{
+			EventType: consts.EventPivot,
+			Op:        "pivot_" + pivot.Mod,
+			Message:   pivot.Abstract(),
+			Important: true,
+		})
+	}
+
 	return &clientpb.Empty{}, nil
 }
