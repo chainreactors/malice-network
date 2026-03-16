@@ -19,7 +19,16 @@ func (rpc *Server) GetListeners(ctx context.Context, req *clientpb.Empty) (*clie
 }
 
 func (rpc *Server) RegisterListener(ctx context.Context, req *clientpb.RegisterListener) (*clientpb.Empty, error) {
-	//ip := getRemoteIp(ctx)
+	// Idempotent: if a listener with this name already exists (e.g. reconnect after crash),
+	// fully clean up the old state before creating the fresh instance.
+	if old, err := core.Listeners.Get(req.Name); err == nil {
+		for _, pipe := range old.AllPipelines() {
+			pipelinesCh.Delete(pipe.Name)
+		}
+		core.Listeners.Remove(old)
+		logs.Log.Warnf("[server] listener %s re-registering, old state cleaned", req.Name)
+	}
+
 	core.Listeners.Add(core.NewListener(req.Name, req.Host))
 	core.EventBroker.Notify(core.Event{
 		EventType: consts.EventListener,
@@ -37,11 +46,15 @@ func (rpc *Server) SpiteStream(stream listenerrpc.ListenerRPC_SpiteStreamServer)
 		return err
 	}
 	pipelinesCh.Store(pipelineID, stream)
+	defer func() {
+		pipelinesCh.Delete(pipelineID)
+		logs.Log.Warnf("pipeline %s SpiteStream disconnected, cleaned from pipelinesCh", pipelineID)
+	}()
 
 	for {
 		msg, err := stream.Recv()
 		if err != nil {
-			logs.Log.Error("pipeline stream exit!")
+			logs.Log.Errorf("pipeline %s stream exit: %v", pipelineID, err)
 			return err
 		}
 
@@ -107,6 +120,22 @@ func (rpc *Server) JobStream(stream listenerrpc.ListenerRPC_JobStreamServer) err
 	}
 	ctx, cancel := context.WithCancel(stream.Context())
 	defer cancel()
+	defer func() {
+		// Listener disconnected — full cleanup.
+		// Clean up associated SpiteStream entries from pipelinesCh.
+		for _, pipe := range lns.AllPipelines() {
+			pipelinesCh.Delete(pipe.Name)
+		}
+		// Fully remove listener + pipelines + jobs.
+		// Use Stop (which doesn't publish events) + delete from map directly,
+		// because Remove publishes an event and the broker may not be available
+		// during shutdown.
+		if err := core.Listeners.Stop(listenerID); err != nil {
+			logs.Log.Debugf("listener %s stop during cleanup: %v", listenerID, err)
+		}
+		core.Listeners.Map.Delete(listenerID)
+		logs.Log.Warnf("listener %s JobStream disconnected, fully cleaned", listenerID)
+	}()
 
 	recvMsgCh := make(chan *clientpb.JobStatus)
 	sendErrCh := core.GoGuarded("listener-job-stream-send:"+listenerID, func() error {
