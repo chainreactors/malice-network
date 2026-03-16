@@ -1,6 +1,7 @@
 package fileutils
 
 import (
+	"path"
 	"regexp"
 	"strings"
 )
@@ -81,6 +82,29 @@ func CheckLinuxPath(path string) bool {
 	}
 	return true
 }
+// toForwardSlash normalises a remote path (which may use Windows backslashes)
+// to forward slashes so that the standard path package works on any OS.
+func toForwardSlash(p string) string {
+	return strings.ReplaceAll(p, `\`, "/")
+}
+
+// RemoteBase extracts the last element of a remote path that may use either
+// forward or backward slashes, working correctly on any host OS.
+func RemoteBase(p string) string {
+	return path.Base(toForwardSlash(p))
+}
+
+// RemoteDir returns the parent directory of a remote path.
+func RemoteDir(p string) string {
+	return path.Dir(toForwardSlash(p))
+}
+
+// RemoteJoin joins remote path elements using forward slashes,
+// suitable for building implant-side paths that work across OSes.
+func RemoteJoin(elem ...string) string {
+	return path.Join(elem...)
+}
+
 func CheckFullPath(path string) bool {
 	checkWindowsPath := CheckWindowsPath(path)
 	checkLinuxPath := CheckLinuxPath(path)

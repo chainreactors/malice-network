@@ -6,11 +6,11 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/tui"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
-	"path/filepath"
-	"strconv"
+"strconv"
 	"strings"
 	"time"
 )
@@ -87,7 +87,7 @@ func fileExplorerCmd(cmd *cobra.Command, con *core.Console) {
 			return
 		}
 		fileModel = fileModel.SetHeaderView(func(m *tui.TreeModel) string {
-			return fmt.Sprintf("Current Path: %s%s\n", root.Name, filepath.Join(m.Selected...))
+			return fmt.Sprintf("Current Path: %s%s\n", root.Name, fileutils.RemoteJoin(m.Selected...))
 		})
 		// Register custom action for 'enter' key
 		fileModel = fileModel.SetKeyBinding("enter", func(m *tui.TreeModel) (tea.Model, tea.Cmd) {
@@ -150,10 +150,10 @@ func fileEnterFunc(cmd *cobra.Command, m *tui.TreeModel, con *core.Console) (tea
 	if selectedNode.Info[0] == "false" {
 		return m, nil
 	}
-	path := filepath.Join(m.Selected...)
+	path := fileutils.RemoteJoin(m.Selected...)
 	task, err := con.Rpc.Ls(session.Clone(consts.CalleeExplorer).Context(), &implantpb.Request{
 		Name:  consts.ModuleLs,
-		Input: filepath.Join(m.Root.Name, path, selectedNode.Name),
+		Input: fileutils.RemoteJoin(m.Root.Name, path, selectedNode.Name),
 	})
 	session.Console(task, string(*con.App.Shell().Line()))
 	if err != nil {

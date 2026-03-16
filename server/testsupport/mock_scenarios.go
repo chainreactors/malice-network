@@ -8,6 +8,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	stdpath "path"
+
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"sort"
 	"strings"
 	"sync"
@@ -1117,10 +1119,10 @@ func (s *MockScenarioLibrary) ensureDir(path string) {
 		return
 	}
 	s.dirEntries[path] = map[string]*implantpb.FileInfo{}
-	parent := s.normPath(winDir(path))
+	parent := s.normPath(fileutils.RemoteDir(path))
 	if parent != "" && parent != path {
 		s.ensureDir(parent)
-		name := winBase(path)
+		name := fileutils.RemoteBase(path)
 		s.dirEntries[parent][name] = &implantpb.FileInfo{
 			Name:    name,
 			IsDir:   true,
@@ -1133,9 +1135,9 @@ func (s *MockScenarioLibrary) ensureDir(path string) {
 
 func (s *MockScenarioLibrary) setFile(path string, data []byte) {
 	path = s.normPath(path)
-	parent := s.normPath(winDir(path))
+	parent := s.normPath(fileutils.RemoteDir(path))
 	s.ensureDir(parent)
-	name := winBase(path)
+	name := fileutils.RemoteBase(path)
 	s.dirEntries[parent][name] = &implantpb.FileInfo{
 		Name:    name,
 		IsDir:   false,
@@ -1148,8 +1150,8 @@ func (s *MockScenarioLibrary) setFile(path string, data []byte) {
 
 func (s *MockScenarioLibrary) removePath(path string) {
 	path = s.normPath(path)
-	parent := s.normPath(winDir(path))
-	name := winBase(path)
+	parent := s.normPath(fileutils.RemoteDir(path))
+	name := fileutils.RemoteBase(path)
 	delete(s.fileContents, path)
 	delete(s.dirEntries, path)
 	if entries, ok := s.dirEntries[parent]; ok {
@@ -1279,17 +1281,6 @@ func (s *MockScenarioLibrary) normPath(p string) string {
 		p += `\`
 	}
 	return strings.ToLower(p)
-}
-
-// winDir returns the parent directory of a Windows-style backslash path,
-// working correctly on any OS by normalising to forward slashes first.
-func winDir(p string) string {
-	return strings.ReplaceAll(stdpath.Dir(strings.ReplaceAll(p, `\`, "/")), "/", `\`)
-}
-
-// winBase returns the last element of a Windows-style backslash path.
-func winBase(p string) string {
-	return stdpath.Base(strings.ReplaceAll(p, `\`, "/"))
 }
 
 func (s *MockScenarioLibrary) execOutputLocked(request *implantpb.ExecRequest) ([]MockExecChunk, []byte) {

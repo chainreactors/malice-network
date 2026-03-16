@@ -5,7 +5,7 @@ package main
 import (
 	"context"
 	"os"
-	"path/filepath"
+	stdpath "path"
 	"strings"
 	"testing"
 	"time"
@@ -14,6 +14,7 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/testsupport"
@@ -115,17 +116,19 @@ func requireAddon(t *testing.T, addons []*implantpb.Addon, want string) {
 	t.Fatalf("addon list does not contain %q", want)
 }
 
-func normalizePath(path string) string {
-	path = strings.TrimSpace(path)
-	if path == "" {
+func normalizePath(p string) string {
+	p = strings.TrimSpace(p)
+	if p == "" {
 		return ""
 	}
-	path = strings.ReplaceAll(path, "/", `\`)
-	path = filepath.Clean(path)
-	if len(path) == 2 && strings.HasSuffix(path, ":") {
-		path += `\`
+	// Normalise to forward slashes for path.Clean, then back to backslashes.
+	p = strings.ReplaceAll(p, `\`, "/")
+	p = stdpath.Clean(p)
+	p = strings.ReplaceAll(p, "/", `\`)
+	if len(p) == 2 && strings.HasSuffix(p, ":") {
+		p += `\`
 	}
-	return strings.ToLower(path)
+	return strings.ToLower(p)
 }
 
 func requireFileInfo(t *testing.T, files []*implantpb.FileInfo, want string) {
@@ -1022,7 +1025,7 @@ func TestMockImplantFilesystemMutationRPCsE2E(t *testing.T) {
 func TestMockImplantFileTransferRPCsE2E(t *testing.T) {
 	f := newMockRPCFixture(t)
 
-	uploadedPath := filepath.Join(f.lib.WorkDir, "uploaded.txt")
+	uploadedPath := fileutils.RemoteJoin(f.lib.WorkDir, "uploaded.txt")
 	uploadBody := []byte("uploaded from mock implant e2e")
 
 	uploadBefore := len(f.mock.RequestsByName(consts.ModuleUpload))
@@ -1083,7 +1086,7 @@ func TestMockImplantFileTransferRPCsE2E(t *testing.T) {
 	downloadBefore := len(f.mock.RequestsByName(consts.ModuleDownload))
 	downloadTask, err := f.rpc.Download(f.session, &implantpb.DownloadRequest{
 		Path: f.lib.NotesPath,
-		Name: filepath.Base(f.lib.NotesPath),
+		Name: fileutils.RemoteBase(f.lib.NotesPath),
 	})
 	if err != nil {
 		t.Fatalf("Download failed: %v", err)
