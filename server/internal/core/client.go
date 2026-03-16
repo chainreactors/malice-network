@@ -1,9 +1,11 @@
 package core
 
 import (
+	"sync"
+	"sync/atomic"
+
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
-	"sync"
 )
 
 var (
@@ -13,7 +15,7 @@ var (
 		active: map[int]*Client{},
 	}
 
-	clientID uint32 = 0
+	clientID atomic.Uint32
 )
 
 // clients - Manage active clients
@@ -64,16 +66,22 @@ func (cc *clients) ActiveOperators() []string {
 	return operators
 }
 
-// RemoveClient - Remove a client struct atomically
+// Remove removes a client and publishes a leave event so other operators are notified.
 func (cc *clients) Remove(clientID int) {
 	cc.mutex.Lock()
-	defer cc.mutex.Unlock()
 	client := cc.active[clientID]
 	if client == nil {
+		cc.mutex.Unlock()
 		return
 	}
-
 	delete(cc.active, clientID)
+	cc.mutex.Unlock()
+
+	EventBroker.Publish(Event{
+		EventType: consts.EventLeft,
+		Client:    client.Client,
+		Important: true,
+	})
 }
 
 func (cc *clients) ActiveClients() []*Client {
@@ -89,9 +97,9 @@ func (cc *clients) ActiveClients() []*Client {
 }
 
 func GetCurrentID() uint32 {
-	return clientID
+	return clientID.Load()
 }
+
 func getClientID() uint32 {
-	clientID++
-	return clientID
+	return clientID.Add(1)
 }

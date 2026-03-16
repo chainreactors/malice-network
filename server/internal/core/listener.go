@@ -3,11 +3,13 @@ package core
 import (
 	"errors"
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/types"
-	"sync"
-	"time"
+	"github.com/chainreactors/logs"
 )
 
 var (
@@ -26,31 +28,47 @@ type Listener struct {
 	CtrlJob    *sync.Map
 }
 
+// DefaultCtrlTimeout is the maximum time to wait for a listener control response.
+const DefaultCtrlTimeout = 30 * time.Second
+
 func NewListener(name, ip string) *Listener {
 	return &Listener{
 		Name:      name,
 		IP:        ip,
 		Active:    true,
 		pipelines: make(map[string]*clientpb.Pipeline),
-		Ctrl:      make(chan *clientpb.JobCtrl),
+		Ctrl:      make(chan *clientpb.JobCtrl, 8),
 		CtrlJob:   &sync.Map{},
 	}
 }
 
+// PushCtrl sends a control message to the listener. Returns the assigned ctrl ID.
+// If the listener's Ctrl channel is full (listener not consuming), it logs a warning
+// and returns 0 instead of blocking forever.
 func (l *Listener) PushCtrl(ctrl *clientpb.JobCtrl) uint32 {
 	ctrl.Id = NextCtrlID()
-	l.Ctrl <- ctrl
-	return ctrl.Id
+	select {
+	case l.Ctrl <- ctrl:
+		return ctrl.Id
+	case <-time.After(DefaultCtrlTimeout):
+		logs.Log.Warnf("listener %s: PushCtrl timed out (channel full, listener may be disconnected)", l.Name)
+		return 0
+	}
 }
 
+// WaitCtrl waits for a control response from the listener. Returns nil if the
+// response does not arrive within DefaultCtrlTimeout.
 func (l *Listener) WaitCtrl(i uint32) *clientpb.JobStatus {
-	for {
+	deadline := time.Now().Add(DefaultCtrlTimeout)
+	for time.Now().Before(deadline) {
 		done, ok := l.CtrlJob.Load(i)
 		if ok && done != nil {
 			return done.(*clientpb.JobStatus)
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
+	logs.Log.Warnf("listener: WaitCtrl(%d) timed out after %v", i, DefaultCtrlTimeout)
+	return nil
 }
 
 func (l *Listener) AddPipeline(pipeline *clientpb.Pipeline) {
@@ -202,21 +220,22 @@ func (l *listeners) ToProtobuf() *clientpb.Listeners {
 	return listeners
 }
 
-// Stop - Stop a listener
+// Stop deactivates a listener and cleans up its pipelines and associated jobs.
 func (l *listeners) Stop(name string) error {
 	val, ok := l.Load(name)
-	if ok {
-		val.(*Listener).Active = false
-		//for _, pipeline := range val.(*Listener).Pipelines.Pipelines {
-		//	// TODO close pipeline
-		//	//err := pipeline.Close()
-		//	if err != nil {
-		//		// TODO - need or not give error if pipeline close failed
-		//		continue
-		//	}
-		//}
-	} else {
+	if !ok {
 		return errors.New("listener not found")
 	}
+	listener := val.(*Listener)
+	listener.Active = false
+
+	// Clean up all pipelines and their associated jobs.
+	for _, pipe := range listener.AllPipelines() {
+		Jobs.Remove(pipe.ListenerId, pipe.Name)
+	}
+	listener.pipelineMu.Lock()
+	listener.pipelines = make(map[string]*clientpb.Pipeline)
+	listener.pipelineMu.Unlock()
+
 	return nil
 }

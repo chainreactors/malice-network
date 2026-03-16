@@ -2,17 +2,20 @@ package core
 
 import (
 	"fmt"
+	"sync"
+	"sync/atomic"
+
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/types"
-	"sync"
+	"github.com/chainreactors/logs"
 )
 
 var (
 	Jobs = &jobs{
 		Map: &sync.Map{},
 	}
-	jobID  uint32 = 0
-	ctrlID uint32 = 0
+	jobID  atomic.Uint32
+	ctrlID atomic.Uint32
 )
 
 type jobs struct {
@@ -24,12 +27,12 @@ func jobKey(listenerID, name string) string {
 }
 
 func (j *jobs) AddPipeline(pipe *clientpb.Pipeline) *Job {
-	if pipe == nil {
+	if pipe == nil || pipe.ListenerId == "" || pipe.Name == "" {
+		logs.Log.Warnf("AddPipeline called with invalid pipeline (nil=%v, listener=%q, name=%q)",
+			pipe == nil,
+			func() string { if pipe != nil { return pipe.ListenerId }; return "" }(),
+			func() string { if pipe != nil { return pipe.Name }; return "" }())
 		return &Job{ID: NextJobID()}
-	}
-
-	if pipe.ListenerId == "" || pipe.Name == "" {
-		return &Job{ID: NextJobID(), Name: pipe.Name, Pipeline: pipe}
 	}
 
 	key := jobKey(pipe.ListenerId, pipe.Name)
@@ -121,15 +124,13 @@ func (j *Job) ToProtobuf() *clientpb.Job {
 }
 
 func CurrentJobID() uint32 {
-	return jobID
+	return jobID.Load()
 }
 
 func NextJobID() uint32 {
-	jobID++
-	return jobID
+	return jobID.Add(1)
 }
 
 func NextCtrlID() uint32 {
-	ctrlID++
-	return ctrlID
+	return ctrlID.Add(1)
 }
