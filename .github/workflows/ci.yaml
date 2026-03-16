@@ -37,7 +37,6 @@ jobs:
           CGO_ENABLED: 0
 
   core_race:
-    needs: unit
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout
@@ -58,7 +57,6 @@ jobs:
         run: go test -race ./server/internal/core -count=1 -timeout 300s
 
   mock_implant:
-    needs: unit
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout
@@ -79,7 +77,6 @@ jobs:
         run: go test -tags=mockimplant ./server -count=1 -timeout 300s
 
   integration:
-    needs: [unit, core_race]
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout
