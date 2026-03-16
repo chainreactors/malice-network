@@ -53,7 +53,15 @@ func LoadAddonCmd(cmd *cobra.Command, con *core.Console) {
 	session.Console(task, string(*con.App.Shell().Line()))
 
 	con.AddCallback(task, func(_ *clientpb.TaskContext) {
-		RefreshAddonCommand(session.Addons, con)
+		updatedSession := session
+		if refreshed, err := con.UpdateSession(session.SessionId); err == nil && refreshed != nil {
+			updatedSession = refreshed
+		} else if err != nil {
+			con.Log.Warnf("refresh addon session %s failed: %v\n", session.SessionId, err)
+		}
+		if err := RefreshAddonCommand(updatedSession.Addons, con); err != nil {
+			con.Log.Warnf("refresh addon commands failed: %v\n", err)
+		}
 	})
 
 }
