@@ -7,7 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"path/filepath"
+	stdpath "path"
 	"sort"
 	"strings"
 	"sync"
@@ -1117,10 +1117,10 @@ func (s *MockScenarioLibrary) ensureDir(path string) {
 		return
 	}
 	s.dirEntries[path] = map[string]*implantpb.FileInfo{}
-	parent := s.normPath(filepath.Dir(path))
+	parent := s.normPath(winDir(path))
 	if parent != "" && parent != path {
 		s.ensureDir(parent)
-		name := filepath.Base(path)
+		name := winBase(path)
 		s.dirEntries[parent][name] = &implantpb.FileInfo{
 			Name:    name,
 			IsDir:   true,
@@ -1133,9 +1133,9 @@ func (s *MockScenarioLibrary) ensureDir(path string) {
 
 func (s *MockScenarioLibrary) setFile(path string, data []byte) {
 	path = s.normPath(path)
-	parent := s.normPath(filepath.Dir(path))
+	parent := s.normPath(winDir(path))
 	s.ensureDir(parent)
-	name := filepath.Base(path)
+	name := winBase(path)
 	s.dirEntries[parent][name] = &implantpb.FileInfo{
 		Name:    name,
 		IsDir:   false,
@@ -1148,8 +1148,8 @@ func (s *MockScenarioLibrary) setFile(path string, data []byte) {
 
 func (s *MockScenarioLibrary) removePath(path string) {
 	path = s.normPath(path)
-	parent := s.normPath(filepath.Dir(path))
-	name := filepath.Base(path)
+	parent := s.normPath(winDir(path))
+	name := winBase(path)
 	delete(s.fileContents, path)
 	delete(s.dirEntries, path)
 	if entries, ok := s.dirEntries[parent]; ok {
@@ -1265,17 +1265,31 @@ func (s *MockScenarioLibrary) normName(value string) string {
 	return strings.ToLower(strings.TrimSpace(value))
 }
 
-func (s *MockScenarioLibrary) normPath(path string) string {
-	path = strings.TrimSpace(path)
-	if path == "" {
+func (s *MockScenarioLibrary) normPath(p string) string {
+	p = strings.TrimSpace(p)
+	if p == "" {
 		return ""
 	}
-	path = strings.ReplaceAll(path, "/", `\`)
-	path = filepath.Clean(path)
-	if len(path) == 2 && strings.HasSuffix(path, ":") {
-		path += `\`
+	// Normalise to forward slashes so path.Clean works cross-platform,
+	// then convert back to backslashes for Windows-style mock filesystem.
+	p = strings.ReplaceAll(p, `\`, "/")
+	p = stdpath.Clean(p)
+	p = strings.ReplaceAll(p, "/", `\`)
+	if len(p) == 2 && strings.HasSuffix(p, ":") {
+		p += `\`
 	}
-	return strings.ToLower(path)
+	return strings.ToLower(p)
+}
+
+// winDir returns the parent directory of a Windows-style backslash path,
+// working correctly on any OS by normalising to forward slashes first.
+func winDir(p string) string {
+	return strings.ReplaceAll(stdpath.Dir(strings.ReplaceAll(p, `\`, "/")), "/", `\`)
+}
+
+// winBase returns the last element of a Windows-style backslash path.
+func winBase(p string) string {
+	return stdpath.Base(strings.ReplaceAll(p, `\`, "/"))
 }
 
 func (s *MockScenarioLibrary) execOutputLocked(request *implantpb.ExecRequest) ([]MockExecChunk, []byte) {
