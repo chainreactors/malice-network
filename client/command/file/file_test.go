@@ -68,8 +68,8 @@ func TestFileUploadCommandErrors(t *testing.T) {
 	t.Run("upload rejects missing local file", func(t *testing.T) {
 		h := testsupport.NewHarness(t)
 		err := h.Execute(consts.ModuleUpload, filepath.Join(t.TempDir(), "missing.bin"), `C:\Temp\remote.bin`)
-		if err == nil || !strings.Contains(strings.ToLower(err.Error()), "cannot find") {
-			t.Fatalf("upload missing file error = %v, want cannot find", err)
+		if err == nil || (!strings.Contains(strings.ToLower(err.Error()), "cannot find") && !strings.Contains(strings.ToLower(err.Error()), "no such file")) {
+			t.Fatalf("upload missing file error = %v, want file-not-found error", err)
 		}
 		testsupport.RequireNoPrimaryCalls(t, h)
 		testsupport.RequireNoSessionEvents(t, h)

@@ -1458,14 +1458,17 @@ func TestMockImplantControlAndExecutionRPCsE2E(t *testing.T) {
 
 	switchBefore := len(f.mock.RequestsByName(consts.ModuleSwitch))
 	switchTask, err := f.rpc.Switch(f.session, &implantpb.Switch{
-		Urls: []string{"https://edge-a.example/mock", "wss://edge-b.example/mock"},
+		Targets: []*implantpb.Target{
+			{Address: "edge-a.example:443", Protocol: "tcp"},
+			{Address: "edge-b.example:443", Protocol: "tcp"},
+		},
 	})
 	if err != nil {
 		t.Fatalf("Switch failed: %v", err)
 	}
 	switchRequest := waitModuleRequest(t, f.mock, consts.ModuleSwitch, switchBefore)
-	if got := switchRequest.GetSpite().GetSwitch().GetUrls(); len(got) != 2 || got[0] != "https://edge-a.example/mock" {
-		t.Fatalf("switch urls = %#v", got)
+	if got := switchRequest.GetSpite().GetSwitch().GetTargets(); len(got) != 2 || got[0].GetAddress() != "edge-a.example:443" {
+		t.Fatalf("switch targets = %#v", got)
 	}
 	waitTaskFinish(t, f.rpc, f.mock.SessionID, switchTask.TaskId)
 

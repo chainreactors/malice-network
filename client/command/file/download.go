@@ -7,7 +7,8 @@ import (
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/spf13/cobra"
-	"path/filepath"
+	"path"
+	"strings"
 )
 
 func DownloadCmd(cmd *cobra.Command, con *core.Console) error {
@@ -23,9 +24,16 @@ func DownloadCmd(cmd *cobra.Command, con *core.Console) error {
 	return nil
 }
 
+// remotePath extracts the basename from a remote path that may use
+// either forward slashes (Unix) or backslashes (Windows).
+func remotePath(p string) string {
+	// Normalise Windows backslashes so path.Base works on all platforms.
+	return path.Base(strings.ReplaceAll(p, `\`, "/"))
+}
+
 func Download(rpc clientrpc.MaliceRPCClient, session *client.Session, path string, is_dir bool) (*clientpb.Task, error) {
 	task, err := rpc.Download(session.Context(), &implantpb.DownloadRequest{
-		Name: filepath.Base(path),
+		Name: remotePath(path),
 		Path: path,
 		Dir:  is_dir,
 	})
