@@ -255,6 +255,43 @@ func (t *Task) Finish(spite *implantpb.Spite, msg string) {
 	}
 }
 
+func (t *Task) CancelTask(spite *implantpb.Spite, msg string) {
+	needsUpdate := false
+
+	t.progressMu.Lock()
+	alreadyFinished := !t.FinishedAt.IsZero() || (t.Total >= 0 && t.Cur == t.Total)
+	if !alreadyFinished {
+		if t.Total < 0 {
+			t.Total = t.Cur
+		} else {
+			t.Cur = t.Total
+		}
+		t.FinishedAt = time.Now()
+		needsUpdate = true
+	}
+	t.progressMu.Unlock()
+
+	if alreadyFinished {
+		return
+	}
+
+	if needsUpdate {
+		if err := taskDBUpdate(t.ToProtobuf()); err != nil {
+			logs.Log.Warnf("task %s: update failed: %v", t.TaskID(), err)
+		}
+	}
+	if err := taskDBUpdateFinish(t.TaskID()); err != nil {
+		logs.Log.Warnf("task %s: update finish failed: %v", t.TaskID(), err)
+	}
+
+	t.Publish(consts.CtrlTaskCancel, spite, msg)
+	select {
+	case t.DoneCh <- true:
+	default:
+	}
+	t.Close()
+}
+
 func (t *Task) Finished() bool {
 	t.progressMu.RLock()
 	defer t.progressMu.RUnlock()

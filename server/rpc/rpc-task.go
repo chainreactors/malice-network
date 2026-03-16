@@ -334,11 +334,7 @@ func (rpc *Server) CancelTask(ctx context.Context, req *implantpb.TaskCtrl) (*cl
 	}
 
 	greq.HandlerResponse(ch, types.MsgEmpty, func(spite *implantpb.Spite) {
-		core.EventBroker.Publish(core.Event{
-			EventType: consts.EventTask,
-			Op:        consts.CtrlTaskCancel,
-			Task:      task.ToProtobuf(),
-		})
+		task.CancelTask(spite, "")
 	})
 
 	return greq.Task.ToProtobuf(), nil
