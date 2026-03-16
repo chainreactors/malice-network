@@ -15,6 +15,7 @@ import (
 
 	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/reeflective/console"
@@ -261,7 +262,7 @@ func (c *Console) GetPrompt() string {
 
 	session := c.ActiveTarget.Get()
 	if session != nil {
-		promptLine = tui.NewSessionColor(session.GroupName, session.SessionId[:8]) + " " + promptLine
+		promptLine = tui.DefaultNameStyle.Render(session.SessionId[:8]) + " " + promptLine
 	}
 
 	if statusLine == "" {
@@ -304,14 +305,7 @@ func (c *Console) getStatusLine() string {
 
 	session := c.ActiveTarget.Get()
 	if session == nil {
-		// Client menu: user on v0.5.0 sessions 3/5
-		var alive, total int
-		for _, s := range c.Sessions {
-			total++
-			if s.IsAlive {
-				alive++
-			}
-		}
+		// Client menu: user on v0.5.0 sessions alive/total
 		version := ""
 		if c.Info != nil {
 			version = c.Info.Version
@@ -320,20 +314,22 @@ func (c *Console) getStatusLine() string {
 		if c.Client != nil {
 			name = c.Client.Name
 		}
+		sessionInfo := fmt.Sprintf("%d", len(c.Sessions))
+		count, err := c.Rpc.GetSessionCount(context.Background(), &clientpb.Empty{})
+		if err == nil && count != nil {
+			sessionInfo = fmt.Sprintf("%d/%d", count.Alive, count.Total)
+		}
 		return fmt.Sprintf("%s %s %s %s %s",
 			tui.CyanFg.Render(name),
 			tui.DarkGrayFg.Render("on"),
 			tui.GreenFg.Render(version),
 			tui.DarkGrayFg.Render("sessions"),
-			tui.YellowFg.Render(fmt.Sprintf("%d/%d", alive, total)),
+			tui.YellowFg.Render(sessionInfo),
 		)
 	}
 
-	// Implant menu: [note] hostname os/arch via pipeline age
-	parts := make([]string, 0, 7)
-	if session.Note != "" {
-		parts = append(parts, tui.WhiteFg.Bold(true).Render(session.Note))
-	}
+	// Implant menu: name on hostname os/arch via pipeline age (group)
+	parts := make([]string, 0, 8)
 	hostname := ""
 	osInfo := ""
 	if session.Os != nil {
@@ -341,11 +337,14 @@ func (c *Console) getStatusLine() string {
 		osInfo = session.Os.Name + "/" + session.Os.Arch
 	}
 	parts = append(parts,
+		tui.WhiteFg.Bold(true).Render(session.Name),
+		tui.DarkGrayFg.Render("on"),
 		tui.CyanFg.Render(hostname),
 		tui.GreenFg.Render(osInfo),
 		tui.DarkGrayFg.Render("via"),
 		tui.PurpleFg.Render(session.PipelineId),
 		tui.YellowFg.Render(formatCheckinAge(session.LastCheckin)),
+		tui.DarkGrayFg.Render("("+session.GroupName+")"),
 	)
 	return strings.Join(parts, " ")
 }

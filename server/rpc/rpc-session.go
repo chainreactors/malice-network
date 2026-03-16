@@ -40,6 +40,18 @@ func (rpc *Server) GetSessions(ctx context.Context, req *clientpb.SessionRequest
 	return sessions, nil
 }
 
+func (rpc *Server) GetSessionCount(ctx context.Context, req *clientpb.Empty) (*clientpb.SessionCount, error) {
+	alive := int32(len(core.Sessions.All()))
+	total, err := db.NewSessionQuery().WhereRemoved(false).Count()
+	if err != nil {
+		return nil, err
+	}
+	return &clientpb.SessionCount{
+		Alive: alive,
+		Total: int32(total),
+	}, nil
+}
+
 func (rpc *Server) GetSession(ctx context.Context, req *clientpb.SessionRequest) (*clientpb.Session, error) {
 	session, err := core.Sessions.Get(req.SessionId)
 	if err == nil {
