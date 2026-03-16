@@ -86,14 +86,14 @@ func waitModuleRequest(t *testing.T, mock *testsupport.MockImplant, module strin
 	t.Helper()
 
 	testsupport.WaitForCondition(t, 5*time.Second, func() bool {
-		return len(mock.RequestsByName(module)) == before+1
+		return len(mock.RequestsByName(module)) >= before+1
 	}, "mock implant request "+module)
 
-	request := mock.LastRequest(module)
-	if request == nil {
-		t.Fatalf("last request for %s is nil", module)
+	requests := mock.RequestsByName(module)
+	if len(requests) <= before {
+		t.Fatalf("no new request for %s after wait", module)
 	}
-	return request
+	return requests[before]
 }
 
 func requireModule(t *testing.T, modules []string, want string) {
