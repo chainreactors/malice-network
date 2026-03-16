@@ -162,21 +162,28 @@ func TestBasicCommandConformance(t *testing.T) {
 			},
 		},
 		{
-			Name: "switch combines pipeline and explicit address",
-			Argv: []string{consts.ModuleSwitch, "--pipeline", "tcp-a", "--address", "10.0.0.2:9443"},
+			Name: "switch resolves pipeline to replace target",
+			Argv: []string{consts.ModuleSwitch, "--pipeline", "tcp-a"},
 			Setup: func(t testing.TB, h *testsupport.Harness) {
 				h.AddTCPPipeline("tcp-a", "127.0.0.1", 8443)
+				h.Console.Pipelines["tcp-a"].Encryption = []*clientpb.Encryption{
+					{Type: consts.CryptorAES, Key: "pipeline-secret"},
+				}
 			},
 			Assert: func(t testing.TB, h *testsupport.Harness, err error) {
 				req, md := testsupport.MustSingleCall[*implantpb.Switch](t, h, "Switch")
-				want := []string{"127.0.0.1:8443", "10.0.0.2:9443"}
-				if len(req.Urls) != len(want) {
-					t.Fatalf("switch urls = %v, want %v", req.Urls, want)
+				if req.Action != implantpb.SwitchAction_REPLACE {
+					t.Fatalf("switch action = %v, want REPLACE", req.Action)
 				}
-				for i := range want {
-					if req.Urls[i] != want[i] {
-						t.Fatalf("switch urls = %v, want %v", req.Urls, want)
-					}
+				if string(req.Key) != "pipeline-secret" {
+					t.Fatalf("switch key = %q, want pipeline-secret", string(req.Key))
+				}
+				if len(req.Targets) != 1 {
+					t.Fatalf("switch targets len = %d, want 1", len(req.Targets))
+				}
+				target := req.Targets[0]
+				if target.GetProtocol() != "tcp" || target.GetAddress() != "127.0.0.1:8443" {
+					t.Fatalf("switch target = %#v, want tcp 127.0.0.1:8443", target)
 				}
 				assertTaskEvent(t, h, md, consts.ModuleSwitch)
 			},

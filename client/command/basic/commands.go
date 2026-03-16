@@ -128,15 +128,14 @@ info b1ab9056
 	switchCmd := &cobra.Command{
 		Use:   consts.ModuleSwitch,
 		Short: "switch session",
-		Long:  "Switch session to other pipeline connection",
+		Long:  "Switch session to another server pipeline by pipeline id",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return SwitchCmd(cmd, con)
 		},
 	}
 
 	common.BindFlag(switchCmd, func(f *pflag.FlagSet) {
-		f.StringP("pipeline", "p", "", "pipeline name")
-		f.StringP("address", "a", "", "target address (ip:port)")
+		f.StringP("pipeline", "p", "", "target pipeline id")
 	})
 
 	common.BindFlagCompletions(switchCmd, func(comp carapace.ActionMap) {
