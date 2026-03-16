@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -13,6 +14,7 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/testsupport"
 	"google.golang.org/grpc/metadata"
@@ -570,6 +572,58 @@ func TestMockImplantInventoryRPCsE2E(t *testing.T) {
 	}
 }
 
+func TestMockImplantCancelTaskRPCE2E(t *testing.T) {
+	f := newMockRPCFixture(t)
+
+	seedBefore := len(f.mock.RequestsByName(consts.ModulePwd))
+	seedTask, err := f.rpc.Pwd(f.session, &implantpb.Request{Name: consts.ModulePwd})
+	if err != nil {
+		t.Fatalf("Pwd failed: %v", err)
+	}
+	waitModuleRequest(t, f.mock, consts.ModulePwd, seedBefore)
+	waitTaskFinish(t, f.rpc, f.mock.SessionID, seedTask.TaskId)
+
+	cancelBefore := len(f.mock.RequestsByName(consts.ModuleCancelTask))
+	cancelTask, err := f.rpc.CancelTask(f.session, &implantpb.TaskCtrl{
+		TaskId: seedTask.TaskId,
+		Op:     consts.ModuleCancelTask,
+	})
+	if err != nil {
+		t.Fatalf("CancelTask failed: %v", err)
+	}
+	if cancelTask == nil || cancelTask.TaskId == 0 {
+		t.Fatalf("cancel task = %#v, want valid task", cancelTask)
+	}
+
+	cancelRequest := waitModuleRequest(t, f.mock, consts.ModuleCancelTask, cancelBefore)
+	if got := cancelRequest.GetSpite().GetTask().GetTaskId(); got != seedTask.TaskId {
+		t.Fatalf("cancel request task id = %d, want %d", got, seedTask.TaskId)
+	}
+	if got := cancelRequest.GetSpite().GetTask().GetOp(); got != consts.ModuleCancelTask {
+		t.Fatalf("cancel request op = %q, want %q", got, consts.ModuleCancelTask)
+	}
+
+	cancelContent := waitTaskFinish(t, f.rpc, f.mock.SessionID, cancelTask.TaskId)
+	if cancelContent.GetSpite().GetEmpty() == nil {
+		t.Fatalf("cancel task content = %#v, want empty response", cancelContent.GetSpite())
+	}
+
+	runtimeTask, err := f.h.GetRuntimeTask(f.mock.SessionID, seedTask.TaskId)
+	if err != nil {
+		t.Fatalf("GetRuntimeTask(target) failed: %v", err)
+	}
+	if runtimeTask.TaskId != seedTask.TaskId {
+		t.Fatalf("runtime task id = %d, want %d", runtimeTask.TaskId, seedTask.TaskId)
+	}
+	if !runtimeTask.Finished {
+		t.Fatalf("runtime task finished = %v, want true", runtimeTask.Finished)
+	}
+
+	if errs := f.mock.Errors(); len(errs) != 0 {
+		t.Fatalf("mock implant async errors = %v", errs)
+	}
+}
+
 func TestMockImplantMutationRPCsE2E(t *testing.T) {
 	f := newMockRPCFixture(t)
 
@@ -959,6 +1013,139 @@ func TestMockImplantFilesystemMutationRPCsE2E(t *testing.T) {
 	lsContent = waitTaskFinish(t, f.rpc, f.mock.SessionID, lsTask.TaskId)
 	requireFileInfo(t, lsContent.GetSpite().GetLsResponse().GetFiles(), "marker.txt")
 	requireNoFileInfo(t, lsContent.GetSpite().GetLsResponse().GetFiles(), "notes-moved.txt")
+
+	if errs := f.mock.Errors(); len(errs) != 0 {
+		t.Fatalf("mock implant async errors = %v", errs)
+	}
+}
+
+func TestMockImplantFileTransferRPCsE2E(t *testing.T) {
+	f := newMockRPCFixture(t)
+
+	uploadedPath := filepath.Join(f.lib.WorkDir, "uploaded.txt")
+	uploadBody := []byte("uploaded from mock implant e2e")
+
+	uploadBefore := len(f.mock.RequestsByName(consts.ModuleUpload))
+	uploadTask, err := f.rpc.Upload(f.session, &implantpb.UploadRequest{
+		Name:   "local.txt",
+		Target: uploadedPath,
+		Priv:   0o640,
+		Data:   uploadBody,
+		Hidden: true,
+	})
+	if err != nil {
+		t.Fatalf("Upload failed: %v", err)
+	}
+	uploadRequest := waitModuleRequest(t, f.mock, consts.ModuleUpload, uploadBefore)
+	if got := uploadRequest.GetSpite().GetUploadRequest().GetTarget(); got != uploadedPath {
+		t.Fatalf("upload target = %q, want %q", got, uploadedPath)
+	}
+	if got := uploadRequest.GetSpite().GetUploadRequest().GetPriv(); got != 0o640 {
+		t.Fatalf("upload priv = %d, want 0640", got)
+	}
+	if !uploadRequest.GetSpite().GetUploadRequest().GetHidden() {
+		t.Fatal("upload hidden flag should be true")
+	}
+	if got := string(uploadRequest.GetSpite().GetUploadRequest().GetData()); got != string(uploadBody) {
+		t.Fatalf("upload data = %q, want %q", got, string(uploadBody))
+	}
+	waitTaskFinish(t, f.rpc, f.mock.SessionID, uploadTask.TaskId)
+
+	catBefore := len(f.mock.RequestsByName(consts.ModuleCat))
+	catTask, err := f.rpc.Cat(f.session, &implantpb.Request{Name: consts.ModuleCat, Input: uploadedPath})
+	if err != nil {
+		t.Fatalf("Cat(uploaded) failed: %v", err)
+	}
+	waitModuleRequest(t, f.mock, consts.ModuleCat, catBefore)
+	catContent := waitTaskFinish(t, f.rpc, f.mock.SessionID, catTask.TaskId)
+	if got := string(catContent.GetSpite().GetBinaryResponse().GetData()); got != string(uploadBody) {
+		t.Fatalf("uploaded file content = %q, want %q", got, string(uploadBody))
+	}
+
+	uploadContexts, err := f.rpc.GetContexts(context.Background(), &clientpb.Context{
+		Type: consts.ContextUpload,
+		Task: &clientpb.Task{SessionId: f.mock.SessionID, TaskId: uploadTask.TaskId},
+	})
+	if err != nil {
+		t.Fatalf("GetContexts(upload) failed: %v", err)
+	}
+	if len(uploadContexts.GetContexts()) != 1 {
+		t.Fatalf("upload contexts = %d, want 1", len(uploadContexts.GetContexts()))
+	}
+	uploadCtx, err := output.ToContext[*output.UploadContext](uploadContexts.GetContexts()[0])
+	if err != nil {
+		t.Fatalf("parse upload context failed: %v", err)
+	}
+	if uploadCtx.TargetPath != uploadedPath {
+		t.Fatalf("upload context target = %q, want %q", uploadCtx.TargetPath, uploadedPath)
+	}
+
+	downloadBefore := len(f.mock.RequestsByName(consts.ModuleDownload))
+	downloadTask, err := f.rpc.Download(f.session, &implantpb.DownloadRequest{
+		Path: f.lib.NotesPath,
+		Name: filepath.Base(f.lib.NotesPath),
+	})
+	if err != nil {
+		t.Fatalf("Download failed: %v", err)
+	}
+	firstDownloadRequest := waitModuleRequest(t, f.mock, consts.ModuleDownload, downloadBefore)
+	if got := firstDownloadRequest.GetSpite().GetDownloadRequest().GetPath(); got != f.lib.NotesPath {
+		t.Fatalf("download path = %q, want %q", got, f.lib.NotesPath)
+	}
+	if got := firstDownloadRequest.GetSpite().GetDownloadRequest().GetCur(); got != 0 {
+		t.Fatalf("download initial cur = %d, want 0", got)
+	}
+	waitTaskFinish(t, f.rpc, f.mock.SessionID, downloadTask.TaskId)
+
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		if len(f.mock.RequestsByName(consts.ModuleDownload)) >= downloadBefore+2 {
+			break
+		}
+		time.Sleep(25 * time.Millisecond)
+	}
+	downloadRequests := f.mock.RequestsByName(consts.ModuleDownload)
+	if len(downloadRequests) < downloadBefore+2 {
+		allRequests := f.mock.Requests()
+		names := make([]string, 0, len(allRequests))
+		for _, request := range allRequests {
+			name := ""
+			if request.GetSpite() != nil {
+				name = request.GetSpite().GetName()
+			}
+			names = append(names, name)
+		}
+		t.Fatalf("download request count = %d, want >= %d; all request names=%v", len(downloadRequests), downloadBefore+2, names)
+	}
+	lastDownloadRequest := downloadRequests[len(downloadRequests)-1]
+	if got := lastDownloadRequest.GetSpite().GetDownloadRequest().GetCur(); got != 1 {
+		t.Fatalf("download follow-up cur = %d, want 1", got)
+	}
+
+	downloadContexts, err := f.rpc.GetContexts(context.Background(), &clientpb.Context{
+		Type: consts.ContextDownload,
+		Task: &clientpb.Task{SessionId: f.mock.SessionID, TaskId: downloadTask.TaskId},
+	})
+	if err != nil {
+		t.Fatalf("GetContexts(download) failed: %v", err)
+	}
+	if len(downloadContexts.GetContexts()) != 1 {
+		t.Fatalf("download contexts = %d, want 1", len(downloadContexts.GetContexts()))
+	}
+	downloadCtx, err := output.ToContext[*output.DownloadContext](downloadContexts.GetContexts()[0])
+	if err != nil {
+		t.Fatalf("parse download context failed: %v", err)
+	}
+	if downloadCtx.TargetPath != f.lib.NotesPath {
+		t.Fatalf("download context target = %q, want %q", downloadCtx.TargetPath, f.lib.NotesPath)
+	}
+	data, err := os.ReadFile(downloadCtx.FilePath)
+	if err != nil {
+		t.Fatalf("read downloaded file failed: %v", err)
+	}
+	if !strings.Contains(string(data), "rpc coverage") {
+		t.Fatalf("downloaded file content = %q, want mock fixture payload", string(data))
+	}
 
 	if errs := f.mock.Errors(); len(errs) != 0 {
 		t.Fatalf("mock implant async errors = %v", errs)

@@ -49,8 +49,10 @@ type RealImplant struct {
 	SessionID    string
 	SessionName  string
 
+	AuthPath    string
 	ProfilePath string
 	BinaryPath  string
+	WorkDir     string
 
 	cmd     *exec.Cmd
 	stdout  bytes.Buffer
@@ -177,6 +179,9 @@ func (r *RealImplant) Start(t testing.TB) error {
 	if err := r.generatePatchedBinary(t, env); err != nil {
 		return err
 	}
+	if err := r.prepareWorkDir(); err != nil {
+		return err
+	}
 	if err := r.startProcess(); err != nil {
 		return err
 	}
@@ -231,6 +236,15 @@ func (r *RealImplant) Close() error {
 		}
 	}
 
+	for _, path := range []string{r.BinaryPath, r.ProfilePath, r.AuthPath} {
+		if err := removePathWithRetry(path, 5*time.Second); err != nil {
+			errs = append(errs, fmt.Sprintf("remove temp file %s: %v", path, err))
+		}
+	}
+	if err := removeDirWithRetry(r.WorkDir, 5*time.Second); err != nil {
+		errs = append(errs, fmt.Sprintf("remove workdir %s: %v", r.WorkDir, err))
+	}
+
 	if len(errs) > 0 {
 		return errors.New(strings.Join(errs, "; "))
 	}
@@ -248,6 +262,7 @@ func (r *RealImplant) startListenerAndPipeline(t testing.TB) error {
 	if err != nil {
 		return fmt.Errorf("write listener auth: %w", err)
 	}
+	r.AuthPath = authPath
 
 	cfg := &configs.ListenerConfig{
 		Enable: true,
@@ -321,7 +336,11 @@ func (r *RealImplant) generatePatchedBinary(t testing.TB, env RealImplantEnv) er
 
 func (r *RealImplant) startProcess() error {
 	cmd := exec.Command(r.BinaryPath)
-	cmd.Dir = filepath.Dir(r.BinaryPath)
+	if strings.TrimSpace(r.WorkDir) != "" {
+		cmd.Dir = r.WorkDir
+	} else {
+		cmd.Dir = filepath.Dir(r.BinaryPath)
+	}
 	cmd.Stdout = &r.stdout
 	cmd.Stderr = &r.stderr
 	if runtime.GOOS == "windows" {
@@ -400,4 +419,59 @@ func reserveTCPPort(t testing.TB) uint16 {
 	defer ln.Close()
 
 	return uint16(ln.Addr().(*net.TCPAddr).Port)
+}
+
+func (r *RealImplant) prepareWorkDir() error {
+	workDir := filepath.Join(os.TempDir(), "malice-real-implant", r.SessionName)
+	if err := os.MkdirAll(workDir, 0o700); err != nil {
+		return fmt.Errorf("create real implant workdir: %w", err)
+	}
+
+	seedPath := filepath.Join(workDir, "seed.yaml")
+	if err := os.WriteFile(seedPath, []byte("name: real-implant\nmode: integration\n"), 0o600); err != nil {
+		return fmt.Errorf("write real implant seed file: %w", err)
+	}
+
+	r.WorkDir = workDir
+	return nil
+}
+
+func removePathWithRetry(path string, timeout time.Duration) error {
+	if strings.TrimSpace(path) == "" {
+		return nil
+	}
+
+	deadline := time.Now().Add(timeout)
+	var lastErr error
+	for {
+		err := os.Remove(path)
+		if err == nil || errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+		lastErr = err
+		if time.Now().After(deadline) {
+			return lastErr
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+}
+
+func removeDirWithRetry(path string, timeout time.Duration) error {
+	if strings.TrimSpace(path) == "" {
+		return nil
+	}
+
+	deadline := time.Now().Add(timeout)
+	var lastErr error
+	for {
+		err := os.RemoveAll(path)
+		if err == nil || errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+		lastErr = err
+		if time.Now().After(deadline) {
+			return lastErr
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
 }
