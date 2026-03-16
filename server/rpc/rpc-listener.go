@@ -25,7 +25,10 @@ func (rpc *Server) RegisterListener(ctx context.Context, req *clientpb.RegisterL
 		for _, pipe := range old.AllPipelines() {
 			pipelinesCh.Delete(pipe.Name)
 		}
-		core.Listeners.Remove(old)
+		// Use Stop + Map.Delete instead of Remove to avoid event publishing
+		// which could block or panic during concurrent cleanup.
+		_ = core.Listeners.Stop(req.Name)
+		core.Listeners.Map.Delete(req.Name)
 		logs.Log.Warnf("[server] listener %s re-registering, old state cleaned", req.Name)
 	}
 

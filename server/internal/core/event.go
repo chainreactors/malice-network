@@ -308,12 +308,18 @@ func (broker *eventBroker) Unsubscribe(events chan Event) {
 
 // Publish - Push a message to all subscribers
 func (broker *eventBroker) Publish(event Event) {
+	if broker == nil {
+		return
+	}
 	if err := broker.TryPublish(event); err != nil && event.EventType != consts.EventHeartbeat {
 		logs.Log.Errorf("event publish failed [%s.%s]: %s", event.EventType, event.Op, err)
 	}
 }
 
 func (broker *eventBroker) TryPublish(event Event) error {
+	if broker == nil {
+		return ErrEventBrokerUnavailable
+	}
 	if event.Important {
 		broker.cache.Add(&event)
 	}
@@ -342,6 +348,9 @@ func (broker *eventBroker) GetAll() []*Event {
 
 // Notify - Notify all third-patry services
 func (broker *eventBroker) Notify(event Event) {
+	if broker == nil {
+		return
+	}
 	GoGuarded("event-notify", func() error {
 		broker.notifier.Send(event.EventType, event.Op, event.Message)
 		return nil

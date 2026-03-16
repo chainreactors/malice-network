@@ -5,6 +5,10 @@ import (
 	"testing"
 )
 
+// brokerMu serializes access to EventBroker replacement to avoid racing
+// with the background goroutine started in session_test.go init().
+var brokerMu sync.Mutex
+
 // withIsolatedClients saves and restores the global Clients and clientID counter.
 func withIsolatedClients(t *testing.T) {
 	t.Helper()
@@ -48,14 +52,19 @@ func withIsolatedListeners(t *testing.T) {
 }
 
 // withIsolatedBroker saves and restores the global EventBroker with a test broker.
+// Uses brokerMu to prevent racing with the background broker goroutine from init().
 func withIsolatedBroker(t *testing.T) *eventBroker {
 	t.Helper()
 
+	brokerMu.Lock()
 	oldBroker := EventBroker
 	broker := newTestBroker()
 	EventBroker = broker
+	brokerMu.Unlock()
 	t.Cleanup(func() {
+		brokerMu.Lock()
 		EventBroker = oldBroker
+		brokerMu.Unlock()
 	})
 	return broker
 }

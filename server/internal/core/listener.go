@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/chainreactors/IoM-go/consts"
@@ -19,9 +20,9 @@ var (
 )
 
 type Listener struct {
-	Name       string
-	IP         string
-	Active     bool
+	Name   string
+	IP     string
+	active atomic.Bool
 	pipelines  map[string]*clientpb.Pipeline
 	pipelineMu sync.RWMutex
 	Ctrl       chan *clientpb.JobCtrl
@@ -29,17 +30,24 @@ type Listener struct {
 }
 
 // DefaultCtrlTimeout is the maximum time to wait for a listener control response.
-const DefaultCtrlTimeout = 30 * time.Second
+// Kept short (5s) to prevent RPC handler starvation when a listener is disconnected.
+const DefaultCtrlTimeout = 5 * time.Second
 
 func NewListener(name, ip string) *Listener {
-	return &Listener{
+	l := &Listener{
 		Name:      name,
 		IP:        ip,
-		Active:    true,
 		pipelines: make(map[string]*clientpb.Pipeline),
 		Ctrl:      make(chan *clientpb.JobCtrl, 8),
 		CtrlJob:   &sync.Map{},
 	}
+	l.active.Store(true)
+	return l
+}
+
+// Active returns whether the listener is active.
+func (l *Listener) Active() bool {
+	return l.active.Load()
 }
 
 // PushCtrl sends a control message to the listener. Returns the assigned ctrl ID.
@@ -57,8 +65,11 @@ func (l *Listener) PushCtrl(ctrl *clientpb.JobCtrl) uint32 {
 }
 
 // WaitCtrl waits for a control response from the listener. Returns nil if the
-// response does not arrive within DefaultCtrlTimeout.
+// response does not arrive within DefaultCtrlTimeout or if ctrlID is 0 (PushCtrl failed).
 func (l *Listener) WaitCtrl(i uint32) *clientpb.JobStatus {
+	if i == 0 {
+		return nil
+	}
 	deadline := time.Now().Add(DefaultCtrlTimeout)
 	for time.Now().Before(deadline) {
 		done, ok := l.CtrlJob.Load(i)
@@ -67,7 +78,7 @@ func (l *Listener) WaitCtrl(i uint32) *clientpb.JobStatus {
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
-	logs.Log.Warnf("listener: WaitCtrl(%d) timed out after %v", i, DefaultCtrlTimeout)
+	logs.Log.Warnf("listener %s: WaitCtrl(%d) timed out after %v", l.Name, i, DefaultCtrlTimeout)
 	return nil
 }
 
@@ -105,7 +116,7 @@ func (l *Listener) ToProtobuf() *clientpb.Listener {
 	return &clientpb.Listener{
 		Id:        l.Name,
 		Ip:        l.IP,
-		Active:    l.Active,
+		Active:    l.active.Load(),
 		Pipelines: &clientpb.Pipelines{Pipelines: l.AllPipelines()},
 	}
 }
@@ -227,7 +238,7 @@ func (l *listeners) Stop(name string) error {
 		return errors.New("listener not found")
 	}
 	listener := val.(*Listener)
-	listener.Active = false
+	listener.active.Store(false)
 
 	// Clean up all pipelines and their associated jobs.
 	for _, pipe := range listener.AllPipelines() {

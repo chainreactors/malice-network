@@ -419,12 +419,9 @@ func TestSessions_SweepInactiveRemovesIdleSessions(t *testing.T) {
 
 func init() {
 	// Ensure EventBroker is not nil for tests that need it.
-	// safe_test.go tests replace it per-test; we just need a default.
+	// Do NOT start a background goroutine here — it would race with
+	// withIsolatedBroker() which replaces the global in individual tests.
 	if EventBroker == nil {
 		EventBroker = newTestBroker()
-		GoGuarded("test-event-broker", func() error {
-			EventBroker.Start()
-			return nil
-		}, LogGuardedError("test-event-broker"))
 	}
 }

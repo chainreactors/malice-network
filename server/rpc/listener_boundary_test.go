@@ -92,7 +92,7 @@ func TestJobStreamDisconnectDoesNotCleanListener(t *testing.T) {
 		t.Log("listener removed after disconnect — C2 fixed")
 		return
 	}
-	if !lns.Active {
+	if !lns.Active() {
 		t.Log("listener marked inactive — C2 partially fixed")
 		return
 	}

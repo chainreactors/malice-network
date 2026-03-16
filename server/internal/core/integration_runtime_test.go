@@ -36,6 +36,9 @@ func TestIntegrationPipelineControlLoop(t *testing.T) {
 		Type:       consts.TCPPipeline,
 	}
 
+	// Capture broker reference locally to avoid racing with test cleanup.
+	testBroker := EventBroker
+
 	// Simulate the JobStream goroutines (normally in rpc-listener.go:99-176):
 	//
 	// Send goroutine: reads from Ctrl, marks as pending, "sends" to remote listener.
@@ -69,7 +72,7 @@ func TestIntegrationPipelineControlLoop(t *testing.T) {
 		}
 
 		// In real flow, handleJobStatus also publishes EventJob on success.
-		EventBroker.Publish(Event{
+		testBroker.Publish(Event{
 			EventType: consts.EventJob,
 			Op:        ctrl.Ctrl,
 			Job:       ctrl.Job,
