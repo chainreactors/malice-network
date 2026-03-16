@@ -223,13 +223,14 @@ rem delete rem_test
 		},
 		Example: `~~~
 rem update interval --session-id 08d6c05a 5000
+rem update interval --agent-id uDM0BgG6 5000
 rem update interval --pipeline-id rem_graph_api_03 --agent-id uDM0BgG6 5000
 ~~~`,
 	}
 	common.BindFlag(updateIntervalCmd, func(f *pflag.FlagSet) {
 		f.String("session-id", "", "Session ID to reconfigure (resolves pipeline and agent automatically)")
-		f.String("pipeline-id", "", "Pipeline name (used with --agent-id)")
-		f.String("agent-id", "", "REM agent ID (used with --pipeline-id)")
+		f.String("pipeline-id", "", "Pipeline name (required only when agent exists on multiple pipelines)")
+		f.String("agent-id", "", "REM agent ID (pipeline is auto-resolved if unique)")
 	})
 	common.BindFlagCompletions(updateIntervalCmd, func(comp carapace.ActionMap) {
 		comp["pipeline-id"] = common.RemPipelineCompleter(con)

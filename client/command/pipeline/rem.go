@@ -10,6 +10,7 @@ import (
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/third/rem"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
 )
@@ -153,8 +154,40 @@ func RemUpdateIntervalCmd(cmd *cobra.Command, con *core.Console) error {
 		}
 	}
 
+	// Resolve pipeline from agent-id by querying PivotingContexts
+	if agentID != "" && pipelineID == "" {
+		ctxs, err := con.Rpc.GetContexts(con.Context(), &clientpb.Context{
+			Type: consts.ContextPivoting,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to query pivot contexts: %w", err)
+		}
+		pivots, err := output.ToContexts[*output.PivotingContext](ctxs.Contexts)
+		if err != nil {
+			return fmt.Errorf("failed to parse pivot contexts: %w", err)
+		}
+		var matched []string
+		seen := make(map[string]struct{})
+		for _, p := range pivots {
+			if p.RemAgentID == agentID && p.Enable {
+				if _, dup := seen[p.Pipeline]; !dup {
+					seen[p.Pipeline] = struct{}{}
+					matched = append(matched, p.Pipeline)
+				}
+			}
+		}
+		switch len(matched) {
+		case 0:
+			return fmt.Errorf("agent %s not found in any active pipeline", agentID)
+		case 1:
+			pipelineID = matched[0]
+		default:
+			return fmt.Errorf("agent %s found in multiple pipelines %v, please specify --pipeline-id", agentID, matched)
+		}
+	}
+
 	if pipelineID == "" || agentID == "" {
-		return fmt.Errorf("either --session-id or both --pipeline-id and --agent-id are required")
+		return fmt.Errorf("either --session-id, --agent-id, or both --pipeline-id and --agent-id are required")
 	}
 
 	_, err = con.Rpc.RemAgentCtrl(con.Context(), &clientpb.REMAgent{
