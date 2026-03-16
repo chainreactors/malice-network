@@ -117,3 +117,54 @@ func DeleteRemCmd(cmd *cobra.Command, con *core.Console) error {
 	}
 	return nil
 }
+
+func RemUpdateIntervalCmd(cmd *cobra.Command, con *core.Console) error {
+	sessionID, _ := cmd.Flags().GetString("session-id")
+	pipelineID, _ := cmd.Flags().GetString("pipeline-id")
+	agentID, _ := cmd.Flags().GetString("agent-id")
+	intervalStr := cmd.Flags().Arg(0)
+
+	if intervalStr == "" {
+		return fmt.Errorf("interval (ms) is required as positional argument")
+	}
+	interval, err := strconv.ParseInt(intervalStr, 10, 64)
+	if err != nil {
+		return fmt.Errorf("invalid interval: %w", err)
+	}
+
+	// Resolve via session-id if provided
+	if sessionID != "" {
+		session, ok := con.Sessions[sessionID]
+		if !ok {
+			return fmt.Errorf("session %s not found", sessionID)
+		}
+		pipelineID = session.PipelineId
+		pipe, ok := con.Pipelines[pipelineID]
+		if !ok {
+			return fmt.Errorf("pipeline %s not found for session %s", pipelineID, sessionID)
+		}
+		rem := pipe.GetRem()
+		if rem == nil || len(rem.Agents) == 0 {
+			return fmt.Errorf("no REM agents found on pipeline %s", pipelineID)
+		}
+		for id := range rem.Agents {
+			agentID = id
+			break
+		}
+	}
+
+	if pipelineID == "" || agentID == "" {
+		return fmt.Errorf("either --session-id or both --pipeline-id and --agent-id are required")
+	}
+
+	_, err = con.Rpc.RemAgentCtrl(con.Context(), &clientpb.REMAgent{
+		PipelineId: pipelineID,
+		Id:         agentID,
+		Args:       []string{"reconfigure", strconv.FormatInt(interval, 10)},
+	})
+	if err != nil {
+		return err
+	}
+	con.Log.Importantf("Set polling interval to %dms for agent %s on %s\n", interval, agentID, pipelineID)
+	return nil
+}

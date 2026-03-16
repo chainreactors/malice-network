@@ -341,6 +341,8 @@ func (lns *listener) Handler() error {
 			handlerErr = lns.handlerRemAgentLog(msg.Job)
 		case consts.CtrlRemAgentStop:
 			handlerErr = lns.handlerRemAgentStop(msg.Job)
+		case consts.CtrlRemAgentReconfigure:
+			handlerErr = lns.handlerRemAgentReconfigure(msg.Job)
 		case consts.CtrlListenerSyncSession:
 			core.ListenerSessions.Add(msg.Session)
 			continue

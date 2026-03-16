@@ -7,12 +7,14 @@ import (
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/services/listenerrpc"
+	"strconv"
 	"time"
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/third/rem"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/rem/agent"
+	"github.com/chainreactors/rem/protocol/message"
 )
 
 var remHealthCheck = func(client listenerrpc.ListenerRPCClient, ctx context.Context, pipeline *clientpb.Pipeline) error {
@@ -184,7 +186,11 @@ func (rem *REM) acceptLoop() error {
 			if !rem.Enable {
 				return nil
 			}
-			return fmt.Errorf("rem %s accept agent: %w", rem.Name, err)
+			// Accept errors are typically transient (timeout, client disconnect).
+			// Log and continue rather than killing the entire pipeline — the next
+			// client reconnect should succeed once the simplex channel is healthy.
+			logs.Log.Errorf("rem %s accept error (will retry): %v", rem.Name, err)
+			continue
 		}
 
 		core.GoGuarded("rem-agent:"+rem.Name, func() error {
@@ -329,4 +335,31 @@ func (lns *listener) handlerRemAgentStop(job *clientpb.Job) error {
 	} else {
 		return errors.New("agent not found")
 	}
+}
+
+func (lns *listener) handlerRemAgentReconfigure(job *clientpb.Job) error {
+	body := job.GetRemAgent()
+	if body == nil {
+		return errors.New("agent not found")
+	}
+	if len(body.Args) < 2 {
+		return errors.New("missing interval argument (args: reconfigure <interval_ms>)")
+	}
+	a, ok := agent.Agents.Get(body.Id)
+	if !ok {
+		return fmt.Errorf("agent %s not found in Agents registry", body.Id)
+	}
+	interval, err := strconv.ParseInt(body.Args[1], 10, 64)
+	if err != nil {
+		return fmt.Errorf("invalid interval: %w", err)
+	}
+	logs.Log.Importantf("[rem.reconfigure] sending Reconfigure{Interval: %d} to agent %s (connHub ctrl streams: %d)",
+		interval, a.Name(), a.ControlStreamCount())
+	err = a.Send(&message.Reconfigure{Interval: interval})
+	if err != nil {
+		logs.Log.Errorf("[rem.reconfigure] send failed for agent %s: %v", a.Name(), err)
+	} else {
+		logs.Log.Importantf("[rem.reconfigure] send succeeded for agent %s", a.Name())
+	}
+	return err
 }

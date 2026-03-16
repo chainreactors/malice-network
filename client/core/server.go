@@ -348,8 +348,8 @@ func (s *Server) handleJob(event *clientpb.Event) {
 	// State updates are handled by ReconcileEvent; here we only log.
 	colored := renderEvent(event)
 	switch event.Op {
-	case consts.CtrlPipelineSync:
-		// silent sync, no log
+	case consts.CtrlPipelineSync, consts.CtrlRemAgentReconfigure:
+		// silent sync/reconfigure, no log
 	default:
 		client.Log.Important(colored + "\n")
 	}

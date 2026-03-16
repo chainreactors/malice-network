@@ -209,7 +209,38 @@ rem delete rem_test
 	common.BindArgCompletions(deleteRemCmd, nil,
 		common.RemPipelineCompleter(con))
 
-	remCmd.AddCommand(listremCmd, newRemCmd, startRemCmd, stopRemCmd, deleteRemCmd)
+	updateRemCmd := &cobra.Command{
+		Use:   "update",
+		Short: "Update REM agent configuration",
+	}
+
+	updateIntervalCmd := &cobra.Command{
+		Use:   "interval [interval_ms]",
+		Short: "Dynamically change REM agent polling interval",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return RemUpdateIntervalCmd(cmd, con)
+		},
+		Example: `~~~
+rem update interval --session-id 08d6c05a 5000
+rem update interval --pipeline-id rem_graph_api_03 --agent-id uDM0BgG6 5000
+~~~`,
+	}
+	common.BindFlag(updateIntervalCmd, func(f *pflag.FlagSet) {
+		f.String("session-id", "", "Session ID to reconfigure (resolves pipeline and agent automatically)")
+		f.String("pipeline-id", "", "Pipeline name (used with --agent-id)")
+		f.String("agent-id", "", "REM agent ID (used with --pipeline-id)")
+	})
+	common.BindFlagCompletions(updateIntervalCmd, func(comp carapace.ActionMap) {
+		comp["pipeline-id"] = common.RemPipelineCompleter(con)
+		comp["agent-id"] = common.RemAgentCompleter(con)
+	})
+	common.BindArgCompletions(updateIntervalCmd, nil,
+		carapace.ActionValues("1000", "3000", "5000", "10000", "30000", "60000").Usage("polling interval in milliseconds"))
+
+	updateRemCmd.AddCommand(updateIntervalCmd)
+
+	remCmd.AddCommand(listremCmd, newRemCmd, startRemCmd, stopRemCmd, deleteRemCmd, updateRemCmd)
 
 	// Enable wizard for pipeline commands
 	common.EnableWizardForCommands(tcpCmd, httpCmd, bindCmd, newRemCmd)

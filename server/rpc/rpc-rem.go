@@ -269,6 +269,22 @@ func (rpc *Server) RemAgentCtrl(ctx context.Context, req *clientpb.REMAgent) (*c
 	if err != nil {
 		return nil, err
 	}
+
+	// Route reconfigure requests to dedicated handler (no pivot side-effects).
+	if len(req.Args) > 0 && req.Args[0] == "reconfigure" {
+		lns.PushCtrl(&clientpb.JobCtrl{
+			Ctrl: consts.CtrlRemAgentReconfigure,
+			Job: &clientpb.Job{
+				Name:     pipe.Name,
+				Pipeline: pipe,
+				Body: &clientpb.Job_RemAgent{
+					RemAgent: req,
+				},
+			},
+		})
+		return &clientpb.Empty{}, nil
+	}
+
 	i := lns.PushCtrl(&clientpb.JobCtrl{
 		Ctrl: consts.CtrlRemAgentCtrl,
 		Job: &clientpb.Job{
