@@ -8,8 +8,8 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"io"
-	"os"
 	"strings"
 	"sync"
 
@@ -224,7 +224,10 @@ func RootOnlyVerifyCertificate(caCertPEM string, rawCerts [][]byte, _ [][]*x509.
 		// {{if .Config.Debug}}
 		log.Printf("Failed to parse root certificate")
 		// {{end}}
-		os.Exit(3)
+		return fmt.Errorf("failed to parse root certificate")
+	}
+	if len(rawCerts) == 0 {
+		return fmt.Errorf("no peer certificate provided")
 	}
 
 	cert, err := x509.ParseCertificate(rawCerts[0]) // We should only get one cert

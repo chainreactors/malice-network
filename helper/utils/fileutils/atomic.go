@@ -1,13 +1,18 @@
 package fileutils
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // AtomicWriteFile writes data to a file atomically via a temp file + rename.
 // This prevents partial writes from corrupting existing files.
 func AtomicWriteFile(path string, data []byte, perm os.FileMode) error {
+	if strings.TrimSpace(path) == "" {
+		return errors.New("path is empty")
+	}
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return err
@@ -25,6 +30,10 @@ func AtomicWriteFile(path string, data []byte, perm os.FileMode) error {
 		return err
 	}
 	if err := tmpFile.Chmod(perm); err != nil {
+		tmpFile.Close()
+		return err
+	}
+	if err := tmpFile.Sync(); err != nil {
 		tmpFile.Close()
 		return err
 	}

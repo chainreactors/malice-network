@@ -36,7 +36,14 @@ func DoJSONRequest(method, url string, body io.Reader, headers map[string]string
 		return fmt.Errorf("unexpected status %d: %s", resp.StatusCode, string(b))
 	}
 	if out != nil {
-		return json.NewDecoder(resp.Body).Decode(out)
+		payload, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
+		if len(bytes.TrimSpace(payload)) == 0 {
+			return nil
+		}
+		return json.Unmarshal(payload, out)
 	}
 	return nil
 }
@@ -47,16 +54,17 @@ func DoGET(url string, headers map[string]string, out interface{}) error {
 
 func DoPOST(url string, data interface{}, headers map[string]string, expectStatus int, out interface{}) error {
 	var body io.Reader
+	mergedHeaders := make(map[string]string, len(headers)+1)
+	for k, v := range headers {
+		mergedHeaders[k] = v
+	}
 	if data != nil {
 		jsonBytes, err := json.Marshal(data)
 		if err != nil {
 			return err
 		}
 		body = bytes.NewBuffer(jsonBytes)
-		if headers == nil {
-			headers = map[string]string{}
-		}
-		headers["Content-Type"] = "application/json"
+		mergedHeaders["Content-Type"] = "application/json"
 	}
-	return DoJSONRequest("POST", url, body, headers, expectStatus, out)
+	return DoJSONRequest("POST", url, body, mergedHeaders, expectStatus, out)
 }
