@@ -2,6 +2,8 @@ package rpc
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
 	"fmt"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
@@ -299,11 +301,25 @@ func (rpc *Server) triggerKeyExchange(ctx context.Context, sess *core.Session) e
 		return err
 	}
 
+	timestamp := uint64(time.Now().Unix())
+	nonce := cryptography.RandomString(16)
+
+	// 计算 HMAC-SHA256 签名: HMAC(transport_key, public_key || timestamp || nonce)
+	var signature []byte
+	if transportKey := sess.GetPipelineEncryptionKey(); transportKey != "" {
+		mac := hmac.New(sha256.New, []byte(transportKey))
+		mac.Write([]byte(keyPair.Public))
+		mac.Write([]byte(fmt.Sprintf("%d", timestamp)))
+		mac.Write([]byte(nonce))
+		signature = mac.Sum(nil)
+	}
+
 	// 创建请求
 	req := &implantpb.KeyExchangeRequest{
 		PublicKey: keyPair.Public,
-		Timestamp: uint64(time.Now().Unix()),
-		Nonce:     cryptography.RandomString(16),
+		Timestamp: timestamp,
+		Nonce:     nonce,
+		Signature: signature,
 	}
 	sess.SecureManager.ResetCounters()
 	_, err = rpc.GenericInternal(ctx, req, consts.ModuleKeyExchange, func(spite *implantpb.Spite) {

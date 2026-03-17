@@ -605,6 +605,20 @@ func (s *Session) SaveAndNotify(msg string) error {
 	return nil
 }
 
+// GetPipelineEncryptionKey returns the transport encryption key from the
+// session's pipeline config. Returns "" if not found.
+func (s *Session) GetPipelineEncryptionKey() string {
+	pipeline, ok := Listeners.Find(s.PipelineID)
+	if !ok || pipeline == nil {
+		return ""
+	}
+	encryptions := pipeline.GetEncryption()
+	if len(encryptions) == 0 {
+		return ""
+	}
+	return encryptions[0].Key
+}
+
 func (s *Session) Update(req *clientpb.RegisterSession) {
 	s.Name = req.RegisterData.Name
 	s.PipelineID = req.PipelineId
