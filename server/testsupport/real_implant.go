@@ -20,6 +20,8 @@ import (
 
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/cryptography"
+	implanttypes "github.com/chainreactors/malice-network/helper/implanttypes"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
@@ -48,6 +50,7 @@ type RealImplant struct {
 	ListenerName string
 	SessionID    string
 	SessionName  string
+	EnableSecure bool // enable age key exchange in profile
 
 	AuthPath    string
 	ProfilePath string
@@ -130,6 +133,32 @@ func NewRealTCPPipeline(t testing.TB, listenerName, pipelineName string) *client
 	}
 }
 
+// NewRealSecureTCPPipeline creates a TCP pipeline with age key exchange enabled.
+// The implant starts with empty keys (cold start); the server triggers key exchange on registration.
+func NewRealSecureTCPPipeline(t testing.TB, listenerName, pipelineName string) *clientpb.Pipeline {
+	t.Helper()
+
+	pipeline := NewRealTCPPipeline(t, listenerName, pipelineName)
+
+	// Generate server keypair for the pipeline.
+	// The implant will generate its own keypair during key exchange.
+	serverKP, err := cryptography.RandomAgeKeyPair()
+	if err != nil {
+		t.Fatalf("generate server age keypair: %v", err)
+	}
+
+	pipeline.Secure = &clientpb.Secure{
+		Enable: true,
+		ServerKeypair: &clientpb.KeyPair{
+			PublicKey:  serverKP.Public,
+			PrivateKey: serverKP.Private,
+		},
+		// ImplantKeypair left empty — will be populated during key exchange
+		ImplantKeypair: &clientpb.KeyPair{},
+	}
+	return pipeline
+}
+
 func NewRealImplant(t testing.TB, h *ControlPlaneHarness, pipeline *clientpb.Pipeline) *RealImplant {
 	t.Helper()
 
@@ -153,6 +182,7 @@ func NewRealImplant(t testing.TB, h *ControlPlaneHarness, pipeline *clientpb.Pip
 		Pipeline:     clone,
 		ListenerName: clone.ListenerId,
 		SessionName:  fmt.Sprintf("real-implant-%d", time.Now().UnixNano()),
+		EnableSecure: clone.Secure != nil && clone.Secure.Enable,
 		waitCh:       make(chan struct{}),
 	}
 
@@ -307,6 +337,12 @@ func (r *RealImplant) generatePatchedBinary(t testing.TB, env RealImplantEnv) er
 	profile.Implant.Runtime = "tokio"
 	profile.Implant.RegisterInfo = true
 	profile.Implant.HotLoad = true
+	if r.EnableSecure {
+		// Cold start: empty keys, server will trigger key exchange on registration
+		profile.Basic.Secure = &implanttypes.SecureProfile{
+			Enable: true,
+		}
+	}
 
 	profileYAML, err := profile.ToYAML()
 	if err != nil {

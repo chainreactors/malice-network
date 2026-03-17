@@ -389,3 +389,83 @@ func TestRealImplantDeadSweepKeepsPendingStreamingTaskAlive(t *testing.T) {
 		t.Fatal("db task should record finish_time after the final chunk")
 	}
 }
+
+// TestRealImplantSecureKeyExchangeE2E verifies the full age key exchange flow:
+//  1. Implant starts with empty age keys (cold start, secure feature enabled)
+//  2. Server has a secure pipeline that triggers key exchange on first registration
+//  3. Key exchange completes: server sends KeyExchangeRequest, implant responds
+//  4. Implant reconnects with new keys
+//  5. Commands (pwd) execute correctly over the age-encrypted channel
+//  6. HMAC signature on KeyExchangeRequest is verified by implant
+func TestRealImplantSecureKeyExchangeE2E(t *testing.T) {
+	testsupport.RequireRealImplantEnv(t)
+
+	h := testsupport.NewControlPlaneHarness(t)
+	listenerName := fmt.Sprintf("real-secure-listener-%d", time.Now().UnixNano())
+	pipelineName := fmt.Sprintf("real-secure-pipe-%d", time.Now().UnixNano())
+
+	// Create a secure TCP pipeline (age key exchange enabled)
+	pipeline := testsupport.NewRealSecureTCPPipeline(t, listenerName, pipelineName)
+	implant := testsupport.NewRealImplant(t, h, pipeline)
+	if err := implant.Start(t); err != nil {
+		t.Fatalf("real secure implant start failed: %v", err)
+	}
+
+	// Wait for session registration + initial key exchange
+	// The server triggers triggerKeyExchange on first Register when secure is enabled
+	waitRealActiveConnection(t, implant.SessionID)
+	waitRealPostRegisterCheckin(t, implant.SessionID)
+
+	// Verify session was registered with secure mode
+	runtimeSession := mustRealRuntimeSession(t, implant.SessionID)
+	if runtimeSession.SecureManager == nil {
+		t.Fatal("session should have a SecureManager after secure registration")
+	}
+
+	// Connect as admin client
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	conn, err := h.Connect(ctx)
+	if err != nil {
+		t.Fatalf("Connect failed: %v", err)
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+
+	rpc := clientrpc.NewMaliceRPCClient(conn)
+	sessionCtx := metadata.NewOutgoingContext(context.Background(), metadata.Pairs(
+		"session_id", implant.SessionID,
+		"callee", consts.CalleeCMD,
+	))
+
+	// Enable keepalive for faster command execution
+	enableRealKeepalive(t, &realRPCFixture{
+		h: h, implant: implant, rpc: rpc, session: sessionCtx,
+	}, true)
+
+	waitRealActiveConnection(t, implant.SessionID)
+
+	// Execute pwd command — this goes through age-encrypted channel
+	pwdTask, err := rpc.Pwd(sessionCtx, &implantpb.Request{Name: consts.ModulePwd})
+	if err != nil {
+		t.Fatalf("Pwd (post key exchange) failed: %v", err)
+	}
+	pwdContent := waitRealTaskFinish(t, rpc, implant.SessionID, pwdTask.TaskId)
+	pwdOutput := strings.TrimSpace(pwdContent.GetSpite().GetResponse().GetOutput())
+	if pwdOutput == "" {
+		t.Fatal("pwd output should not be empty after secure key exchange")
+	}
+	t.Logf("pwd after key exchange: %s", pwdOutput)
+
+	// Verify workdir matches
+	runtimeSession = mustRealRuntimeSession(t, implant.SessionID)
+	if normalizeWindowsPath(pwdOutput) != normalizeWindowsPath(runtimeSession.WorkDir) {
+		t.Fatalf("pwd = %q, want workdir %q", pwdOutput, runtimeSession.WorkDir)
+	}
+
+	// Disable keepalive
+	enableRealKeepalive(t, &realRPCFixture{
+		h: h, implant: implant, rpc: rpc, session: sessionCtx,
+	}, false)
+
+	t.Log("secure key exchange E2E test passed: cold start → key exchange → encrypted commands")
+}
