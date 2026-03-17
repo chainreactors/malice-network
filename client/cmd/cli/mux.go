@@ -49,7 +49,7 @@ func startMux(cmd *cobra.Command, con *core.Console) error {
 			if rpc, _ := cmd.Flags().GetString("rpc"); rpc != "" {
 				args = append(args, "--rpc", rpc)
 			}
-			// Forward root-level --use to the index pane (e.g. --mux --use <sid>).
+			// Forward root-level --use to the index pane (e.g. --tui --use <sid>).
 			if sessionID == "" {
 				if rootUse, _ := cmd.Flags().GetString("use"); rootUse != "" {
 					sessionID = rootUse
