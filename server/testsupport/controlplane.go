@@ -24,6 +24,7 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
+	"github.com/chainreactors/malice-network/server/listener"
 	"github.com/chainreactors/malice-network/server/rpc"
 	config "github.com/gookit/config/v2"
 	"google.golang.org/grpc"
@@ -689,6 +690,44 @@ func (h *ControlPlaneHarness) GetWebContent(id string) (*clientpb.WebContent, er
 func (h *ControlPlaneHarness) ReadWebsiteContent(websiteName, contentID string) ([]byte, error) {
 	contentPath := filepath.Join(configs.WebsitePath, websiteName, contentID)
 	return os.ReadFile(contentPath)
+}
+
+// StartRealWebsite reads a website's pipeline and content from DB, starts a real
+// HTTP server on a random port, and returns the base URL. The server is stopped
+// on test cleanup. This bridges the gap between the mock control plane and actual
+// HTTP serving for full E2E verification.
+func (h *ControlPlaneHarness) StartRealWebsite(t testing.TB, name string) string {
+	t.Helper()
+
+	pipe, err := db.FindWebsiteByName(name)
+	if err != nil {
+		t.Fatalf("FindWebsiteByName(%s): %v", name, err)
+	}
+	pipeProto := pipe.ToProtobuf()
+
+	// Override port to 0 so OS picks a free port.
+	if pipeProto.GetWeb() != nil {
+		pipeProto.GetWeb().Port = 0
+	}
+
+	dbContents, err := db.FindWebContentsByWebsite(name)
+	if err != nil {
+		t.Fatalf("FindWebContentsByWebsite(%s): %v", name, err)
+	}
+	contentMap := make(map[string]*clientpb.WebContent)
+	for _, c := range dbContents {
+		pb := c.ToProtobuf(true) // include content bytes
+		contentMap[pb.Path] = pb
+	}
+
+	web, err := listener.StartWebsite(nil, pipeProto, contentMap)
+	if err != nil {
+		t.Fatalf("StartWebsite(%s): %v", name, err)
+	}
+	t.Cleanup(func() { web.Close() })
+
+	addr := web.Addr()
+	return fmt.Sprintf("http://127.0.0.1:%d", addr.Port)
 }
 
 func (h *ControlPlaneHarness) JobExists(name, listenerID string) bool {

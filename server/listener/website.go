@@ -65,6 +65,15 @@ func (w *Website) ID() string {
 	return w.Name
 }
 
+// Addr returns the TCP address the website is listening on.
+// Returns nil if the server is not running.
+func (w *Website) Addr() *net.TCPAddr {
+	if w.server == nil {
+		return nil
+	}
+	return w.server.Addr().(*net.TCPAddr)
+}
+
 func (w *Website) Start() error {
 	mux := http.NewServeMux()
 	mux.HandleFunc(w.rootPath, w.websiteContentHandler)

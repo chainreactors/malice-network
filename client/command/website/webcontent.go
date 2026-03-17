@@ -56,6 +56,23 @@ func AddWebContent(con *core.Console, localFile, webPath, webPipe, typ string) (
 	return c, nil
 }
 
+// AddWebContentDirect adds raw content bytes to a website without reading from disk.
+func AddWebContentDirect(con *core.Console, websiteName string, data []byte, webPath, contentType string) error {
+	website := &clientpb.Website{
+		Name: websiteName,
+		Contents: map[string]*clientpb.WebContent{
+			webPath: {
+				WebsiteId:   websiteName,
+				Path:        webPath,
+				Content:     data,
+				ContentType: contentType,
+			},
+		},
+	}
+	_, err := con.Rpc.AddWebsiteContent(con.Context(), website)
+	return err
+}
+
 // UpdateWebContentCmd - 更新网站内容
 func UpdateWebContentCmd(cmd *cobra.Command, con *core.Console) error {
 	contentId := cmd.Flags().Arg(0)

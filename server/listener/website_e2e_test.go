@@ -73,7 +73,7 @@ func testWebsite(t *testing.T, rootPath string, contents map[string]testContent)
 	t.Cleanup(func() { web.Close() })
 
 	// Wait for server to be ready.
-	addr := web.server.Addr().(*net.TCPAddr)
+	addr := web.Addr()
 	baseURL := fmt.Sprintf("http://127.0.0.1:%d", addr.Port)
 
 	deadline := time.Now().Add(2 * time.Second)
