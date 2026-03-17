@@ -1,6 +1,7 @@
 package core
 
 import (
+	"errors"
 	"io"
 	"sync"
 
@@ -75,6 +76,9 @@ type PipelineConfig struct {
 }
 
 func (p *PipelineConfig) WrapConn(conn io.ReadWriteCloser) (*cryptostream.Conn, error) {
+	if p == nil {
+		return nil, errors.New("pipeline config is nil")
+	}
 	crys, err := configs.NewCrypto(p.Encryption.ToProtobuf())
 	if err != nil {
 		return nil, err
@@ -85,6 +89,9 @@ func (p *PipelineConfig) WrapConn(conn io.ReadWriteCloser) (*cryptostream.Conn, 
 // WrapBindConn wraps a connection for bind mode without pre-reading
 // Bind mode expects server to send data first, then receive response
 func (p *PipelineConfig) WrapBindConn(conn io.ReadWriteCloser) (*cryptostream.Conn, error) {
+	if p == nil {
+		return nil, errors.New("pipeline config is nil")
+	}
 	crys, err := configs.NewCrypto(p.Encryption.ToProtobuf())
 	if err != nil {
 		return nil, err

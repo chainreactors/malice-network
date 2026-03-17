@@ -150,7 +150,7 @@ func (pipeline *HTTPPipeline) Start() error {
 		pipeline.srv = ln
 		server := NewHTTPServer(mux)
 		core.GoGuarded("http-serve:"+pipeline.Name, func() error {
-			if err := serveHTTP(server, ln); err != nil && err != http.ErrServerClosed {
+			if err := serveHTTP(server, ln); err != nil && err != http.ErrServerClosed && !errors.Is(err, net.ErrClosed) {
 				return fmt.Errorf("http pipeline %s serve: %w", pipeline.Name, err)
 			}
 			return nil

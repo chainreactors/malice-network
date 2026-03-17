@@ -94,7 +94,7 @@ func (w *Website) Start() error {
 		server := NewHTTPServer(mux)
 		w.server = ln
 		core.GoGuarded("website-serve:"+w.Name, func() error {
-			if err := serveHTTP(server, ln); err != nil && err != http.ErrServerClosed {
+			if err := serveHTTP(server, ln); err != nil && err != http.ErrServerClosed && !errors.Is(err, net.ErrClosed) {
 				return fmt.Errorf("website %s serve: %w", w.Name, err)
 			}
 			return nil
