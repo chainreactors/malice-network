@@ -18,19 +18,19 @@ func AddWebContentCmd(cmd *cobra.Command, con *core.Console) error {
 	websiteName, _ := cmd.Flags().GetString("website")
 	webPath, _ := cmd.Flags().GetString("path")
 	contentType, _ := cmd.Flags().GetString("type")
+	auth, _ := cmd.Flags().GetString("auth")
 	if webPath == "" {
 		webPath = "/" + filepath.Base(filePath)
 	}
 
-	_, err := AddWebContent(con, filePath, webPath, websiteName, contentType)
+	_, err := AddWebContent(con, filePath, webPath, websiteName, contentType, auth)
 	if err != nil {
 		return err
 	}
-	//con.Log.Importantf("Content added to website %s: %s -> %s\n", websiteName, filePath, c.Url)
 	return nil
 }
 
-func AddWebContent(con *core.Console, localFile, webPath, webPipe, typ string) (*clientpb.WebContent, error) {
+func AddWebContent(con *core.Console, localFile, webPath, webPipe, typ, auth string) (*clientpb.WebContent, error) {
 	content, err := pe.Unpack(localFile)
 	if err != nil {
 		return nil, err
@@ -45,6 +45,7 @@ func AddWebContent(con *core.Console, localFile, webPath, webPipe, typ string) (
 				Path:        webPath,
 				Content:     content,
 				ContentType: typ,
+				Auth:        auth,
 			},
 		},
 	}

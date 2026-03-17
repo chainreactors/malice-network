@@ -24,7 +24,7 @@ type WebsiteContent struct {
 	Size        uint64 `gorm:""`
 	Type        string `gorm:""`
 	ContentType string `gorm:""`
-	//Encryption  *types.EncryptionConfig `gorm:"embedded;embeddedPrefix:encryption_"`
+	Auth        string `gorm:""` // "user:pass" or empty; "none" = skip website default
 
 	Pipeline   *Pipeline `gorm:"foreignKey:PipelineID;references:Name;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 	PipelineID string    `gorm:"type:string;index;"`
@@ -60,6 +60,7 @@ func (wc *WebsiteContent) ToProtobuf(read bool) *clientpb.WebContent {
 		Content:     data,
 		Url:         wc.URL(),
 		ListenerId:  wc.Pipeline.ListenerId,
+		Auth:        wc.Auth,
 	}
 }
 
@@ -84,5 +85,6 @@ func FromWebContentPb(content *clientpb.WebContent) *WebsiteContent {
 		Size:        content.Size,
 		Type:        content.Type,
 		ContentType: content.ContentType,
+		Auth:        content.Auth,
 	}
 }

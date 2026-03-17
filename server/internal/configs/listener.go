@@ -177,6 +177,7 @@ type WebsiteConfig struct {
 	RootPath    string        `config:"root" default:"." yaml:"root"`
 	WebsiteName string        `config:"name" default:"web" yaml:"name"`
 	Port        uint16        `config:"port" default:"443" yaml:"port"`
+	Auth        string        `config:"auth" default:"" yaml:"auth"` // website-level default auth "user:pass"
 	WebContents []*WebContent `config:"content" default:"" yaml:"content"`
 	TlsConfig   *TlsConfig    `config:"tls" yaml:"tls"`
 }
@@ -185,7 +186,7 @@ type WebContent struct {
 	File string `config:"file" yaml:"file"`
 	Path string `config:"path" yaml:"path"`
 	Type string `config:"type" default:"raw" yaml:"type"`
-	//EncryptionConfig *EncryptionConfig `config:"encryption"`
+	Auth string `config:"auth" default:"" yaml:"auth"` // per-path auth "user:pass", "none" = skip
 }
 
 func (content *WebContent) ToProtobuf() (*clientpb.WebContent, error) {

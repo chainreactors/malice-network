@@ -16,6 +16,7 @@ import (
 func NewWebsiteCmd(cmd *cobra.Command, con *core.Console) error {
 	name := cmd.Flags().Arg(0)
 	root, _ := cmd.Flags().GetString("root")
+	auth, _ := cmd.Flags().GetString("auth")
 	listenerID, _, host, port := common.ParsePipelineFlags(cmd)
 	if port == 0 {
 		port = cryptography.RandomInRange(10240, 65535)
@@ -24,14 +25,18 @@ func NewWebsiteCmd(cmd *cobra.Command, con *core.Console) error {
 	if err != nil {
 		return err
 	}
-	return NewWebsite(con, name, root, host, port, listenerID, certName, tls)
+	return NewWebsite(con, name, root, host, port, listenerID, certName, tls, auth)
 }
 
 // NewWebsite
-func NewWebsite(con *core.Console, websiteName, root, host string, port uint32, listenerId, certName string, tls *clientpb.TLS) error {
+func NewWebsite(con *core.Console, websiteName, root, host string, port uint32, listenerId, certName string, tls *clientpb.TLS, auth ...string) error {
 	var err error
 	if root == "" {
 		root = "/"
+	}
+	websiteAuth := ""
+	if len(auth) > 0 {
+		websiteAuth = auth[0]
 	}
 	host = "0.0.0.0"
 	req := &clientpb.Pipeline{
@@ -40,12 +45,13 @@ func NewWebsite(con *core.Console, websiteName, root, host string, port uint32, 
 		Enable:     false,
 		Tls:        tls,
 		CertName:   certName,
-		Ip:         host, // this has not taken effect yet
+		Ip:         host,
 		Body: &clientpb.Pipeline_Web{
 			Web: &clientpb.Website{
 				Name:     websiteName,
 				Root:     root,
 				Port:     port,
+				Auth:     websiteAuth,
 				Contents: make(map[string]*clientpb.WebContent),
 			},
 		},

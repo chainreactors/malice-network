@@ -23,13 +23,14 @@ import (
 )
 
 type Website struct {
-	port     int
-	server   net.Listener
-	rpc      listenerrpc.ListenerRPCClient
-	rootPath string
-	Name     string
-	Enable   bool
-	CertName string
+	port        int
+	server      net.Listener
+	rpc         listenerrpc.ListenerRPCClient
+	rootPath    string
+	defaultAuth string // website-level default auth "user:pass"
+	Name        string
+	Enable      bool
+	CertName    string
 	*core.PipelineConfig
 	mu       sync.RWMutex
 	Content  map[string]*clientpb.WebContent
@@ -42,6 +43,7 @@ func StartWebsite(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline
 		Name:           pipeline.Name,
 		port:           int(websitePp.Port),
 		rootPath:       websitePp.Root,
+		defaultAuth:    websitePp.Auth,
 		rpc:            rpc,
 		CertName:       pipeline.CertName,
 		PipelineConfig: core.FromPipeline(pipeline),
@@ -202,6 +204,12 @@ func (w *Website) websiteContentHandler(resp http.ResponseWriter, req *http.Requ
 			return
 		}
 
+		// HTTP Basic Auth: per-path auth overrides website default.
+		// "none" explicitly skips auth even if website has a default.
+		if !w.checkAuth(content.Auth, resp, req) {
+			return
+		}
+
 		if content.ContentType != "" {
 			resp.Header().Set("Content-Type", content.ContentType)
 		}
@@ -214,6 +222,36 @@ func (w *Website) websiteContentHandler(resp http.ResponseWriter, req *http.Requ
 
 		resp.Write(data)
 	}
+}
+
+// checkAuth validates HTTP Basic Auth for a request.
+// pathAuth is the per-path auth setting; if empty, falls back to website default.
+// "none" explicitly skips auth. Returns true if request is authorized, false if 401 was sent.
+func (w *Website) checkAuth(pathAuth string, resp http.ResponseWriter, req *http.Request) bool {
+	effectiveAuth := pathAuth
+	if effectiveAuth == "" {
+		effectiveAuth = w.defaultAuth
+	}
+	if effectiveAuth == "" || effectiveAuth == "none" {
+		return true
+	}
+
+	wantUser, wantPass := parseAuth(effectiveAuth)
+	user, pass, ok := req.BasicAuth()
+	if !ok || user != wantUser || pass != wantPass {
+		resp.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
+		http.Error(resp, "Unauthorized", http.StatusUnauthorized)
+		return false
+	}
+	return true
+}
+
+// parseAuth splits "user:pass" into username and password.
+func parseAuth(auth string) (string, string) {
+	if i := strings.IndexByte(auth, ':'); i >= 0 {
+		return auth[:i], auth[i+1:]
+	}
+	return auth, ""
 }
 
 func (w *Website) AddContent(content *clientpb.WebContent) error {
@@ -249,6 +287,7 @@ func (w *Website) AddContent(content *clientpb.WebContent) error {
 		Path:        content.Path,
 		File:        contentPath,
 		ContentType: content.ContentType,
+		Auth:        content.Auth,
 	}
 	w.mu.Unlock()
 	return nil

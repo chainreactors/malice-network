@@ -39,6 +39,7 @@ website web_test --listener tcp_default --root /webtest --tls --cert /path/to/ce
 
 	common.BindFlag(websiteCmd, common.TlsCertFlagSet, common.PipelineFlagSet, func(f *pflag.FlagSet) {
 		f.String("root", "/", "website root path")
+		f.String("auth", "", "HTTP Basic Auth for all paths (user:pass)")
 	})
 
 	common.BindFlagCompletions(websiteCmd, func(comp carapace.ActionMap) {
@@ -136,6 +137,7 @@ website add /path/to/content.html --website web_test --path /custom/path --type 
 		f.String("website", "", "website name (required)")
 		f.String("path", "", "web path for the content (defaults to filename)")
 		f.String("type", "raw", "content type of the file")
+		f.String("auth", "", "HTTP Basic Auth for this path (user:pass), \"none\" to skip website default")
 	})
 	websiteAddContentCmd.MarkFlagRequired("website")
 
