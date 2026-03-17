@@ -32,6 +32,9 @@ type Server struct {
 	*client.ServerState
 	taskMessageMu sync.Mutex
 	taskMessages  map[string]string
+
+	// Quiet suppresses console event output while still updating internal state.
+	Quiet bool
 }
 
 func taskMessageKey(sessionID string, taskID uint32) string {
@@ -307,6 +310,12 @@ func renderEvent(event *clientpb.Event) string {
 func (s *Server) HandlerEvent(event *clientpb.Event) {
 	// Reconcile state first — single entry point for all map updates
 	s.ReconcileEvent(event)
+
+	// Quiet mode (non-index mux pane): suppress notification events but let
+	// task events through so user-initiated commands still show results.
+	if s.Quiet && event.Type != consts.EventTask {
+		return
+	}
 
 	// Then handle UI/logging
 	switch event.Type {

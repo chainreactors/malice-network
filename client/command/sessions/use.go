@@ -51,6 +51,16 @@ func findSessionByPrefix(con *core.Console, prefix string) (*client.Session, err
 }
 
 func Use(con *core.Console, sess *client.Session) error {
+	// In the mux index pane, delegate to a new pane instead of switching
+	// context here. The OSC sequence is picked up by the mux's VT emulator
+	// which spawns a dedicated pane for this session.
+	if con.IsMuxIndex() {
+		// OSC 0 (Set Title) — the mux VT Title callback parses "MuxOpen=<sid>".
+		fmt.Printf("\x1b]0;MuxOpen=%s\x07", sess.SessionId)
+		con.Log.Importantf("Opening %s (%s) in new console...\n", sess.Note, shortSessionID(sess.SessionId))
+		return nil
+	}
+
 	err := addon.RefreshAddonCommand(sess.Addons, con)
 	if err != nil {
 		return err

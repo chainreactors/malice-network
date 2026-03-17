@@ -15,7 +15,9 @@ import (
 
 func LoginCmd(cmd *cobra.Command, con *core.Console) error {
 	var err error
-	quiet := common.ShouldSuppressStartupOutput(cmd)
+	quietFlag, _ := cmd.Flags().GetBool("quiet")
+	quiet := common.ShouldSuppressStartupOutput(cmd) || quietFlag
+	con.Quiet = quietFlag
 
 	// 处理 --mcp flag
 	mcpAddr, _ := cmd.Flags().GetString("mcp")
@@ -83,6 +85,10 @@ func loginWithMode(con *core.Console, authFile string, quiet bool) error {
 	if err != nil {
 		return err
 	}
+
+	// Store the config path so the multiplexer can forward it to child processes.
+	con.ConfigPath = authFile
+
 	err = core.LoginWithOptions(con, config, core.LoginOptions{
 		SuppressStartupOutput: quiet,
 	})

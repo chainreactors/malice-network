@@ -55,6 +55,8 @@ func initStateWithOptions(con *Console, conn *grpc.ClientConn, config *mtls.Clie
 		logs.Log.Errorf("init server failed : %v\n", err)
 		return err
 	}
+	// Propagate quiet mode to server for event output suppression.
+	con.Server.Quiet = con.Quiet
 
 	// 记录状态信息
 	var pipelineCount int

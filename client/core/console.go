@@ -103,9 +103,28 @@ type Console struct {
 
 	MalManager *plugin.MalManager
 
+	// ConfigPath is the auth config file path used for the current login.
+	// Populated by LoginCmd so the multiplexer can forward it to child processes.
+	ConfigPath string
+
+	// MuxChild indicates this process was spawned by the terminal multiplexer.
+	MuxChild bool
+
+	// Quiet suppresses notification event output, startup banners, and
+	// MCP/LocalRPC initialization. Used by non-index mux child panes.
+	// Task events (user command results) still display.
+	Quiet bool
+
 	forceNonInteractive atomic.Int32
 	daemonMode          atomic.Int32
 	replActive          atomic.Bool
+}
+
+// IsMuxIndex returns true when this process is the index (first) pane of the
+// terminal multiplexer. The index pane acts as the notification bus — it
+// receives all global events and intercepts `use` to open new panes via OSC.
+func (c *Console) IsMuxIndex() bool {
+	return c.MuxChild && !c.Quiet
 }
 
 func (c *Console) NewConsole() {
@@ -155,8 +174,9 @@ func (c *Console) Start(bindCmds ...BindCmds) error {
 	c.App.Menu(consts.ClientMenu).Command = bindCmds[0](c)()
 	c.App.Menu(consts.ImplantMenu).Command = bindCmds[1](c)()
 
-	// After all commands are registered, safely start MCP server and Local RPC server
-	if c.Server != nil {
+	// After all commands are registered, safely start MCP server and Local RPC server.
+	// In quiet mode (non-index mux pane), skip these to avoid resource waste.
+	if c.Server != nil && !c.Quiet {
 		c.InitMCPServer()
 		c.InitLocalRPCServer()
 	}
@@ -456,6 +476,11 @@ func (c *Console) SwitchImplant(sess *client.Session, callee string) {
 	sess.Callee = callee
 	c.ActiveTarget.Set(sess)
 	c.App.SwitchMenu(consts.ImplantMenu)
+
+	// Tell the mux to rename this pane to the session identity.
+	if c.MuxChild {
+		fmt.Printf("\x1b]0;MuxRename=%s@%s\x07", sess.Note, sess.Target)
+	}
 }
 
 func (c *Console) RegisterImplantFunc(name string, fn interface{},
