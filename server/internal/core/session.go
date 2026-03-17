@@ -85,6 +85,12 @@ func NewSessions() *sessions {
 }
 
 func RegisterSession(req *clientpb.RegisterSession) (*Session, error) {
+	if req == nil || req.RegisterData == nil {
+		return nil, types.ErrMissingRequestField
+	}
+	if req.SessionId == "" {
+		return nil, types.ErrInvalidSessionID
+	}
 	current_time := time.Now().Unix()
 	cacheDir, err := createSessionDirs(req.SessionId)
 	if err != nil {

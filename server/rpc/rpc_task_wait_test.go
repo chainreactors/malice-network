@@ -196,3 +196,40 @@ func TestWaitTaskFinishReturnsWhenCallerContextCancels(t *testing.T) {
 		t.Fatal("WaitTaskFinish did not return when caller context canceled")
 	}
 }
+
+func TestTaskContentHandlersRejectNilOrMissingSessionRequests(t *testing.T) {
+	server := &Server{}
+
+	if _, err := server.GetTasks(context.Background(), nil); !errors.Is(err, types.ErrMissingRequestField) {
+		t.Fatalf("GetTasks(nil) error = %v, want %v", err, types.ErrMissingRequestField)
+	}
+	if _, err := server.GetTaskContent(context.Background(), nil); !errors.Is(err, types.ErrMissingRequestField) {
+		t.Fatalf("GetTaskContent(nil) error = %v, want %v", err, types.ErrMissingRequestField)
+	}
+	if _, err := server.WaitTaskContent(context.Background(), nil); !errors.Is(err, types.ErrMissingRequestField) {
+		t.Fatalf("WaitTaskContent(nil) error = %v, want %v", err, types.ErrMissingRequestField)
+	}
+	if _, err := server.WaitTaskFinish(context.Background(), nil); !errors.Is(err, types.ErrMissingRequestField) {
+		t.Fatalf("WaitTaskFinish(nil) error = %v, want %v", err, types.ErrMissingRequestField)
+	}
+	if _, err := server.GetAllTaskContent(context.Background(), nil); !errors.Is(err, types.ErrMissingRequestField) {
+		t.Fatalf("GetAllTaskContent(nil) error = %v, want %v", err, types.ErrMissingRequestField)
+	}
+
+	emptyTask := &clientpb.Task{}
+	if _, err := server.GetTaskContent(context.Background(), emptyTask); !errors.Is(err, types.ErrInvalidSessionID) {
+		t.Fatalf("GetTaskContent(empty session id) error = %v, want %v", err, types.ErrInvalidSessionID)
+	}
+	if _, err := server.WaitTaskContent(context.Background(), emptyTask); !errors.Is(err, types.ErrInvalidSessionID) {
+		t.Fatalf("WaitTaskContent(empty session id) error = %v, want %v", err, types.ErrInvalidSessionID)
+	}
+	if _, err := server.WaitTaskFinish(context.Background(), emptyTask); !errors.Is(err, types.ErrInvalidSessionID) {
+		t.Fatalf("WaitTaskFinish(empty session id) error = %v, want %v", err, types.ErrInvalidSessionID)
+	}
+	if _, err := server.GetAllTaskContent(context.Background(), emptyTask); !errors.Is(err, types.ErrInvalidSessionID) {
+		t.Fatalf("GetAllTaskContent(empty session id) error = %v, want %v", err, types.ErrInvalidSessionID)
+	}
+	if _, err := server.GetTasks(context.Background(), &clientpb.TaskRequest{}); !errors.Is(err, types.ErrInvalidSessionID) {
+		t.Fatalf("GetTasks(empty session id) error = %v, want %v", err, types.ErrInvalidSessionID)
+	}
+}

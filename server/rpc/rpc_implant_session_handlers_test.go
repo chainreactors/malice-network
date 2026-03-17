@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"sync"
@@ -11,6 +12,7 @@ import (
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	types "github.com/chainreactors/IoM-go/types"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
@@ -252,6 +254,29 @@ func TestCheckinRecoversRemovedSession(t *testing.T) {
 	}
 	if model == nil || model.SessionId != sess.ID {
 		t.Fatalf("recovered model = %#v, want session %s", model, sess.ID)
+	}
+}
+
+func TestRegisterRejectsNilOrIncompleteRequests(t *testing.T) {
+	if _, err := (&Server{}).Register(context.Background(), nil); !errors.Is(err, types.ErrMissingRequestField) {
+		t.Fatalf("Register(nil) error = %v, want %v", err, types.ErrMissingRequestField)
+	}
+
+	if _, err := (&Server{}).Register(context.Background(), &clientpb.RegisterSession{}); !errors.Is(err, types.ErrMissingRequestField) {
+		t.Fatalf("Register(empty) error = %v, want %v", err, types.ErrMissingRequestField)
+	}
+
+	if _, err := (&Server{}).Register(context.Background(), &clientpb.RegisterSession{
+		SessionId:    "",
+		RegisterData: &implantpb.Register{Name: "agent-a"},
+	}); !errors.Is(err, types.ErrInvalidSessionID) {
+		t.Fatalf("Register(empty session id) error = %v, want %v", err, types.ErrInvalidSessionID)
+	}
+}
+
+func TestCheckinRejectsNilPing(t *testing.T) {
+	if _, err := (&Server{}).Checkin(incomingSessionContext("rpc-checkin-nil"), nil); !errors.Is(err, types.ErrMissingRequestField) {
+		t.Fatalf("Checkin(nil) error = %v, want %v", err, types.ErrMissingRequestField)
 	}
 }
 

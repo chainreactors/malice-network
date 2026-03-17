@@ -18,6 +18,12 @@ import (
 )
 
 func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) (*clientpb.Empty, error) {
+	if req == nil || req.RegisterData == nil {
+		return nil, types.ErrMissingRequestField
+	}
+	if req.SessionId == "" {
+		return nil, types.ErrInvalidSessionID
+	}
 	var err error
 	isNewSession := false
 	sess, err := core.Sessions.Get(req.SessionId)
@@ -74,6 +80,9 @@ func (rpc *Server) SysInfo(ctx context.Context, req *implantpb.SysInfo) (*client
 }
 
 func (rpc *Server) Checkin(ctx context.Context, req *implantpb.Ping) (*clientpb.Empty, error) {
+	if req == nil {
+		return nil, types.ErrMissingRequestField
+	}
 	sid, err := getSessionID(ctx)
 	if err != nil {
 		return nil, err

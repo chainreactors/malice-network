@@ -159,6 +159,12 @@ func getTaskContext(sess *core.Session, task *core.Task, index int32) (*clientpb
 }
 
 func (rpc *Server) GetTasks(ctx context.Context, req *clientpb.TaskRequest) (*clientpb.Tasks, error) {
+	if req == nil {
+		return nil, types.ErrMissingRequestField
+	}
+	if req.SessionId == "" {
+		return nil, types.ErrInvalidSessionID
+	}
 	if req.All {
 		modelTasks, err := db.ListTasksBySession(req.SessionId)
 		if err != nil {
@@ -184,6 +190,12 @@ func tryGetContent(sess *core.Session, task *core.Task, index int32) (*clientpb.
 }
 
 func (rpc *Server) GetTaskContent(ctx context.Context, req *clientpb.Task) (*clientpb.TaskContext, error) {
+	if req == nil {
+		return nil, types.ErrMissingRequestField
+	}
+	if req.SessionId == "" {
+		return nil, types.ErrInvalidSessionID
+	}
 	sess, err := core.Sessions.Get(req.SessionId)
 	if err != nil {
 		return nil, types.ErrNotFoundSession
@@ -197,6 +209,12 @@ func (rpc *Server) GetTaskContent(ctx context.Context, req *clientpb.Task) (*cli
 }
 
 func (rpc *Server) WaitTaskContent(ctx context.Context, req *clientpb.Task) (*clientpb.TaskContext, error) {
+	if req == nil {
+		return nil, types.ErrMissingRequestField
+	}
+	if req.SessionId == "" {
+		return nil, types.ErrInvalidSessionID
+	}
 	sess, err := core.Sessions.Get(req.SessionId)
 	if err != nil {
 		return nil, types.ErrNotFoundSession
@@ -243,6 +261,12 @@ func (rpc *Server) WaitTaskContent(ctx context.Context, req *clientpb.Task) (*cl
 }
 
 func (rpc *Server) WaitTaskFinish(ctx context.Context, req *clientpb.Task) (*clientpb.TaskContext, error) {
+	if req == nil {
+		return nil, types.ErrMissingRequestField
+	}
+	if req.SessionId == "" {
+		return nil, types.ErrInvalidSessionID
+	}
 	sess, err := core.Sessions.Get(req.SessionId)
 	if err != nil {
 		return nil, types.ErrNotFoundSession
@@ -277,6 +301,12 @@ func (rpc *Server) WaitTaskFinish(ctx context.Context, req *clientpb.Task) (*cli
 }
 
 func (rpc *Server) GetAllTaskContent(ctx context.Context, req *clientpb.Task) (*clientpb.TaskContexts, error) {
+	if req == nil {
+		return nil, types.ErrMissingRequestField
+	}
+	if req.SessionId == "" {
+		return nil, types.ErrInvalidSessionID
+	}
 	sess, err := core.Sessions.Get(req.SessionId)
 	if err != nil {
 		return nil, types.ErrNotFoundSession
