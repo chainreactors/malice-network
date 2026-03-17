@@ -211,6 +211,7 @@ func (content *WebContent) ToProtobuf() (*clientpb.WebContent, error) {
 
 type TlsConfig struct {
 	Enable   bool   `config:"enable" yaml:"enable"`
+	MTLS     bool   `config:"mtls" yaml:"mtls"`
 	CertFile string `config:"cert_file" yaml:"cert_file"`
 	KeyFile  string `config:"key_file" yaml:"key_file"`
 	CAFile   string `config:"ca_file" yaml:"ca_file"`
@@ -248,6 +249,7 @@ func (t *TlsConfig) ReadCert() (*implanttypes.TlsConfig, error) {
 	// 创建基础TLS配置
 	tls := &implanttypes.TlsConfig{
 		Enable:  t.Enable,
+		MTLS:    t.MTLS,
 		Subject: t.ToPkix(),
 	}
 	// 如果没有证书文件，直接返回基础配置

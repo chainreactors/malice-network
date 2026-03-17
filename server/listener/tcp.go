@@ -149,7 +149,12 @@ func (pipeline *TCPPipeline) handleWithCmux(ln net.Listener) (net.Listener, erro
 	var tlsConfig *tls.Config
 	if pipeline.TLSConfig.Cert != nil {
 		var err error
-		tlsConfig, err = certutils.GetTlsConfig(pipeline.TLSConfig.Cert)
+		if pipeline.TLSConfig.MTLS && pipeline.TLSConfig.CA != nil {
+			tlsConfig, err = certutils.GetMTlsConfig(pipeline.TLSConfig.Cert, pipeline.TLSConfig.CA)
+			logs.Log.Infof("[pipeline] mTLS enabled for %s", pipeline.Name)
+		} else {
+			tlsConfig, err = certutils.GetTlsConfig(pipeline.TLSConfig.Cert)
+		}
 		if err != nil {
 			return nil, err
 		}

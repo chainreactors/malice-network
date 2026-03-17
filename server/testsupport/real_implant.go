@@ -22,6 +22,9 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	implanttypes "github.com/chainreactors/malice-network/helper/implanttypes"
+	"crypto/x509"
+	"encoding/pem"
+	"github.com/chainreactors/malice-network/helper/certs"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
@@ -50,7 +53,8 @@ type RealImplant struct {
 	ListenerName string
 	SessionID    string
 	SessionName  string
-	EnableSecure bool // enable age key exchange in profile
+	EnableSecure bool       // enable age key exchange in profile
+	MTLSCerts    *MTLSCerts // mTLS client certs to inject into profile
 
 	AuthPath    string
 	ProfilePath string
@@ -157,6 +161,100 @@ func NewRealSecureTCPPipeline(t testing.TB, listenerName, pipelineName string) *
 		ImplantKeypair: &clientpb.KeyPair{},
 	}
 	return pipeline
+}
+
+// NewRealTLSTCPPipeline creates a TCP pipeline with TLS enabled (self-signed cert).
+// The pipeline generates its own CA + server certificate, so the implant can
+// verify the server using the embedded CA cert.
+func NewRealTLSTCPPipeline(t testing.TB, listenerName, pipelineName string) *clientpb.Pipeline {
+	t.Helper()
+
+	pipeline := NewRealTCPPipeline(t, listenerName, pipelineName)
+
+	// Generate self-signed CA + server certificate for TLS pipeline
+	caCertPEM, caKeyPEM, err := certs.GenerateCACert("test-pipeline", nil)
+	if err != nil {
+		t.Fatalf("generate CA cert: %v", err)
+	}
+	// Parse CA PEM to x509 objects for signing server cert
+	caBlock, _ := pem.Decode(caCertPEM)
+	caCertX509, _ := x509.ParseCertificate(caBlock.Bytes)
+	keyBlock, _ := pem.Decode(caKeyPEM)
+	caPrivKey, _ := x509.ParsePKCS1PrivateKey(keyBlock.Bytes)
+
+	serverCertPEM, serverKeyPEM, err := certs.GenerateChildCert("127.0.0.1", false, caCertX509, caPrivKey)
+	if err != nil {
+		t.Fatalf("generate server cert: %v", err)
+	}
+	pipeline.Tls = &clientpb.TLS{
+		Enable: true,
+		Cert: &clientpb.Cert{
+			Cert: string(serverCertPEM),
+			Key:  string(serverKeyPEM),
+		},
+		Ca: &clientpb.Cert{
+			Cert: string(caCertPEM),
+			Key:  string(caKeyPEM),
+		},
+	}
+
+	return pipeline
+}
+
+// NewRealMTLSTCPPipeline creates a TCP pipeline with mutual TLS enabled.
+// Both server and implant present certificates signed by the same CA.
+// The pipeline stores the implant client cert in the profile for mutant to patch in.
+func NewRealMTLSTCPPipeline(t testing.TB, listenerName, pipelineName string) (*clientpb.Pipeline, *MTLSCerts) {
+	t.Helper()
+
+	pipeline := NewRealTCPPipeline(t, listenerName, pipelineName)
+
+	// Generate CA
+	caCertPEM, caKeyPEM, err := certs.GenerateCACert("test-mtls-pipeline", nil)
+	if err != nil {
+		t.Fatalf("generate CA cert: %v", err)
+	}
+	caBlock, _ := pem.Decode(caCertPEM)
+	caCertX509, _ := x509.ParseCertificate(caBlock.Bytes)
+	keyBlock, _ := pem.Decode(caKeyPEM)
+	caPrivKey, _ := x509.ParsePKCS1PrivateKey(keyBlock.Bytes)
+
+	// Generate server cert (signed by CA)
+	serverCertPEM, serverKeyPEM, err := certs.GenerateChildCert("127.0.0.1", false, caCertX509, caPrivKey)
+	if err != nil {
+		t.Fatalf("generate server cert: %v", err)
+	}
+
+	// Generate client cert for implant (signed by same CA)
+	clientCertPEM, clientKeyPEM, err := certs.GenerateChildCert("malefic-implant", true, caCertX509, caPrivKey)
+	if err != nil {
+		t.Fatalf("generate client cert: %v", err)
+	}
+
+	pipeline.Tls = &clientpb.TLS{
+		Enable: true,
+		Cert: &clientpb.Cert{
+			Cert: string(serverCertPEM),
+			Key:  string(serverKeyPEM),
+		},
+		Ca: &clientpb.Cert{
+			Cert: string(caCertPEM),
+			Key:  string(caKeyPEM),
+		},
+	}
+
+	return pipeline, &MTLSCerts{
+		CACertPEM:     string(caCertPEM),
+		ClientCertPEM: string(clientCertPEM),
+		ClientKeyPEM:  string(clientKeyPEM),
+	}
+}
+
+// MTLSCerts holds the client-side certificates generated for mTLS testing.
+type MTLSCerts struct {
+	CACertPEM     string
+	ClientCertPEM string
+	ClientKeyPEM  string
 }
 
 func NewRealImplant(t testing.TB, h *ControlPlaneHarness, pipeline *clientpb.Pipeline) *RealImplant {
@@ -343,6 +441,24 @@ func (r *RealImplant) generatePatchedBinary(t testing.TB, env RealImplantEnv) er
 			Enable: true,
 		}
 	}
+	if r.MTLSCerts != nil {
+		// Inject mTLS client cert into every target's TLS config
+		for i := range profile.Basic.Targets {
+			tgt := &profile.Basic.Targets[i]
+			if tgt.TLS == nil {
+				tgt.TLS = &implanttypes.TLSProfile{Enable: true}
+			}
+			tgt.TLS.ServerCA = r.MTLSCerts.CACertPEM
+			tgt.TLS.SNI = "127.0.0.1"
+			tgt.TLS.SkipVerification = true // implant: encrypt only, no chain verify
+			tgt.TLS.MTLS = &implanttypes.MTLSProfile{
+				Enable:     true,
+				ClientCert: r.MTLSCerts.ClientCertPEM,
+				ClientKey:  r.MTLSCerts.ClientKeyPEM,
+				ServerCA:   r.MTLSCerts.CACertPEM,
+			}
+		}
+	}
 
 	profileYAML, err := profile.ToYAML()
 	if err != nil {
@@ -353,6 +469,7 @@ func (r *RealImplant) generatePatchedBinary(t testing.TB, env RealImplantEnv) er
 		return fmt.Errorf("write implant profile: %w", err)
 	}
 	r.ProfilePath = profilePath
+	t.Logf("[real-implant] profile written to: %s", profilePath)
 
 	outputPath := filepath.Join(configs.TempPath, r.SessionName+".exe")
 	cmd := exec.Command(

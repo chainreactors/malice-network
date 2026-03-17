@@ -2,6 +2,7 @@ package certutils
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"github.com/chainreactors/malice-network/helper/implanttypes"
 	"net"
 )
@@ -22,6 +23,23 @@ func GetTlsConfig(config *implanttypes.CertConfig) (*tls.Config, error) {
 	}
 
 	return TlsConfig(cert), nil
+}
+
+// GetMTlsConfig creates a TLS config that requires and verifies client certificates
+// against the given CA. This enables mutual TLS for pipeline connections.
+func GetMTlsConfig(serverCert *implanttypes.CertConfig, caCert *implanttypes.CertConfig) (*tls.Config, error) {
+	cert, err := tls.X509KeyPair([]byte(serverCert.Cert), []byte(serverCert.Key))
+	if err != nil {
+		return nil, err
+	}
+
+	caCertPool := x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM([]byte(caCert.Cert))
+
+	tlsCfg := TlsConfig(cert)
+	tlsCfg.ClientAuth = tls.RequireAndVerifyClientCert
+	tlsCfg.ClientCAs = caCertPool
+	return tlsCfg, nil
 }
 
 func TlsConfig(cert tls.Certificate) *tls.Config {

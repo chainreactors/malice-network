@@ -87,7 +87,16 @@ type TLSProfile struct {
 	Enable           bool                   `yaml:"enable" json:"enable"`
 	SNI              string                 `yaml:"sni" json:"sni"`
 	SkipVerification bool                   `yaml:"skip_verification" json:"skip_verification"`
+	ServerCA         string                 `yaml:"server_ca,omitempty" json:"server_ca,omitempty"`
+	MTLS             *MTLSProfile           `yaml:"mtls,omitempty" json:"mtls,omitempty"`
 	Extras           map[string]interface{} `yaml:",inline" json:",inline"`
+}
+
+type MTLSProfile struct {
+	Enable     bool   `yaml:"enable" json:"enable"`
+	ClientCert string `yaml:"client_cert" json:"client_cert"`
+	ClientKey  string `yaml:"client_key" json:"client_key"`
+	ServerCA   string `yaml:"server_ca,omitempty" json:"server_ca,omitempty"`
 }
 
 type HttpProfile struct {

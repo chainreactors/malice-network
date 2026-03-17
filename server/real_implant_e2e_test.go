@@ -469,3 +469,144 @@ func TestRealImplantSecureKeyExchangeE2E(t *testing.T) {
 
 	t.Log("secure key exchange E2E test passed: cold start → key exchange → encrypted commands")
 }
+
+// TestRealImplantTLSPipelineE2E verifies the implant can connect to a TLS-enabled
+// pipeline (self-signed cert with CA verification) and execute commands normally.
+// This tests the full certificate chain: pipeline generates CA+cert → profile
+// passes CA to implant → implant verifies server cert → encrypted session works.
+func TestRealImplantTLSPipelineE2E(t *testing.T) {
+	testsupport.RequireRealImplantEnv(t)
+
+	h := testsupport.NewControlPlaneHarness(t)
+	listenerName := fmt.Sprintf("real-tls-listener-%d", time.Now().UnixNano())
+	pipelineName := fmt.Sprintf("real-tls-pipe-%d", time.Now().UnixNano())
+
+	// Create a TLS-enabled TCP pipeline (self-signed CA + server cert)
+	pipeline := testsupport.NewRealTLSTCPPipeline(t, listenerName, pipelineName)
+	implant := testsupport.NewRealImplant(t, h, pipeline)
+	if err := implant.Start(t); err != nil {
+		t.Fatalf("real TLS implant start failed: %v", err)
+	}
+
+	waitRealActiveConnection(t, implant.SessionID)
+	waitRealPostRegisterCheckin(t, implant.SessionID)
+
+	runtimeSession := mustRealRuntimeSession(t, implant.SessionID)
+	if runtimeSession.WorkDir == "" {
+		t.Fatal("registered TLS session should include a non-empty workdir")
+	}
+
+	// Connect as admin client
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	conn, err := h.Connect(ctx)
+	if err != nil {
+		t.Fatalf("Connect failed: %v", err)
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+
+	rpc := clientrpc.NewMaliceRPCClient(conn)
+	sessionCtx := metadata.NewOutgoingContext(context.Background(), metadata.Pairs(
+		"session_id", implant.SessionID,
+		"callee", consts.CalleeCMD,
+	))
+
+	// Enable keepalive
+	enableRealKeepalive(t, &realRPCFixture{
+		h: h, implant: implant, rpc: rpc, session: sessionCtx,
+	}, true)
+
+	waitRealActiveConnection(t, implant.SessionID)
+
+	// Execute pwd over TLS
+	pwdTask, err := rpc.Pwd(sessionCtx, &implantpb.Request{Name: consts.ModulePwd})
+	if err != nil {
+		t.Fatalf("Pwd (over TLS) failed: %v", err)
+	}
+	pwdContent := waitRealTaskFinish(t, rpc, implant.SessionID, pwdTask.TaskId)
+	pwdOutput := strings.TrimSpace(pwdContent.GetSpite().GetResponse().GetOutput())
+	if pwdOutput == "" {
+		t.Fatal("pwd output over TLS should not be empty")
+	}
+	t.Logf("pwd over TLS: %s", pwdOutput)
+
+	// Verify workdir matches
+	runtimeSession = mustRealRuntimeSession(t, implant.SessionID)
+	if normalizeWindowsPath(pwdOutput) != normalizeWindowsPath(runtimeSession.WorkDir) {
+		t.Fatalf("pwd = %q, want workdir %q", pwdOutput, runtimeSession.WorkDir)
+	}
+
+	// Disable keepalive
+	enableRealKeepalive(t, &realRPCFixture{
+		h: h, implant: implant, rpc: rpc, session: sessionCtx,
+	}, false)
+
+	t.Log("TLS pipeline E2E test passed: self-signed CA → TLS handshake → encrypted commands")
+}
+
+// TestRealImplantMTLSPipelineE2E verifies mutual TLS: both server and implant
+// present certificates signed by the same CA. The server verifies the implant's
+// client certificate, and the implant verifies the server's certificate.
+//
+func TestRealImplantMTLSPipelineE2E(t *testing.T) {
+	testsupport.RequireRealImplantEnv(t)
+
+	h := testsupport.NewControlPlaneHarness(t)
+	listenerName := fmt.Sprintf("real-mtls-listener-%d", time.Now().UnixNano())
+	pipelineName := fmt.Sprintf("real-mtls-pipe-%d", time.Now().UnixNano())
+
+	// Create mTLS pipeline (CA + server cert + client cert)
+	pipeline, mtlsCerts := testsupport.NewRealMTLSTCPPipeline(t, listenerName, pipelineName)
+	implant := testsupport.NewRealImplant(t, h, pipeline)
+	implant.MTLSCerts = mtlsCerts // inject client certs into profile
+	if err := implant.Start(t); err != nil {
+		t.Fatalf("real mTLS implant start failed: %v", err)
+	}
+
+	waitRealActiveConnection(t, implant.SessionID)
+	waitRealPostRegisterCheckin(t, implant.SessionID)
+
+	runtimeSession := mustRealRuntimeSession(t, implant.SessionID)
+	if runtimeSession.WorkDir == "" {
+		t.Fatal("registered mTLS session should include a non-empty workdir")
+	}
+
+	// Connect as admin client
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	conn, err := h.Connect(ctx)
+	if err != nil {
+		t.Fatalf("Connect failed: %v", err)
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+
+	rpc := clientrpc.NewMaliceRPCClient(conn)
+	sessionCtx := metadata.NewOutgoingContext(context.Background(), metadata.Pairs(
+		"session_id", implant.SessionID,
+		"callee", consts.CalleeCMD,
+	))
+
+	enableRealKeepalive(t, &realRPCFixture{
+		h: h, implant: implant, rpc: rpc, session: sessionCtx,
+	}, true)
+
+	waitRealActiveConnection(t, implant.SessionID)
+
+	// Execute pwd over mTLS channel
+	pwdTask, err := rpc.Pwd(sessionCtx, &implantpb.Request{Name: consts.ModulePwd})
+	if err != nil {
+		t.Fatalf("Pwd (over mTLS) failed: %v", err)
+	}
+	pwdContent := waitRealTaskFinish(t, rpc, implant.SessionID, pwdTask.TaskId)
+	pwdOutput := strings.TrimSpace(pwdContent.GetSpite().GetResponse().GetOutput())
+	if pwdOutput == "" {
+		t.Fatal("pwd output over mTLS should not be empty")
+	}
+	t.Logf("pwd over mTLS: %s", pwdOutput)
+
+	enableRealKeepalive(t, &realRPCFixture{
+		h: h, implant: implant, rpc: rpc, session: sessionCtx,
+	}, false)
+
+	t.Log("mTLS pipeline E2E test passed: mutual certificate verification → encrypted commands")
+}
