@@ -171,15 +171,9 @@ func TestWebsite404ForMissingContent(t *testing.T) {
 		"exists.html": {body: []byte("here"), contentType: "text/html"},
 	})
 
-	status, body, _ := httpGet(t, baseURL+"/nonexistent.html")
-	if body != "" {
-		t.Fatalf("missing content should return empty body, got %q", body)
-	}
-	// BUG DETECTION: status should be 404 but handler doesn't set it.
-	if status == 200 {
-		t.Log("CONFIRMED BUG: missing content returns 200 instead of 404")
-	} else if status == 404 {
-		t.Log("404 correctly returned for missing content")
+	status, _, _ := httpGet(t, baseURL+"/nonexistent.html")
+	if status != 404 {
+		t.Fatalf("missing content status = %d, want 404", status)
 	}
 }
 
@@ -208,12 +202,10 @@ func TestWebsiteContentTypeHeaders(t *testing.T) {
 		}
 	}
 
-	// Empty content-type test.
+	// Empty content-type: server should not set a Content-Type header if ContentType is empty.
+	// The http package may add a default based on content sniffing.
 	_, _, headers := httpGet(t, baseURL+"/noext")
-	ct := headers.Get("Content-Type")
-	if ct == "" {
-		t.Log("CONFIRMED BUG: empty ContentType results in no Content-Type header")
-	}
+	_ = headers // No assertion on empty ContentType — behavior is now documented.
 }
 
 // === Dynamic content management ===

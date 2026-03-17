@@ -189,14 +189,17 @@ func (w *Website) websiteContentHandler(resp http.ResponseWriter, req *http.Requ
 		content, ok := w.Content[strings.Trim(contentPath, "/")]
 		w.mu.RUnlock()
 		if !ok {
-			logs.Log.Debugf("%s failed to get content ", req.URL)
+			http.NotFound(resp, req)
 			return
 		}
 
-		resp.Header().Add("Content-Type", content.ContentType)
-		resp.Header().Add("Cache-Control", "no-store, no-cache, must-revalidate")
+		if content.ContentType != "" {
+			resp.Header().Set("Content-Type", content.ContentType)
+		}
+		resp.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate")
 		data, err := os.ReadFile(content.File)
 		if err != nil {
+			http.Error(resp, "internal server error", http.StatusInternalServerError)
 			return
 		}
 
