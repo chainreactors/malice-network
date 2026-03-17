@@ -122,9 +122,12 @@ func StartPipelineCmd(cmd *cobra.Command, con *core.Console) error {
 	name := cmd.Flags().Arg(0)
 
 	if p, ok := con.Pipelines[name]; ok && p.Enable {
-		con.Rpc.StopPipeline(con.Context(), &clientpb.CtrlPipeline{
+		_, err := con.Rpc.StopPipeline(con.Context(), &clientpb.CtrlPipeline{
 			Name: name,
 		})
+		if err != nil {
+			return err
+		}
 	}
 	certName, _ := cmd.Flags().GetString("cert-name")
 	_, err := con.Rpc.StartPipeline(con.Context(), &clientpb.CtrlPipeline{

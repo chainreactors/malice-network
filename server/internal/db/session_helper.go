@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/mtls"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
@@ -137,6 +138,9 @@ func FindSession(sessionID string) (*models.Session, error) {
 // CreateOrRecoverSession creates a new session or recovers a soft-deleted one
 // If a soft-deleted session with the same ID exists, it will be deleted and recreated
 func CreateOrRecoverSession(session *models.Session) error {
+	if session == nil {
+		return errors.New("session is nil")
+	}
 	// Check if there's an existing session (including soft-deleted ones)
 	var existingSession models.Session
 	result := Session().Unscoped().Where("session_id = ?", session.SessionID).First(&existingSession)
@@ -214,6 +218,12 @@ func UpdateSessionTimer(sessionID string, expression string, jitter float64) err
 	session, err := NewSessionQuery().WhereID(sessionID).First()
 	if err != nil {
 		return err
+	}
+	if session.Data == nil {
+		session.Data = &client.SessionContext{}
+	}
+	if session.Data.SessionInfo == nil {
+		session.Data.SessionInfo = &client.SessionInfo{}
 	}
 	session.Data.Expression = expression
 	if jitter != 0 {

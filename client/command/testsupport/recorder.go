@@ -383,6 +383,18 @@ func (r *RecorderRPC) GetAllCertificates(ctx context.Context, in *clientpb.Empty
 	return &clientpb.Certs{}, nil
 }
 
+func (r *RecorderRPC) StartPipeline(ctx context.Context, in *clientpb.CtrlPipeline, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+	return r.emptyResponse(ctx, "StartPipeline", in)
+}
+
+func (r *RecorderRPC) StopPipeline(ctx context.Context, in *clientpb.CtrlPipeline, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+	return r.emptyResponse(ctx, "StopPipeline", in)
+}
+
+func (r *RecorderRPC) DeletePipeline(ctx context.Context, in *clientpb.CtrlPipeline, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+	return r.emptyResponse(ctx, "DeletePipeline", in)
+}
+
 func (r *RecorderRPC) DownloadCertificate(ctx context.Context, in *clientpb.Cert, opts ...grpc.CallOption) (*clientpb.TLS, error) {
 	r.recordPrimary(ctx, "DownloadCertificate", in)
 	if responder, ok := r.tlsResponders["DownloadCertificate"]; ok {

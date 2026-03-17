@@ -1,6 +1,7 @@
 package db
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/chainreactors/IoM-go/client"
@@ -171,6 +172,15 @@ func TestCreateOrRecoverSession_Recover(t *testing.T) {
 	}
 }
 
+func TestCreateOrRecoverSessionRejectsNilModel(t *testing.T) {
+	initTestDB(t)
+
+	err := CreateOrRecoverSession(nil)
+	if err == nil || !strings.Contains(err.Error(), "session is nil") {
+		t.Fatalf("CreateOrRecoverSession(nil) error = %v, want nil session error", err)
+	}
+}
+
 func TestFindSession_Removed(t *testing.T) {
 	initTestDB(t)
 
@@ -273,6 +283,31 @@ func TestUpdateSessionTimer(t *testing.T) {
 	}
 	if result.Data.Jitter != 0.5 {
 		t.Errorf("expected jitter 0.5, got %f", result.Data.Jitter)
+	}
+}
+
+func TestUpdateSessionTimerInitializesMissingContext(t *testing.T) {
+	initTestDB(t)
+
+	Session().Create(&models.Session{
+		SessionID: "timer-sess-nil-data",
+		Data:      nil,
+	})
+
+	if err := UpdateSessionTimer("timer-sess-nil-data", "*/45 * * * * * *", 0.2); err != nil {
+		t.Fatalf("UpdateSessionTimer(nil data) failed: %v", err)
+	}
+
+	var result models.Session
+	Session().Where("session_id = ?", "timer-sess-nil-data").First(&result)
+	if result.Data == nil {
+		t.Fatal("expected session data to be initialized")
+	}
+	if result.Data.Expression != "*/45 * * * * * *" {
+		t.Fatalf("expression = %q, want */45 * * * * * *", result.Data.Expression)
+	}
+	if result.Data.Jitter != 0.2 {
+		t.Fatalf("jitter = %f, want 0.2", result.Data.Jitter)
 	}
 }
 
