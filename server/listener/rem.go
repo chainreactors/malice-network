@@ -372,9 +372,9 @@ func (lns *listener) handlerRemAgentReconfigure(job *clientpb.Job) error {
 	if err != nil {
 		return fmt.Errorf("invalid interval: %w", err)
 	}
-	logs.Log.Importantf("[rem.reconfigure] sending Reconfigure{Interval: %d} to agent %s (connHub ctrl streams: %d)",
-		interval, a.Name(), a.ControlStreamCount())
-	err = a.Send(&message.Reconfigure{Interval: interval})
+	logs.Log.Importantf("[rem.reconfigure] sending Reconfigure{interval: %d} to agent %s",
+		interval, a.Name())
+	err = a.Send(&message.Reconfigure{Options: map[string]string{"interval": strconv.FormatInt(interval, 10)}})
 	if err != nil {
 		logs.Log.Errorf("[rem.reconfigure] send failed for agent %s: %v", a.Name(), err)
 	} else {
