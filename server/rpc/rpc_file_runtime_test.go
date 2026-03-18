@@ -62,6 +62,28 @@ func TestMergeChunksMissingChunkDoesNotLeavePartialOutput(t *testing.T) {
 	}
 }
 
+func TestDownloadChunkCount(t *testing.T) {
+	cases := []struct {
+		size      int
+		chunkSize int
+		want      int
+	}{
+		{size: 0, chunkSize: 512, want: 0},
+		{size: 1, chunkSize: 512, want: 1},
+		{size: 512, chunkSize: 512, want: 1},
+		{size: 513, chunkSize: 512, want: 2},
+		{size: 1024, chunkSize: 512, want: 2},
+		{size: 1025, chunkSize: 512, want: 3},
+		{size: 10, chunkSize: 0, want: 0},
+	}
+
+	for _, tc := range cases {
+		if got := downloadChunkCount(tc.size, tc.chunkSize); got != tc.want {
+			t.Fatalf("downloadChunkCount(%d, %d) = %d, want %d", tc.size, tc.chunkSize, got, tc.want)
+		}
+	}
+}
+
 func TestUploadRequestTypeReferenceCompiles(t *testing.T) {
 	_ = &implantpb.UploadRequest{}
 }

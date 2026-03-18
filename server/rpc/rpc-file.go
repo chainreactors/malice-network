@@ -19,6 +19,16 @@ import (
 	"path/filepath"
 )
 
+func downloadChunkCount(size int, chunkSize int) int {
+	if chunkSize <= 0 {
+		return 0
+	}
+	if size <= 0 {
+		return 0
+	}
+	return (size + chunkSize - 1) / chunkSize
+}
+
 // Upload - Upload a file from the remote file system
 func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*clientpb.Task, error) {
 	if req == nil {
@@ -215,7 +225,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 		if err != nil {
 			return fmt.Errorf("write task log: %w", err)
 		}
-		total := int(resp.GetDownloadResponse().Size)/config.Int(consts.ConfigMaxPacketLength) + 1
+		total := downloadChunkCount(int(resp.GetDownloadResponse().Size), config.Int(consts.ConfigMaxPacketLength))
 		downloadAbs := resp.GetDownloadResponse()
 		greq.Task.Total = total
 
