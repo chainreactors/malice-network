@@ -2,7 +2,9 @@ package core
 
 import (
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	iomclient "github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
@@ -218,5 +220,91 @@ func TestHandlerTaskIgnoresMissingTask(t *testing.T) {
 func TestRenderEventNilReturnsEmptyString(t *testing.T) {
 	if got := renderEvent(nil); got != "" {
 		t.Fatalf("renderEvent(nil) = %q, want empty string", got)
+	}
+}
+
+func TestAddEventHookInitializesNilMap(t *testing.T) {
+	s := &Server{ServerState: &iomclient.ServerState{}}
+	cond := iomclient.EventCondition{Type: consts.EventBroadcast}
+
+	s.AddEventHook(cond, func(*clientpb.Event) (bool, error) { return false, nil })
+
+	if hooks := s.EventHook[cond]; len(hooks) != 1 {
+		t.Fatalf("event hooks = %d, want 1", len(hooks))
+	}
+}
+
+func TestDispatchEventHooksRemovesLuaVMDeadHookOnly(t *testing.T) {
+	s := &Server{
+		ServerState: &iomclient.ServerState{
+			EventHook: map[iomclient.EventCondition][]iomclient.OnEventFunc{},
+		},
+	}
+	cond := iomclient.EventCondition{Type: consts.EventBroadcast}
+
+	deadCalls := atomic.Int32{}
+	healthyCalls := atomic.Int32{}
+	deadDone := make(chan struct{}, 1)
+	healthyDone := make(chan struct{}, 2)
+
+	deadHook := func(*clientpb.Event) (bool, error) {
+		deadCalls.Add(1)
+		select {
+		case deadDone <- struct{}{}:
+		default:
+		}
+		return false, ErrLuaVMDead
+	}
+	healthyHook := func(*clientpb.Event) (bool, error) {
+		healthyCalls.Add(1)
+		healthyDone <- struct{}{}
+		return false, nil
+	}
+
+	s.AddEventHook(cond, deadHook)
+	s.AddEventHook(cond, healthyHook)
+
+	evt := &clientpb.Event{Type: consts.EventBroadcast, Op: "ping"}
+	s.dispatchEventHooks(evt)
+
+	select {
+	case <-deadDone:
+	case <-time.After(2 * time.Second):
+		t.Fatal("dead hook did not execute")
+	}
+	select {
+	case <-healthyDone:
+	case <-time.After(2 * time.Second):
+		t.Fatal("healthy hook did not execute")
+	}
+
+	deadline := time.After(2 * time.Second)
+	for {
+		s.eventHookMu.RLock()
+		hooks := append([]iomclient.OnEventFunc(nil), s.EventHook[cond]...)
+		s.eventHookMu.RUnlock()
+		if len(hooks) == 1 {
+			break
+		}
+		select {
+		case <-deadline:
+			t.Fatalf("dead hook was not removed, hooks len = %d", len(hooks))
+		default:
+			time.Sleep(10 * time.Millisecond)
+		}
+	}
+
+	s.dispatchEventHooks(evt)
+	select {
+	case <-healthyDone:
+	case <-time.After(2 * time.Second):
+		t.Fatal("healthy hook did not execute on second dispatch")
+	}
+
+	if got := deadCalls.Load(); got != 1 {
+		t.Fatalf("dead hook calls = %d, want 1", got)
+	}
+	if got := healthyCalls.Load(); got != 2 {
+		t.Fatalf("healthy hook calls = %d, want 2", got)
 	}
 }

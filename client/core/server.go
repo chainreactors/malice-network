@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"reflect"
 	"sync"
 
 	"github.com/chainreactors/IoM-go/client"
@@ -32,6 +33,7 @@ type Server struct {
 	*client.ServerState
 	taskMessageMu sync.Mutex
 	taskMessages  map[string]string
+	eventHookMu   sync.RWMutex
 
 	// Quiet suppresses console event output while still updating internal state.
 	Quiet bool
@@ -231,10 +233,106 @@ func HandlerTask(sess *client.Session, log *client.Logger, ctx *clientpb.TaskCon
 }
 
 func (s *Server) AddEventHook(event client.EventCondition, callback client.OnEventFunc) {
+	if s == nil {
+		return
+	}
+	s.eventHookMu.Lock()
+	defer s.eventHookMu.Unlock()
+	if s.EventHook == nil {
+		s.EventHook = map[client.EventCondition][]client.OnEventFunc{}
+	}
 	if _, ok := s.EventHook[event]; !ok {
 		s.EventHook[event] = []client.OnEventFunc{}
 	}
 	s.EventHook[event] = append(s.EventHook[event], callback)
+}
+
+type eventHookGroup struct {
+	condition client.EventCondition
+	hooks     []client.OnEventFunc
+}
+
+func (s *Server) matchingEventHooks(event *clientpb.Event) []eventHookGroup {
+	if s == nil || event == nil {
+		return nil
+	}
+	s.eventHookMu.RLock()
+	defer s.eventHookMu.RUnlock()
+
+	if len(s.EventHook) == 0 {
+		return nil
+	}
+
+	groups := make([]eventHookGroup, 0, len(s.EventHook))
+	for condition, hooks := range s.EventHook {
+		conditionCopy := condition
+		if !conditionCopy.Match(event) {
+			continue
+		}
+		hooksCopy := append([]client.OnEventFunc(nil), hooks...)
+		groups = append(groups, eventHookGroup{
+			condition: conditionCopy,
+			hooks:     hooksCopy,
+		})
+	}
+	return groups
+}
+
+func (s *Server) removeEventHook(condition client.EventCondition, target client.OnEventFunc) {
+	if s == nil || target == nil {
+		return
+	}
+
+	s.eventHookMu.Lock()
+	defer s.eventHookMu.Unlock()
+
+	hooks, ok := s.EventHook[condition]
+	if !ok {
+		return
+	}
+
+	targetPtr := reflect.ValueOf(target).Pointer()
+	filtered := make([]client.OnEventFunc, 0, len(hooks))
+	for _, hook := range hooks {
+		if hook == nil {
+			continue
+		}
+		if reflect.ValueOf(hook).Pointer() == targetPtr {
+			continue
+		}
+		filtered = append(filtered, hook)
+	}
+	if len(filtered) == 0 {
+		delete(s.EventHook, condition)
+		return
+	}
+	s.EventHook[condition] = filtered
+}
+
+func (s *Server) dispatchEventHooks(event *clientpb.Event) {
+	if s == nil || event == nil {
+		return
+	}
+
+	for _, group := range s.matchingEventHooks(event) {
+		condition := group.condition
+		hooks := group.hooks
+		go func(condition client.EventCondition, hooks []client.OnEventFunc) {
+			for _, hook := range hooks {
+				if hook == nil {
+					continue
+				}
+				_, err := hook(event)
+				if err != nil {
+					if errors.Is(err, ErrLuaVMDead) {
+						s.removeEventHook(condition, hook)
+					} else {
+						client.Log.Errorf("error running event hook: %s", err)
+					}
+				}
+			}
+		}(condition, hooks)
+	}
 }
 
 func (s *Server) EventHandler() {
@@ -257,22 +355,7 @@ func (s *Server) EventHandler() {
 		if err == io.EOF || event == nil {
 			return
 		}
-		for condition, fns := range s.EventHook {
-			if condition.Match(event) {
-				go func() {
-					for i, fn := range fns {
-						_, err := fn(event)
-						if err != nil {
-							if errors.Is(err, ErrLuaVMDead) {
-								s.EventHook[condition] = append(fns[:i], fns[i+1:]...)
-							} else {
-								client.Log.Errorf("error running event hook: %s", err)
-							}
-						}
-					}
-				}()
-			}
-		}
+		s.dispatchEventHooks(event)
 
 		if fn, ok := s.EventCallback[event.Op]; ok {
 			fn(event)
