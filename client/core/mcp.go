@@ -131,14 +131,9 @@ func (c *Console) registerTool(cmd *cobra.Command, toolName, cmdPath string) {
 	)
 
 	c.MCP.server.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		// 检查参数是否存在
-		if request.Params.Name == "" || request.Params.Arguments == nil {
-			return mcp.NewToolResultText(toolDescription), nil
-		}
-
 		// 获取命令参数
-		cmdLine, ok := request.Params.Arguments["cmdline"].(string)
-		if !ok {
+		cmdLine, err := request.RequireString("cmdline")
+		if err != nil {
 			return mcp.NewToolResultText(toolDescription), nil
 		}
 
@@ -277,12 +272,12 @@ Commands are automatically routed to client menu or implant menu based on whethe
 	)
 
 	m.server.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		command, ok := request.Params.Arguments["command"].(string)
-		if !ok || command == "" {
+		command, err := request.RequireString("command")
+		if err != nil || command == "" {
 			return mcp.NewToolResultError("command is required"), nil
 		}
 
-		sessionID, _ := request.Params.Arguments["session_id"].(string)
+		sessionID, _ := request.GetArguments()["session_id"].(string)
 
 		response, err := executeCommand(m.console, command, sessionID, consts.CalleeMCP)
 		if err != nil {
@@ -308,12 +303,12 @@ func (m *MCPServer) registerLuaScriptTool() {
 	)
 
 	m.server.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		script, ok := request.Params.Arguments["script"].(string)
-		if !ok || script == "" {
+		script, err := request.RequireString("script")
+		if err != nil || script == "" {
 			return mcp.NewToolResultError("script is required"), nil
 		}
 
-		sessionID, _ := request.Params.Arguments["session_id"].(string)
+		sessionID, _ := request.GetArguments()["session_id"].(string)
 
 		result, err := executeLua(m.console, script, sessionID, consts.CalleeMCP)
 		if err != nil {
@@ -335,13 +330,13 @@ func (m *MCPServer) registerGetHistoryTool() {
 	)
 
 	m.server.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		taskID, ok := request.Params.Arguments["task_id"].(float64)
-		if !ok {
+		taskID, err := request.RequireFloat("task_id")
+		if err != nil {
 			return mcp.NewToolResultError("task_id is required"), nil
 		}
 
-		sessionID, ok := request.Params.Arguments["session_id"].(string)
-		if !ok || sessionID == "" {
+		sessionID, err := request.RequireString("session_id")
+		if err != nil || sessionID == "" {
 			return mcp.NewToolResultError("session_id is required"), nil
 		}
 
