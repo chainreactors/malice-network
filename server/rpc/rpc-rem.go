@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"errors"
 
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
@@ -261,6 +262,9 @@ func (rpc *Server) RemDial(ctx context.Context, req *implantpb.Request) (*client
 }
 
 func (rpc *Server) RemAgentCtrl(ctx context.Context, req *clientpb.REMAgent) (*clientpb.Empty, error) {
+	if req == nil {
+		return nil, types.ErrMissingRequestField
+	}
 	pipe, ok := core.Listeners.Find(req.PipelineId)
 	if !ok {
 		return nil, types.ErrNotFoundListener
@@ -296,32 +300,39 @@ func (rpc *Server) RemAgentCtrl(ctx context.Context, req *clientpb.REMAgent) (*c
 		},
 	})
 	status := lns.WaitCtrl(i)
-	if status.Status == consts.CtrlStatusSuccess {
-		agent := status.Job.GetRemAgent()
-		pivot := output.NewPivotingWithRem(agent, pipe)
-		_, err = db.SaveContext(&clientpb.Context{
-			Listener: lns.ToProtobuf(),
-			Pipeline: pipe,
-			Type:     consts.ContextPivoting,
-			Value:    output.MarshalContext(pivot),
-		})
-		if err != nil {
-			return nil, err
-		}
-		if pipe.GetRem().Agents == nil {
-			pipe.GetRem().Agents = make(map[string]*clientpb.REMAgent)
-		}
-		pipe.GetRem().Agents[agent.Id] = agent
-		core.EventBroker.Publish(core.Event{
-			EventType: consts.EventPivot,
-			Op:        "pivot_" + pivot.Mod,
-			Message:   pivot.Abstract(),
-		})
+	if err := waitForCtrlStatus("rem agent ctrl", req.Id, status); err != nil {
+		return nil, err
 	}
+	agent := status.GetJob().GetRemAgent()
+	if agent == nil {
+		return nil, errors.New("rem agent ctrl response missing agent")
+	}
+	pivot := output.NewPivotingWithRem(agent, pipe)
+	_, err = db.SaveContext(&clientpb.Context{
+		Listener: lns.ToProtobuf(),
+		Pipeline: pipe,
+		Type:     consts.ContextPivoting,
+		Value:    output.MarshalContext(pivot),
+	})
+	if err != nil {
+		return nil, err
+	}
+	if pipe.GetRem().Agents == nil {
+		pipe.GetRem().Agents = make(map[string]*clientpb.REMAgent)
+	}
+	pipe.GetRem().Agents[agent.Id] = agent
+	core.EventBroker.Publish(core.Event{
+		EventType: consts.EventPivot,
+		Op:        "pivot_" + pivot.Mod,
+		Message:   pivot.Abstract(),
+	})
 	return &clientpb.Empty{}, nil
 }
 
 func (rpc *Server) RemAgentLog(ctx context.Context, req *clientpb.REMAgent) (*clientpb.RemLog, error) {
+	if req == nil {
+		return nil, types.ErrMissingRequestField
+	}
 	pipe, ok := core.Listeners.Find(req.PipelineId)
 	if !ok {
 		return nil, types.ErrNotFoundListener
@@ -341,8 +352,14 @@ func (rpc *Server) RemAgentLog(ctx context.Context, req *clientpb.REMAgent) (*cl
 		},
 	})
 
-	job := lns.WaitCtrl(i)
-	return job.Job.GetRemLog(), nil
+	status := lns.WaitCtrl(i)
+	if err := waitForCtrlStatus("rem agent log", req.Id, status); err != nil {
+		return nil, err
+	}
+	if status.GetJob() == nil || status.GetJob().GetRemLog() == nil {
+		return nil, errors.New("rem agent log response missing log")
+	}
+	return status.GetJob().GetRemLog(), nil
 }
 
 func (rpc *Server) RemAgentStop(ctx context.Context, req *clientpb.REMAgent) (*clientpb.Empty, error) {
