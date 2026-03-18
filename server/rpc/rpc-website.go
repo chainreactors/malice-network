@@ -84,6 +84,9 @@ func MapContents(webpipe *clientpb.Pipeline) error {
 		return errors.New("website pipeline required")
 	}
 	web := webpipe.GetWeb()
+	if web.Contents == nil {
+		web.Contents = make(map[string]*clientpb.WebContent)
+	}
 	contents, err := db.FindWebContentsByWebsite(webpipe.Name)
 	if err != nil {
 		return err
