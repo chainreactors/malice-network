@@ -200,6 +200,8 @@ func buildTaskError(err error) error {
 		return types.ErrAssertFailure
 	case errors.Is(err, types.ErrNilResponseBody):
 		return types.ErrNilResponseBody
+	case errors.Is(err, types.ErrMissingSessionRequestField):
+		return types.ErrMissingSessionRequestField
 	case errors.Is(err, types.ErrMissingRequestField):
 		return types.ErrMissingRequestField
 	default:
