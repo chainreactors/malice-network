@@ -3,6 +3,8 @@ package output
 import (
 	"encoding/json"
 	"fmt"
+	"time"
+
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	rem "github.com/chainreactors/rem/protocol/core"
@@ -27,6 +29,7 @@ func NewPivotingWithRem(agent *clientpb.REMAgent, pipe *clientpb.Pipeline) *Pivo
 		Mod:        agent.Mod,
 		RemoteURL:  agent.Remote,
 		LocalURL:   agent.Local,
+		CreatedAt:  time.Now().Unix(),
 	}
 }
 
@@ -39,6 +42,7 @@ type PivotingContext struct {
 	LocalURL   string `json:"local"`
 	RemoteURL  string `json:"remote"`
 	Mod        string `json:"mod"`
+	CreatedAt  int64  `json:"created_at,omitempty"`
 }
 
 func (p *PivotingContext) ToRemAgent() *clientpb.REMAgent {
@@ -49,6 +53,7 @@ func (p *PivotingContext) ToRemAgent() *clientpb.REMAgent {
 		Local:      p.LocalURL,
 		Remote:     p.RemoteURL,
 		Enable:     p.Enable,
+		CreatedAt:  p.CreatedAt,
 	}
 }
 
