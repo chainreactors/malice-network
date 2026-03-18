@@ -80,6 +80,9 @@ func cloneWebsiteJob(job *core.Job, contents map[string]*clientpb.WebContent) *c
 }
 
 func MapContents(webpipe *clientpb.Pipeline) error {
+	if webpipe == nil || webpipe.GetWeb() == nil {
+		return errors.New("website pipeline required")
+	}
 	web := webpipe.GetWeb()
 	contents, err := db.FindWebContentsByWebsite(webpipe.Name)
 	if err != nil {
@@ -94,6 +97,9 @@ func MapContents(webpipe *clientpb.Pipeline) error {
 
 // ListWebContent - 列出网站的所有内容
 func (rpc *Server) ListWebContent(ctx context.Context, req *clientpb.Website) (*clientpb.WebContents, error) {
+	if req == nil {
+		return nil, types.ErrMissingRequestField
+	}
 	contents, err := db.FindWebContentsByWebsite(req.Name)
 	if err != nil {
 		return nil, err
@@ -108,6 +114,9 @@ func (rpc *Server) ListWebContent(ctx context.Context, req *clientpb.Website) (*
 
 // WebsiteAddContent - Add content to a website, the website is created if `name` does not exist
 func (rpc *Server) AddWebsiteContent(ctx context.Context, req *clientpb.Website) (*clientpb.WebContent, error) {
+	if req == nil {
+		return nil, types.ErrMissingRequestField
+	}
 	website, job, err := getWebsiteRuntime(req.Name, req.ListenerId)
 	if err != nil {
 		return nil, err
@@ -149,6 +158,9 @@ func (rpc *Server) AddWebsiteContent(ctx context.Context, req *clientpb.Website)
 
 // WebsiteUpdateContent - Update specific content from a website
 func (rpc *Server) UpdateWebsiteContent(ctx context.Context, req *clientpb.WebContent) (*clientpb.WebContent, error) {
+	if req == nil {
+		return nil, types.ErrMissingRequestField
+	}
 	existingContent, err := db.FindWebContent(req.Id)
 	if err != nil {
 		return nil, err
@@ -195,6 +207,9 @@ func (rpc *Server) UpdateWebsiteContent(ctx context.Context, req *clientpb.WebCo
 
 // WebsiteRemoveContent - Remove specific content from a website
 func (rpc *Server) RemoveWebsiteContent(ctx context.Context, req *clientpb.WebContent) (*clientpb.Empty, error) {
+	if req == nil {
+		return nil, types.ErrMissingRequestField
+	}
 	existingContent, err := db.FindWebContent(req.Id)
 	if err != nil {
 		return nil, err
@@ -236,6 +251,9 @@ func (rpc *Server) RemoveWebsiteContent(ctx context.Context, req *clientpb.WebCo
 }
 
 func (rpc *Server) RegisterWebsite(ctx context.Context, req *clientpb.Pipeline) (*clientpb.Empty, error) {
+	if req == nil || req.GetWeb() == nil {
+		return nil, types.ErrMissingRequestField
+	}
 	lns, err := core.Listeners.Get(req.ListenerId)
 	if err != nil {
 		return nil, err
@@ -265,6 +283,9 @@ func (rpc *Server) RegisterWebsite(ctx context.Context, req *clientpb.Pipeline) 
 }
 
 func (rpc *Server) StartWebsite(ctx context.Context, req *clientpb.CtrlPipeline) (*clientpb.Empty, error) {
+	if req == nil {
+		return nil, types.ErrMissingRequestField
+	}
 	listenerID, err := resolveListenerID(req)
 	if err != nil {
 		return nil, err
