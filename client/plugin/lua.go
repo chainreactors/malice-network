@@ -307,9 +307,22 @@ func (plug *LuaPlugin) RegisterLuaFunction() {
 			}
 		}
 
+		// Build Use string with positional argument hints
+		useStr := cmd.Name
+		hasArgs := false
+		for _, p := range params {
+			if p.Type == LuaReverse && (p.Name == ReservedARGS || p.Name == ReservedCMDLINE) {
+				hasArgs = true
+				break
+			}
+		}
+		if hasArgs {
+			useStr = cmd.Name + " [arguments...]"
+		}
+
 		// 创建新的 Cobra 命令
 		malCmd := &cobra.Command{
-			Use:   cmd.Name,
+			Use:   useStr,
 			Short: short,
 			Annotations: map[string]string{
 				"ttp": ttp,
