@@ -106,6 +106,44 @@ func TestShortSessionIDLeavesShortValuesUnchanged(t *testing.T) {
 	}
 }
 
+func TestResolveSessionIDUsesInteractiveSessionByDefault(t *testing.T) {
+	con := newSessionTestConsole(t)
+	sess := addSessionFixture(t, con, "interactive-session")
+	con.ActiveTarget.Set(sess)
+
+	got, err := resolveSessionID(con, "")
+	if err != nil {
+		t.Fatalf("resolveSessionID failed: %v", err)
+	}
+	if got != sess.SessionId {
+		t.Fatalf("resolved session id = %q, want %q", got, sess.SessionId)
+	}
+}
+
+func TestResolveSessionIDExpandsUniquePrefix(t *testing.T) {
+	con := newSessionTestConsole(t)
+	sess := addSessionFixture(t, con, "prefix-session-abcdef")
+
+	got, err := resolveSessionID(con, "prefix-s")
+	if err != nil {
+		t.Fatalf("resolveSessionID failed: %v", err)
+	}
+	if got != sess.SessionId {
+		t.Fatalf("resolved session id = %q, want %q", got, sess.SessionId)
+	}
+}
+
+func TestResolveSessionIDRejectsAmbiguousPrefix(t *testing.T) {
+	con := newSessionTestConsole(t)
+	addSessionFixture(t, con, "ambiguous-alpha")
+	addSessionFixture(t, con, "ambiguous-beta")
+
+	_, err := resolveSessionID(con, "ambiguous")
+	if err == nil || !strings.Contains(err.Error(), "ambiguous") {
+		t.Fatalf("resolveSessionID error = %v, want ambiguous error", err)
+	}
+}
+
 func TestPrintSessionsUsesStaticOutputWhenConsoleIsNonInteractive(t *testing.T) {
 	con := newSessionTestConsole(t)
 	sess := addSessionFixture(t, con, "sess12")

@@ -311,9 +311,9 @@ func (c *Console) GetPrompt() string {
 	statusLine := c.getStatusLine()
 	promptLine := c.getPromptChar()
 
-	session := c.ActiveTarget.Get()
+	session := c.interactiveSession()
 	if session != nil {
-		promptLine = tui.DefaultNameStyle.Render(session.SessionId[:8]) + " " + promptLine
+		promptLine = tui.DefaultNameStyle.Render(shortPromptSessionID(session.SessionId)) + " " + promptLine
 	}
 
 	if statusLine == "" {
@@ -325,6 +325,20 @@ func (c *Console) GetPrompt() string {
 // getPromptChar returns the ❯ prompt character in green.
 func (c *Console) getPromptChar() string {
 	return tui.GreenFg.Render("❯") + " "
+}
+
+func shortPromptSessionID(sessionID string) string {
+	if len(sessionID) <= 8 {
+		return sessionID
+	}
+	return sessionID[:8]
+}
+
+func (c *Console) interactiveSession() *client.Session {
+	if c == nil || c.Server == nil || c.Server.ServerState == nil || c.Server.ActiveTarget == nil {
+		return nil
+	}
+	return c.Server.ActiveTarget.Get()
 }
 
 // formatCheckinAge formats a Unix timestamp into a compact relative time string.
@@ -350,11 +364,11 @@ func formatCheckinAge(timestamp int64) string {
 
 // getStatusLine returns the Starship-style status line above the prompt.
 func (c *Console) getStatusLine() string {
-	if c.Server == nil {
+	if c == nil || c.Server == nil {
 		return ""
 	}
 
-	session := c.ActiveTarget.Get()
+	session := c.interactiveSession()
 	if session == nil {
 		// Client menu: user on v0.5.0 sessions alive/total
 		version := ""
@@ -366,9 +380,11 @@ func (c *Console) getStatusLine() string {
 			name = c.Client.Name
 		}
 		sessionInfo := fmt.Sprintf("%d", len(c.Sessions))
-		count, err := c.Rpc.GetSessionCount(context.Background(), &clientpb.Empty{})
-		if err == nil && count != nil {
-			sessionInfo = fmt.Sprintf("%d/%d", count.Alive, count.Total)
+		if c.Rpc != nil {
+			count, err := c.Rpc.GetSessionCount(context.Background(), &clientpb.Empty{})
+			if err == nil && count != nil {
+				sessionInfo = fmt.Sprintf("%d/%d", count.Alive, count.Total)
+			}
 		}
 		return fmt.Sprintf("%s %s %s %s %s",
 			tui.CyanFg.Render(name),
@@ -401,8 +417,11 @@ func (c *Console) getStatusLine() string {
 }
 
 func (c *Console) RefreshActiveSession() {
-	if c.ActiveTarget != nil {
-		c.UpdateSession(c.ActiveTarget.Session.SessionId)
+	if c == nil || c.Server == nil || c.Server.ServerState == nil {
+		return
+	}
+	if session := c.interactiveSession(); session != nil {
+		c.UpdateSession(session.SessionId)
 	}
 }
 

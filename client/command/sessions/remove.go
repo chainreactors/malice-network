@@ -7,8 +7,11 @@ import (
 )
 
 func removeCmd(cmd *cobra.Command, con *core.Console) error {
-	id := cmd.Flags().Arg(0)
-	_, err := con.Rpc.SessionManage(con.Context(), &clientpb.BasicUpdateSession{
+	id, err := resolveSessionID(con, cmd.Flags().Arg(0))
+	if err != nil {
+		return err
+	}
+	_, err = con.Rpc.SessionManage(con.Context(), &clientpb.BasicUpdateSession{
 		SessionId: id,
 		Op:        "delete",
 	})
