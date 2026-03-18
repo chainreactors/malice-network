@@ -2,7 +2,6 @@ package rpc
 
 import (
 	"context"
-	"errors"
 
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
@@ -13,14 +12,30 @@ import (
 
 func handlerModule(sess *core.Session) func(spite *implantpb.Spite) {
 	return func(spite *implantpb.Spite) {
-		if modules := spite.GetModules(); modules != nil {
-			sess.Modules = modules.Modules
-		}
-		sess.SaveAndNotify("")
+		applyModulesResponse(sess, spite, false)
 	}
 }
 
+func applyModulesResponse(sess *core.Session, spite *implantpb.Spite, appendOnly bool) {
+	if sess == nil || spite == nil {
+		return
+	}
+	modules := spite.GetModules()
+	if modules == nil {
+		return
+	}
+	if appendOnly {
+		sess.Modules = append(sess.Modules, modules.Modules...)
+	} else {
+		sess.Modules = modules.Modules
+	}
+	sess.SaveAndNotify("")
+}
+
 func (rpc *Server) ListModule(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+	if req == nil {
+		return nil, types.ErrMissingRequestField
+	}
 	err := types.AssertRequestName(req, consts.ModuleListModule)
 	if err != nil {
 		return nil, err
@@ -39,6 +54,9 @@ func (rpc *Server) ListModule(ctx context.Context, req *implantpb.Request) (*cli
 }
 
 func (rpc *Server) LoadModule(ctx context.Context, req *implantpb.LoadModule) (*clientpb.Task, error) {
+	if req == nil {
+		return nil, types.ErrMissingRequestField
+	}
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -49,13 +67,15 @@ func (rpc *Server) LoadModule(ctx context.Context, req *implantpb.LoadModule) (*
 	}
 
 	greq.HandlerResponse(ch, types.MsgListModule, func(spite *implantpb.Spite) {
-		greq.Session.Modules = append(greq.Session.Modules, spite.GetModules().Modules...)
-		greq.Session.SaveAndNotify("")
+		applyModulesResponse(greq.Session, spite, true)
 	})
 	return greq.Task.ToProtobuf(), nil
 }
 
 func (rpc *Server) RefreshModule(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+	if req == nil {
+		return nil, types.ErrMissingRequestField
+	}
 	err := types.AssertRequestName(req, consts.ModuleRefreshModule)
 	if err != nil {
 		return nil, err
@@ -96,7 +116,7 @@ func (rpc *Server) Clear(ctx context.Context, req *implantpb.Request) (*clientpb
 // loop that keeps the task alive instead of finishing after one response.
 func (rpc *Server) ExecuteModule(ctx context.Context, req *implantpb.ExecuteModuleRequest) (*clientpb.Task, error) {
 	if req == nil || req.Spite == nil {
-		return nil, errors.New("spite required")
+		return nil, types.ErrMissingRequestField
 	}
 
 	expect := types.MsgName(req.Expect)
