@@ -19,6 +19,8 @@ import (
 	"path/filepath"
 )
 
+var rpcFileSaveContext = db.SaveContext
+
 func downloadChunkCount(size int, chunkSize int) int {
 	if chunkSize <= 0 {
 		return 0
@@ -27,6 +29,24 @@ func downloadChunkCount(size int, chunkSize int) int {
 		return 0
 	}
 	return (size + chunkSize - 1) / chunkSize
+}
+
+func scanDownloadChunks(tempDir string, total int) (int32, bool, error) {
+	if total <= 0 {
+		return 1, true, nil
+	}
+	for i := 1; i <= total; i++ {
+		chunkFile := filepath.Join(tempDir, fmt.Sprintf("%d.chunk", i))
+		_, err := os.Stat(chunkFile)
+		if err == nil {
+			continue
+		}
+		if os.IsNotExist(err) {
+			return int32(i), false, nil
+		}
+		return 0, false, fmt.Errorf("stat chunk %d: %w", i, err)
+	}
+	return int32(total), true, nil
 }
 
 // Upload - Upload a file from the remote file system
@@ -196,6 +216,52 @@ func mergeChunks(tempDir, finalPath string, totalChunks int) error {
 	return nil
 }
 
+func finalizeDownload(greq *GenericRequest, req *implantpb.DownloadRequest, resp *implantpb.Spite, downloadAbs *implantpb.DownloadResponse, total int, finalPath, tempDir string) error {
+	if err := mergeChunks(tempDir, finalPath, total); err != nil {
+		return err
+	}
+
+	actualChecksum, err := fileutils.CalculateSHA256Checksum(finalPath)
+	if err != nil {
+		return fmt.Errorf("calculate final file checksum: %w", err)
+	}
+	if actualChecksum != downloadAbs.Checksum {
+		_ = os.Remove(finalPath)
+		return fmt.Errorf("final file checksum mismatch: expected %s, got %s", downloadAbs.Checksum, actualChecksum)
+	}
+
+	downloadName := req.Name
+	if req.Dir {
+		downloadName += ".tar"
+	}
+	v := &output.DownloadContext{
+		FileDescriptor: &output.FileDescriptor{
+			Name:       downloadName,
+			Checksum:   actualChecksum,
+			TargetPath: req.Path,
+			FilePath:   finalPath,
+			Abstract:   fmt.Sprintf("download -%s -%s ", downloadName, req.Path),
+			Size:       int64(downloadAbs.Size),
+		},
+	}
+
+	ictx, err := rpcFileSaveContext(&clientpb.Context{
+		Task:    greq.Task.ToProtobuf(),
+		Session: greq.Session.ToProtobuf(),
+		Type:    consts.ContextDownload,
+		Value:   v.Marshal(),
+	})
+	if err != nil {
+		logs.Log.Errorf("cannot create task %d , %s in db", greq.Task.Id, err.Error())
+		greq.Task.Finish(resp, "download completed")
+		return nil
+	}
+
+	core.PushContextEvent(consts.ContextDownload, ictx)
+	greq.Task.Finish(resp, "sync id "+ictx.ID.String())
+	return nil
+}
+
 // Download - Download a file from implant
 func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest) (*clientpb.Task, error) {
 	if req == nil {
@@ -249,19 +315,13 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 		var current_cur int32 = 1
 		if _, err := os.Stat(tempDir); err == nil {
 			greq.Task.Done(resp, "resuming download")
-			for i := 1; i <= total; i++ {
-				chunkFile := filepath.Join(tempDir, fmt.Sprintf("%d.chunk", i))
-				if _, err := os.Stat(chunkFile); err != nil {
-					current_cur = int32(i)
-					break
-				}
-				if i == total {
-					// merge
-					if err := mergeChunks(tempDir, finalPath, total); err != nil {
-						return err
-					}
-					return nil
-				}
+			var complete bool
+			current_cur, complete, err = scanDownloadChunks(tempDir, total)
+			if err != nil {
+				return err
+			}
+			if complete {
+				return finalizeDownload(greq, req, resp, downloadAbs, total, finalPath, tempDir)
 			}
 
 		} else {
@@ -308,10 +368,6 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 			}
 			greq.Task.Done(resp, fmt.Sprintf("chunk %d/%d", downloadResp.Cur, total))
 			if downloadResp.Cur == int32(total) {
-				// merge
-				if err := mergeChunks(tempDir, finalPath, total); err != nil {
-					return err
-				}
 				break
 			}
 
@@ -331,42 +387,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 			}
 		}
 
-		actualChecksum, err := fileutils.CalculateSHA256Checksum(finalPath)
-		if err != nil {
-			return fmt.Errorf("calculate final file checksum: %w", err)
-		}
-
-		if actualChecksum != downloadAbs.Checksum {
-			os.Remove(finalPath)
-			return fmt.Errorf("final file checksum mismatch: expected %s, got %s", downloadAbs.Checksum, actualChecksum)
-		}
-		if req.Dir == true {
-			req.Name = req.Name + ".tar"
-		}
-		v := &output.DownloadContext{
-			FileDescriptor: &output.FileDescriptor{
-				Name:       req.Name,
-				Checksum:   actualChecksum,
-				TargetPath: req.Path,
-				FilePath:   finalPath,
-				Abstract:   fmt.Sprintf("download -%s -%s ", req.Name, req.Path),
-				Size:       int64(downloadAbs.Size),
-			},
-		}
-
-		ictx, err := db.SaveContext(&clientpb.Context{
-			Task:    greq.Task.ToProtobuf(),
-			Session: greq.Session.ToProtobuf(),
-			Type:    consts.ContextDownload,
-			Value:   v.Marshal(),
-		})
-		if err != nil {
-			logs.Log.Errorf("cannot create task %d , %s in db", greq.Task.Id, err.Error())
-		}
-
-		core.PushContextEvent(consts.ContextDownload, ictx)
-		greq.Task.Finish(resp, "sync id "+ictx.ID.String())
-		return nil
+		return finalizeDownload(greq, req, resp, downloadAbs, total, finalPath, tempDir)
 	}, greq.Task.Close, in.Close)
 
 	return greq.Task.ToProtobuf(), nil
