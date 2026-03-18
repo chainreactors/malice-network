@@ -3,6 +3,7 @@ package listener
 import (
 	"context"
 	"errors"
+	"net"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
@@ -223,6 +224,64 @@ func TestRegisterAndStartSkipsDisabledPipeline(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("RegisterAndStart should skip disabled pipeline, got %v", err)
+	}
+}
+
+type countCloseListener struct {
+	closed int
+}
+
+func (l *countCloseListener) Accept() (net.Conn, error) { return nil, net.ErrClosed }
+func (l *countCloseListener) Close() error {
+	l.closed++
+	if l.closed > 1 {
+		return net.ErrClosed
+	}
+	return nil
+}
+func (l *countCloseListener) Addr() net.Addr { return testAddr("127.0.0.1:0") }
+
+func TestTCPPipelineCloseIsIdempotent(t *testing.T) {
+	ln := &countCloseListener{}
+	pipeline := &TCPPipeline{
+		Name:   "tcp-close-idempotent",
+		Enable: true,
+		ln:     ln,
+	}
+
+	if err := pipeline.Close(); err != nil {
+		t.Fatalf("first Close failed: %v", err)
+	}
+	if err := pipeline.Close(); err != nil {
+		t.Fatalf("second Close failed: %v", err)
+	}
+	if pipeline.ln != nil {
+		t.Fatal("pipeline listener should be cleared after Close")
+	}
+	if ln.closed != 1 {
+		t.Fatalf("close count = %d, want 1", ln.closed)
+	}
+}
+
+func TestHTTPPipelineCloseIsIdempotent(t *testing.T) {
+	ln := &countCloseListener{}
+	pipeline := &HTTPPipeline{
+		Name:   "http-close-idempotent",
+		Enable: true,
+		srv:    ln,
+	}
+
+	if err := pipeline.Close(); err != nil {
+		t.Fatalf("first Close failed: %v", err)
+	}
+	if err := pipeline.Close(); err != nil {
+		t.Fatalf("second Close failed: %v", err)
+	}
+	if pipeline.srv != nil {
+		t.Fatal("pipeline server listener should be cleared after Close")
+	}
+	if ln.closed != 1 {
+		t.Fatalf("close count = %d, want 1", ln.closed)
 	}
 }
 

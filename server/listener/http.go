@@ -101,7 +101,12 @@ func (pipeline *HTTPPipeline) ID() string {
 func (pipeline *HTTPPipeline) Close() error {
 	pipeline.Enable = false
 	if pipeline.srv != nil {
-		return pipeline.srv.Close()
+		ln := pipeline.srv
+		pipeline.srv = nil
+		if err := ln.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
+			return err
+		}
+		return nil
 	}
 	return nil
 }

@@ -81,8 +81,10 @@ func (pipeline *TCPPipeline) Close() error {
 	if pipeline.ln == nil {
 		return nil
 	}
-	err := pipeline.ln.Close()
-	if err != nil {
+	ln := pipeline.ln
+	pipeline.ln = nil
+	err := ln.Close()
+	if err != nil && !errors.Is(err, net.ErrClosed) {
 		return err
 	}
 	return nil
