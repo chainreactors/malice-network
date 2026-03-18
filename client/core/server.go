@@ -108,6 +108,9 @@ func (s *Server) AddCallback(task *clientpb.Task, callback client.TaskCallback) 
 }
 
 func (s *Server) triggerTaskDone(event *clientpb.Event) {
+	if s == nil || event == nil || event.Task == nil {
+		return
+	}
 	task := event.GetTask()
 	sess, err := s.GetOrUpdateSession(event.Task.SessionId)
 	if err != nil {
@@ -133,6 +136,9 @@ func (s *Server) triggerTaskDone(event *clientpb.Event) {
 }
 
 func (s *Server) triggerTaskFinish(event *clientpb.Event) {
+	if s == nil || event == nil || event.Task == nil {
+		return
+	}
 	task := event.GetTask()
 	sess, err := s.GetOrUpdateSession(event.Task.SessionId)
 	if err != nil {
@@ -280,6 +286,9 @@ func (s *Server) EventHandler() {
 // renderEvent applies CLI-specific coloring to plain event text based on event type/op.
 // Server sends plain text in Formatted; coloring is the client's responsibility.
 func renderEvent(event *clientpb.Event) string {
+	if event == nil {
+		return ""
+	}
 	switch event.Type {
 	case consts.EventSession:
 		switch event.Op {
@@ -308,6 +317,9 @@ func renderEvent(event *clientpb.Event) string {
 }
 
 func (s *Server) HandlerEvent(event *clientpb.Event) {
+	if s == nil || event == nil {
+		return
+	}
 	// Reconcile state first — single entry point for all map updates
 	s.ReconcileEvent(event)
 
@@ -350,6 +362,9 @@ func (s *Server) HandlerEvent(event *clientpb.Event) {
 }
 
 func (s *Server) handleJob(event *clientpb.Event) {
+	if event == nil {
+		return
+	}
 	if event.Err != "" {
 		client.Log.Errorf("[%s] %s: %s\n", event.Type, event.Op, event.Err)
 		return
@@ -365,6 +380,9 @@ func (s *Server) handleJob(event *clientpb.Event) {
 }
 
 func (s *Server) handlerTask(event *clientpb.Event) {
+	if s == nil || event == nil || event.Task == nil {
+		return
+	}
 	switch event.Op {
 	case consts.CtrlTaskCallback:
 		s.triggerTaskDone(event)
@@ -384,6 +402,9 @@ func (s *Server) handlerTask(event *clientpb.Event) {
 }
 
 func (s *Server) handlerSession(event *clientpb.Event) {
+	if s == nil || event == nil || event.Session == nil {
+		return
+	}
 	// State updates are handled by ReconcileEvent; here we only handle UI/logging.
 	sid := event.Session.SessionId
 	colored := renderEvent(event)

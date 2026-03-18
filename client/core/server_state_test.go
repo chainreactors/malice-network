@@ -185,3 +185,38 @@ func TestReconcileEventTracksWebsiteContentMutations(t *testing.T) {
 		t.Fatal("website content remove event should evict content from client cache")
 	}
 }
+
+func TestTriggerTaskDoneIgnoresMissingTask(t *testing.T) {
+	s := &Server{taskMessages: make(map[string]string)}
+	s.triggerTaskDone(&clientpb.Event{})
+}
+
+func TestTriggerTaskFinishIgnoresMissingTask(t *testing.T) {
+	s := &Server{taskMessages: make(map[string]string)}
+	s.triggerTaskFinish(&clientpb.Event{})
+}
+
+func TestHandlerEventIgnoresNilEvent(t *testing.T) {
+	state := &iomclient.ServerState{
+		EventHook:     map[iomclient.EventCondition][]iomclient.OnEventFunc{},
+		EventCallback: map[string]func(*clientpb.Event){},
+	}
+	s := &Server{ServerState: state, taskMessages: make(map[string]string)}
+	s.HandlerEvent(nil)
+}
+
+func TestHandlerSessionIgnoresMissingSession(t *testing.T) {
+	s := &Server{taskMessages: make(map[string]string)}
+	s.handlerSession(&clientpb.Event{})
+}
+
+func TestHandlerTaskIgnoresMissingTask(t *testing.T) {
+	s := &Server{taskMessages: make(map[string]string)}
+	s.handlerTask(&clientpb.Event{})
+}
+
+func TestRenderEventNilReturnsEmptyString(t *testing.T) {
+	if got := renderEvent(nil); got != "" {
+		t.Fatalf("renderEvent(nil) = %q, want empty string", got)
+	}
+}
