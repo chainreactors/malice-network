@@ -21,6 +21,9 @@ import (
 
 // Upload - Upload a file from the remote file system
 func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*clientpb.Task, error) {
+	if req == nil {
+		return nil, types.ErrMissingRequestField
+	}
 	count := parser.Count(req.Data, config.Int(consts.ConfigMaxPacketLength))
 	if count == 1 {
 		greq, err := newGenericRequest(ctx, req)
@@ -152,11 +155,15 @@ func mergeChunks(tempDir, finalPath string, totalChunks int) error {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
-	outputFile, err := os.Create(finalPath)
+	tempFile, err := os.CreateTemp(outputDir, ".download-*")
 	if err != nil {
-		return fmt.Errorf("failed to create output file: %w", err)
+		return fmt.Errorf("failed to create temp output file: %w", err)
 	}
-	defer outputFile.Close()
+	tempPath := tempFile.Name()
+	defer func() {
+		tempFile.Close()
+		_ = os.Remove(tempPath)
+	}()
 
 	for i := 1; i <= totalChunks; i++ {
 		chunkFile := filepath.Join(tempDir, fmt.Sprintf("%d.chunk", i))
@@ -165,16 +172,25 @@ func mergeChunks(tempDir, finalPath string, totalChunks int) error {
 			return fmt.Errorf("failed to read chunk %d: %w", i, err)
 		}
 
-		if _, err := outputFile.Write(chunkData); err != nil {
+		if _, err := tempFile.Write(chunkData); err != nil {
 			return fmt.Errorf("failed to write chunk %d to output: %w", i, err)
 		}
 	}
 
+	if err := tempFile.Close(); err != nil {
+		return fmt.Errorf("failed to close temp output file: %w", err)
+	}
+	if err := os.Rename(tempPath, finalPath); err != nil {
+		return fmt.Errorf("failed to finalize merged output: %w", err)
+	}
 	return nil
 }
 
 // Download - Download a file from implant
 func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest) (*clientpb.Task, error) {
+	if req == nil {
+		return nil, types.ErrMissingRequestField
+	}
 	req.BufferSize = uint32(config.Uint(consts.ConfigMaxPacketLength))
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
