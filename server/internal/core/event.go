@@ -75,7 +75,18 @@ func (event *Event) format() string {
 	case consts.EventContext:
 		return fmt.Sprintf("[%s] %s: %s", event.EventType, event.Op, event.Message)
 	case consts.EventSession:
-		sid := event.Session.SessionId
+		sid := "unknown-session"
+		if event.Session != nil && event.Session.SessionId != "" {
+			sid = event.Session.SessionId
+		}
+		taskID := uint32(0)
+		taskType := "unknown-task"
+		if event.Task != nil {
+			taskID = event.Task.TaskId
+			if event.Task.Type != "" {
+				taskType = event.Task.Type
+			}
+		}
 		switch event.Op {
 		case consts.CtrlSessionRegister:
 			return fmt.Sprintf("[%s] %s", consts.CtrlSessionRegister, event.Message)
@@ -87,10 +98,10 @@ func (event *Event) format() string {
 			return fmt.Sprintf("[%s] %s", consts.CtrlSessionInit, event.Message)
 		case consts.CtrlSessionTask:
 			return fmt.Sprintf("[%s.%d] run task %s: %s",
-				sid, event.Task.TaskId, event.Task.Type, event.Message)
+				sid, taskID, taskType, event.Message)
 		case consts.CtrlSessionError:
 			return fmt.Sprintf("[%s] task: %d error: %s",
-				sid, event.Task.TaskId, event.Err)
+				sid, taskID, event.Err)
 		case consts.CtrlSessionLog:
 			return fmt.Sprintf("[%s] log:\n%s", sid, event.Message)
 		case consts.CtrlSessionCheckin:

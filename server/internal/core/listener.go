@@ -20,9 +20,9 @@ var (
 )
 
 type Listener struct {
-	Name   string
-	IP     string
-	active atomic.Bool
+	Name       string
+	IP         string
+	active     atomic.Bool
 	pipelines  map[string]*clientpb.Pipeline
 	pipelineMu sync.RWMutex
 	Ctrl       chan *clientpb.JobCtrl
@@ -70,6 +70,7 @@ func (l *Listener) WaitCtrl(i uint32) *clientpb.JobStatus {
 	if i == 0 {
 		return nil
 	}
+	defer l.CtrlJob.Delete(i)
 	deadline := time.Now().Add(DefaultCtrlTimeout)
 	for time.Now().Before(deadline) {
 		done, ok := l.CtrlJob.Load(i)

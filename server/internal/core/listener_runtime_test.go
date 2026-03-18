@@ -203,65 +203,19 @@ func TestPushCtrlDoesNotBlockWithBufferedChannel(t *testing.T) {
 	}
 }
 
-// Bug #4: WaitCtrl itself never deletes CtrlJob entries.
-// In the real JobStream protocol, handleJobStatus schedules a 1s cleanup goroutine.
-// But WaitCtrl has no knowledge of this — it just polls until non-nil.
-// If WaitCtrl is called outside the JobStream path (e.g. test harness direct store),
-// entries leak permanently.
-//
-// This test simulates BOTH paths:
-// (a) Direct store path — entries leak (harness / test shortcut)
-// (b) Simulated handleJobStatus path — entries are cleaned up after 1s
-func TestCtrlJobLeaksWithDirectStoreButCleansViaProtocol(t *testing.T) {
+func TestWaitCtrlDeletesCtrlJobEntryAfterSuccess(t *testing.T) {
 	listener := NewListener("listener-leak", "127.0.0.1")
 
-	// Path (a): Direct store without cleanup — simulates ControlPlaneHarness behavior
-	const directRounds = 3
-	for i := 0; i < directRounds; i++ {
-		ctrlID := uint32(i + 1)
-		listener.CtrlJob.Store(ctrlID, &clientpb.JobStatus{
-			CtrlId: ctrlID,
-			Status: consts.CtrlStatusSuccess,
-		})
-		_ = listener.WaitCtrl(ctrlID)
-	}
-
-	directCount := 0
-	listener.CtrlJob.Range(func(_, _ interface{}) bool {
-		directCount++
-		return true
-	})
-	if directCount == directRounds {
-		t.Logf("CONFIRMED (bug #4): direct CtrlJob.Store path leaks %d entries (WaitCtrl does not delete)", directCount)
-	}
-
-	// Path (b): Simulate the real handleJobStatus protocol with cleanup
-	listener2 := NewListener("listener-protocol", "127.0.0.1")
 	ctrlID := uint32(100)
-	// Step 1: JobStream send goroutine marks as pending
-	listener2.CtrlJob.Store(ctrlID, nil)
-	// Step 2: handleJobStatus stores actual status + schedules cleanup
 	status := &clientpb.JobStatus{CtrlId: ctrlID, Status: consts.CtrlStatusSuccess}
-	listener2.CtrlJob.Store(ctrlID, status)
-	GoGuarded("test-cleanup", func() error {
-		time.Sleep(100 * time.Millisecond) // shortened from 1s for test speed
-		listener2.CtrlJob.Delete(ctrlID)
-		return nil
-	}, LogGuardedError("test-cleanup"))
+	listener.CtrlJob.Store(ctrlID, status)
 
-	_ = listener2.WaitCtrl(ctrlID)
-	// Wait for cleanup goroutine
-	time.Sleep(200 * time.Millisecond)
-
-	protocolCount := 0
-	listener2.CtrlJob.Range(func(_, _ interface{}) bool {
-		protocolCount++
-		return true
-	})
-	if protocolCount == 0 {
-		t.Log("Protocol path correctly cleans up CtrlJob entries via handleJobStatus")
-	} else {
-		t.Logf("Protocol path still has %d entries after cleanup", protocolCount)
+	got := listener.WaitCtrl(ctrlID)
+	if got == nil || got.CtrlId != ctrlID {
+		t.Fatalf("WaitCtrl returned %v, want CtrlId=%d", got, ctrlID)
+	}
+	if _, ok := listener.CtrlJob.Load(ctrlID); ok {
+		t.Fatal("WaitCtrl should delete CtrlJob entry after success")
 	}
 }
 

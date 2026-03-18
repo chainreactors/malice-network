@@ -209,3 +209,28 @@ func TestEventToProtobufWebsiteWithoutTLSDoesNotPanic(t *testing.T) {
 		t.Fatal("expected formatted event output")
 	}
 }
+
+func TestEventToProtobufSessionTaskWithoutSessionOrTaskDoesNotPanic(t *testing.T) {
+	event := Event{
+		EventType: consts.EventSession,
+		Op:        consts.CtrlSessionTask,
+		Message:   "task dispatched",
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("Event.ToProtobuf panicked for session task without session/task: %v", r)
+		}
+	}()
+
+	pb := event.ToProtobuf()
+	if pb == nil {
+		t.Fatal("Event.ToProtobuf returned nil")
+	}
+	if pb.Formatted == "" {
+		t.Fatal("expected formatted event output")
+	}
+	if pb.Formatted != "[unknown-session.0] run task unknown-task: task dispatched" {
+		t.Fatalf("formatted = %q, want fallback session/task text", pb.Formatted)
+	}
+}
