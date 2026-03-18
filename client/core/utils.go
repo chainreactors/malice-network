@@ -59,17 +59,10 @@ func switchSessionWithCallee(con *Console, sessionID, callee string) error {
 	return nil
 }
 
-// executeCommand 执行命令的通用逻辑
+// executeCommand executes a command with automatic task waiting for implant commands.
+// It reuses the same task-wait logic as executeRPCCommand to properly capture async output.
 func executeCommand(con *Console, command, sessionID, callee string) (string, error) {
-	if command == "" {
-		return "", fmt.Errorf("command is required")
-	}
-
-	if err := switchSessionWithCallee(con, sessionID, callee); err != nil {
-		return "", err
-	}
-
-	return RunCommand(con, command)
+	return executeCommandWithTaskWait(con, command, sessionID, callee)
 }
 
 func stripWaitFlag(args []string) []string {
@@ -163,6 +156,12 @@ func renderTaskOutput(taskCtx *clientpb.TaskContext) (string, error) {
 // executeRPCCommand executes a command for LocalRPC without relying on global stdout range capture.
 // It waits the task by task_id and renders output through task callbacks.
 func executeRPCCommand(con *Console, command, sessionID string) (string, error) {
+	return executeCommandWithTaskWait(con, command, sessionID, consts.CalleeRPC)
+}
+
+// executeCommandWithTaskWait is the shared implementation for executeCommand and executeRPCCommand.
+// It strips --wait, executes the command, detects new tasks, and waits for their output.
+func executeCommandWithTaskWait(con *Console, command, sessionID, callee string) (string, error) {
 	if command == "" {
 		return "", fmt.Errorf("command is required")
 	}
@@ -173,7 +172,7 @@ func executeRPCCommand(con *Console, command, sessionID string) (string, error) 
 	restore := con.WithNonInteractiveExecution(true)
 	defer restore()
 
-	if err := switchSessionWithCallee(con, sessionID, consts.CalleeRPC); err != nil {
+	if err := switchSessionWithCallee(con, sessionID, callee); err != nil {
 		return "", err
 	}
 
