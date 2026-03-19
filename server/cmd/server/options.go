@@ -300,6 +300,12 @@ func (opt *Options) PrepareServer() error {
 		return fmt.Errorf("cannot start grpc , %s", err.Error())
 	}
 
+	// Register daily log rotation at midnight
+	_, _ = core.GlobalTicker.AddCronFunc("0 0 * * *", func() {
+		configs.RotateLogs(configs.LogPath, configs.DefaultLogMaxAge, configs.DefaultLogCompress, rpc.ReInitLogs)
+		configs.CleanAuditLogs(configs.AuditPath, configs.DefaultLogMaxAge)
+	})
+
 	err = opt.InitUser()
 	if err != nil {
 		return err

@@ -22,6 +22,7 @@ import (
 var (
 	pipelinesCh     sync.Map
 	authLog, rpcLog *logs.Logger
+	logDebug        bool
 )
 
 var serveClientGRPC = func(server *grpc.Server, ln net.Listener) error {
@@ -56,6 +57,7 @@ var newClientListenerRuntime = func(address, serverIP string, debug bool) (*grpc
 }
 
 func InitLogs(debug bool) {
+	logDebug = debug
 	if debug {
 		authLog = configs.NewDebugLog("auth")
 		rpcLog = configs.NewDebugLog("rpc")
@@ -74,6 +76,13 @@ func CloseLogs() {
 		rpcLog.Close(false)
 		rpcLog = nil
 	}
+}
+
+// ReInitLogs closes current loggers and reopens fresh log files.
+// Called by log rotation after renaming the old files.
+func ReInitLogs() {
+	CloseLogs()
+	InitLogs(logDebug)
 }
 
 // ResetTransientRPCState clears process-global RPC stream state that should
