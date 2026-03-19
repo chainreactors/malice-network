@@ -6,6 +6,7 @@ import (
 	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/services/localrpc"
 	"github.com/chainreactors/malice-network/client/plugin"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/malice-network/helper/utils/output"
@@ -380,6 +381,100 @@ func getSchemas(con *Console, group string) (string, error) {
 	}
 
 	return string(jsonData), nil
+}
+
+// searchCommands searches for commands by name and description with case-insensitive substring matching.
+// If sessionID is provided, switches to that session first so that Hidden flags reflect actual module availability.
+func searchCommands(con *Console, query, group, sessionID string) ([]*localrpc.CommandInfo, error) {
+	if con == nil {
+		return nil, fmt.Errorf("console not initialized")
+	}
+
+	// Switch session context so implant commands reflect actual module availability
+	if sessionID != "" {
+		if err := switchSessionWithCallee(con, sessionID, consts.CalleeMCP); err != nil {
+			return nil, fmt.Errorf("failed to switch session: %w", err)
+		}
+	}
+
+	queryLower := strings.ToLower(query)
+
+	var results []*localrpc.CommandInfo
+
+	// search through both menus
+	menuNames := []string{consts.ImplantMenu, consts.ClientMenu}
+
+	for _, menuName := range menuNames {
+		menu := con.App.Menu(menuName)
+		if menu == nil {
+			continue
+		}
+		for _, cmd := range menu.Commands() {
+			if cmd.Hidden {
+				continue
+			}
+			if group != "" && cmd.GroupID != group {
+				continue
+			}
+			if matchCommand(cmd, queryLower) {
+				results = append(results, commandToInfo(cmd))
+			}
+		}
+	}
+
+	return results, nil
+}
+
+// matchCommand checks if a command matches the query by name, description, or subcommand names
+func matchCommand(cmd *cobra.Command, queryLower string) bool {
+	if strings.Contains(strings.ToLower(cmd.Name()), queryLower) {
+		return true
+	}
+	if strings.Contains(strings.ToLower(cmd.Short), queryLower) {
+		return true
+	}
+	if strings.Contains(strings.ToLower(cmd.Long), queryLower) {
+		return true
+	}
+	for _, alias := range cmd.Aliases {
+		if strings.Contains(strings.ToLower(alias), queryLower) {
+			return true
+		}
+	}
+	for _, sub := range cmd.Commands() {
+		if strings.Contains(strings.ToLower(sub.Name()), queryLower) {
+			return true
+		}
+	}
+	return false
+}
+
+// commandToInfo converts a cobra.Command to a lightweight CommandInfo proto
+func commandToInfo(cmd *cobra.Command) *localrpc.CommandInfo {
+	info := &localrpc.CommandInfo{
+		Name:        cmd.Name(),
+		Group:       cmd.GroupID,
+		Description: cmd.Short,
+		Usage:       cmd.UseLine(),
+	}
+
+	if ttp, ok := cmd.Annotations["ttp"]; ok {
+		info.Ttp = ttp
+	}
+	if opsecStr, ok := cmd.Annotations["opsec"]; ok {
+		var opsec float64
+		if _, err := fmt.Sscanf(opsecStr, "%f", &opsec); err == nil {
+			info.Opsec = int32(opsec)
+		}
+	}
+
+	for _, sub := range cmd.Commands() {
+		if !sub.Hidden {
+			info.Subcommands = append(info.Subcommands, sub.Name())
+		}
+	}
+
+	return info
 }
 
 // getGroups 获取所有 group 的基本信息（group_id -> group_title）

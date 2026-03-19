@@ -141,6 +141,28 @@ func (s *LocalRPCServer) GetGroups(ctx context.Context, req *localrpc.GetGroupsR
 	}, nil
 }
 
+// SearchCommands implements the CommandService.SearchCommands RPC method
+func (s *LocalRPCServer) SearchCommands(ctx context.Context, req *localrpc.SearchCommandsRequest) (*localrpc.SearchCommandsResponse, error) {
+	client.Log.Debugf("LocalRPC: SearchCommands called with query: %s, group: %s, session: %s\n", req.Query, req.Group, req.SessionId)
+
+	commands, err := searchCommands(s.console, req.Query, req.Group, req.SessionId)
+	if err != nil {
+		client.Log.Errorf("LocalRPC: Error searching commands: %v\n", err)
+		return &localrpc.SearchCommandsResponse{
+			Commands: nil,
+			Error:    err.Error(),
+			Success:  false,
+		}, nil
+	}
+
+	client.Log.Debugf("LocalRPC: SearchCommands found %d results\n", len(commands))
+	return &localrpc.SearchCommandsResponse{
+		Commands: commands,
+		Error:    "",
+		Success:  true,
+	}, nil
+}
+
 // LocalRPC wraps the gRPC server instance
 type LocalRPC struct {
 	server   *grpc.Server
