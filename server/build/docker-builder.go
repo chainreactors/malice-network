@@ -103,10 +103,11 @@ func (d *DockerBuilder) Generate() (*clientpb.Artifact, error) {
 		return nil, err
 	}
 	// set volume - 精确挂载特定文件和目录
-	d.volumes = Volumes
+	d.volumes = GetVolumes()
 
 	// 挂载内置 resources（镜像预留资源）
-	builtinResourceVolume := fmt.Sprintf("%s:%s", filepath.ToSlash(resourcePath), ContainerBuiltinResourcePath)
+	rp, _ := filepath.Abs(configs.ResourcePath)
+	builtinResourceVolume := fmt.Sprintf("%s:%s", filepath.ToSlash(rp), ContainerBuiltinResourcePath)
 	d.volumes = append(d.volumes, builtinResourceVolume)
 
 	// 挂载 implant.yaml（如果存在）

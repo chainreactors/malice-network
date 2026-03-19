@@ -31,13 +31,13 @@ var (
 	WebsitePath                 = filepath.Join(ServerRootPath, "web")
 	ProfilePath                 = filepath.Join(ServerRootPath, "profile")
 	// variables for implant build
-	BuildPath       = filepath.Join(GetWorkDir(), "..", "malefic", "build")
+	MaleficRoot     = filepath.Join(GetWorkDir(), "malefic")
 	BinPath         = filepath.Join(ServerRootPath, "bin")
-	SourceCodePath  = filepath.Join(BuildPath, "src")
+	SourceCodePath  = filepath.Join(MaleficRoot, "source_code")
 	ResourcePath    = filepath.Join(SourceCodePath, "resources")
 	TargetPath      = filepath.Join(SourceCodePath, "target")
-	CargoCachePath  = filepath.Join(BuildPath, "cache")
-	BuildOutputPath = filepath.Join(BuildPath, "output")
+	CargoCachePath  = filepath.Join(MaleficRoot, "cache")
+	BuildOutputPath = filepath.Join(MaleficRoot, "output")
 )
 
 func NewFileLog(filename string) *logs.Logger {
@@ -55,6 +55,16 @@ func NewDebugLog(filename string) *logs.Logger {
 	return logger
 }
 
+// UpdateMaleficRoot overrides the default malefic project root and all derived paths.
+func UpdateMaleficRoot(path string) {
+	MaleficRoot = path
+	SourceCodePath = filepath.Join(MaleficRoot, "source_code")
+	ResourcePath = filepath.Join(SourceCodePath, "resources")
+	TargetPath = filepath.Join(SourceCodePath, "target")
+	CargoCachePath = filepath.Join(MaleficRoot, "cache")
+	BuildOutputPath = filepath.Join(MaleficRoot, "output")
+}
+
 type ServerConfig struct {
 	Enable         bool            `config:"enable" default:"true" yaml:"enable"`
 	GRPCPort       uint16          `config:"grpc_port" default:"5004" yaml:"grpc_port"`
@@ -62,6 +72,7 @@ type ServerConfig struct {
 	IP             string          `config:"ip" default:"" yaml:"ip"`
 	DaemonConfig   bool            `config:"daemon" default:"false" yaml:"daemon"`
 	EncryptionKey  string          `config:"encryption_key" default:"maliceofinternal" yaml:"encryption_key"`
+	SourceCodeRoot string          `config:"source_code_root" default:"" yaml:"source_code_root"`
 	LogConfig      *LogConfig      `config:"log" yaml:"log"`
 	MiscConfig     *MiscConfig     `config:"config" yaml:"config"`
 	NotifyConfig   *NotifyConfig   `config:"notify" yaml:"notify"`

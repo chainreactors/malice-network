@@ -253,6 +253,11 @@ func (opt *Options) PrepareConfig(defaultConfig []byte) error {
 }
 
 func (opt *Options) PrepareServer() error {
+	// Override malefic root if configured
+	if opt.Server.SourceCodeRoot != "" {
+		configs.UpdateMaleficRoot(opt.Server.SourceCodeRoot)
+	}
+
 	db.Client = db.NewDBClient(opt.Server.DatabaseConfig)
 
 	// Backfill fingerprints for operators created before the fingerprint column existed

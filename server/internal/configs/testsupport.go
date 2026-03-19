@@ -22,6 +22,12 @@ func UseTestPaths(t testing.TB, root string) {
 	oldWebsitePath := WebsitePath
 	oldProfilePath := ProfilePath
 	oldBinPath := BinPath
+	oldSourceCodeRoot := MaleficRoot
+	oldSourceCodePath := SourceCodePath
+	oldResourcePath := ResourcePath
+	oldTargetPath := TargetPath
+	oldCargoCachePath := CargoCachePath
+	oldBuildOutputPath := BuildOutputPath
 	oldDatabaseFileName := databaseFileName
 
 	ServerRootPath = root
@@ -35,6 +41,7 @@ func UseTestPaths(t testing.TB, root string) {
 	WebsitePath = filepath.Join(root, "web")
 	ProfilePath = filepath.Join(root, "profile")
 	BinPath = filepath.Join(root, "bin")
+	UpdateMaleficRoot(filepath.Join(root, "malefic"))
 	databaseFileName = filepath.Join(root, "malice.db")
 
 	t.Cleanup(func() {
@@ -49,6 +56,12 @@ func UseTestPaths(t testing.TB, root string) {
 		WebsitePath = oldWebsitePath
 		ProfilePath = oldProfilePath
 		BinPath = oldBinPath
+		MaleficRoot = oldSourceCodeRoot
+		SourceCodePath = oldSourceCodePath
+		ResourcePath = oldResourcePath
+		TargetPath = oldTargetPath
+		CargoCachePath = oldCargoCachePath
+		BuildOutputPath = oldBuildOutputPath
 		databaseFileName = oldDatabaseFileName
 	})
 }

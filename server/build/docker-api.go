@@ -39,19 +39,19 @@ var (
 	funcNameOption               = "--function-name"
 	userDataPathOption           = "--userdata-path"
 
-	sourcePath, _            = filepath.Abs(configs.SourceCodePath)
-	binPath, _               = filepath.Abs(configs.BinPath)
-	resourcePath, _          = filepath.Abs(configs.ResourcePath)
-	registryPath, _          = filepath.Abs(filepath.Join(configs.CargoCachePath, "registry"))
-	gitPath, _               = filepath.Abs(filepath.Join(configs.CargoCachePath, "git"))
-	SourceCodeVolume         = fmt.Sprintf("%s:%s", filepath.ToSlash(sourcePath), ContainerSourceCodePath)
-	CargoRegistryCacheVolume = fmt.Sprintf("%s:%s", filepath.ToSlash(registryPath), ContainerCargoRegistryCache)
-	CargoGitCacheVolume      = fmt.Sprintf("%s:%s", filepath.ToSlash(gitPath), ContainerCargoGitCache)
-	BinPathVolume            = fmt.Sprintf("%s:%s", filepath.ToSlash(binPath), ContainerBinPath)
-	//Volumes                  = []string{SourceCodeVolume, CargoRegistryCacheVolume, CargoGitCacheVolume, BinPathVolume}
-	Volumes  = []string{SourceCodeVolume, BinPathVolume}
 	PATH_ENV = ContainerBinPath + ":/root/cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/osxcross/bin:/usr/bin/mingw-w64"
 )
+
+// GetVolumes returns Docker volume mounts computed from current configs paths.
+// Called at build time (not init time) so that UpdateSourceCodeRoot takes effect.
+func GetVolumes() []string {
+	sp, _ := filepath.Abs(configs.SourceCodePath)
+	bp, _ := filepath.Abs(configs.BinPath)
+	return []string{
+		fmt.Sprintf("%s:%s", filepath.ToSlash(sp), ContainerSourceCodePath),
+		fmt.Sprintf("%s:%s", filepath.ToSlash(bp), ContainerBinPath),
+	}
+}
 
 var dockerClient *client.Client
 var once sync.Once
