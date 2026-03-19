@@ -61,11 +61,15 @@ func NewDBClient(dbConfig *configs.DatabaseConfig) *gorm.DB {
 		dbClient.DisableForeignKeyConstraintWhenMigrating = true
 		if err := dbClient.AutoMigrate(allModels...); err != nil {
 			logs.Log.Warnf("Failed to create tables: %v", err)
+		} else {
+			logs.Log.Infof("database schema check completed (%s)", dbConfig.Dialect)
 		}
 		addPostgresForeignKeys(dbClient)
 	} else {
 		if err := dbClient.AutoMigrate(allModels...); err != nil {
 			logs.Log.Warnf("Failed to auto-migrate database: %v", err)
+		} else {
+			logs.Log.Infof("database schema check completed (%s)", dbConfig.Dialect)
 		}
 	}
 
