@@ -4,8 +4,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
 )
 
@@ -24,19 +27,7 @@ const (
 	DefaultHistory   = 20
 )
 
-// AIConfigCmd handles the config ai command
-func AIConfigCmd(cmd *cobra.Command, con *core.Console) error {
-	showConfig, _ := cmd.Flags().GetBool("show")
-	enableAI, _ := cmd.Flags().GetBool("enable")
-	disableAI, _ := cmd.Flags().GetBool("disable")
-
-	// Load current settings
-	settings, err := assets.LoadSettings()
-	if err != nil {
-		return fmt.Errorf("failed to load settings: %w", err)
-	}
-
-	// Initialize AI settings if nil
+func initAISettings(settings *assets.Settings) {
 	if settings.AI == nil {
 		settings.AI = &assets.AISettings{
 			Enable:      false,
@@ -48,30 +39,28 @@ func AIConfigCmd(cmd *cobra.Command, con *core.Console) error {
 			HistorySize: DefaultHistory,
 		}
 	}
+}
 
-	// Show current config
-	if showConfig {
-		printAIConfig(settings.AI)
-		return nil
+// AIShowCmd displays the current AI configuration as a KV table.
+func AIShowCmd(con *core.Console) error {
+	settings, err := assets.LoadSettings()
+	if err != nil {
+		return fmt.Errorf("failed to load settings: %w", err)
 	}
+	initAISettings(settings)
+	printAIStatus(con, settings.AI)
+	return nil
+}
 
-	// If no flags provided, show help
-	if !enableAI && !disableAI && !cmd.Flags().Changed("provider") &&
-		!cmd.Flags().Changed("api-key") && !cmd.Flags().Changed("endpoint") &&
-		!cmd.Flags().Changed("model") && !cmd.Flags().Changed("max-tokens") &&
-		!cmd.Flags().Changed("timeout") && !cmd.Flags().Changed("history-size") {
-		printAIConfig(settings.AI)
-		fmt.Println("\nUse --help to see available options")
-		return nil
+// AIEnableCmd enables AI and updates configuration flags.
+func AIEnableCmd(cmd *cobra.Command, con *core.Console) error {
+	settings, err := assets.LoadSettings()
+	if err != nil {
+		return fmt.Errorf("failed to load settings: %w", err)
 	}
+	initAISettings(settings)
 
-	// Update settings based on flags
-	if enableAI {
-		settings.AI.Enable = true
-	}
-	if disableAI {
-		settings.AI.Enable = false
-	}
+	settings.AI.Enable = true
 
 	if provider, _ := cmd.Flags().GetString("provider"); provider != "" {
 		provider = strings.ToLower(provider)
@@ -122,53 +111,68 @@ func AIConfigCmd(cmd *cobra.Command, con *core.Console) error {
 		settings.AI.OpsecCheck = opsecCheck
 	}
 
-	// Validate configuration if enabling
-	if settings.AI.Enable && settings.AI.APIKey == "" {
-		fmt.Println("Warning: AI is enabled but API key is not set. Use --api-key to set it.")
+	if settings.AI.APIKey == "" {
+		logs.Log.Warnf("AI is enabled but API key is not set. Use 'config ai enable --api-key <key>' to set it.\n")
 	}
 
-	// Save settings
 	if err := assets.SaveSettings(settings); err != nil {
 		return fmt.Errorf("failed to save settings: %w", err)
 	}
 
-	fmt.Println("AI configuration updated successfully")
-	printAIConfig(settings.AI)
-
+	logs.Log.Importantf("AI assistant enabled\n")
+	printAIStatus(con, settings.AI)
 	return nil
 }
 
-func boolToYesNo(b bool) string {
-	if b {
-		return "Yes"
+// AIDisableCmd disables the AI assistant.
+func AIDisableCmd(con *core.Console) error {
+	settings, err := assets.LoadSettings()
+	if err != nil {
+		return fmt.Errorf("failed to load settings: %w", err)
 	}
-	return "No"
+	initAISettings(settings)
+
+	settings.AI.Enable = false
+	if err := assets.SaveSettings(settings); err != nil {
+		return fmt.Errorf("failed to save settings: %w", err)
+	}
+
+	logs.Log.Importantf("AI assistant disabled\n")
+	return nil
 }
 
-func printAIConfig(ai *assets.AISettings) {
-	fmt.Println("\nAI Configuration:")
-	fmt.Println("─────────────────────────────────────")
-
-	fmt.Printf("  Enabled:      %s\n", boolToYesNo(ai.Enable))
-	fmt.Printf("  Provider:     %s\n", ai.Provider)
-	fmt.Printf("  Endpoint:     %s\n", ai.Endpoint)
-	fmt.Printf("  Model:        %s\n", ai.Model)
-
-	// Mask API key
-	apiKeyDisplay := "(not set)"
-	if ai.APIKey != "" {
-		if len(ai.APIKey) > 8 {
-			apiKeyDisplay = ai.APIKey[:4] + "..." + ai.APIKey[len(ai.APIKey)-4:]
-		} else {
-			apiKeyDisplay = "****"
-		}
+func maskAPIKey(key string) string {
+	if key == "" {
+		return "(not set)"
 	}
-	fmt.Printf("  API Key:      %s\n", apiKeyDisplay)
+	if len(key) > 8 {
+		return key[:4] + "..." + key[len(key)-4:]
+	}
+	return "****"
+}
 
-	fmt.Printf("  Max Tokens:   %d\n", ai.MaxTokens)
-	fmt.Printf("  Timeout:      %ds\n", ai.Timeout)
-	fmt.Printf("  History Size: %d lines\n", ai.HistorySize)
+func printAIStatus(con *core.Console, ai *assets.AISettings) {
+	enabled := tui.RedFg.Render("No")
+	if ai.Enable {
+		enabled = tui.GreenFg.Render("Yes")
+	}
 
-	fmt.Printf("  OPSEC Check:  %s\n", boolToYesNo(ai.OpsecCheck))
-	fmt.Println()
+	opsec := tui.RedFg.Render("No")
+	if ai.OpsecCheck {
+		opsec = tui.GreenFg.Render("Yes")
+	}
+
+	values := map[string]string{
+		"Enabled":      enabled,
+		"Provider":     ai.Provider,
+		"Endpoint":     ai.Endpoint,
+		"Model":        ai.Model,
+		"API Key":      maskAPIKey(ai.APIKey),
+		"Max Tokens":   fmt.Sprintf("%d", ai.MaxTokens),
+		"Timeout":      fmt.Sprintf("%ds", ai.Timeout),
+		"History Size": fmt.Sprintf("%d lines", ai.HistorySize),
+		"OPSEC Check":  opsec,
+	}
+	keys := []string{"Enabled", "Provider", "Endpoint", "Model", "API Key", "Max Tokens", "Timeout", "History Size", "OPSEC Check"}
+	con.Log.Console(common.NewKVTable("AI", keys, values).View() + "\n")
 }

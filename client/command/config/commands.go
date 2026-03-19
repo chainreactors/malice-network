@@ -13,9 +13,9 @@ import (
 func Commands(con *core.Console) []*cobra.Command {
 	configCmd := &cobra.Command{
 		Use:   consts.CommandConfig,
-		Short: "Config operations",
+		Short: "Show configuration summary",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return cmd.Help()
+			return ConfigSummaryCmd(con)
 		},
 	}
 	configRefreshCmd := &cobra.Command{
@@ -72,7 +72,8 @@ func Commands(con *core.Console) []*cobra.Command {
 	// Enable wizard for config commands that need configuration
 	common.EnableWizardForCommands(githubUpdateCmd, notifyUpdateCmd)
 
-	configCmd.AddCommand(configRefreshCmd, githubCmd, notifyCmd, ai.AIConfigCommand(con))
+	configCmd.AddCommand(configRefreshCmd, githubCmd, notifyCmd, ai.AIConfigCommand(con),
+		MCPConfigCommand(con), LocalRPCConfigCommand(con))
 	return []*cobra.Command{configCmd}
 }
 

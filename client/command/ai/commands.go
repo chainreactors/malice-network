@@ -78,40 +78,58 @@ analyze "getsystem failed: UAC is enabled"
 func AIConfigCommand(con *core.Console) *cobra.Command {
 	aiCmd := &cobra.Command{
 		Use:   "ai",
-		Short: "Show and update AI assistant configuration",
+		Short: "Show AI assistant configuration",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return AIConfigCmd(cmd, con)
+			return AIShowCmd(con)
 		},
 		Annotations: map[string]string{
 			"static": "true",
 		},
 		Example: `~~~
+// Show current AI configuration
+config ai
+
 // Enable AI with OpenAI
-config ai --enable --provider openai --api-key "sk-xxx" --model gpt-4
+config ai enable --provider openai --api-key "sk-xxx" --model gpt-4
 
 // Enable AI with Claude
-config ai --enable --provider claude --api-key "sk-ant-xxx" --model claude-3-opus-20240229
-
-// Show current configuration
-config ai --show
+config ai enable --provider claude --api-key "sk-ant-xxx" --model claude-3-opus-20240229
 
 // Disable AI
-config ai --disable
+config ai disable
 ~~~`,
 	}
 
-	aiCmd.Flags().Bool("enable", false, "Enable AI assistant")
-	aiCmd.Flags().Bool("disable", false, "Disable AI assistant")
-	aiCmd.Flags().Bool("show", false, "Show current AI configuration")
-	aiCmd.Flags().String("provider", "", "AI provider: openai or claude")
-	aiCmd.Flags().String("api-key", "", "API key for the AI provider")
-	aiCmd.Flags().String("endpoint", "", "API endpoint URL")
-	aiCmd.Flags().String("model", "", "Model name (e.g., gpt-4, claude-3-opus-20240229)")
-	aiCmd.Flags().Int("max-tokens", 0, "Maximum tokens in response")
-	aiCmd.Flags().Int("timeout", 0, "Request timeout in seconds")
-	aiCmd.Flags().Int("history-size", 0, "Number of history lines to include as context")
-	aiCmd.Flags().Bool("opsec-check", false, "Enable AI OPSEC risk assessment for high-risk commands")
+	enableCmd := &cobra.Command{
+		Use:   "enable",
+		Short: "Enable AI assistant",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return AIEnableCmd(cmd, con)
+		},
+		Annotations: map[string]string{
+			"static": "true",
+		},
+	}
+	enableCmd.Flags().String("provider", "", "AI provider: openai or claude")
+	enableCmd.Flags().String("api-key", "", "API key for the AI provider")
+	enableCmd.Flags().String("endpoint", "", "API endpoint URL")
+	enableCmd.Flags().String("model", "", "Model name (e.g., gpt-4, claude-3-opus-20240229)")
+	enableCmd.Flags().Int("max-tokens", 0, "Maximum tokens in response")
+	enableCmd.Flags().Int("timeout", 0, "Request timeout in seconds")
+	enableCmd.Flags().Int("history-size", 0, "Number of history lines to include as context")
+	enableCmd.Flags().Bool("opsec-check", false, "Enable AI OPSEC risk assessment for high-risk commands")
 
+	disableCmd := &cobra.Command{
+		Use:   "disable",
+		Short: "Disable AI assistant",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return AIDisableCmd(con)
+		},
+		Annotations: map[string]string{
+			"static": "true",
+		},
+	}
+
+	aiCmd.AddCommand(enableCmd, disableCmd)
 	return aiCmd
 }
-

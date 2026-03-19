@@ -127,7 +127,7 @@ license
 ~~~`,
 	}
 
-	return []*cobra.Command{loginCmd, versionCmd, exitCmd, broadcastCmd, cmdCmd, pivotCmd, licenseInfoCmd}
+	return []*cobra.Command{loginCmd, versionCmd, exitCmd, broadcastCmd, cmdCmd, pivotCmd, licenseInfoCmd, StatusCommand(con)}
 }
 
 func Log(con *core.Console, sess *client.Session, msg string, notify bool) (bool, error) {
