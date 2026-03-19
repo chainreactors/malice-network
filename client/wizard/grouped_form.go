@@ -39,7 +39,7 @@ type FormTheme struct {
 	Error               lipgloss.Style
 	Help                lipgloss.Style
 	FocusedTitle        lipgloss.Style
-	NormalTitle         lipgloss.Style
+	NormalTitle          lipgloss.Style
 	Description         lipgloss.Style
 	SelectedOption      lipgloss.Style
 	UnselectedOption    lipgloss.Style
@@ -47,6 +47,8 @@ type FormTheme struct {
 	MultiSelectChecked  lipgloss.Style
 	InputFocused        lipgloss.Style
 	InputBlurred        lipgloss.Style
+	GroupHeader         lipgloss.Style
+	GroupHeaderDim      lipgloss.Style
 }
 
 // DefaultFormTheme returns the default theme for grouped wizard forms
@@ -79,6 +81,8 @@ func DefaultFormTheme() *FormTheme {
 		MultiSelectChecked: lipgloss.NewStyle().Foreground(lipgloss.Color("42")).Padding(0, 1),
 		InputFocused:       lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("212")).Padding(0, 1),
 		InputBlurred:       lipgloss.NewStyle().Foreground(lipgloss.Color("250")).Padding(0, 1),
+		GroupHeader:        lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("212")),
+		GroupHeaderDim:     lipgloss.NewStyle().Foreground(lipgloss.Color("245")),
 	}
 }
 
@@ -87,6 +91,7 @@ var defaultFormTheme = DefaultFormTheme()
 
 // defaultTerminalWidth is the fallback width when terminal size cannot be determined
 const defaultTerminalWidth = 80
+const defaultTerminalHeight = 40
 
 // getTerminalWidth returns the current terminal width or a default value
 func getTerminalWidth() int {
@@ -95,6 +100,15 @@ func getTerminalWidth() int {
 		return defaultTerminalWidth
 	}
 	return width
+}
+
+// getTerminalHeight returns the current terminal height or a default value
+func getTerminalHeight() int {
+	_, height, err := term.GetSize(int(os.Stdout.Fd()))
+	if err != nil || height <= 0 {
+		return defaultTerminalHeight
+	}
+	return height
 }
 
 // FormField represents a field that can be displayed in the form
@@ -113,25 +127,27 @@ type FormField struct {
 	Value       interface{} // Pointer to store result
 }
 
-// GroupedWizardForm is a wizard form with Tab navigation for groups
+// GroupedWizardForm is a single-page wizard form with all groups visible
 type GroupedWizardForm struct {
 	groups     []*FormGroup
 	groupIndex int // Current group being edited
 
 	// Current field within group
-	fieldIndex int
-	cursor     int // Cursor within field options
+	fieldIndex  int
+	cursor      int  // Cursor within field options
+	onSubmitBtn bool // True when focus is on the Submit button at the bottom
 
 	inputMode   bool
 	inputBuf    string
 	inputCurPos int
 
-	width     int
-	height    int
-	theme     *huh.Theme
-	formTheme *FormTheme
-	quitting  bool
-	aborted   bool
+	scrollOffset int // Viewport scroll offset (in lines)
+	width        int
+	height       int
+	theme        *huh.Theme
+	formTheme    *FormTheme
+	quitting     bool
+	aborted      bool
 
 	errMsg string
 }
@@ -154,6 +170,7 @@ func NewGroupedWizardForm(groups []*FormGroup) *GroupedWizardForm {
 		fieldIndex: 0,
 		cursor:     0,
 		width:      getTerminalWidth(),
+		height:     getTerminalHeight(),
 		theme:      huh.ThemeCharm(),
 		formTheme:  defaultFormTheme,
 	}
@@ -186,6 +203,11 @@ func (f *GroupedWizardForm) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return f.handleInputMode(msg)
 		}
 
+		// Handle submit button focus
+		if f.onSubmitBtn {
+			return f.handleSubmitBtn(msg)
+		}
+
 		key := msg.String()
 
 		// Check if current group is a collapsed optional group
@@ -200,6 +222,7 @@ func (f *GroupedWizardForm) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				f.saveCurrentField()
 				f.groupIndex = groupNum
 				f.fieldIndex = 0
+				f.onSubmitBtn = false
 				f.initCursorForField()
 				return f, nil
 			}
@@ -212,29 +235,23 @@ func (f *GroupedWizardForm) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return f, tea.Quit
 
 		case "tab":
-			// Next group
+			// Next group (quick jump)
 			f.errMsg = ""
 			f.saveCurrentField()
 			f.nextGroup()
 
 		case "shift+tab":
-			// Previous group
+			// Previous group (quick jump)
 			f.errMsg = ""
 			f.saveCurrentField()
 			f.prevGroup()
 
 		case "up", "k":
-			if isCollapsedOptional {
-				break // No field navigation in collapsed group
-			}
 			f.errMsg = ""
 			f.saveCurrentField()
 			f.prevField()
 
 		case "down", "j":
-			if isCollapsedOptional {
-				break // No field navigation in collapsed group
-			}
 			f.errMsg = ""
 			f.saveCurrentField()
 			f.nextField()
@@ -289,14 +306,10 @@ func (f *GroupedWizardForm) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if field == nil {
 				return f.trySubmit()
 			}
-			if field.Kind == KindInput || field.Kind == KindNumber {
-				f.errMsg = ""
-				f.inputMode = true
-				f.inputBuf = field.InputValue
-				f.inputCurPos = len(f.inputBuf)
-			} else {
-				return f.trySubmit()
-			}
+			// Select/Confirm/MultiSelect: advance to next field
+			f.errMsg = ""
+			f.saveCurrentField()
+			f.nextField()
 
 		case "c":
 			// Collapse current optional group if expanded
@@ -358,47 +371,34 @@ func (f *GroupedWizardForm) handleInputMode(msg tea.KeyMsg) (tea.Model, tea.Cmd)
 		f.inputBuf = ""
 		f.errMsg = ""
 
-	case "enter":
-		field := f.currentField()
-		if field == nil {
-			f.inputMode = false
+	case "enter", "down", "j":
+		if !f.commitInput() {
 			return f, nil
 		}
-		candidate := f.inputBuf
-		old := field.InputValue
-		field.InputValue = candidate
-		if err := f.validateField(field); err != nil {
-			field.InputValue = old
-			f.errMsg = err.Error()
+		f.nextField()
+
+	case "up", "k":
+		if !f.commitInput() {
 			return f, nil
 		}
-		f.saveCurrentField()
-		f.inputMode = false
-		f.inputBuf = ""
-		f.errMsg = ""
-		// Move to next field
-		if f.fieldIndex < len(f.currentGroup().Fields)-1 {
-			f.nextField()
+		f.prevField()
+
+	case "tab":
+		if !f.commitInput() {
+			return f, nil
 		}
+		f.nextGroup()
+
+	case "shift+tab":
+		if !f.commitInput() {
+			return f, nil
+		}
+		f.prevGroup()
 
 	case "ctrl+d":
-		field := f.currentField()
-		if field == nil {
-			f.inputMode = false
-			return f.trySubmit()
-		}
-		candidate := f.inputBuf
-		old := field.InputValue
-		field.InputValue = candidate
-		if err := f.validateField(field); err != nil {
-			field.InputValue = old
-			f.errMsg = err.Error()
+		if !f.commitInput() {
 			return f, nil
 		}
-		f.saveCurrentField()
-		f.inputMode = false
-		f.inputBuf = ""
-		f.errMsg = ""
 		return f.trySubmit()
 
 	case "backspace":
@@ -419,16 +419,97 @@ func (f *GroupedWizardForm) handleInputMode(msg tea.KeyMsg) (tea.Model, tea.Cmd)
 	return f, nil
 }
 
-// View implements tea.Model
+// commitInput validates and saves the current input buffer, exits input mode.
+// Returns true on success, false on validation error (stays in input mode).
+func (f *GroupedWizardForm) commitInput() bool {
+	field := f.currentField()
+	if field == nil {
+		f.inputMode = false
+		return true
+	}
+	candidate := f.inputBuf
+	old := field.InputValue
+	field.InputValue = candidate
+	if err := f.validateField(field); err != nil {
+		field.InputValue = old
+		f.errMsg = err.Error()
+		return false
+	}
+	f.saveCurrentField()
+	f.inputMode = false
+	f.inputBuf = ""
+	f.errMsg = ""
+	return true
+}
+
+// handleSubmitBtn handles key events when focus is on the Submit button
+func (f *GroupedWizardForm) handleSubmitBtn(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "ctrl+c", "esc":
+		f.aborted = true
+		f.quitting = true
+		return f, tea.Quit
+	case "enter", " ", "ctrl+d":
+		return f.trySubmit()
+	case "up", "k":
+		f.errMsg = ""
+		f.onSubmitBtn = false
+		// Go back to last visible field
+		f.goToLastField()
+	case "tab":
+		f.errMsg = ""
+		f.onSubmitBtn = false
+		f.groupIndex = 0
+		f.fieldIndex = 0
+		f.initCursorForField()
+	case "shift+tab":
+		f.errMsg = ""
+		f.onSubmitBtn = false
+		f.goToLastField()
+	default:
+		// Number keys for group jump
+		key := msg.String()
+		if len(key) == 1 && key[0] >= '1' && key[0] <= '9' {
+			groupNum := int(key[0] - '1')
+			if groupNum < len(f.groups) {
+				f.errMsg = ""
+				f.onSubmitBtn = false
+				f.groupIndex = groupNum
+				f.fieldIndex = 0
+				f.initCursorForField()
+			}
+		}
+	}
+	return f, nil
+}
+
+// goToLastField moves focus to the last visible field or collapsed group
+func (f *GroupedWizardForm) goToLastField() {
+	for gi := len(f.groups) - 1; gi >= 0; gi-- {
+		group := f.groups[gi]
+		if group.Optional && !group.Expanded {
+			f.groupIndex = gi
+			f.fieldIndex = 0
+			f.initCursorForField()
+			return
+		}
+		if len(group.Fields) > 0 {
+			f.groupIndex = gi
+			f.fieldIndex = len(group.Fields) - 1
+			f.initCursorForField()
+			return
+		}
+	}
+}
+
+// View implements tea.Model - renders all groups on a single page
 func (f *GroupedWizardForm) View() string {
 	var sb strings.Builder
 
-	// Tab bar - show required groups first, then optional groups
+	// Status bar - compact group indicators
 	var tabs []string
 	for i, group := range f.groups {
 		label := fmt.Sprintf("%d.%s", i+1, group.Title)
-
-		// Add indicator for optional groups
 		if group.Optional {
 			if group.Expanded {
 				label = fmt.Sprintf("%d.▼ %s", i+1, group.Title)
@@ -441,7 +522,6 @@ func (f *GroupedWizardForm) View() string {
 		case i == f.groupIndex:
 			tabs = append(tabs, f.formTheme.TabActive.Render(label))
 		case group.Optional && !group.Expanded:
-			// Collapsed optional groups are "skipped": show them dimmed instead of as completed.
 			tabs = append(tabs, f.formTheme.Help.Render(label))
 		case f.isGroupComplete(i):
 			tabs = append(tabs, f.formTheme.TabCompleted.Render("✓ "+label))
@@ -451,28 +531,61 @@ func (f *GroupedWizardForm) View() string {
 	}
 	sb.WriteString(strings.Join(tabs, " "))
 	sb.WriteString("\n")
-
-	// Separator
 	sb.WriteString(f.formTheme.Separator.Render(strings.Repeat("─", minInt(f.width, 70))))
-	sb.WriteString("\n\n")
+	sb.WriteString("\n")
 
-	// Render current group
-	group := f.currentGroup()
-	if group == nil || len(group.Fields) == 0 {
-		sb.WriteString("(No fields in this group)\n")
-	} else if group.Optional && !group.Expanded {
-		// Collapsed optional group - show toggle prompt
-		sb.WriteString(f.formTheme.Description.Render(fmt.Sprintf("  %s (Optional)", group.Title)))
-		sb.WriteString("\n\n")
-		sb.WriteString(f.formTheme.Help.Render("  Press Enter or Space to expand, or Tab to skip"))
-		sb.WriteString("\n")
-	} else {
-		// Show all fields in current group
-		for i, field := range group.Fields {
-			sb.WriteString(f.renderField(field, i == f.fieldIndex))
+	// Render ALL groups
+	focusLineStart := 0
+	lineCount := 0
+
+	for gi, group := range f.groups {
+		isCurrent := gi == f.groupIndex
+
+		if group.Optional && !group.Expanded {
+			// Collapsed optional group - single line
+			if isCurrent {
+				focusLineStart = lineCount
+				sb.WriteString(f.formTheme.GroupHeader.Render(fmt.Sprintf("> ▶ %s (Optional)", group.Title)))
+				sb.WriteString(f.formTheme.Description.Render("  Enter to expand"))
+			} else {
+				sb.WriteString(f.formTheme.GroupHeaderDim.Render(fmt.Sprintf("  ▶ %s (Optional)", group.Title)))
+			}
 			sb.WriteString("\n")
+			lineCount++
+		} else {
+			// Group section header
+			headerStyle := f.formTheme.GroupHeaderDim
+			if isCurrent {
+				headerStyle = f.formTheme.GroupHeader
+			}
+			sb.WriteString(headerStyle.Render(fmt.Sprintf("━━ %s ━━", group.Title)))
+			sb.WriteString("\n")
+			lineCount++
+
+			// Render all fields in this group
+			for fi, field := range group.Fields {
+				isFocused := isCurrent && fi == f.fieldIndex
+				if isFocused {
+					focusLineStart = lineCount
+				}
+				rendered := f.renderField(field, isFocused)
+				sb.WriteString(rendered)
+				sb.WriteString("\n")
+				lineCount += strings.Count(rendered, "\n") + 1
+			}
 		}
 	}
+
+	// Submit button
+	sb.WriteString("\n")
+	if f.onSubmitBtn {
+		focusLineStart = lineCount
+		sb.WriteString(f.formTheme.SelectedOption.Render("  [ Submit ]"))
+	} else {
+		sb.WriteString(f.formTheme.UnselectedOption.Render("  [ Submit ]"))
+	}
+	sb.WriteString("\n")
+	lineCount++
 
 	// Error message
 	if strings.TrimSpace(f.errMsg) != "" {
@@ -484,7 +597,50 @@ func (f *GroupedWizardForm) View() string {
 	sb.WriteString("\n")
 	sb.WriteString(f.renderHelp())
 
-	return sb.String()
+	// Apply viewport scrolling
+	return f.applyScroll(sb.String(), focusLineStart)
+}
+
+// applyScroll applies viewport scrolling to keep the focused line visible
+func (f *GroupedWizardForm) applyScroll(content string, focusLine int) string {
+	lines := strings.Split(content, "\n")
+	totalLines := len(lines)
+
+	// Reserve lines for status bar (2) + help (2) + error (2)
+	visibleHeight := f.height - 2
+	if visibleHeight <= 0 || totalLines <= visibleHeight {
+		return content
+	}
+
+	// Ensure focused line is visible with some padding
+	padding := 3
+	if focusLine < f.scrollOffset+padding {
+		f.scrollOffset = maxInt(0, focusLine-padding)
+	}
+	if focusLine >= f.scrollOffset+visibleHeight-padding {
+		f.scrollOffset = minInt(totalLines-visibleHeight, focusLine-visibleHeight+padding+1)
+	}
+
+	// Clamp
+	if f.scrollOffset < 0 {
+		f.scrollOffset = 0
+	}
+	if f.scrollOffset+visibleHeight > totalLines {
+		f.scrollOffset = maxInt(0, totalLines-visibleHeight)
+	}
+
+	end := minInt(f.scrollOffset+visibleHeight, totalLines)
+	visible := lines[f.scrollOffset:end]
+
+	// Add scroll indicator if not showing everything
+	if f.scrollOffset > 0 {
+		visible[0] = f.formTheme.Help.Render("▲ scroll up")
+	}
+	if end < totalLines {
+		visible[len(visible)-1] = f.formTheme.Help.Render("▼ scroll down")
+	}
+
+	return strings.Join(visible, "\n")
 }
 
 // renderField renders a single field with all its options visible
@@ -585,60 +741,44 @@ func (f *GroupedWizardForm) renderInputField(field *FormField, isFocused bool) s
 		display = "(empty)"
 	}
 	if isFocused {
-		return f.formTheme.InputFocused.Render("["+display+"]") + f.formTheme.Description.Render("  Enter to edit")
+		return f.formTheme.InputFocused.Render("[" + display + "]")
 	}
 	return f.formTheme.InputBlurred.Render("[" + display + "]")
 }
 
 func (f *GroupedWizardForm) renderHelp() string {
+	if f.onSubmitBtn {
+		return f.formTheme.Help.Render("Enter: submit  ↑: go back  1-9: jump group  Esc: cancel")
+	}
+
 	group := f.currentGroup()
 
 	// Check if current group is a collapsed optional group
 	if group != nil && group.Optional && !group.Expanded {
-		return f.formTheme.Help.Render("Enter/Space: expand  Tab: skip group  1-9: jump  Ctrl+D: submit")
-	}
-
-	// Check if current group is an expanded optional group
-	if group != nil && group.Optional && group.Expanded {
-		field := f.currentField()
-		baseHelp := "↑/↓: field  c: collapse  Tab: group  "
-		if field == nil {
-			return f.formTheme.Help.Render(baseHelp + "Ctrl+D: submit")
-		}
-		switch field.Kind {
-		case KindMultiSelect:
-			return f.formTheme.Help.Render(baseHelp + "Space: toggle  a: all  Ctrl+D: submit")
-		case KindConfirm:
-			return f.formTheme.Help.Render(baseHelp + "←/→: toggle  Ctrl+D: submit")
-		case KindInput, KindNumber:
-			if f.inputMode {
-				return f.formTheme.Help.Render("Enter: save  Esc: cancel  Ctrl+D: save & submit")
-			}
-			return f.formTheme.Help.Render(baseHelp + "Enter: edit  Ctrl+D: submit")
-		default:
-			return f.formTheme.Help.Render(baseHelp + "←/→: select  Ctrl+D: submit")
-		}
+		return f.formTheme.Help.Render("Enter/Space: expand  ↑/↓: navigate  Tab: jump group  Ctrl+D: submit")
 	}
 
 	field := f.currentField()
 	if field == nil {
-		return f.formTheme.Help.Render("Tab: next group  Shift+Tab: prev group  1-9: jump to group  Ctrl+D: submit")
+		return f.formTheme.Help.Render("↑/↓: navigate  Tab: jump group  1-9: jump  Ctrl+D: submit")
 	}
 
-	baseHelp := "↑/↓: field  Tab/Shift+Tab: group  1-9: jump  "
+	baseHelp := "↑/↓: field  Tab: jump group  "
+
+	// Check if current group is an expanded optional group
+	if group != nil && group.Optional && group.Expanded {
+		baseHelp = "↑/↓: field  c: collapse  Tab: jump group  "
+	}
 
 	switch field.Kind {
 	case KindMultiSelect:
-		return f.formTheme.Help.Render(baseHelp + "←/→: move  Space: toggle  a: all  n: none  Ctrl+D: submit")
+		return f.formTheme.Help.Render(baseHelp + "Space: toggle  a: all  n: none  Ctrl+D: submit")
 	case KindConfirm:
-		return f.formTheme.Help.Render(baseHelp + "←/→: toggle  y: Yes  n: No  Ctrl+D: submit")
+		return f.formTheme.Help.Render(baseHelp + "←/→: toggle  y/n  Enter: next  Ctrl+D: submit")
 	case KindInput, KindNumber:
-		if f.inputMode {
-			return f.formTheme.Help.Render("Enter: save  Esc: cancel  Ctrl+D: save & submit")
-		}
-		return f.formTheme.Help.Render(baseHelp + "Enter: edit  Ctrl+D: submit")
+		return f.formTheme.Help.Render("Type to edit  Enter/↑/↓: save & move  Esc: discard  Ctrl+D: submit")
 	default:
-		return f.formTheme.Help.Render(baseHelp + "←/→: select  Ctrl+D: submit")
+		return f.formTheme.Help.Render(baseHelp + "←/→: select  Enter: next  Ctrl+D: submit")
 	}
 }
 
@@ -663,6 +803,7 @@ func (f *GroupedWizardForm) currentField() *FormField {
 }
 
 func (f *GroupedWizardForm) nextGroup() {
+	f.onSubmitBtn = false
 	f.groupIndex++
 	if f.groupIndex >= len(f.groups) {
 		f.groupIndex = 0
@@ -672,6 +813,7 @@ func (f *GroupedWizardForm) nextGroup() {
 }
 
 func (f *GroupedWizardForm) prevGroup() {
+	f.onSubmitBtn = false
 	f.groupIndex--
 	if f.groupIndex < 0 {
 		f.groupIndex = len(f.groups) - 1
@@ -680,46 +822,121 @@ func (f *GroupedWizardForm) prevGroup() {
 	f.initCursorForField()
 }
 
+// nextField moves to the next field, crossing group boundaries
 func (f *GroupedWizardForm) nextField() {
 	group := f.currentGroup()
 	if group == nil {
 		return
 	}
-	f.fieldIndex++
-	if f.fieldIndex >= len(group.Fields) {
-		f.fieldIndex = 0
+
+	// Collapsed optional group - move to next group or submit button
+	if group.Optional && !group.Expanded {
+		if f.groupIndex < len(f.groups)-1 {
+			f.groupIndex++
+			f.fieldIndex = 0
+			f.initCursorForField()
+		} else {
+			f.onSubmitBtn = true
+		}
+		return
 	}
-	f.initCursorForField()
+
+	f.fieldIndex++
+	if f.fieldIndex < len(group.Fields) {
+		f.initCursorForField()
+		return
+	}
+
+	// Cross to next group or submit button
+	if f.groupIndex < len(f.groups)-1 {
+		f.groupIndex++
+		f.fieldIndex = 0
+		f.initCursorForField()
+	} else {
+		// Past the last field → focus submit button
+		f.fieldIndex = len(group.Fields) - 1
+		f.onSubmitBtn = true
+	}
 }
 
+// prevField moves to the previous field, crossing group boundaries
 func (f *GroupedWizardForm) prevField() {
+	// If on submit button, go back to last field
+	if f.onSubmitBtn {
+		f.onSubmitBtn = false
+		f.goToLastField()
+		return
+	}
+
 	group := f.currentGroup()
 	if group == nil {
 		return
 	}
-	f.fieldIndex--
-	if f.fieldIndex < 0 {
-		f.fieldIndex = len(group.Fields) - 1
+
+	// Collapsed optional group - move to previous group
+	if group.Optional && !group.Expanded {
+		if f.groupIndex > 0 {
+			f.groupIndex--
+			prevGroup := f.groups[f.groupIndex]
+			if prevGroup.Optional && !prevGroup.Expanded {
+				f.fieldIndex = 0
+			} else if len(prevGroup.Fields) > 0 {
+				f.fieldIndex = len(prevGroup.Fields) - 1
+			} else {
+				f.fieldIndex = 0
+			}
+			f.initCursorForField()
+		}
+		return
 	}
-	f.initCursorForField()
+
+	f.fieldIndex--
+	if f.fieldIndex >= 0 {
+		f.initCursorForField()
+		return
+	}
+
+	// Cross to previous group
+	if f.groupIndex > 0 {
+		f.groupIndex--
+		prevGroup := f.groups[f.groupIndex]
+		if prevGroup.Optional && !prevGroup.Expanded {
+			f.fieldIndex = 0
+		} else if len(prevGroup.Fields) > 0 {
+			f.fieldIndex = len(prevGroup.Fields) - 1
+		} else {
+			f.fieldIndex = 0
+		}
+		f.initCursorForField()
+	} else {
+		// Stay at first field of first group
+		f.fieldIndex = 0
+	}
 }
 
 func (f *GroupedWizardForm) initCursorForField() {
 	field := f.currentField()
 	if field == nil {
 		f.cursor = 0
+		f.inputMode = false
 		return
 	}
 	switch field.Kind {
 	case KindSelect:
 		f.cursor = field.Selected
+		f.inputMode = false
 	case KindConfirm:
 		if field.ConfirmVal {
 			f.cursor = 0
 		} else {
 			f.cursor = 1
 		}
-	default:
+		f.inputMode = false
+	case KindInput, KindNumber:
+		f.cursor = 0
+		f.inputMode = true
+		f.inputBuf = field.InputValue
+		f.inputCurPos = len(f.inputBuf)
 		f.cursor = 0
 	}
 }
@@ -913,7 +1130,6 @@ func (f *GroupedWizardForm) validateStringField(value string, field *FormField, 
 	return chainStringValidators(required, field.Validate)(value)
 }
 
-
 func (f *GroupedWizardForm) validateField(field *FormField) error {
 	if field == nil {
 		return nil
@@ -1036,6 +1252,13 @@ func chainStringValidators(validators ...func(string) error) func(string) error 
 
 func minInt(a, b int) int {
 	if a < b {
+		return a
+	}
+	return b
+}
+
+func maxInt(a, b int) int {
+	if a > b {
 		return a
 	}
 	return b

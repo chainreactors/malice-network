@@ -137,11 +137,6 @@ func RunQuickstart(opt *Options) error {
 					Kind: wizard.KindInput, InputValue: remName,
 					Value: &remName,
 				},
-				{
-					Name: "enable_tls", Title: "Enable TLS",
-					Kind: wizard.KindConfirm, ConfirmVal: enableTLS,
-					Value: &enableTLS,
-				},
 			},
 		},
 		{
