@@ -75,33 +75,36 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig, ser
 	for _, tcpPipeline := range cfg.TcpPipelines {
 		pipeline, err := tcpPipeline.ToProtobuf(lns.Name)
 		if err != nil {
-			return err
+			logs.Log.Errorf("[listener] failed to build tcp pipeline config: %v", err)
+			continue
 		}
 		err = lns.RegisterAndStart(pipeline)
 		if err != nil {
-			return err
+			logs.Log.Errorf("[listener] failed to start tcp pipeline %s: %v", tcpPipeline.Name, err)
 		}
 	}
 
 	for _, httpPipeline := range cfg.HttpPipelines {
 		pipeline, err := httpPipeline.ToProtobuf(lns.Name)
 		if err != nil {
-			return err
+			logs.Log.Errorf("[listener] failed to build http pipeline config: %v", err)
+			continue
 		}
 		err = lns.RegisterAndStart(pipeline)
 		if err != nil {
-			return err
+			logs.Log.Errorf("[listener] failed to start http pipeline %s: %v", httpPipeline.Name, err)
 		}
 	}
 
 	for _, bindPipeline := range cfg.BindPipelineConfig {
 		pipeline, err := bindPipeline.ToProtobuf(lns.Name)
 		if err != nil {
-			return err
+			logs.Log.Errorf("[listener] failed to build bind pipeline config: %v", err)
+			continue
 		}
 		err = lns.RegisterAndStart(pipeline)
 		if err != nil {
-			return err
+			logs.Log.Errorf("[listener] failed to start bind pipeline %s: %v", bindPipeline.Name, err)
 		}
 	}
 
@@ -111,12 +114,14 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig, ser
 		}
 		pipeline, err := rem.ToProtobuf(lns.Name)
 		if err != nil {
-			return err
+			logs.Log.Errorf("[listener] failed to build rem config %s: %v", rem.Name, err)
+			continue
 		}
 
 		_, err = lns.Rpc.RegisterRem(lns.Context(), pipeline)
 		if err != nil {
-			return err
+			logs.Log.Errorf("[listener] failed to register rem %s: %v", rem.Name, err)
+			continue
 		}
 
 		_, err = lns.Rpc.StartRem(lns.Context(), &clientpb.CtrlPipeline{
@@ -125,7 +130,7 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig, ser
 		})
 
 		if err != nil {
-			return err
+			logs.Log.Errorf("[listener] failed to start rem %s: %v", rem.Name, err)
 		}
 	}
 
@@ -135,7 +140,8 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig, ser
 		}
 		tls, err := newWebsite.TlsConfig.ReadCert()
 		if err != nil {
-			return err
+			logs.Log.Errorf("[listener] failed to read website cert %s: %v", newWebsite.WebsiteName, err)
+			continue
 		}
 
 		web := &clientpb.Website{
@@ -152,16 +158,23 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig, ser
 		}
 
 		contents := map[string]*clientpb.WebContent{}
+		contentFailed := false
 		for _, content := range newWebsite.WebContents {
 			contents[content.Path], err = content.ToProtobuf()
 			if err != nil {
-				return err
+				logs.Log.Errorf("[listener] failed to build website content %s: %v", content.Path, err)
+				contentFailed = true
+				break
 			}
+		}
+		if contentFailed {
+			continue
 		}
 		web.Contents = contents
 		_, err = lns.Rpc.RegisterWebsite(lns.Context(), pipe)
 		if err != nil {
-			return err
+			logs.Log.Errorf("[listener] failed to register website %s: %v", newWebsite.WebsiteName, err)
+			continue
 		}
 
 		if pipe.Tls.Enable && !pipe.Tls.Acme {
@@ -170,7 +183,8 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig, ser
 			_, err = lns.Rpc.GenerateAcmeCert(lns.Context(), pipe)
 		}
 		if err != nil {
-			return err
+			logs.Log.Errorf("[listener] failed to generate cert for website %s: %v", newWebsite.WebsiteName, err)
+			continue
 		}
 
 		_, err = lns.Rpc.StartWebsite(lns.Context(), &clientpb.CtrlPipeline{
@@ -179,7 +193,7 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig, ser
 			Pipeline:   pipe,
 		})
 		if err != nil {
-			return err
+			logs.Log.Errorf("[listener] failed to start website %s: %v", newWebsite.WebsiteName, err)
 		}
 	}
 
