@@ -2,12 +2,17 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/services/localrpc"
+	"github.com/chainreactors/malice-network/helper/intermediate"
+	"github.com/kballard/go-shellquote"
 	"google.golang.org/grpc"
 	"net"
 	"runtime/debug"
+	"strings"
 	"sync/atomic"
 	"time"
 )
@@ -161,6 +166,157 @@ func (s *LocalRPCServer) SearchCommands(ctx context.Context, req *localrpc.Searc
 		Error:    "",
 		Success:  true,
 	}, nil
+}
+
+// StreamCommand executes a command and continuously streams back task event output.
+// It is a general-purpose streaming RPC: any command that produces persistent EventTaskDone
+// events (tapping, poison, etc.) will have its rendered output streamed to the caller.
+//
+// Design:
+//  1. Register an EventHook BEFORE executing the command (no race window).
+//  2. Execute the command via cobra; read Session.LastTask for the task ID (no polling).
+//  3. EventHook filters events by task ID, renders via InternalFunctions, writes to channel.
+//  4. Main loop reads channel and streams to gRPC client.
+//  5. On context cancel: remove EventHook, return.
+func (s *LocalRPCServer) StreamCommand(req *localrpc.ExecuteCommandRequest, stream localrpc.CommandService_StreamCommandServer) error {
+	reqID := atomic.AddUint64(&localRPCRequestSeq, 1)
+	client.Log.Infof("LocalRPC[%d]: StreamCommand start (session=%s, command=%q)\n", reqID, req.SessionId, req.Command)
+
+	ch := make(chan string, 128)
+	ctx := stream.Context()
+
+	// taskID is written after command execution, read by the EventHook goroutine.
+	var taskID atomic.Uint32
+
+	// 1. Register EventHook BEFORE executing the command.
+	//    This ensures zero race window — events are captured from the moment the task is created.
+	//    The hook matches all task-done events; filtering by taskID happens inside.
+	hookCondition := client.EventCondition{
+		Type: consts.EventTask,
+		Op:   consts.CtrlTaskCallback,
+	}
+	hookFn := client.OnEventFunc(func(event *clientpb.Event) (bool, error) {
+		task := event.GetTask()
+		if task == nil {
+			return false, nil
+		}
+
+		// Filter: only forward events for our task on our session.
+		tid := taskID.Load()
+		if tid == 0 || task.TaskId != tid || task.SessionId != req.SessionId {
+			return false, nil
+		}
+
+		tctx := wrapToTaskContext(event)
+		fn, ok := intermediate.InternalFunctions[task.Type]
+		if !ok || fn.DoneCallback == nil {
+			return false, nil
+		}
+		formatted, err := fn.DoneCallback(tctx)
+		if err != nil || formatted == "" {
+			return false, nil
+		}
+
+		select {
+		case ch <- formatted:
+		default:
+			// Drop if consumer is slow — never block the event dispatch goroutine.
+		}
+		return false, nil
+	})
+	s.console.AddEventHook(hookCondition, hookFn)
+	defer s.console.removeEventHook(hookCondition, hookFn)
+
+	// 2. Execute the command; LastTask is returned from within the lock (no race).
+	syncOutput, lastTask, err := executeStreamCommand(s.console, req.Command, req.SessionId)
+	if err != nil {
+		client.Log.Errorf("LocalRPC[%d]: StreamCommand exec failed: %v\n", reqID, err)
+		return stream.Send(&localrpc.ExecuteCommandResponse{
+			Output:  syncOutput,
+			Error:   err.Error(),
+			Success: false,
+		})
+	}
+
+	if lastTask == nil {
+		client.Log.Debugf("LocalRPC[%d]: StreamCommand no task created, returning sync output\n", reqID)
+		return stream.Send(&localrpc.ExecuteCommandResponse{
+			Output:  syncOutput,
+			Success: true,
+		})
+	}
+	taskID.Store(lastTask.TaskId)
+	client.Log.Infof("LocalRPC[%d]: StreamCommand streaming task %d (session=%s)\n",
+		reqID, lastTask.TaskId, req.SessionId)
+
+	// 3. Send initial ACK with sync output.
+	if err := stream.Send(&localrpc.ExecuteCommandResponse{
+		Output:  syncOutput + "\n",
+		Success: true,
+	}); err != nil {
+		return err
+	}
+
+	// 4. Stream events until the client cancels.
+	for {
+		select {
+		case <-ctx.Done():
+			client.Log.Infof("LocalRPC[%d]: StreamCommand context cancelled\n", reqID)
+			return nil
+		case msg := <-ch:
+			if err := stream.Send(&localrpc.ExecuteCommandResponse{
+				Output:  msg + "\n",
+				Success: true,
+			}); err != nil {
+				return err
+			}
+		}
+	}
+}
+
+// executeStreamCommand runs a cobra command for StreamCommand.
+// It acquires commandExecMu only for the duration of command execution (no polling).
+// Returns the sync console output and the task created by the command (nil if none).
+func executeStreamCommand(con *Console, command, sessionID string) (string, *clientpb.Task, error) {
+	if command == "" {
+		return "", nil, fmt.Errorf("command is required")
+	}
+
+	commandExecMu.Lock()
+	defer commandExecMu.Unlock()
+
+	restore := con.WithNonInteractiveExecution(true)
+	defer restore()
+
+	if err := switchSessionWithCallee(con, sessionID, consts.CalleeRPC); err != nil {
+		return "", nil, err
+	}
+
+	// Clear LastTask so we can detect whether the command created a new one.
+	sess := con.GetInteractive()
+	if sess != nil {
+		sess.LastTask = nil
+	}
+
+	args, err := shellquote.Split(command)
+	if err != nil {
+		return "", nil, err
+	}
+	args = stripWaitFlag(args)
+
+	start := time.Now()
+	if err := con.App.Execute(con.Context(), con.App.ActiveMenu(), args, false); err != nil {
+		return "", nil, err
+	}
+
+	syncOutput := strings.TrimSpace(client.RemoveANSI(client.Stdout.Range(start, time.Now())))
+
+	// Capture LastTask while still holding the lock.
+	var task *clientpb.Task
+	if sess != nil {
+		task = sess.LastTask
+	}
+	return syncOutput, task, nil
 }
 
 // LocalRPC wraps the gRPC server instance
