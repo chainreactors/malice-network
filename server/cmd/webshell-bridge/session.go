@@ -19,7 +19,7 @@ type Session struct {
 	PipelineID string
 	ListenerID string
 
-	channel *Channel
+	channel ChannelIface
 }
 
 // NewSession reads the malefic handshake from the DLL (SysInfo + Modules)
@@ -28,7 +28,7 @@ func NewSession(
 	rpc listenerrpc.ListenerRPCClient,
 	ctx context.Context,
 	id, pipelineID, listenerID string,
-	channel *Channel,
+	channel ChannelIface,
 ) (*Session, error) {
 	// Read registration data from DLL via malefic handshake
 	reg, err := channel.Handshake()
@@ -52,7 +52,7 @@ func NewSession(
 		SessionId:    id,
 		PipelineId:   pipelineID,
 		ListenerId:   listenerID,
-		RawId:        channel.sessionID,
+		RawId:        channel.SessionID(),
 		RegisterData: reg,
 		Target:       fmt.Sprintf("webshell://%s", id),
 	})
@@ -60,7 +60,7 @@ func NewSession(
 		return nil, fmt.Errorf("register session: %w", err)
 	}
 
-	logs.Log.Importantf("session registered: %s (name=%s, modules=%d, sid=%d)", id, reg.Name, len(reg.Module), channel.sessionID)
+	logs.Log.Importantf("session registered: %s (name=%s, modules=%d, sid=%d)", id, reg.Name, len(reg.Module), channel.SessionID())
 	return sess, nil
 }
 
@@ -112,7 +112,5 @@ func (s *Session) Alive() bool {
 	if s.channel == nil {
 		return false
 	}
-	s.channel.closeMu.Lock()
-	defer s.channel.closeMu.Unlock()
-	return !s.channel.closed
+	return !s.channel.IsClosed()
 }

