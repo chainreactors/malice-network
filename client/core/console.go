@@ -395,13 +395,17 @@ func (c *Console) getStatusLine() string {
 		)
 	}
 
-	// Implant menu: name on hostname os/arch via pipeline age (group)
-	parts := make([]string, 0, 8)
+	// Implant menu: name on hostname os/arch via pipeline age (group) [alive/dead]
+	parts := make([]string, 0, 9)
 	hostname := ""
 	osInfo := ""
 	if session.Os != nil {
 		hostname = session.Os.Hostname
 		osInfo = session.Os.Name + "/" + session.Os.Arch
+	}
+	status := tui.GreenFg.Render("alive")
+	if !session.IsAlive {
+		status = tui.RedFg.Render("dead")
 	}
 	parts = append(parts,
 		tui.WhiteFg.Bold(true).Render(session.Name),
@@ -412,6 +416,7 @@ func (c *Console) getStatusLine() string {
 		tui.PurpleFg.Render(session.PipelineId),
 		tui.YellowFg.Render(formatCheckinAge(session.LastCheckin)),
 		tui.DarkGrayFg.Render("("+session.GroupName+")"),
+		status,
 	)
 	return strings.Join(parts, " ")
 }
