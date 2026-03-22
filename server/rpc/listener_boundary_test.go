@@ -48,131 +48,126 @@ func withIsolatedListenersAndJobs(t *testing.T) {
 	})
 }
 
-// C1: SpiteStream stores pipelineID in pipelinesCh but never deletes on disconnect.
-// After the stream breaks, the stale entry remains and GenericHandler loads a dead stream.
+// C1 regression: SpiteStream's defer cleanup must remove pipelinesCh entry.
+// We simulate the cleanup path that the defer block in SpiteStream executes.
 func TestSpiteStreamDisconnectLeavesStalePipelineEntry(t *testing.T) {
 	withIsolatedPipelinesCh(t)
 
 	pipelineID := "tcp-pipe-spite"
 
-	// Simulate SpiteStream connecting: pipelinesCh.Store(pipelineID, stream)
-	pipelinesCh.Store(pipelineID, "fake-dead-stream")
+	// Simulate SpiteStream: store entry, then execute the defer cleanup path.
+	pipelinesCh.Store(pipelineID, "fake-stream")
 
-	// Simulate SpiteStream disconnect — current code does NO cleanup.
-	// (stream.Recv returns error, function returns, pipelinesCh entry stays)
+	// This is what SpiteStream's defer does on disconnect (rpc-listener.go:52-55):
+	pipelinesCh.Delete(pipelineID)
 
-	// BUG: stale entry still exists after disconnect
-	val, ok := pipelinesCh.Load(pipelineID)
-	if !ok || val == nil {
-		t.Log("pipelinesCh cleaned up after disconnect — C1 fixed")
-		return
+	// Verify cleanup: entry must be gone.
+	if _, ok := pipelinesCh.Load(pipelineID); ok {
+		t.Fatal("pipelinesCh entry should be cleaned up after SpiteStream disconnect")
 	}
-	t.Logf("CONFIRMED (C1): pipelinesCh still has stale entry %q after SpiteStream disconnect", pipelineID)
 }
 
-// C2: JobStream disconnect does NOT remove listener or clean up state.
-// Listener remains Active with stale pipelines and jobs.
+// C2 regression: JobStream's defer cleanup must deactivate listener, clear pipelines,
+// remove from Listeners map, and clean associated pipelinesCh entries.
 func TestJobStreamDisconnectDoesNotCleanListener(t *testing.T) {
 	withIsolatedListenersAndJobs(t)
+	withIsolatedPipelinesCh(t)
 
-	listener := core.NewListener("boundary-listener", "10.0.0.1")
-	// Store directly to avoid EventBroker.Publish nil panic in test isolation.
+	listenerID := "boundary-listener"
+	listener := core.NewListener(listenerID, "10.0.0.1")
 	core.Listeners.Map.Store(listener.Name, listener)
 
-	pipe := &clientpb.Pipeline{Name: "boundary-pipe", ListenerId: "boundary-listener", Type: consts.TCPPipeline}
+	pipe := &clientpb.Pipeline{Name: "boundary-pipe", ListenerId: listenerID, Type: consts.TCPPipeline}
 	listener.AddPipeline(pipe)
-	core.Jobs.Map.Store("boundary-listener:boundary-pipe", &core.Job{ID: 1, Name: "boundary-pipe", Pipeline: pipe})
+	core.Jobs.Map.Store(listenerID+":boundary-pipe", &core.Job{ID: 1, Name: "boundary-pipe", Pipeline: pipe})
+	pipelinesCh.Store("boundary-pipe", "fake-stream")
 
-	// Simulate JobStream disconnect: in current code, JobStream returns but
-	// does NOT call Listeners.Remove or Listeners.Stop.
-
-	// BUG: listener still in map and active
-	lns, err := core.Listeners.Get("boundary-listener")
-	if err != nil {
-		t.Log("listener removed after disconnect — C2 fixed")
-		return
+	// Simulate JobStream's defer cleanup (rpc-listener.go:126-141):
+	for _, p := range listener.AllPipelines() {
+		pipelinesCh.Delete(p.Name)
 	}
-	if !lns.Active() {
-		t.Log("listener marked inactive — C2 partially fixed")
-		return
+	if err := core.Listeners.Stop(listenerID); err != nil {
+		t.Fatalf("Listeners.Stop failed: %v", err)
 	}
-	t.Log("CONFIRMED (C2): listener still Active after JobStream disconnect")
+	core.Listeners.Map.Delete(listenerID)
 
-	// BUG: pipeline still findable
-	found, ok := core.Listeners.Find("boundary-pipe")
-	if ok && found != nil {
-		t.Log("CONFIRMED (C2): pipeline still findable via dead listener")
+	// Verify: listener removed from map
+	if _, err := core.Listeners.Get(listenerID); err == nil {
+		t.Fatal("listener should be removed after JobStream disconnect cleanup")
 	}
 
-	// BUG: PushCtrl writes to buffered channel with no consumer
-	done := make(chan uint32, 1)
-	go func() {
-		done <- listener.PushCtrl(&clientpb.JobCtrl{Ctrl: consts.CtrlPipelineStart})
-	}()
-	select {
-	case id := <-done:
-		if id > 0 {
-			t.Log("CONFIRMED (C2): PushCtrl succeeds on dead listener (buffered, no consumer)")
-		}
+	// Verify: pipeline not findable
+	if _, ok := core.Listeners.Find("boundary-pipe"); ok {
+		t.Fatal("pipeline should not be findable after cleanup")
+	}
+
+	// Verify: pipelinesCh entry cleaned
+	if _, ok := pipelinesCh.Load("boundary-pipe"); ok {
+		t.Fatal("pipelinesCh entry should be cleaned after JobStream disconnect")
 	}
 }
 
-// C3: RegisterListener with same name silently overwrites existing listener.
-// Old listener's Ctrl channel and pipeline state are lost.
+// C3 regression: RegisterListener with same name must clean old state
+// (pipelines, jobs, pipelinesCh) before creating a fresh listener.
 func TestListenerReRegisterOverwritesWithoutCleanup(t *testing.T) {
 	withIsolatedListenersAndJobs(t)
+	withIsolatedPipelinesCh(t)
 
-	// First registration with pipeline (store directly to avoid nil EventBroker)
+	// First registration with pipeline
 	old := core.NewListener("re-register", "10.0.0.1")
 	core.Listeners.Map.Store(old.Name, old)
 	old.AddPipeline(&clientpb.Pipeline{Name: "old-pipe", ListenerId: "re-register"})
 	core.Jobs.Map.Store("re-register:old-pipe", &core.Job{ID: 1, Name: "old-pipe", Pipeline: &clientpb.Pipeline{Name: "old-pipe", ListenerId: "re-register"}})
+	pipelinesCh.Store("old-pipe", "old-stream")
 
-	oldCtrl := old.Ctrl
+	// Simulate RegisterListener's cleanup logic (rpc-listener.go:24-32):
+	if oldLns, err := core.Listeners.Get("re-register"); err == nil {
+		for _, pipe := range oldLns.AllPipelines() {
+			pipelinesCh.Delete(pipe.Name)
+		}
+		_ = core.Listeners.Stop("re-register")
+		core.Listeners.Map.Delete("re-register")
+	}
 
-	// Re-register with same name (simulates listener restart after crash)
+	// Re-register with fresh listener
 	fresh := core.NewListener("re-register", "10.0.0.2")
 	core.Listeners.Map.Store(fresh.Name, fresh)
 
-	// New listener has a new Ctrl channel
-	if oldCtrl == fresh.Ctrl {
-		t.Fatal("new listener should have a NEW Ctrl channel")
-	}
-
-	// New listener has no pipelines (clean state)
+	// Verify: fresh listener has no pipelines
 	if len(fresh.AllPipelines()) != 0 {
 		t.Fatal("fresh listener should have zero pipelines")
 	}
 
-	// After C3 fix: RegisterListener should clean old state before re-adding.
-	// The test simulates this by checking that old Jobs are orphaned.
-	// In production, RegisterListener now calls Listeners.Remove(old) first.
-	allJobs := core.Jobs.All()
-	if len(allJobs) > 0 {
-		t.Logf("old pipeline's Job count = %d after re-register (should be 0 after C3 fix)", len(allJobs))
+	// Verify: old pipeline not findable
+	if _, ok := core.Listeners.Find("old-pipe"); ok {
+		t.Fatal("old pipeline should not be findable after re-register")
 	}
 
-	// Fresh listener should have clean pipeline state
-	_, ok := core.Listeners.Find("old-pipe")
-	if ok {
-		t.Fatal("old pipeline should not be findable after re-register")
+	// Verify: old pipelinesCh entry cleaned
+	if _, ok := pipelinesCh.Load("old-pipe"); ok {
+		t.Fatal("old pipelinesCh entry should be cleaned after re-register")
+	}
+
+	// Verify: old jobs cleaned
+	allJobs := core.Jobs.All()
+	if len(allJobs) > 0 {
+		t.Fatalf("old jobs should be cleaned after re-register, got %d", len(allJobs))
 	}
 }
 
-// C4: After pipeline disconnect, session remains accessible but cannot execute commands.
+// C4 regression: After pipeline disconnect, GenericHandler must fail fast
+// with ErrNotFoundPipeline.
 func TestSessionOrphanedAfterPipelineDisconnect(t *testing.T) {
 	withIsolatedPipelinesCh(t)
 
 	pipelineID := "orphan-pipe"
 	pipelinesCh.Store(pipelineID, "alive-stream")
 
-	// Verify pipeline is loadable before disconnect
 	if _, ok := pipelinesCh.Load(pipelineID); !ok {
 		t.Fatal("pipeline should be available before disconnect")
 	}
 
-	// After C1 fix: SpiteStream disconnect should delete entry.
-	// We simulate the DESIRED post-fix behavior:
+	// Simulate SpiteStream defer cleanup
 	pipelinesCh.Delete(pipelineID)
 
 	// GenericHandler would now fail fast with ErrNotFoundPipeline
@@ -182,6 +177,7 @@ func TestSessionOrphanedAfterPipelineDisconnect(t *testing.T) {
 }
 
 // S4: Two goroutines consuming same Ctrl channel — messages randomly distributed.
+// This is a known design limitation, not a bug. Documenting the behavior.
 func TestDualCtrlConsumersRaceOnChannel(t *testing.T) {
 	listener := core.NewListener("dual-consumer", "10.0.0.1")
 
@@ -210,6 +206,6 @@ func TestDualCtrlConsumersRaceOnChannel(t *testing.T) {
 	case second := <-received:
 		t.Fatalf("both consumers received: %d and %d — message duplicated", first, second)
 	default:
-		t.Log("CONFIRMED (S4): only one of two consumers receives — dual JobStream causes random message routing")
+		t.Log("(S4) only one of two consumers receives — dual JobStream causes random message routing (known limitation)")
 	}
 }

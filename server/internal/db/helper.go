@@ -744,6 +744,19 @@ func (q *ArtifactQuery) WhereArch(arch string) *ArtifactQuery {
 	return q
 }
 
+// WherePipelineID filters artifacts by their profile's pipeline ID using a JOIN.
+func (q *ArtifactQuery) WherePipelineID(pipelineID string) *ArtifactQuery {
+	q.db = q.db.Joins("JOIN profiles ON profiles.name = artifacts.profile_name").
+		Where("profiles.pipeline_id = ?", pipelineID)
+	return q
+}
+
+// WherePathNotEmpty filters out artifacts with empty or NULL paths.
+func (q *ArtifactQuery) WherePathNotEmpty() *ArtifactQuery {
+	q.db = q.db.Where("path != '' AND path IS NOT NULL")
+	return q
+}
+
 // WithProfile preloads the Profile association
 func (q *ArtifactQuery) WithProfile() *ArtifactQuery {
 	q.db = q.db.Preload("Profile")

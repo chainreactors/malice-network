@@ -59,9 +59,10 @@ func SaveTrafficEncoder(name string, wasmBin []byte) error {
 	if !strings.HasSuffix(name, ".wasm") {
 		return fmt.Errorf("invalid encoder name, must end with .wasm")
 	}
-	// TODO get wasmFilePath from TrafficEncoderFS
-	// test
-	wasmFilePath := filepath.Join("test", filepath.Base(name))
+	if TrafficEncodersDir == "" {
+		return fmt.Errorf("traffic encoders not initialized, call InitTrafficEncoders first")
+	}
+	wasmFilePath := filepath.Join(TrafficEncodersDir, "traffic-encoders", filepath.Base(name))
 	err := os.WriteFile(wasmFilePath, wasmBin, 0600)
 	if err != nil {
 		return err
@@ -76,9 +77,10 @@ func RemoveTrafficEncoder(name string) error {
 	if !strings.HasSuffix(name, ".wasm") {
 		return fmt.Errorf("invalid encoder name, must end with .wasm")
 	}
-	// TODO get wasmFilePath from TrafficEncoderFS
-	// test
-	wasmFilePath := filepath.Join("test", filepath.Base(name))
+	if TrafficEncodersDir == "" {
+		return fmt.Errorf("traffic encoders not initialized, call InitTrafficEncoders first")
+	}
+	wasmFilePath := filepath.Join(TrafficEncodersDir, "traffic-encoders", filepath.Base(name))
 	info, err := os.Stat(wasmFilePath)
 	if os.IsNotExist(err) {
 		return nil // File doesn't exist, nothing to do
@@ -87,7 +89,7 @@ func RemoveTrafficEncoder(name string) error {
 		return err
 	}
 	if info.IsDir() {
-		panic("wasmFilePath is a directory, this should never happen")
+		return fmt.Errorf("wasmFilePath %q is a directory", wasmFilePath)
 	}
 	err = os.Remove(wasmFilePath)
 	if err != nil {

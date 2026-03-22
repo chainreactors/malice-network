@@ -173,12 +173,12 @@ func UnpackURL(data string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode == 200 {
 		return io.ReadAll(resp.Body)
-	} else {
-		return nil, fmt.Errorf("request error %d", resp.StatusCode)
 	}
+	return nil, fmt.Errorf("request error %d", resp.StatusCode)
 }
 
 func UnpackEmbed(data string) ([]byte, error) {

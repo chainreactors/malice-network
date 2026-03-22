@@ -326,20 +326,9 @@ func GetProfileByName(profileName string) (*models.Profile, error) {
 	return NewProfileQuery().WhereName(profileName).WithPipeline().OrderByCreated().First()
 }
 
-// FindBuildersByPipelineID 遍历所有 builder，找到 profile.pipelineID = pipelineID 的 builder
+// FindBuildersByPipelineID returns artifacts whose profile belongs to the given pipeline.
 func FindBuildersByPipelineID(pipelineID string) ([]*models.Artifact, error) {
-	builders, err := NewArtifactQuery().WithProfile().Find()
-	if err != nil {
-		return nil, err
-	}
-
-	var validBuilders []*models.Artifact
-	for _, b := range builders {
-		if b.Profile.PipelineID == pipelineID {
-			validBuilders = append(validBuilders, b)
-		}
-	}
-	return validBuilders, nil
+	return NewArtifactQuery().WherePipelineID(pipelineID).WithProfile().Find()
 }
 
 func DeleteProfileByName(profileName string) error {
@@ -588,17 +577,15 @@ func resolveArtifactFormat(osName, buildType string, outputType string) string {
 }
 
 func GetValidArtifacts() ([]*models.Artifact, error) {
-	artifacts, err := NewArtifactQuery().WithProfilePipeline().Find()
+	artifacts, err := NewArtifactQuery().WherePathNotEmpty().WithProfilePipeline().Find()
 	if err != nil {
 		return nil, err
 	}
-
+	// Filter by filesystem existence (file may have been deleted from disk).
 	var validArtifacts []*models.Artifact
 	for _, artifact := range artifacts {
-		if artifact.Path != "" {
-			if _, err := os.Stat(artifact.Path); err == nil {
-				validArtifacts = append(validArtifacts, artifact)
-			}
+		if _, err := os.Stat(artifact.Path); err == nil {
+			validArtifacts = append(validArtifacts, artifact)
 		}
 	}
 	return validArtifacts, nil
@@ -652,16 +639,11 @@ func FindArtifact(target *clientpb.Artifact, bin bool) (*clientpb.Artifact, erro
 }
 
 func FindArtifactFromPipeline(pipelineName string) (*models.Artifact, error) {
-	artifacts, err := NewArtifactQuery().WhereType(consts.CommandBuildBeacon).WithProfile().Find()
-	if err != nil {
-		return nil, err
-	}
-	for _, artifact := range artifacts {
-		if artifact.Profile.PipelineID == pipelineName {
-			return artifact, nil
-		}
-	}
-	return nil, ErrRecordNotFound
+	return NewArtifactQuery().
+		WhereType(consts.CommandBuildBeacon).
+		WherePipelineID(pipelineName).
+		WithProfile().
+		Last()
 }
 
 func GetArtifactByName(name string) (*models.Artifact, error) {
@@ -676,7 +658,11 @@ func GetArtifactWithSaas() (Artifacts, error) {
 	return NewArtifactQuery().WhereSource(consts.ArtifactFromSaas).Find()
 }
 
-// GetBeaconBuilderByRelinkID 查找 type=beacon 且 RelinkBeaconID=指定id 的 builder
+// GetBeaconBuilderByRelinkID finds beacon artifacts with a matching RelinkBeaconID.
+// NOTE: RelinkBeaconID is stored inside the JSON ParamsData field. Filtering at the
+// DB level would require dialect-specific JSON operators (json_extract for SQLite,
+// jsonb for Postgres). The in-memory filter is acceptable because the WhereType("beacon")
+// clause limits the dataset to a small subset.
 func GetBeaconBuilderByRelinkID(relinkID uint32) ([]*models.Artifact, error) {
 	artifacts, err := NewArtifactQuery().WhereType("beacon").Find()
 	if err != nil {
