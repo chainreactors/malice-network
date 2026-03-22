@@ -243,16 +243,107 @@ rem update interval --pipeline-id rem_graph_api_03 --agent-id uDM0BgG6 5000
 
 	remCmd.AddCommand(listremCmd, newRemCmd, startRemCmd, stopRemCmd, deleteRemCmd, updateRemCmd)
 
+	// WebShell pipeline commands
+	webshellCmd := &cobra.Command{
+		Use:   "webshell",
+		Short: "Manage WebShell pipelines",
+		Long:  "List, create, start, stop, and delete WebShell bridge pipelines.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cmd.Help()
+		},
+	}
+
+	listWebShellCmd := &cobra.Command{
+		Use:   "list [listener]",
+		Short: "List webshell pipelines",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return ListWebShellCmd(cmd, con)
+		},
+	}
+	common.BindArgCompletions(listWebShellCmd, nil, common.ListenerIDCompleter(con))
+
+	newWebShellCmd := &cobra.Command{
+		Use:   "new [name]",
+		Short: "Register a new webshell pipeline",
+		Long:  "Register a CustomPipeline(type=webshell) for the webshell-bridge binary to connect to.",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return NewWebShellCmd(cmd, con)
+		},
+		Example: `~~~
+webshell new --listener my-listener
+webshell new ws1 --listener my-listener
+~~~`,
+	}
+	common.BindFlag(newWebShellCmd, func(f *pflag.FlagSet) {
+		f.StringP("listener", "l", "", "listener id")
+	})
+	common.BindFlagCompletions(newWebShellCmd, func(comp carapace.ActionMap) {
+		comp["listener"] = common.ListenerIDCompleter(con)
+	})
+	newWebShellCmd.MarkFlagRequired("listener")
+
+	startWebShellCmd := &cobra.Command{
+		Use:   "start <name>",
+		Short: "Start a webshell pipeline",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return StartWebShellCmd(cmd, con)
+		},
+	}
+	common.BindFlag(startWebShellCmd, func(f *pflag.FlagSet) {
+		f.StringP("listener", "l", "", "listener id")
+	})
+	common.BindFlagCompletions(startWebShellCmd, func(comp carapace.ActionMap) {
+		comp["listener"] = common.ListenerIDCompleter(con)
+	})
+	common.BindArgCompletions(startWebShellCmd, nil, common.PipelineCompleter(con, webshellPipelineType))
+
+	stopWebShellCmd := &cobra.Command{
+		Use:   "stop <name>",
+		Short: "Stop a webshell pipeline",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return StopWebShellCmd(cmd, con)
+		},
+	}
+	common.BindFlag(stopWebShellCmd, func(f *pflag.FlagSet) {
+		f.StringP("listener", "l", "", "listener id")
+	})
+	common.BindFlagCompletions(stopWebShellCmd, func(comp carapace.ActionMap) {
+		comp["listener"] = common.ListenerIDCompleter(con)
+	})
+	common.BindArgCompletions(stopWebShellCmd, nil, common.PipelineCompleter(con, webshellPipelineType))
+
+	deleteWebShellCmd := &cobra.Command{
+		Use:   "delete <name>",
+		Short: "Delete a webshell pipeline",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return DeleteWebShellCmd(cmd, con)
+		},
+	}
+	common.BindFlag(deleteWebShellCmd, func(f *pflag.FlagSet) {
+		f.StringP("listener", "l", "", "listener id")
+	})
+	common.BindFlagCompletions(deleteWebShellCmd, func(comp carapace.ActionMap) {
+		comp["listener"] = common.ListenerIDCompleter(con)
+	})
+	common.BindArgCompletions(deleteWebShellCmd, nil, common.PipelineCompleter(con, webshellPipelineType))
+
+	webshellCmd.AddCommand(listWebShellCmd, newWebShellCmd, startWebShellCmd, stopWebShellCmd, deleteWebShellCmd)
+
 	// Enable wizard for pipeline commands
-	common.EnableWizardForCommands(tcpCmd, httpCmd, bindCmd, newRemCmd)
+	common.EnableWizardForCommands(tcpCmd, httpCmd, bindCmd, newRemCmd, newWebShellCmd)
 
 	// Register wizard providers for dynamic options
 	registerWizardProviders(tcpCmd, con)
 	registerWizardProviders(httpCmd, con)
 	registerWizardProviders(bindCmd, con)
 	registerWizardProviders(newRemCmd, con)
+	registerWizardProviders(newWebShellCmd, con)
 
-	return []*cobra.Command{tcpCmd, httpCmd, bindCmd, remCmd}
+	return []*cobra.Command{tcpCmd, httpCmd, bindCmd, remCmd, webshellCmd}
 }
 
 // registerWizardProviders registers dynamic option providers for wizard.

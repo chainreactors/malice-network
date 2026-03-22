@@ -9,8 +9,8 @@ import (
 
 func TestCommandsExposeExpectedPipelineRoots(t *testing.T) {
 	cmds := Commands(&core.Console{})
-	if len(cmds) != 4 {
-		t.Fatalf("pipeline command roots = %d, want 4", len(cmds))
+	if len(cmds) != 5 {
+		t.Fatalf("pipeline command roots = %d, want 5", len(cmds))
 	}
 
 	want := map[string]bool{
@@ -18,6 +18,7 @@ func TestCommandsExposeExpectedPipelineRoots(t *testing.T) {
 		consts.HTTPPipeline:        true,
 		consts.CommandPipelineBind: true,
 		consts.CommandRem:          true,
+		"webshell":                 true,
 	}
 	for _, cmd := range cmds {
 		delete(want, cmd.Name())
