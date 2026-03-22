@@ -60,15 +60,16 @@ func (rl *Shell) Readline() (string, error) {
 		defer term.Restore(descriptor, state)
 	}
 
+	// Prompts and cursor styles
+	rl.Display.PrintPrimaryPrompt()
+
 	// Enable bracketed paste mode so terminals wrap pasted content
 	// in \e[200~ ... \e[201~ markers instead of injecting raw chars.
+	// Placed after prompt printing to avoid VT sequence interference.
 	if rl.Config.GetBool("enable-bracketed-paste") {
 		fmt.Print("\033[?2004h")
 		defer fmt.Print("\033[?2004l")
 	}
-
-	// Prompts and cursor styles
-	rl.Display.PrintPrimaryPrompt()
 	defer rl.Display.RefreshTransient()
 	defer fmt.Print(keymap.CursorStyle("default"))
 
