@@ -14,9 +14,10 @@ import (
 func initTestDB(t *testing.T) {
 	t.Helper()
 	setupTestDB(t)
-	Client = NewDBClient(nil)
-	if Client == nil {
-		t.Fatal("failed to initialize test DB client")
+	var err error
+	Client, err = NewDBClient(nil)
+	if err != nil {
+		t.Fatalf("failed to initialize test DB client: %v", err)
 	}
 }
 

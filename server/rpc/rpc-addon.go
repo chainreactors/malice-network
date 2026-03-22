@@ -10,49 +10,23 @@ import (
 )
 
 func (rpc *Server) ListAddon(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
-	err := types.AssertRequestName(req, consts.ModuleListAddon)
-	if err != nil {
-		return nil, err
-	}
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-
-	greq.HandlerResponse(ch, types.MsgListAddon, func(spite *implantpb.Spite) {
+	return rpc.AssertAndHandleWithSession(ctx, req, consts.ModuleListAddon, types.MsgListAddon, func(greq *GenericRequest, spite *implantpb.Spite) {
 		if exts := spite.GetAddons(); exts != nil {
-			sess, _ := getSession(ctx)
-			sess.Addons = exts.Addons
-			sess.SaveAndNotify("")
+			greq.Session.Addons = exts.Addons
+			greq.Session.SaveAndNotify("")
 		}
 	})
-	return greq.Task.ToProtobuf(), nil
 }
 
 func (rpc *Server) LoadAddon(ctx context.Context, req *implantpb.LoadAddon) (*clientpb.Task, error) {
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-
-	greq.HandlerResponse(ch, types.MsgEmpty, func(spite *implantpb.Spite) {
-		sess, _ := getSession(ctx)
-		sess.Addons = append(sess.Addons, &implantpb.Addon{
+	return rpc.GenericInternalWithSession(ctx, req, types.MsgEmpty, func(greq *GenericRequest, spite *implantpb.Spite) {
+		greq.Session.Addons = append(greq.Session.Addons, &implantpb.Addon{
 			Name:   req.Name,
 			Depend: req.Depend,
 			Type:   req.Type,
 		})
-		sess.SaveAndNotify("")
+		greq.Session.SaveAndNotify("")
 	})
-	return greq.Task.ToProtobuf(), nil
 }
 
 func (rpc *Server) ExecuteAddon(ctx context.Context, req *implantpb.ExecuteAddon) (*clientpb.Task, error) {
@@ -68,15 +42,5 @@ func (rpc *Server) ExecuteAddon(ctx context.Context, req *implantpb.ExecuteAddon
 			return nil, errors.New("addon not found, please load_addon first")
 		}
 	}
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-	greq.HandlerResponse(ch, types.MsgBinaryResponse)
-	return greq.Task.ToProtobuf(), nil
+	return rpc.GenericInternal(ctx, req, types.MsgBinaryResponse)
 }

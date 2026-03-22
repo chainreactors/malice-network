@@ -12,44 +12,17 @@ import (
 )
 
 func (rpc *Server) PipeClose(ctx context.Context, req *implantpb.PipeRequest) (*clientpb.Task, error) {
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-
-	greq.HandlerResponse(ch, types.MsgEmpty)
-	return greq.Task.ToProtobuf(), nil
+	return rpc.GenericInternal(ctx, req, types.MsgEmpty)
 }
 
 func (rpc *Server) PipeRead(ctx context.Context, req *implantpb.PipeRequest) (*clientpb.Task, error) {
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-	greq.HandlerResponse(ch, types.MsgBinaryResponse, ContextCallback(greq.Task, ctx))
-	return greq.Task.ToProtobuf(), nil
+	return rpc.GenericInternalWithSession(ctx, req, types.MsgBinaryResponse, func(greq *GenericRequest, spite *implantpb.Spite) {
+		ContextCallback(greq.Task, ctx)(spite)
+	})
 }
 
 func (rpc *Server) PipeServer(ctx context.Context, req *implantpb.PipeRequest) (*clientpb.Task, error) {
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-
-	greq.HandlerResponse(ch, types.MsgResponse)
-	return greq.Task.ToProtobuf(), nil
+	return rpc.GenericInternal(ctx, req, types.MsgResponse)
 }
 
 func (rpc *Server) PipeUpload(ctx context.Context, pipe *implantpb.PipeRequest) (*clientpb.Task, error) {

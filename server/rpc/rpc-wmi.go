@@ -8,29 +8,9 @@ import (
 )
 
 func (rpc *Server) WmiQuery(ctx context.Context, req *implantpb.WmiQueryRequest) (*clientpb.Task, error) {
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-
-	greq.HandlerResponse(ch, types.MsgResponse)
-	return greq.Task.ToProtobuf(), nil
+	return rpc.GenericInternal(ctx, req, types.MsgResponse)
 }
 
 func (rpc *Server) WmiExecute(ctx context.Context, req *implantpb.WmiMethodRequest) (*clientpb.Task, error) {
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-
-	greq.HandlerResponse(ch, types.MsgResponse)
-	return greq.Task.ToProtobuf(), nil
+	return rpc.GenericInternal(ctx, req, types.MsgResponse)
 }

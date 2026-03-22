@@ -371,21 +371,7 @@ func (rpc *Server) CancelTask(ctx context.Context, req *implantpb.TaskCtrl) (*cl
 }
 
 func (rpc *Server) ListTasks(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
-	err := types.AssertRequestName(req, consts.ModuleListTask)
-	if err != nil {
-		return nil, err
-	}
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-
-	greq.HandlerResponse(ch, types.MsgTasks)
-	return greq.Task.ToProtobuf(), nil
+	return rpc.AssertAndHandle(ctx, req, consts.ModuleListTask, types.MsgTasks)
 }
 
 func (rpc *Server) QueryTask(ctx context.Context, req *implantpb.TaskCtrl) (*clientpb.Task, error) {

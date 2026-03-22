@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/chainreactors/IoM-go/consts"
@@ -85,7 +86,7 @@ func (t *Tasks) GetOrRecover(sess *Session, taskID uint32) *Task {
 	recovered.Ctx, recovered.Cancel = context.WithCancel(parentCtx)
 	recovered.DoneCh = make(chan bool, 1)
 	if recovered.Finished() {
-		recovered.Closed = true
+		recovered.closed.Store(true)
 		close(recovered.DoneCh)
 		recovered.Cancel()
 	}
@@ -125,13 +126,17 @@ type Task struct {
 	Cancel     context.CancelFunc
 	Session    *Session
 	DoneCh     chan bool
-	Closed     bool
+	closed     atomic.Bool
 	Deadline   time.Time
 	CallBy     string
 	CreatedAt  time.Time
 	FinishedAt time.Time
 	progressMu sync.RWMutex
 	closeOnce  sync.Once
+}
+
+func (t *Task) IsClosed() bool {
+	return t.closed.Load()
 }
 
 func (t *Task) TaskID() string {
@@ -313,7 +318,7 @@ func (t *Task) Close() {
 	t.closeOnce.Do(func() {
 		t.Cancel()
 		close(t.DoneCh)
-		t.Closed = true
+		t.closed.Store(true)
 		if t.Session != nil {
 			t.Session.RemoveResp(t.Id)
 		}

@@ -9,73 +9,17 @@ import (
 )
 
 func (rpc *Server) Runas(ctx context.Context, req *implantpb.RunAsRequest) (*clientpb.Task, error) {
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-
-	greq.HandlerResponse(ch, types.MsgExec)
-
-	return greq.Task.ToProtobuf(), nil
+	return rpc.GenericInternal(ctx, req, types.MsgExec)
 }
 
 func (rpc *Server) Rev2Self(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
-	err := types.AssertRequestName(req, consts.ModuleRev2Self)
-	if err != nil {
-		return nil, err
-	}
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-
-	greq.HandlerResponse(ch, types.MsgEmpty)
-
-	return greq.Task.ToProtobuf(), nil
+	return rpc.AssertAndHandle(ctx, req, consts.ModuleRev2Self, types.MsgEmpty)
 }
 
 func (rpc *Server) Privs(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
-	err := types.AssertRequestName(req, consts.ModulePrivs)
-	if err != nil {
-		return nil, err
-	}
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-
-	greq.HandlerResponse(ch, types.MsgResponse)
-
-	return greq.Task.ToProtobuf(), nil
+	return rpc.AssertAndHandle(ctx, req, consts.ModulePrivs, types.MsgResponse)
 }
 
 func (rpc *Server) GetSystem(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
-	err := types.AssertRequestName(req, consts.ModuleGetSystem)
-	if err != nil {
-		return nil, err
-	}
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-
-	greq.HandlerResponse(ch, types.MsgResponse)
-
-	return greq.Task.ToProtobuf(), nil
+	return rpc.AssertAndHandle(ctx, req, consts.ModuleGetSystem, types.MsgResponse)
 }

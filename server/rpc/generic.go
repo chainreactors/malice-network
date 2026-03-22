@@ -449,7 +449,18 @@ func getMetadataValue(md metadata.MD, key string) string {
 	return ""
 }
 
-func Handler(ctx context.Context, rpc *Server, req proto.Message, expect types.MsgName, callbacks ...func(spite *implantpb.Spite)) (*clientpb.Task, error) {
+// AssertAndHandle covers the common pattern for *implantpb.Request handlers:
+// assert request name → newGenericRequest → GenericHandler → HandlerResponse.
+func (rpc *Server) AssertAndHandle(ctx context.Context, req *implantpb.Request, module types.MsgName, expect types.MsgName, callbacks ...func(*implantpb.Spite)) (*clientpb.Task, error) {
+	if err := types.AssertRequestName(req, module); err != nil {
+		return nil, err
+	}
+	return rpc.GenericInternal(ctx, req, expect, callbacks...)
+}
+
+// GenericInternalWithSession is like GenericInternal but passes the GenericRequest
+// to the callback so it can access Session, Task, and other request context.
+func (rpc *Server) GenericInternalWithSession(ctx context.Context, req proto.Message, expect types.MsgName, callback func(*GenericRequest, *implantpb.Spite)) (*clientpb.Task, error) {
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -458,7 +469,16 @@ func Handler(ctx context.Context, rpc *Server, req proto.Message, expect types.M
 	if err != nil {
 		return nil, err
 	}
-
-	greq.HandlerResponse(ch, expect, callbacks...)
+	greq.HandlerResponse(ch, expect, func(spite *implantpb.Spite) {
+		callback(greq, spite)
+	})
 	return greq.Task.ToProtobuf(), nil
+}
+
+// AssertAndHandleWithSession combines AssertRequestName with GenericInternalWithSession.
+func (rpc *Server) AssertAndHandleWithSession(ctx context.Context, req *implantpb.Request, module types.MsgName, expect types.MsgName, callback func(*GenericRequest, *implantpb.Spite)) (*clientpb.Task, error) {
+	if err := types.AssertRequestName(req, module); err != nil {
+		return nil, err
+	}
+	return rpc.GenericInternalWithSession(ctx, req, expect, callback)
 }

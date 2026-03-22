@@ -172,44 +172,18 @@ func (rpc *Server) Execute(ctx context.Context, req *implantpb.ExecRequest) (*cl
 }
 
 func (rpc *Server) ExecuteAssembly(ctx context.Context, req *implantpb.ExecuteBinary) (*clientpb.Task, error) {
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-	greq.HandlerResponse(ch, types.MsgBinaryResponse)
-	return greq.Task.ToProtobuf(), nil
+	return rpc.GenericInternal(ctx, req, types.MsgBinaryResponse)
 }
 
 func (rpc *Server) ExecuteShellcode(ctx context.Context, req *implantpb.ExecuteBinary) (*clientpb.Task, error) {
 	req = handleBinary(req)
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-	greq.HandlerResponse(ch, types.MsgBinaryResponse, ContextCallback(greq.Task, ctx))
-	return greq.Task.ToProtobuf(), nil
+	return rpc.GenericInternalWithSession(ctx, req, types.MsgBinaryResponse, func(greq *GenericRequest, spite *implantpb.Spite) {
+		ContextCallback(greq.Task, ctx)(spite)
+	})
 }
 
 func (rpc *Server) ExecuteBof(ctx context.Context, req *implantpb.ExecuteBinary) (*clientpb.Task, error) {
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-	greq.HandlerResponse(ch, types.MsgBinaryResponse, func(spite *implantpb.Spite) {
+	return rpc.GenericInternalWithSession(ctx, req, types.MsgBinaryResponse, func(greq *GenericRequest, spite *implantpb.Spite) {
 		tctx := greq.TaskContext(spite)
 		bofResps, err := output.ParseBOFResponse(tctx)
 		if err != nil {
@@ -238,40 +212,18 @@ func (rpc *Server) ExecuteBof(ctx context.Context, req *implantpb.ExecuteBinary)
 			}
 		}
 	})
-
-	return greq.Task.ToProtobuf(), nil
 }
 
 func (rpc *Server) ExecuteEXE(ctx context.Context, req *implantpb.ExecuteBinary) (*clientpb.Task, error) {
 	req = handleBinary(req)
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-
-	greq.HandlerResponse(ch, types.MsgBinaryResponse, ContextCallback(greq.Task, ctx))
-
-	return greq.Task.ToProtobuf(), nil
+	return rpc.GenericInternalWithSession(ctx, req, types.MsgBinaryResponse, func(greq *GenericRequest, spite *implantpb.Spite) {
+		ContextCallback(greq.Task, ctx)(spite)
+	})
 }
 
 func (rpc *Server) ExecuteDll(ctx context.Context, req *implantpb.ExecuteBinary) (*clientpb.Task, error) {
 	req = handleBinary(req)
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-	greq.HandlerResponse(ch, types.MsgBinaryResponse)
-	return greq.Task.ToProtobuf(), nil
+	return rpc.GenericInternal(ctx, req, types.MsgBinaryResponse)
 }
 
 func (rpc *Server) ExecuteDLL(ctx context.Context, req *implantpb.ExecuteBinary) (*clientpb.Task, error) {
@@ -279,60 +231,20 @@ func (rpc *Server) ExecuteDLL(ctx context.Context, req *implantpb.ExecuteBinary)
 }
 
 func (rpc *Server) ExecutePowerpick(ctx context.Context, req *implantpb.ExecuteBinary) (*clientpb.Task, error) {
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-	greq.HandlerResponse(ch, types.MsgBinaryResponse)
-	return greq.Task.ToProtobuf(), nil
+	return rpc.GenericInternal(ctx, req, types.MsgBinaryResponse)
 }
 
 func (rpc *Server) ExecuteArmory(ctx context.Context, req *implantpb.ExecuteBinary) (*clientpb.Task, error) {
 	req = handleBinary(req)
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-	greq.HandlerResponse(ch, types.MsgBinaryResponse)
-	return greq.Task.ToProtobuf(), nil
+	return rpc.GenericInternal(ctx, req, types.MsgBinaryResponse)
 }
 
 func (rpc *Server) ExecuteLocal(ctx context.Context, req *implantpb.ExecuteBinary) (*clientpb.Task, error) {
 	req = handleBinary(req)
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-	greq.HandlerResponse(ch, types.MsgBinaryResponse)
-	return greq.Task.ToProtobuf(), nil
+	return rpc.GenericInternal(ctx, req, types.MsgBinaryResponse)
 }
 
 func (rpc *Server) InlineLocal(ctx context.Context, req *implantpb.ExecuteBinary) (*clientpb.Task, error) {
 	req = handleBinary(req)
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-	greq.HandlerResponse(ch, types.MsgBinaryResponse)
-	return greq.Task.ToProtobuf(), nil
+	return rpc.GenericInternal(ctx, req, types.MsgBinaryResponse)
 }

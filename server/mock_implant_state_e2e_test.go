@@ -277,7 +277,7 @@ func TestMockImplantSingleResponseTaskStateE2E(t *testing.T) {
 	}
 
 	testsupport.WaitForCondition(t, 5*time.Second, func() bool {
-		return runtimeTask.Closed && runtimeTask.Ctx.Err() != nil
+		return runtimeTask.IsClosed() && runtimeTask.Ctx.Err() != nil
 	}, "single-response task close")
 	if cur, total := runtimeTask.Progress(); cur != 1 || total != 1 {
 		t.Fatalf("runtime task progress after finish = %d/%d, want 1/1", cur, total)
@@ -421,7 +421,7 @@ func TestMockImplantStreamingTaskStateAndRecoveryE2E(t *testing.T) {
 	}
 
 	testsupport.WaitForCondition(t, 5*time.Second, func() bool {
-		return runtimeTask.Closed && runtimeTask.Ctx.Err() != nil
+		return runtimeTask.IsClosed() && runtimeTask.Ctx.Err() != nil
 	}, "streaming task close")
 	if cur, total := runtimeTask.Progress(); cur != 3 || total != 3 {
 		t.Fatalf("runtime streaming task progress after finish = %d/%d, want 3/3", cur, total)

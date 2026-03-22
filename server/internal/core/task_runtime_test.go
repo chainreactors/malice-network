@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -53,7 +54,7 @@ func TestTasksGetOrRecoverFinishedTaskClosesDoneChAndBindsSession(t *testing.T) 
 	if task.Session != sess {
 		t.Fatal("recovered task should keep a back-reference to the session")
 	}
-	if !task.Closed {
+	if !task.IsClosed() {
 		t.Fatal("finished recovered task should be marked closed")
 	}
 	if task.Ctx.Err() == nil {
@@ -194,7 +195,7 @@ func TestTaskCancelMarksTaskFinishedAndClosesRuntimeState(t *testing.T) {
 	if task.FinishedAt.IsZero() {
 		t.Fatal("cancel should stamp FinishedAt")
 	}
-	if !task.Closed {
+	if !task.IsClosed() {
 		t.Fatal("cancel should close runtime task")
 	}
 	if task.Ctx.Err() == nil {
@@ -208,5 +209,37 @@ func TestTaskCancelMarksTaskFinishedAndClosesRuntimeState(t *testing.T) {
 	}
 	if finishedTask != task.TaskID() {
 		t.Fatalf("finished task id = %q, want %q", finishedTask, task.TaskID())
+	}
+}
+
+func TestTask_ClosedFieldRaceSafe(t *testing.T) {
+	task := &Task{
+		Id:        999,
+		SessionId: "race-test",
+		DoneCh:    make(chan bool, 1),
+	}
+	task.Ctx, task.Cancel = context.WithCancel(context.Background())
+
+	var wg sync.WaitGroup
+	// Concurrent readers
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for j := 0; j < 100; j++ {
+				_ = task.IsClosed()
+			}
+		}()
+	}
+	// Concurrent closer
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		task.Close()
+	}()
+	wg.Wait()
+
+	if !task.IsClosed() {
+		t.Fatal("task should be closed after Close()")
 	}
 }

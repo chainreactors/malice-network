@@ -57,7 +57,11 @@ func TestResolveListenerIDFallsBackToDatabaseLookup(t *testing.T) {
 	t.Cleanup(func() {
 		db.Client = oldDBClient
 	})
-	db.Client = db.NewDBClient(nil)
+	var dbErr error
+	db.Client, dbErr = db.NewDBClient(nil)
+	if dbErr != nil {
+		t.Fatalf("NewDBClient failed: %v", dbErr)
+	}
 
 	if _, err := db.SavePipeline(&models.Pipeline{
 		Name:       "pipe-db",

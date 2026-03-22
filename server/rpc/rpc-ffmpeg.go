@@ -9,21 +9,9 @@ import (
 )
 
 func (rpc *Server) ListDevice(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
-	err := types.AssertRequestName(req, consts.ModuleFFmpeg)
-	if err != nil {
-		return nil, err
-	}
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-
-	greq.HandlerResponse(ch, types.MsgListModule, handlerModule(greq.Session))
-	return greq.Task.ToProtobuf(), nil
+	return rpc.AssertAndHandleWithSession(ctx, req, consts.ModuleFFmpeg, types.MsgListModule, func(greq *GenericRequest, spite *implantpb.Spite) {
+		applyModulesResponse(greq.Session, spite, false)
+	})
 }
 
 func (rpc *Server) FFmpeg(ctx context.Context, req *implantpb.FFmpegRequest) (*clientpb.Task, error) {

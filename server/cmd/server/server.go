@@ -16,7 +16,7 @@ import (
 func init() {
 	err := configs.InitConfig()
 	if err != nil {
-		fmt.Println(err.Error())
+		fmt.Fprintf(os.Stderr, "config error: %v\n", err)
 		return
 	}
 	config.WithOptions(func(opt *config.Options) {
@@ -36,7 +36,7 @@ func Start(defaultConfig []byte) error {
 	args, err := parser.Parse()
 	if err != nil {
 		if err.(*flags.Error).Type != flags.ErrHelp {
-			fmt.Println(err.Error())
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		}
 		return nil
 	}

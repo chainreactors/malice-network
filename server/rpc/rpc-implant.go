@@ -182,35 +182,11 @@ func (rpc *Server) Keepalive(ctx context.Context, req *implantpb.CommonBody) (*c
 }
 
 func (rpc *Server) Suicide(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
-	err := types.AssertRequestName(req, consts.ModuleSuicide)
-	if err != nil {
-		return nil, err
-	}
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-
-	greq.HandlerResponse(ch, types.MsgEmpty)
-	return greq.Task.ToProtobuf(), nil
+	return rpc.AssertAndHandle(ctx, req, consts.ModuleSuicide, types.MsgEmpty)
 }
 
 func (rpc *Server) Switch(ctx context.Context, req *implantpb.Switch) (*clientpb.Task, error) {
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-
-	greq.HandlerResponse(ch, types.MsgEmpty)
-	return greq.Task.ToProtobuf(), nil
+	return rpc.GenericInternal(ctx, req, types.MsgEmpty)
 }
 
 func (rpc *Server) InitBindSession(ctx context.Context, req *implantpb.Init) (*clientpb.Empty, error) {

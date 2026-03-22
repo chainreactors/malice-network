@@ -314,7 +314,11 @@ func newRPCTestEnv(t testing.TB) *rpcTestEnv {
 	t.Cleanup(func() {
 		db.Client = oldDBClient
 	})
-	db.Client = db.NewDBClient(nil)
+	var dbErr error
+	db.Client, dbErr = db.NewDBClient(nil)
+	if dbErr != nil {
+		t.Fatalf("NewDBClient failed: %v", dbErr)
+	}
 
 	oldTicker := core.GlobalTicker
 	core.GlobalTicker = core.NewTicker()

@@ -226,7 +226,7 @@ func RecoverSession(sess *models.Session) (*Session, error) {
 		recoverTask.DoneCh = make(chan bool, 1)
 		recoverTask.Ctx, recoverTask.Cancel = context.WithCancel(s.Ctx)
 		if recoverTask.Finished() {
-			recoverTask.Closed = true
+			recoverTask.closed.Store(true)
 			close(recoverTask.DoneCh)
 			recoverTask.Cancel()
 		}
@@ -442,6 +442,7 @@ func (s *Session) RecoverTaskIDByLog() (int, error) {
 
 		taskID, err := strconv.Atoi(parts[0])
 		if err != nil {
+			logs.Log.Debugf("skip non-numeric task log filename: %s, err: %v", parts[0], err)
 			continue
 		}
 		if taskID > maxTaskID {
@@ -824,11 +825,10 @@ func (s *Session) RemoveResp(taskId uint32) {
 }
 
 func (s *Session) DeleteResp(taskId uint32) {
-	ch, ok := s.GetResp(taskId)
-	if ok {
-		close(ch)
+	val, loaded := s.responses.LoadAndDelete(taskId)
+	if loaded {
+		close(val.(chan *implantpb.Spite))
 	}
-	s.responses.Delete(taskId)
 }
 
 // UpdateKeyPair 更新KeyPair并同步到SecureManager

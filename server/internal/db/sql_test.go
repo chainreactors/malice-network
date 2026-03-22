@@ -3,6 +3,7 @@ package db
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/chainreactors/malice-network/server/internal/configs"
@@ -22,7 +23,10 @@ func setupTestDB(t *testing.T) {
 func TestNewDBClient_NilConfig(t *testing.T) {
 	setupTestDB(t)
 
-	client := NewDBClient(nil)
+	client, err := NewDBClient(nil)
+	if err != nil {
+		t.Fatalf("NewDBClient(nil) returned unexpected error: %v", err)
+	}
 	if client == nil {
 		t.Fatal("NewDBClient(nil) should return a valid client (defaulting to SQLite)")
 	}
@@ -40,14 +44,16 @@ func TestNewDBClient_EmptyDialect(t *testing.T) {
 	cfg := &configs.DatabaseConfig{
 		Dialect: "",
 	}
-	client := NewDBClient(cfg)
+	client, err := NewDBClient(cfg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if client == nil {
 		t.Fatal("NewDBClient with empty dialect should default to SQLite")
 	}
 	if Adapter.Name() != "sqlite" {
 		t.Errorf("expected sqlite adapter for empty dialect, got %q", Adapter.Name())
 	}
-	// Verify dialect was corrected
 	if cfg.Dialect != configs.Sqlite {
 		t.Errorf("dialect should be corrected to %q, got %q", configs.Sqlite, cfg.Dialect)
 	}
@@ -59,7 +65,10 @@ func TestNewDBClient_ExplicitSqlite(t *testing.T) {
 	cfg := &configs.DatabaseConfig{
 		Dialect: configs.Sqlite,
 	}
-	client := NewDBClient(cfg)
+	client, err := NewDBClient(cfg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if client == nil {
 		t.Fatal("NewDBClient with explicit sqlite should return valid client")
 	}
@@ -69,17 +78,16 @@ func TestNewDBClient_ExplicitSqlite(t *testing.T) {
 }
 
 func TestNewDBClient_UnknownDialect(t *testing.T) {
-	defer func() {
-		r := recover()
-		if r == nil {
-			t.Fatal("NewDBClient with unknown dialect should panic")
-		}
-	}()
-
 	cfg := &configs.DatabaseConfig{
 		Dialect: "oracle",
 	}
-	NewDBClient(cfg)
+	_, err := NewDBClient(cfg)
+	if err == nil {
+		t.Fatal("NewDBClient with unknown dialect should return an error")
+	}
+	if !strings.Contains(err.Error(), "oracle") {
+		t.Errorf("error should mention the unknown dialect, got: %v", err)
+	}
 }
 
 func TestNewDBClient_FixesInvalidPoolSettings(t *testing.T) {
@@ -90,7 +98,10 @@ func TestNewDBClient_FixesInvalidPoolSettings(t *testing.T) {
 		MaxIdleConns: 0,
 		MaxOpenConns: -1,
 	}
-	client := NewDBClient(cfg)
+	client, err := NewDBClient(cfg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if client == nil {
 		t.Fatal("NewDBClient should return valid client")
 	}
@@ -110,7 +121,10 @@ func TestNewDBClient_SetsGlobalAdapter(t *testing.T) {
 	cfg := &configs.DatabaseConfig{
 		Dialect: configs.Sqlite,
 	}
-	NewDBClient(cfg)
+	_, err := NewDBClient(cfg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	if Adapter == nil {
 		t.Fatal("global Adapter should be set after NewDBClient")
@@ -118,13 +132,6 @@ func TestNewDBClient_SetsGlobalAdapter(t *testing.T) {
 }
 
 func TestNewDBClient_PostgresInvalidDSN(t *testing.T) {
-	defer func() {
-		r := recover()
-		if r == nil {
-			t.Fatal("NewDBClient with postgres config should panic when unable to connect")
-		}
-	}()
-
 	cfg := &configs.DatabaseConfig{
 		Dialect:  configs.Postgres,
 		Host:     "invalid-host-that-does-not-exist.local",
@@ -133,5 +140,8 @@ func TestNewDBClient_PostgresInvalidDSN(t *testing.T) {
 		Password: "nopass",
 		Database: "nodb",
 	}
-	NewDBClient(cfg)
+	_, err := NewDBClient(cfg)
+	if err == nil {
+		t.Fatal("NewDBClient with invalid postgres config should return an error")
+	}
 }

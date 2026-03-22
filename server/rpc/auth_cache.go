@@ -36,16 +36,18 @@ func (c *operatorCache) LookupByFingerprint(fp string) (*models.Operator, bool) 
 		return op, true
 	}
 
-	// Cache miss: query DB
+	// Cache miss: acquire write lock and double-check before querying DB.
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if op, ok := c.byFP[fp]; ok {
+		return op, true
+	}
 	op, err := db.FindOperatorByFingerprint(fp)
 	if err != nil {
 		return nil, false
 	}
-
-	c.mu.Lock()
 	c.byFP[fp] = op
 	c.byName[op.Name] = op
-	c.mu.Unlock()
 	return op, true
 }
 
@@ -58,15 +60,18 @@ func (c *operatorCache) LookupByName(name string) (*models.Operator, bool) {
 		return op, true
 	}
 
+	// Cache miss: acquire write lock and double-check before querying DB.
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if op, ok := c.byName[name]; ok {
+		return op, true
+	}
 	op, err := db.FindOperatorByName(name)
 	if err != nil {
 		return nil, false
 	}
-
-	c.mu.Lock()
 	c.byFP[op.Fingerprint] = op
 	c.byName[op.Name] = op
-	c.mu.Unlock()
 	return op, true
 }
 
@@ -112,14 +117,17 @@ func (c *authzRuleCache) GetRules(role string) []*models.AuthzRule {
 		return rules
 	}
 
+	// Cache miss: acquire write lock and double-check before querying DB.
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if rules, ok := c.rules[role]; ok {
+		return rules
+	}
 	rules, err := db.GetAuthzRulesForRole(role)
 	if err != nil {
 		return nil
 	}
-
-	c.mu.Lock()
 	c.rules[role] = rules
-	c.mu.Unlock()
 	return rules
 }
 

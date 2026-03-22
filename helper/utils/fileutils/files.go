@@ -58,7 +58,6 @@ func Exist(filePath string) bool {
 func checkIfDirectory(path string) bool {
 	fileInfo, err := os.Stat(path)
 	if err != nil {
-		fmt.Println("Error:", err)
 		return false
 	}
 	return fileInfo.IsDir()
@@ -197,7 +196,7 @@ func GetExtensionByPath(filepath string) (string, error) {
 func GetExtensionByBytes(data []byte) (string, error) {
 	kind, err := filetype.Match(data)
 	if err != nil {
-		return "", fmt.Errorf("unknown file type %s", err)
+		return "", fmt.Errorf("unknown file type: %w", err)
 	}
 	return "." + kind.Extension, nil
 }

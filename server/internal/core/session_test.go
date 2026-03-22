@@ -300,6 +300,28 @@ func TestSession_DeleteResp_ClosesChannel(t *testing.T) {
 	}
 }
 
+func TestDeleteResp_ConcurrentSafe(t *testing.T) {
+	sess := newTestSession("resp-concurrent")
+	ch := make(chan *implantpb.Spite, 16)
+	sess.StoreResp(42, ch)
+
+	var wg sync.WaitGroup
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			// Must not panic (double close)
+			sess.DeleteResp(42)
+		}()
+	}
+	wg.Wait()
+
+	_, ok := sess.GetResp(42)
+	if ok {
+		t.Fatal("response channel should be deleted")
+	}
+}
+
 // ---------- Save with mocked DB ----------
 
 func TestSession_Save_UsesMockedDB(t *testing.T) {

@@ -143,13 +143,19 @@ func TestNewDBClient_AutoMigrateIdempotent(t *testing.T) {
 	cfg := &configs.DatabaseConfig{Dialect: configs.Sqlite}
 
 	// First init
-	client1 := NewDBClient(cfg)
+	client1, err := NewDBClient(cfg)
+	if err != nil {
+		t.Fatalf("first NewDBClient failed: %v", err)
+	}
 	if client1 == nil {
 		t.Fatal("first NewDBClient should succeed")
 	}
 
 	// Second init (simulates server restart) — must not error
-	client2 := NewDBClient(cfg)
+	client2, err := NewDBClient(cfg)
+	if err != nil {
+		t.Fatalf("second NewDBClient failed: %v", err)
+	}
 	if client2 == nil {
 		t.Fatal("second NewDBClient should succeed")
 	}

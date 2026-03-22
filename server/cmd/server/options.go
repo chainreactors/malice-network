@@ -258,7 +258,11 @@ func (opt *Options) PrepareServer() error {
 		configs.UpdateMaleficRoot(opt.Server.SourceCodeRoot)
 	}
 
-	db.Client = db.NewDBClient(opt.Server.DatabaseConfig)
+	var err error
+	db.Client, err = db.NewDBClient(opt.Server.DatabaseConfig)
+	if err != nil {
+		return fmt.Errorf("database initialization failed: %w", err)
+	}
 
 	// Backfill fingerprints for operators created before the fingerprint column existed
 	if err := db.BackfillOperatorFingerprints(); err != nil {
@@ -270,7 +274,7 @@ func (opt *Options) PrepareServer() error {
 		logs.Log.Warnf("failed to seed default authz rules: %v", err)
 	}
 
-	err := saas.RegisterLicense()
+	err = saas.RegisterLicense()
 	if err != nil {
 		logs.Log.Warnf("register community license error %v", err)
 	}

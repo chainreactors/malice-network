@@ -374,7 +374,7 @@ func TestRealImplantDeadSweepKeepsPendingStreamingTaskAlive(t *testing.T) {
 	requireRealDBSessionAlive(t, f.h, f.implant.SessionID, true)
 
 	testsupport.WaitForCondition(t, 5*time.Second, func() bool {
-		return runtimeTask.Closed && runtimeTask.Ctx.Err() != nil
+		return runtimeTask.IsClosed() && runtimeTask.Ctx.Err() != nil
 	}, "real implant streaming task close")
 	wantTotal := len(allContent.GetSpites())
 	if cur, total := runtimeTask.Progress(); cur != wantTotal || total != wantTotal {

@@ -206,7 +206,7 @@ func GetDockerStatus(cli *client.Client, containerName string) (string, error) {
 	ctx := context.Background()
 	containers, err := cli.ContainerList(ctx, types.ContainerListOptions{All: true})
 	if err != nil {
-		return "", fmt.Errorf("failed to list containers: %v", err)
+		return "", fmt.Errorf("failed to list containers: %w", err)
 	}
 
 	for _, container := range containers {

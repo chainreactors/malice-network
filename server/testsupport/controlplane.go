@@ -99,7 +99,11 @@ func NewControlPlaneHarness(t testing.TB) *ControlPlaneHarness {
 	t.Cleanup(func() {
 		db.Client = oldDBClient
 	})
-	db.Client = db.NewDBClient(serverCfg.DatabaseConfig)
+	var dbErr error
+	db.Client, dbErr = db.NewDBClient(serverCfg.DatabaseConfig)
+	if dbErr != nil {
+		t.Fatalf("NewDBClient failed: %v", dbErr)
+	}
 
 	if err := db.BackfillOperatorFingerprints(); err != nil {
 		t.Fatalf("BackfillOperatorFingerprints failed: %v", err)

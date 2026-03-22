@@ -9,33 +9,9 @@ import (
 )
 
 func (rpc *Server) Netstat(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
-	err := types.AssertRequestName(req, consts.ModuleNetstat)
-	if err != nil {
-		return nil, err
-	}
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-
-	greq.HandlerResponse(ch, types.MsgNetstat)
-	return greq.Task.ToProtobuf(), nil
+	return rpc.AssertAndHandle(ctx, req, consts.ModuleNetstat, types.MsgNetstat)
 }
 
 func (rpc *Server) Curl(ctx context.Context, req *implantpb.CurlRequest) (*clientpb.Task, error) {
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-
-	greq.HandlerResponse(ch, types.MsgBinaryResponse)
-	return greq.Task.ToProtobuf(), nil
+	return rpc.GenericInternal(ctx, req, types.MsgBinaryResponse)
 }

@@ -7,14 +7,9 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/types"
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 )
-
-func handlerModule(sess *core.Session) func(spite *implantpb.Spite) {
-	return func(spite *implantpb.Spite) {
-		applyModulesResponse(sess, spite, false)
-	}
-}
 
 func applyModulesResponse(sess *core.Session, spite *implantpb.Spite, appendOnly bool) {
 	if sess == nil || spite == nil {
@@ -36,79 +31,31 @@ func (rpc *Server) ListModule(ctx context.Context, req *implantpb.Request) (*cli
 	if req == nil {
 		return nil, types.ErrMissingRequestField
 	}
-	err := types.AssertRequestName(req, consts.ModuleListModule)
-	if err != nil {
-		return nil, err
-	}
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-
-	greq.HandlerResponse(ch, types.MsgListModule, handlerModule(greq.Session))
-	return greq.Task.ToProtobuf(), nil
+	return rpc.AssertAndHandleWithSession(ctx, req, consts.ModuleListModule, types.MsgListModule, func(greq *GenericRequest, spite *implantpb.Spite) {
+		applyModulesResponse(greq.Session, spite, false)
+	})
 }
 
 func (rpc *Server) LoadModule(ctx context.Context, req *implantpb.LoadModule) (*clientpb.Task, error) {
 	if req == nil {
 		return nil, types.ErrMissingRequestField
 	}
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-
-	greq.HandlerResponse(ch, types.MsgListModule, func(spite *implantpb.Spite) {
+	return rpc.GenericInternalWithSession(ctx, req, types.MsgListModule, func(greq *GenericRequest, spite *implantpb.Spite) {
 		applyModulesResponse(greq.Session, spite, true)
 	})
-	return greq.Task.ToProtobuf(), nil
 }
 
 func (rpc *Server) RefreshModule(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
 	if req == nil {
 		return nil, types.ErrMissingRequestField
 	}
-	err := types.AssertRequestName(req, consts.ModuleRefreshModule)
-	if err != nil {
-		return nil, err
-	}
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-
-	greq.HandlerResponse(ch, types.MsgListModule, handlerModule(greq.Session))
-	return greq.Task.ToProtobuf(), nil
+	return rpc.AssertAndHandleWithSession(ctx, req, consts.ModuleRefreshModule, types.MsgListModule, func(greq *GenericRequest, spite *implantpb.Spite) {
+		applyModulesResponse(greq.Session, spite, false)
+	})
 }
 
 func (rpc *Server) Clear(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
-	err := types.AssertRequestName(req, consts.ModuleClear)
-	if err != nil {
-		return nil, err
-	}
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-
-	greq.HandlerResponse(ch, types.MsgEmpty)
-	return greq.Task.ToProtobuf(), nil
+	return rpc.AssertAndHandle(ctx, req, consts.ModuleClear, types.MsgEmpty)
 }
 
 // ExecuteModule passthrough for fully dynamic module execution.
@@ -122,7 +69,7 @@ func (rpc *Server) ExecuteModule(ctx context.Context, req *implantpb.ExecuteModu
 	expect := types.MsgName(req.Expect)
 
 	// Streaming module: keep reading from the channel until context is cancelled.
-	if req.Spite.Name == "tapping" || req.Spite.Name == "poison" {
+	if req.Spite.Name == "tapping" || req.Spite.Name == "poison" || req.Spite.Name == "agent" {
 		greq, err := newGenericRequest(ctx, req.Spite)
 		if err != nil {
 			return nil, err
@@ -144,6 +91,7 @@ func (rpc *Server) ExecuteModule(ctx context.Context, req *implantpb.ExecuteModu
 				}
 				err := types.AssertSpite(resp, expect)
 				if err != nil {
+					logs.Log.Warnf("ExecuteModule: unexpected message type, assert failed: %v", err)
 					continue
 				}
 				if err := greq.HandlerSpite(resp); err != nil {
@@ -155,5 +103,5 @@ func (rpc *Server) ExecuteModule(ctx context.Context, req *implantpb.ExecuteModu
 		return greq.Task.ToProtobuf(), nil
 	}
 
-	return Handler(ctx, rpc, req.Spite, expect)
+	return rpc.GenericInternal(ctx, req.Spite, expect)
 }

@@ -109,24 +109,10 @@ func (rpc *Server) SessionManage(ctx context.Context, req *clientpb.BasicUpdateS
 }
 
 func (rpc *Server) Info(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
-	err := types.AssertRequestName(req, consts.ModuleSysInfo)
-	if err != nil {
-		return nil, err
-	}
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-
-	greq.HandlerResponse(ch, types.MsgSysInfo, func(spite *implantpb.Spite) {
+	return rpc.AssertAndHandleWithSession(ctx, req, consts.ModuleSysInfo, types.MsgSysInfo, func(greq *GenericRequest, spite *implantpb.Spite) {
 		greq.Session.UpdateSysInfo(spite.GetSysinfo())
 		greq.Session.SaveAndNotify("")
 	})
-	return greq.Task.ToProtobuf(), nil
 }
 
 func (rpc *Server) GetSessionHistory(ctx context.Context, req *clientpb.Int) (*clientpb.TasksContext, error) {

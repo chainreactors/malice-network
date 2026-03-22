@@ -13,8 +13,9 @@ import (
 	"gorm.io/gorm"
 )
 
-// NewDBClient - Initialize the db client
-func NewDBClient(dbConfig *configs.DatabaseConfig) *gorm.DB {
+// NewDBClient initializes the db client. Returns an error instead of panicking
+// on configuration or connection failures.
+func NewDBClient(dbConfig *configs.DatabaseConfig) (*gorm.DB, error) {
 	if dbConfig == nil {
 		dbConfig = configs.GetDefaultDatabaseConfig()
 	}
@@ -28,16 +29,21 @@ func NewDBClient(dbConfig *configs.DatabaseConfig) *gorm.DB {
 		dbConfig.MaxOpenConns = 1
 	}
 	var dbClient *gorm.DB
+	var err error
 	switch dbConfig.Dialect {
 	case configs.Sqlite:
 		Adapter = &sqliteAdapter{}
-		dbClient = sqliteClient(dbConfig)
+		dbClient, err = sqliteClient(dbConfig)
 	case configs.Postgres:
 		Adapter = &postgresAdapter{}
-		dbClient = postgresClient(dbConfig)
+		dbClient, err = postgresClient(dbConfig)
 	default:
-		panic(fmt.Sprintf("Unknown DB Dialect: '%s'", dbConfig.Dialect))
+		return nil, fmt.Errorf("unknown DB dialect: %q", dbConfig.Dialect)
 	}
+	if err != nil {
+		return nil, err
+	}
+
 	allModels := []interface{}{
 		&models.Pipeline{},
 		&models.Operator{},
@@ -81,37 +87,37 @@ func NewDBClient(dbConfig *configs.DatabaseConfig) *gorm.DB {
 		sqlDB.SetMaxOpenConns(dbConfig.MaxOpenConns)
 		sqlDB.SetConnMaxLifetime(time.Hour)
 	}
-	return dbClient
+	return dbClient, nil
 }
 
-func sqliteClient(dbConfig *configs.DatabaseConfig) *gorm.DB {
+func sqliteClient(dbConfig *configs.DatabaseConfig) (*gorm.DB, error) {
 	dsn, err := dbConfig.DSN()
 	if err != nil {
-		panic(fmt.Sprintf("Failed to generate SQLite DSN: %v", err))
+		return nil, fmt.Errorf("failed to generate SQLite DSN: %w", err)
 	}
 	dbClient, err := gorm.Open(Open(dsn), &gorm.Config{
 		PrepareStmt: false,
 		Logger:      logger.Default.LogMode(logger.Silent),
 	})
 	if err != nil {
-		panic(fmt.Sprintf("Failed to open SQLite database: %v", err))
+		return nil, fmt.Errorf("failed to open SQLite database: %w", err)
 	}
-	return dbClient
+	return dbClient, nil
 }
 
-func postgresClient(dbConfig *configs.DatabaseConfig) *gorm.DB {
+func postgresClient(dbConfig *configs.DatabaseConfig) (*gorm.DB, error) {
 	dsn, err := dbConfig.DSN()
 	if err != nil {
-		panic(fmt.Sprintf("Failed to generate PostgreSQL DSN: %v", err))
+		return nil, fmt.Errorf("failed to generate PostgreSQL DSN: %w", err)
 	}
 	dbClient, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		PrepareStmt: true,
 		Logger:      logger.Default.LogMode(logger.Silent),
 	})
 	if err != nil {
-		panic(fmt.Sprintf("Failed to open PostgreSQL database: %v", err))
+		return nil, fmt.Errorf("failed to open PostgreSQL database: %w", err)
 	}
-	return dbClient
+	return dbClient, nil
 }
 
 // addPostgresForeignKeys adds FK constraints via raw SQL.
