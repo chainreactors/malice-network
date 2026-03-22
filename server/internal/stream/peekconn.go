@@ -57,7 +57,7 @@ func PeekSid(conn *Conn) (uint32, error) {
 	return malefic.ParseSid(data), nil
 }
 
-func WrapPeekConn(conn io.ReadWriteCloser, cryptos []Cryptor, parserName string) (*Conn, error) {
+func WrapPeekConn(conn io.ReadWriteCloser, cryptos []Cryptor, parserName string, maxPacketLength uint32) (*Conn, error) {
 	bs := make([]byte, 9)
 	_, err := io.ReadFull(conn, bs)
 	if err != nil {
@@ -89,6 +89,8 @@ func WrapPeekConn(conn io.ReadWriteCloser, cryptos []Cryptor, parserName string)
 		return nil, err
 	}
 
+	p.WithMaxPacketLength(maxPacketLength)
+
 	if _, ok := conn.(net.Conn); ok {
 		conn = NewCryptoConn(conn.(net.Conn), c)
 	} else {
@@ -105,7 +107,7 @@ func WrapPeekConn(conn io.ReadWriteCloser, cryptos []Cryptor, parserName string)
 // WrapBindConn wraps a connection for bind mode without pre-reading
 // Bind mode: Server actively sends data first, then receives response from implant
 // Only supports malefic parser in bind mode
-func WrapBindConn(conn io.ReadWriteCloser, cryptos []Cryptor) (*Conn, error) {
+func WrapBindConn(conn io.ReadWriteCloser, cryptos []Cryptor, maxPacketLength uint32) (*Conn, error) {
 	if len(cryptos) == 0 {
 		return nil, net.ErrClosed
 	}
@@ -118,6 +120,8 @@ func WrapBindConn(conn io.ReadWriteCloser, cryptos []Cryptor) (*Conn, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	p.WithMaxPacketLength(maxPacketLength)
 
 	if _, ok := conn.(net.Conn); ok {
 		conn = NewCryptoConn(conn.(net.Conn), c)

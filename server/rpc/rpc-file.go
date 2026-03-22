@@ -14,7 +14,6 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/parser"
-	"github.com/gookit/config/v2"
 	"os"
 	"path/filepath"
 )
@@ -54,7 +53,7 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 	if req == nil {
 		return nil, types.ErrMissingRequestField
 	}
-	count := parser.Count(req.Data, config.Int(consts.ConfigMaxPacketLength))
+	count := parser.Count(req.Data, getPacketLength(ctx))
 	if count == 1 {
 		greq, err := newGenericRequest(ctx, req)
 		if err != nil {
@@ -113,7 +112,7 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 			if err != nil {
 				return buildTaskError(err)
 			}
-			for block := range parser.Chunked(req.Data, config.Int(consts.ConfigMaxPacketLength)) {
+			for block := range parser.Chunked(req.Data, greq.Session.GetPacketLength()) {
 				msg := &implantpb.Block{
 					BlockId: uint32(blockId),
 					Content: block,
@@ -267,7 +266,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 	if req == nil {
 		return nil, types.ErrMissingRequestField
 	}
-	req.BufferSize = uint32(config.Uint(consts.ConfigMaxPacketLength))
+	req.BufferSize = uint32(getPacketLength(ctx))
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -291,7 +290,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 		if err != nil {
 			return fmt.Errorf("write task log: %w", err)
 		}
-		total := downloadChunkCount(int(resp.GetDownloadResponse().Size), config.Int(consts.ConfigMaxPacketLength))
+		total := downloadChunkCount(int(resp.GetDownloadResponse().Size), greq.Session.GetPacketLength())
 		downloadAbs := resp.GetDownloadResponse()
 		greq.Task.Total = total
 

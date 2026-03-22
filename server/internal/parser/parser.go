@@ -69,6 +69,16 @@ func (mp *MessageParser) WithSecure(keyPair *clientpb.KeyPair) {
 	}
 }
 
+// WithMaxPacketLength sets a per-pipeline packet length limit on the parser.
+func (mp *MessageParser) WithMaxPacketLength(n uint32) {
+	if n == 0 {
+		return
+	}
+	if maleficParser, ok := mp.PacketParser.(*malefic.MaleficParser); ok {
+		maleficParser.MaxPacketLength = n
+	}
+}
+
 func (parser *MessageParser) ReadMessage(conn io.ReadWriteCloser, length uint32) (*implantpb.Spites, error) {
 	buf := make([]byte, length)
 	_, err := io.ReadFull(conn, buf)

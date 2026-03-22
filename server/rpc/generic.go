@@ -20,6 +20,7 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
+	"github.com/gookit/config/v2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
@@ -325,6 +326,16 @@ func getSession(ctx context.Context) (*core.Session, error) {
 		return nil, err
 	}
 	return session, nil
+}
+
+// getPacketLength resolves the per-pipeline packet length from session context,
+// falling back to the global config value.
+func getPacketLength(ctx context.Context) int {
+	session, err := getSession(ctx)
+	if err != nil {
+		return config.Int(consts.ConfigMaxPacketLength)
+	}
+	return session.GetPacketLength()
 }
 
 func getListenerID(ctx context.Context) (string, error) {

@@ -64,6 +64,7 @@ func FromPipeline(pipeline *clientpb.Pipeline) *PipelineConfig {
 		TLSConfig:    implanttypes.FromTls(pipeline.Tls),
 		Encryption:   implanttypes.FromEncryptions(pipeline.GetEncryption()),
 		SecureConfig: implanttypes.FromSecure(pipeline.Secure),
+		PacketLength: int(pipeline.PacketLength),
 	}
 }
 
@@ -73,6 +74,7 @@ type PipelineConfig struct {
 	TLSConfig    *implanttypes.TlsConfig
 	Encryption   implanttypes.EncryptionsConfig
 	SecureConfig *implanttypes.SecureConfig
+	PacketLength int
 }
 
 func (p *PipelineConfig) WrapConn(conn io.ReadWriteCloser) (*cryptostream.Conn, error) {
@@ -83,7 +85,7 @@ func (p *PipelineConfig) WrapConn(conn io.ReadWriteCloser) (*cryptostream.Conn, 
 	if err != nil {
 		return nil, err
 	}
-	return cryptostream.WrapPeekConn(conn, crys, p.Parser)
+	return cryptostream.WrapPeekConn(conn, crys, p.Parser, uint32(p.PacketLength))
 }
 
 // WrapBindConn wraps a connection for bind mode without pre-reading
@@ -96,7 +98,7 @@ func (p *PipelineConfig) WrapBindConn(conn io.ReadWriteCloser) (*cryptostream.Co
 	if err != nil {
 		return nil, err
 	}
-	return cryptostream.WrapBindConn(conn, crys)
+	return cryptostream.WrapBindConn(conn, crys, uint32(p.PacketLength))
 }
 
 //

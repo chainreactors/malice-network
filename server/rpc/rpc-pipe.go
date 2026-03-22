@@ -9,7 +9,6 @@ import (
 	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	types "github.com/chainreactors/IoM-go/types"
 	"github.com/chainreactors/malice-network/server/internal/parser"
-	"github.com/gookit/config/v2"
 )
 
 func (rpc *Server) PipeClose(ctx context.Context, req *implantpb.PipeRequest) (*clientpb.Task, error) {
@@ -58,7 +57,7 @@ func (rpc *Server) PipeUpload(ctx context.Context, pipe *implantpb.PipeRequest) 
 		return nil, types.ErrMissingRequestField
 	}
 	req := pipe.Pipe
-	count := parser.Count(req.Data, config.Int(consts.ConfigMaxPacketLength))
+	count := parser.Count(req.Data, getPacketLength(ctx))
 	if count == 1 {
 		greq, err := newGenericRequest(ctx, pipe)
 		if err != nil {
@@ -95,7 +94,7 @@ func (rpc *Server) PipeUpload(ctx context.Context, pipe *implantpb.PipeRequest) 
 			if err != nil {
 				return buildTaskError(err)
 			}
-			for block := range parser.Chunked(req.Data, config.Int(consts.ConfigMaxPacketLength)) {
+			for block := range parser.Chunked(req.Data, greq.Session.GetPacketLength()) {
 				msg := &implantpb.Block{
 					BlockId: uint32(blockId),
 					Content: block,

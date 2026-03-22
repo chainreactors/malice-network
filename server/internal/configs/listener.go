@@ -38,6 +38,7 @@ type TcpPipelineConfig struct {
 	TlsConfig        *TlsConfig                     `config:"tls" yaml:"tls"`
 	EncryptionConfig implanttypes.EncryptionsConfig `config:"encryption" yaml:"encryption"`
 	SecureConfig     *implanttypes.SecureConfig     `config:"secure" yaml:"secure"` // Age 密码学安全配置
+	PacketLength     int                            `config:"packet_length" yaml:"packet_length"`
 }
 
 type AutoBuildConfig struct {
@@ -58,6 +59,7 @@ func (tcp *TcpPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, erro
 		Enable:     tcp.Enable,
 		Parser:     tcp.Parser,
 		Type:       consts.TCPPipeline,
+		PacketLength: uint32(tcp.PacketLength),
 		Body: &clientpb.Pipeline_Tcp{
 			Tcp: &clientpb.TCPPipeline{
 				Host: tcp.Host,
@@ -75,6 +77,7 @@ type BindPipelineConfig struct {
 	Name             string                         `config:"name" default:"bind" yaml:"name"`
 	TlsConfig        *TlsConfig                     `config:"tls" yaml:"tls"`
 	EncryptionConfig implanttypes.EncryptionsConfig `config:"encryption" yaml:"encryption"`
+	PacketLength     int                            `config:"packet_length" yaml:"packet_length"`
 }
 
 func (pipeline *BindPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, error) {
@@ -87,6 +90,7 @@ func (pipeline *BindPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline
 		Enable:     pipeline.Enable,
 		ListenerId: lisId,
 		Parser:     consts.ImplantMalefic,
+		PacketLength: uint32(pipeline.PacketLength),
 		Body: &clientpb.Pipeline_Bind{
 			Bind: &clientpb.BindPipeline{},
 		},
@@ -108,6 +112,7 @@ type HttpPipelineConfig struct {
 	ErrorPage        string                         `config:"error_page" yaml:"error_page"`
 	BodyPrefix       string                         `config:"body_prefix" yaml:"body_prefix"`
 	BodySuffix       string                         `config:"body_suffix" yaml:"body_suffix"`
+	PacketLength     int                            `config:"packet_length" yaml:"packet_length"`
 }
 
 func (http *HttpPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, error) {
@@ -139,6 +144,7 @@ func (http *HttpPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, er
 		Enable:     http.Enable,
 		Parser:     http.Parser,
 		Type:       consts.HTTPPipeline,
+		PacketLength: uint32(http.PacketLength),
 		Body: &clientpb.Pipeline_Http{
 			Http: &clientpb.HTTPPipeline{
 				Host:   http.Host,

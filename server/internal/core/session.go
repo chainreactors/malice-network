@@ -625,6 +625,15 @@ func (s *Session) GetPipelineEncryptionKey() string {
 	return encryptions[0].Key
 }
 
+// GetPacketLength returns the per-pipeline packet length or falls back to global config.
+func (s *Session) GetPacketLength() int {
+	pipeline, ok := Listeners.Find(s.PipelineID)
+	if ok && pipeline != nil && pipeline.PacketLength > 0 {
+		return int(pipeline.PacketLength)
+	}
+	return config.Int(consts.ConfigMaxPacketLength)
+}
+
 func (s *Session) Update(req *clientpb.RegisterSession) {
 	s.Name = req.RegisterData.Name
 	s.PipelineID = req.PipelineId

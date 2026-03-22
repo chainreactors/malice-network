@@ -31,10 +31,11 @@ type Pipeline struct {
 
 func pipelineParamsFromProto(pipeline *clientpb.Pipeline) *implanttypes.PipelineParams {
 	return &implanttypes.PipelineParams{
-		Parser:     pipeline.Parser,
-		Tls:        implanttypes.FromTls(pipeline.Tls),
-		Encryption: implanttypes.FromEncryptions(pipeline.Encryption),
-		Secure:     implanttypes.FromSecure(pipeline.Secure),
+		Parser:       pipeline.Parser,
+		Tls:          implanttypes.FromTls(pipeline.Tls),
+		Encryption:   implanttypes.FromEncryptions(pipeline.Encryption),
+		Secure:       implanttypes.FromSecure(pipeline.Secure),
+		PacketLength: int(pipeline.PacketLength),
 	}
 }
 
@@ -80,16 +81,21 @@ func (pipeline *Pipeline) ToProtobuf() *clientpb.Pipeline {
 	if pipeline == nil {
 		return nil
 	}
+	var packetLength uint32
+	if pipeline.PipelineParams != nil {
+		packetLength = uint32(pipeline.PipelineParams.PacketLength)
+	}
 	switch pipeline.Type {
 	case consts.TCPPipeline:
 		return &clientpb.Pipeline{
-			Name:       pipeline.Name,
-			ListenerId: pipeline.ListenerId,
-			Enable:     pipeline.Enable,
-			Parser:     pipeline.Parser,
-			Ip:         pipeline.IP,
-			Type:       consts.TCPPipeline,
-			CertName:   pipeline.CertName,
+			Name:         pipeline.Name,
+			ListenerId:   pipeline.ListenerId,
+			Enable:       pipeline.Enable,
+			Parser:       pipeline.Parser,
+			Ip:           pipeline.IP,
+			Type:         consts.TCPPipeline,
+			CertName:     pipeline.CertName,
+			PacketLength: packetLength,
 			Body: &clientpb.Pipeline_Tcp{
 				Tcp: &clientpb.TCPPipeline{
 					Name:       pipeline.Name,
@@ -104,13 +110,14 @@ func (pipeline *Pipeline) ToProtobuf() *clientpb.Pipeline {
 		}
 	case consts.HTTPPipeline:
 		return &clientpb.Pipeline{
-			Name:       pipeline.Name,
-			ListenerId: pipeline.ListenerId,
-			Enable:     pipeline.Enable,
-			Parser:     pipeline.Parser,
-			Ip:         pipeline.IP,
-			Type:       consts.HTTPPipeline,
-			CertName:   pipeline.CertName,
+			Name:         pipeline.Name,
+			ListenerId:   pipeline.ListenerId,
+			Enable:       pipeline.Enable,
+			Parser:       pipeline.Parser,
+			Ip:           pipeline.IP,
+			Type:         consts.HTTPPipeline,
+			CertName:     pipeline.CertName,
+			PacketLength: packetLength,
 			Body: &clientpb.Pipeline_Http{
 				Http: &clientpb.HTTPPipeline{
 					Name:       pipeline.Name,
@@ -126,13 +133,14 @@ func (pipeline *Pipeline) ToProtobuf() *clientpb.Pipeline {
 		}
 	case consts.BindPipeline:
 		return &clientpb.Pipeline{
-			Name:       pipeline.Name,
-			ListenerId: pipeline.ListenerId,
-			Enable:     pipeline.Enable,
-			Parser:     pipeline.Parser,
-			Ip:         pipeline.IP,
-			CertName:   pipeline.CertName,
-			Type:       consts.BindPipeline,
+			Name:         pipeline.Name,
+			ListenerId:   pipeline.ListenerId,
+			Enable:       pipeline.Enable,
+			Parser:       pipeline.Parser,
+			Ip:           pipeline.IP,
+			CertName:     pipeline.CertName,
+			Type:         consts.BindPipeline,
+			PacketLength: packetLength,
 			Body: &clientpb.Pipeline_Bind{
 				Bind: &clientpb.BindPipeline{
 					Name:       pipeline.Name,
@@ -145,13 +153,14 @@ func (pipeline *Pipeline) ToProtobuf() *clientpb.Pipeline {
 		}
 	case consts.WebsitePipeline:
 		return &clientpb.Pipeline{
-			Name:       pipeline.Name,
-			ListenerId: pipeline.ListenerId,
-			Ip:         pipeline.IP,
-			Enable:     pipeline.Enable,
-			Parser:     pipeline.Parser,
-			CertName:   pipeline.CertName,
-			Type:       consts.WebsitePipeline,
+			Name:         pipeline.Name,
+			ListenerId:   pipeline.ListenerId,
+			Ip:           pipeline.IP,
+			Enable:       pipeline.Enable,
+			Parser:       pipeline.Parser,
+			CertName:     pipeline.CertName,
+			Type:         consts.WebsitePipeline,
+			PacketLength: packetLength,
 			Body: &clientpb.Pipeline_Web{
 				Web: &clientpb.Website{
 					Name:       pipeline.Name,
@@ -167,13 +176,14 @@ func (pipeline *Pipeline) ToProtobuf() *clientpb.Pipeline {
 		}
 	case consts.RemPipeline:
 		return &clientpb.Pipeline{
-			Name:       pipeline.Name,
-			ListenerId: pipeline.ListenerId,
-			Enable:     pipeline.Enable,
-			Parser:     pipeline.Parser,
-			Type:       consts.RemPipeline,
-			Ip:         pipeline.IP,
-			CertName:   pipeline.CertName,
+			Name:         pipeline.Name,
+			ListenerId:   pipeline.ListenerId,
+			Enable:       pipeline.Enable,
+			Parser:       pipeline.Parser,
+			Type:         consts.RemPipeline,
+			Ip:           pipeline.IP,
+			CertName:     pipeline.CertName,
+			PacketLength: packetLength,
 			Body: &clientpb.Pipeline_Rem{
 				Rem: &clientpb.REM{
 					Name:      pipeline.Name,
@@ -197,13 +207,14 @@ func (pipeline *Pipeline) ToProtobuf() *clientpb.Pipeline {
 			params = string(data)
 		}
 		return &clientpb.Pipeline{
-			Name:       pipeline.Name,
-			ListenerId: pipeline.ListenerId,
-			Enable:     pipeline.Enable,
-			Parser:     pipeline.Parser,
-			Ip:         pipeline.IP,
-			Type:       pipeline.Type,
-			CertName:   pipeline.CertName,
+			Name:         pipeline.Name,
+			ListenerId:   pipeline.ListenerId,
+			Enable:       pipeline.Enable,
+			Parser:       pipeline.Parser,
+			Ip:           pipeline.IP,
+			Type:         pipeline.Type,
+			CertName:     pipeline.CertName,
+			PacketLength: packetLength,
 			Body: &clientpb.Pipeline_Custom{
 				Custom: &clientpb.CustomPipeline{
 					Name:       pipeline.Name,

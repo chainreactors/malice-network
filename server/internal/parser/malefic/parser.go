@@ -34,10 +34,19 @@ func NewMaleficParser() *MaleficParser {
 }
 
 type MaleficParser struct {
-	StartDelimiter byte
-	EndDelimiter   byte
-	keyPair        *clientpb.KeyPair // Age 密钥对，用于加解密
-	privateKeys    []string
+	StartDelimiter   byte
+	EndDelimiter     byte
+	MaxPacketLength  uint32
+	keyPair          *clientpb.KeyPair // Age 密钥对，用于加解密
+	privateKeys      []string
+}
+
+// maxPacketLen returns the per-pipeline limit or falls back to global config.
+func (parser *MaleficParser) maxPacketLen() uint32 {
+	if parser.MaxPacketLength > 0 {
+		return parser.MaxPacketLength
+	}
+	return uint32(config.Uint(consts.ConfigMaxPacketLength))
 }
 
 // WithSecure 设置 Age 密钥对用于加解密，返回新的 parser 实例
@@ -92,8 +101,8 @@ func (parser *MaleficParser) readHeader(conn io.ReadWriteCloser) (uint32, uint32
 	}
 	sessionId := ParseSid(header)
 	length := binary.LittleEndian.Uint32(header[MsgSessionEnd:])
-	if length > uint32(config.Uint(consts.ConfigMaxPacketLength))+consts.KB*16 {
-		return 0, 0, fmt.Errorf("%w,expect: %d, recv: %d", types.ErrPacketTooLarge, config.Int(consts.ConfigMaxPacketLength), length)
+	if length > parser.maxPacketLen()+consts.KB*16 {
+		return 0, 0, fmt.Errorf("%w,expect: %d, recv: %d", types.ErrPacketTooLarge, parser.maxPacketLen(), length)
 	}
 
 	return sessionId, length + 1, nil
@@ -105,8 +114,8 @@ func (parser *MaleficParser) ReadHeader(conn io.ReadWriteCloser) (uint32, uint32
 		return 0, 0, err
 	}
 	//logs.Log.Debugf("%v read packet from %s , %d bytes", sid, conn.RemoteAddr(), length)
-	if length > uint32(config.Uint(consts.ConfigMaxPacketLength))+consts.KB*16+1 {
-		return 0, 0, fmt.Errorf("%w,expect: %d, recv: %d", types.ErrPacketTooLarge, config.Int(consts.ConfigMaxPacketLength), length)
+	if length > parser.maxPacketLen()+consts.KB*16+1 {
+		return 0, 0, fmt.Errorf("%w,expect: %d, recv: %d", types.ErrPacketTooLarge, parser.maxPacketLen(), length)
 	}
 	return sid, length, nil
 }

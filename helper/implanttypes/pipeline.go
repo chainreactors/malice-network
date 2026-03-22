@@ -231,10 +231,11 @@ type PipelineParams struct {
 	Tls        *TlsConfig                    `json:"tls,omitempty"`
 	Secure     *SecureConfig                 `json:"secure,omitempty"`
 	// HTTP pipeline specific params
-	Headers    map[string][]string `json:"headers,omitempty"`
-	ErrorPage  string              `json:"error_page,omitempty" gorm:"-"`
-	BodyPrefix string              `json:"body_prefix,omitempty"`
-	BodySuffix string              `json:"body_suffix,omitempty"`
+	Headers      map[string][]string `json:"headers,omitempty"`
+	ErrorPage    string              `json:"error_page,omitempty" gorm:"-"`
+	BodyPrefix   string              `json:"body_prefix,omitempty"`
+	BodySuffix   string              `json:"body_suffix,omitempty"`
+	PacketLength int                 `json:"packet_length,omitempty" yaml:"packet_length,omitempty"`
 }
 
 func (params *PipelineParams) String() string {
