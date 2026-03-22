@@ -311,7 +311,7 @@ func TestAddWebContentRespectsExplicitContentType(t *testing.T) {
 		t.Fatalf("WriteTempFile failed: %v", err)
 	}
 
-	content, err := AddWebContent(clientHarness.Console, filePath, "/payload.bin", "site-type", "text/plain")
+	content, err := AddWebContent(clientHarness.Console, filePath, "/payload.bin", "site-type", "text/plain", "")
 	if err != nil {
 		t.Fatalf("AddWebContent failed: %v", err)
 	}
@@ -355,7 +355,7 @@ func TestAddWebContentFailsWhenWebsiteMissing(t *testing.T) {
 		t.Fatalf("WriteTempFile failed: %v", err)
 	}
 
-	if _, err := AddWebContent(clientHarness.Console, filePath, "/missing.txt", "missing-site", "raw"); err == nil {
+	if _, err := AddWebContent(clientHarness.Console, filePath, "/missing.txt", "missing-site", "raw", ""); err == nil {
 		t.Fatal("expected AddWebContent to fail for a missing website")
 	}
 }
