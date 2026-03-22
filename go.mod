@@ -47,7 +47,6 @@ require (
 	github.com/traefik/yaegi v0.14.3
 	github.com/wabzsy/gonut v1.0.0
 	github.com/yuin/gopher-lua v1.1.1
-	github.com/zema1/suo5 v1.3.2-0.20250219115440-31983ee59a83
 	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/driver/postgres v1.6.0
 	gorm.io/gorm v1.25.10
@@ -213,6 +212,7 @@ require (
 	github.com/yuin/goldmark v1.7.4 // indirect
 	github.com/yuin/goldmark-emoji v1.0.3 // indirect
 	github.com/zema1/rawhttp v0.2.0 // indirect
+	github.com/zema1/suo5 v1.3.2-0.20250219115440-31983ee59a83 // indirect
 	golang.org/x/mod v0.32.0 // indirect
 	golang.org/x/tools v0.41.0 // indirect
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
