@@ -20,6 +20,7 @@ func main() {
 	flag.StringVar(&cfg.PipelineName, "pipeline", "", "pipeline name (auto-generated if empty)")
 	flag.StringVar(&cfg.Suo5URL, "suo5", "", "suo5 webshell URL (e.g. suo5://target/suo5.jsp)")
 	flag.StringVar(&cfg.StageToken, "token", "", "auth token matching webshell's STAGE_TOKEN")
+	flag.StringVar(&cfg.DLLPath, "dll", "", "path to bridge DLL for auto-loading (optional)")
 	flag.BoolVar(&cfg.Debug, "debug", false, "enable debug logging")
 	flag.Parse()
 

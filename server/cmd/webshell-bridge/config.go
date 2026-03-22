@@ -9,6 +9,7 @@ type Config struct {
 	PipelineName string // pipeline name
 	Suo5URL      string // suo5 webshell URL (e.g. suo5://target/suo5.jsp)
 	StageToken   string // auth token for X-Stage requests (must match webshell's STAGE_TOKEN)
+	DLLPath      string // optional path to bridge DLL for auto-loading
 	Debug        bool   // enable debug logging
 }
 

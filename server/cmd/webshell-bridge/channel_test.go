@@ -1,7 +1,10 @@
 package main
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
 	"encoding/binary"
+	"encoding/hex"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -266,4 +269,64 @@ func TestChannelStreamDispatch(t *testing.T) {
 	}
 
 	ch.CloseStream(100)
+}
+
+func TestComputeHMAC(t *testing.T) {
+	secret := "test-secret-token-longer-than-32chars"
+	token := tokenForHeader(secret)
+
+	// Token should be a 64-char hex string (SHA-256)
+	if len(token) != 64 {
+		t.Fatalf("expected 64 hex chars, got %d", len(token))
+	}
+	if _, err := hex.DecodeString(token); err != nil {
+		t.Fatalf("token is not valid hex: %v", err)
+	}
+
+	// Same call within the same 30s window should produce the same token
+	token2 := tokenForHeader(secret)
+	if token != token2 {
+		t.Error("same-window HMAC should be identical")
+	}
+
+	// Different secret should produce different token
+	token3 := tokenForHeader("different-secret-also-longer-than32")
+	if token == token3 {
+		t.Error("different secrets should produce different tokens")
+	}
+}
+
+func TestHMACWindowTolerance(t *testing.T) {
+	secret := "test-secret-token-longer-than-32chars"
+	now := time.Now().Unix() / 30
+
+	// Verify that the token matches one of the valid windows (current ±1)
+	token := tokenForHeader(secret)
+
+	matched := false
+	for w := now - 1; w <= now+1; w++ {
+		mac := hmac.New(sha256.New, []byte(secret))
+		_ = binary.Write(mac, binary.BigEndian, w)
+		expected := hex.EncodeToString(mac.Sum(nil))
+		if expected == token {
+			matched = true
+			break
+		}
+	}
+	if !matched {
+		t.Error("HMAC token did not match any valid time window")
+	}
+}
+
+func TestJitterRange(t *testing.T) {
+	base := 1 * time.Second
+	minExpected := time.Duration(float64(base) * (1 - jitterFactor))
+	maxExpected := time.Duration(float64(base) * (1 + jitterFactor))
+
+	for i := 0; i < 100; i++ {
+		j := jitter(base)
+		if j < minExpected || j > maxExpected {
+			t.Fatalf("jitter out of range: got %v, expected [%v, %v]", j, minExpected, maxExpected)
+		}
+	}
 }

