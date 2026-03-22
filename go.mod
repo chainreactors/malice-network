@@ -227,7 +227,6 @@ replace (
 replace (
 	github.com/chainreactors/IoM-go => ./external/IoM-go
 	github.com/chainreactors/proxyclient => github.com/chainreactors/proxyclient v1.0.3
-	github.com/chainreactors/rem => github.com/chainreactors/rem-community v0.3.0
 	github.com/chainreactors/tui => ./external/tui
 	github.com/reeflective/console => ./external/console
 	github.com/reeflective/readline => ./external/readline
