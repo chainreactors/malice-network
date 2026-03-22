@@ -10,6 +10,7 @@ require (
 	github.com/chainreactors/logs v0.0.0-20250312104344-9f30fa69d3c9
 	github.com/chainreactors/mals v0.0.0-20250717185731-227f71a931fa
 	github.com/chainreactors/parsers v0.0.0-20250225073555-ab576124d61f
+	github.com/chainreactors/proxyclient v1.0.4-0.20260218115902-74a84a4535b0
 	github.com/chainreactors/rem v0.3.0
 	github.com/chainreactors/tui v0.1.1
 	github.com/chainreactors/utils v0.0.0-20241209140746-65867d2f78b2
@@ -79,6 +80,7 @@ require (
 	github.com/alibabacloud-go/tea v1.4.0 // indirect
 	github.com/alibabacloud-go/tea-utils/v2 v2.0.7 // indirect
 	github.com/aliyun/credentials-go v1.4.7 // indirect
+	github.com/andybalholm/brotli v1.1.0 // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.41.1 // indirect
 	github.com/aws/aws-sdk-go-v2/config v1.32.8 // indirect
@@ -105,7 +107,6 @@ require (
 	github.com/cbroglie/mustache v1.4.0 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/chainreactors/fingers v0.0.0-20240702104653-a66e34aa41df // indirect
-	github.com/chainreactors/proxyclient v1.0.4-0.20260218115902-74a84a4535b0 // indirect
 	github.com/charmbracelet/bubbles v0.21.1-0.20250623103423-23b8fd6302d7 // indirect
 	github.com/charmbracelet/colorprofile v0.4.3 // indirect
 	github.com/charmbracelet/harmonica v0.2.0 // indirect
@@ -126,6 +127,7 @@ require (
 	github.com/clipperhouse/displaywidth v0.9.0 // indirect
 	github.com/clipperhouse/stringish v0.1.1 // indirect
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
+	github.com/cloudflare/circl v1.3.8 // indirect
 	github.com/creack/pty v1.1.24 // indirect
 	github.com/dlclark/regexp2 v1.11.5 // indirect
 	github.com/docker/go-connections v0.5.0 // indirect
@@ -138,9 +140,11 @@ require (
 	github.com/go-dedup/megophone v0.0.0-20170830025436-f01be21026f5 // indirect
 	github.com/go-dedup/simhash v0.0.0-20170904020510-9ecaca7b509c // indirect
 	github.com/go-dedup/text v0.0.0-20170907015346-8bb1b95e3cb7 // indirect
+	github.com/go-gost/gosocks5 v0.3.0 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.3 // indirect
 	github.com/go-sql-driver/mysql v1.8.1 // indirect
 	github.com/go-telegram-bot-api/telegram-bot-api v4.6.4+incompatible // indirect
+	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/goccy/go-yaml v1.12.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/google/uuid v1.6.0 // indirect
@@ -156,6 +160,8 @@ require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/json-iterator/go v1.1.13-0.20220915233716-71ac16282d12 // indirect
+	github.com/kataras/golog v0.1.8 // indirect
+	github.com/kataras/pio v0.0.11 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.7 // indirect
 	github.com/klauspost/reedsolomon v1.12.0 // indirect
 	github.com/lib/pq v1.10.9 // indirect
@@ -184,6 +190,7 @@ require (
 	github.com/opencontainers/image-spec v1.1.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/reeflective/readline v1.1.3 // indirect
+	github.com/refraction-networking/utls v1.6.4 // indirect
 	github.com/riobard/go-bloom v0.0.0-20200614022211-cdc8013cb5b3 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/saferwall/pe v1.5.6 // indirect
@@ -204,6 +211,8 @@ require (
 	github.com/yuin/gluamapper v0.0.0-20150323120927-d836955830e7 // indirect
 	github.com/yuin/goldmark v1.7.4 // indirect
 	github.com/yuin/goldmark-emoji v1.0.3 // indirect
+	github.com/zema1/rawhttp v0.2.0 // indirect
+	github.com/zema1/suo5 v1.3.2-0.20250219115440-31983ee59a83 // indirect
 	golang.org/x/mod v0.32.0 // indirect
 	golang.org/x/tools v0.41.0 // indirect
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
@@ -216,6 +225,7 @@ require (
 replace (
 	github.com/imdario/mergo => dario.cat/mergo v1.0.0
 	github.com/miekg/dns => github.com/miekg/dns v1.1.58
+	github.com/zema1/suo5 => github.com/M09Ic/suo5 v1.3.4
 	golang.org/x/crypto => golang.org/x/crypto v0.48.0
 	golang.org/x/mod => golang.org/x/mod v0.17.0
 	golang.org/x/net => golang.org/x/net v0.50.0

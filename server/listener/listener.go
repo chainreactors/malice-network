@@ -500,7 +500,11 @@ func (lns *listener) startPipeline(pipelinepb *clientpb.Pipeline) (core.Pipeline
 	case *clientpb.Pipeline_Http:
 		p, err = NewHttpPipeline(lns.Rpc, pipelinepb)
 	case *clientpb.Pipeline_Custom:
-		p = NewCustomPipeline(pipelinepb)
+		if pipelinepb.Type == "webshell" {
+			p, err = NewWebShellPipeline(lns.Rpc, pipelinepb)
+		} else {
+			p = NewCustomPipeline(pipelinepb)
+		}
 	default:
 		// Fallback: treat any unknown body as custom pipeline.
 		p = NewCustomPipeline(pipelinepb)

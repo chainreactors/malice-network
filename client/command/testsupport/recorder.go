@@ -383,6 +383,18 @@ func (r *RecorderRPC) GetAllCertificates(ctx context.Context, in *clientpb.Empty
 	return &clientpb.Certs{}, nil
 }
 
+func (r *RecorderRPC) RegisterPipeline(ctx context.Context, in *clientpb.Pipeline, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+	return r.emptyResponse(ctx, "RegisterPipeline", in)
+}
+
+func (r *RecorderRPC) ListPipelines(ctx context.Context, in *clientpb.Listener, opts ...grpc.CallOption) (*clientpb.Pipelines, error) {
+	r.recordPrimary(ctx, "ListPipelines", in)
+	if responder, ok := r.pipelinesResponders["ListPipelines"]; ok {
+		return responder(ctx, in)
+	}
+	return &clientpb.Pipelines{}, nil
+}
+
 func (r *RecorderRPC) StartPipeline(ctx context.Context, in *clientpb.CtrlPipeline, opts ...grpc.CallOption) (*clientpb.Empty, error) {
 	return r.emptyResponse(ctx, "StartPipeline", in)
 }

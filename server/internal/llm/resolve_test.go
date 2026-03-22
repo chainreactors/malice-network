@@ -5,6 +5,23 @@ import (
 	"testing"
 )
 
+var resolveEnvKeys = []string{
+	"BRIDGE_API_KEY",
+	"BRIDGE_OPENAI_BASE_URL",
+	"BRIDGE_OPENAI_API_KEY",
+	"BRIDGE_DEEPSEEK_BASE_URL",
+	"BRIDGE_DEEPSEEK_API_KEY",
+	"BRIDGE_GROQ_BASE_URL",
+	"BRIDGE_GROQ_API_KEY",
+	"BRIDGE_CUSTOM_LLM_BASE_URL",
+	"BRIDGE_CUSTOM_LLM_API_KEY",
+	"OPENAI_API_KEY",
+	"OPENROUTER_API_KEY",
+	"DEEPSEEK_API_KEY",
+	"GROQ_API_KEY",
+	"MOONSHOT_API_KEY",
+}
+
 func TestResolve(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -117,6 +134,9 @@ func TestResolve(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			for _, key := range resolveEnvKeys {
+				t.Setenv(key, "")
+			}
 			for k, v := range tt.envs {
 				t.Setenv(k, v)
 			}

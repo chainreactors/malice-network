@@ -243,16 +243,115 @@ rem update interval --pipeline-id rem_graph_api_03 --agent-id uDM0BgG6 5000
 
 	remCmd.AddCommand(listremCmd, newRemCmd, startRemCmd, stopRemCmd, deleteRemCmd, updateRemCmd)
 
+	// WebShell pipeline commands
+	webshellCmd := &cobra.Command{
+		Use:   "webshell",
+		Short: "Manage WebShell pipelines",
+		Long:  "List, create, start, stop, and delete WebShell bridge pipelines.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cmd.Help()
+		},
+	}
+
+	listWebShellCmd := &cobra.Command{
+		Use:   "list [listener]",
+		Short: "List webshell pipelines",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return ListWebShellCmd(cmd, con)
+		},
+	}
+	common.BindArgCompletions(listWebShellCmd, nil, common.ListenerIDCompleter(con))
+
+	newWebShellCmd := &cobra.Command{
+		Use:   "new [name]",
+		Short: "Register a new webshell pipeline with suo5 transport",
+		Long:  "Register a WebShell pipeline that uses suo5 for full-duplex streaming to the target webshell.",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return NewWebShellCmd(cmd, con)
+		},
+		Example: `~~~
+webshell new --listener my-listener --suo5 suo5://target/bridge.php --token secret
+webshell new ws1 --listener my-listener --suo5 suo5://target/bridge.php --token secret --dll /path/to/dll
+~~~`,
+	}
+	common.BindFlag(newWebShellCmd, func(f *pflag.FlagSet) {
+		f.StringP("listener", "l", "", "listener id")
+		f.String("suo5", "", "suo5 URL to webshell (e.g., suo5://target/bridge.php)")
+		f.String("token", "", "stage token for DLL bootstrap authentication")
+		f.String("dll", "", "path to bridge DLL for auto-loading")
+		f.String("deps", "", "directory containing dependency files (e.g., jna.jar)")
+	})
+	common.BindFlagCompletions(newWebShellCmd, func(comp carapace.ActionMap) {
+		comp["listener"] = common.ListenerIDCompleter(con)
+		comp["suo5"] = carapace.ActionValues().Usage("suo5 URL")
+		comp["dll"] = carapace.ActionFiles().Usage("bridge DLL path")
+		comp["deps"] = carapace.ActionDirectories().Usage("deps directory")
+	})
+	newWebShellCmd.MarkFlagRequired("listener")
+	newWebShellCmd.MarkFlagRequired("suo5")
+
+	startWebShellCmd := &cobra.Command{
+		Use:   "start <name>",
+		Short: "Start a webshell pipeline",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return StartWebShellCmd(cmd, con)
+		},
+	}
+	common.BindFlag(startWebShellCmd, func(f *pflag.FlagSet) {
+		f.StringP("listener", "l", "", "listener id")
+	})
+	common.BindFlagCompletions(startWebShellCmd, func(comp carapace.ActionMap) {
+		comp["listener"] = common.ListenerIDCompleter(con)
+	})
+	common.BindArgCompletions(startWebShellCmd, nil, common.PipelineCompleter(con, webshellPipelineType))
+
+	stopWebShellCmd := &cobra.Command{
+		Use:   "stop <name>",
+		Short: "Stop a webshell pipeline",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return StopWebShellCmd(cmd, con)
+		},
+	}
+	common.BindFlag(stopWebShellCmd, func(f *pflag.FlagSet) {
+		f.StringP("listener", "l", "", "listener id")
+	})
+	common.BindFlagCompletions(stopWebShellCmd, func(comp carapace.ActionMap) {
+		comp["listener"] = common.ListenerIDCompleter(con)
+	})
+	common.BindArgCompletions(stopWebShellCmd, nil, common.PipelineCompleter(con, webshellPipelineType))
+
+	deleteWebShellCmd := &cobra.Command{
+		Use:   "delete <name>",
+		Short: "Delete a webshell pipeline",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return DeleteWebShellCmd(cmd, con)
+		},
+	}
+	common.BindFlag(deleteWebShellCmd, func(f *pflag.FlagSet) {
+		f.StringP("listener", "l", "", "listener id")
+	})
+	common.BindFlagCompletions(deleteWebShellCmd, func(comp carapace.ActionMap) {
+		comp["listener"] = common.ListenerIDCompleter(con)
+	})
+	common.BindArgCompletions(deleteWebShellCmd, nil, common.PipelineCompleter(con, webshellPipelineType))
+
+	webshellCmd.AddCommand(listWebShellCmd, newWebShellCmd, startWebShellCmd, stopWebShellCmd, deleteWebShellCmd)
+
 	// Enable wizard for pipeline commands
-	common.EnableWizardForCommands(tcpCmd, httpCmd, bindCmd, newRemCmd)
+	common.EnableWizardForCommands(tcpCmd, httpCmd, bindCmd, newRemCmd, newWebShellCmd)
 
 	// Register wizard providers for dynamic options
 	registerWizardProviders(tcpCmd, con)
 	registerWizardProviders(httpCmd, con)
 	registerWizardProviders(bindCmd, con)
 	registerWizardProviders(newRemCmd, con)
+	registerWizardProviders(newWebShellCmd, con)
 
-	return []*cobra.Command{tcpCmd, httpCmd, bindCmd, remCmd}
+	return []*cobra.Command{tcpCmd, httpCmd, bindCmd, remCmd, webshellCmd}
 }
 
 // registerWizardProviders registers dynamic option providers for wizard.
