@@ -235,6 +235,9 @@ type PipelineParams struct {
 	ErrorPage  string              `json:"error_page,omitempty" gorm:"-"`
 	BodyPrefix string              `json:"body_prefix,omitempty"`
 	BodySuffix string              `json:"body_suffix,omitempty"`
+	// RawCustomParams preserves the original Custom.Params JSON string for
+	// non-built-in pipeline types (e.g. webshell), surviving DB roundtrips.
+	RawCustomParams string `json:"raw_custom_params,omitempty"`
 }
 
 func (params *PipelineParams) String() string {

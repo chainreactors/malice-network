@@ -55,12 +55,15 @@ func customPipelineParams(params string, pipeline *clientpb.Pipeline) *implantty
 	merged := pipelineParamsFromProto(pipeline)
 	customParams, err := implanttypes.UnmarshalPipelineParams(params)
 	if err != nil || customParams == nil {
+		merged.RawCustomParams = params
 		return merged
 	}
 	customParams.Parser = merged.Parser
 	customParams.Tls = merged.Tls
 	customParams.Encryption = merged.Encryption
 	customParams.Secure = merged.Secure
+	// Preserve original custom params JSON for non-built-in pipelines (e.g. webshell)
+	customParams.RawCustomParams = params
 	return customParams
 }
 
@@ -191,8 +194,12 @@ func (pipeline *Pipeline) ToProtobuf() *clientpb.Pipeline {
 		}
 	default:
 		// All non-built-in types (custom/externally-managed pipelines).
+		// Prefer the preserved raw custom params over re-marshaling PipelineParams,
+		// because PipelineParams may not have fields for custom keys (e.g. suo5_url).
 		params := ""
-		if pipeline.PipelineParams != nil {
+		if pipeline.PipelineParams != nil && pipeline.PipelineParams.RawCustomParams != "" {
+			params = pipeline.PipelineParams.RawCustomParams
+		} else if pipeline.PipelineParams != nil {
 			data, _ := json.Marshal(pipeline.PipelineParams)
 			params = string(data)
 		}
