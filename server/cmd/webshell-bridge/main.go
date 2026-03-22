@@ -18,14 +18,15 @@ func main() {
 	flag.StringVar(&cfg.ListenerName, "listener", "webshell-listener", "listener name")
 	flag.StringVar(&cfg.ListenerIP, "ip", "127.0.0.1", "listener external IP")
 	flag.StringVar(&cfg.PipelineName, "pipeline", "", "pipeline name (auto-generated if empty)")
-	flag.StringVar(&cfg.Suo5URL, "suo5", "", "suo5 webshell URL (e.g. suo5://target/suo5.jsp)")
+	flag.StringVar(&cfg.WebshellURL, "url", "", "webshell URL (e.g. http://target/shell.jsp)")
 	flag.StringVar(&cfg.StageToken, "token", "", "auth token matching webshell's STAGE_TOKEN")
 	flag.StringVar(&cfg.DLLPath, "dll", "", "path to bridge DLL for auto-loading (optional)")
+	flag.StringVar(&cfg.DepsDir, "deps", "", "dir containing dependency jars (e.g., jna.jar) for auto-delivery")
 	flag.BoolVar(&cfg.Debug, "debug", false, "enable debug logging")
 	flag.Parse()
 
-	if cfg.AuthFile == "" || cfg.Suo5URL == "" {
-		fmt.Fprintf(os.Stderr, "Usage: webshell-bridge --auth <listener.auth> --suo5 <url> --token <token>\n")
+	if cfg.AuthFile == "" || cfg.WebshellURL == "" {
+		fmt.Fprintf(os.Stderr, "Usage: webshell-bridge --auth <listener.auth> --url <url> --token <token>\n")
 		flag.PrintDefaults()
 		os.Exit(1)
 	}

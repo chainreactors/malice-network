@@ -13,7 +13,7 @@ import (
 
 // Session represents a single implant session managed by the bridge.
 // Each session owns a Channel that communicates with the malefic bind DLL
-// on the target through the malefic protocol over suo5.
+// on the target through the malefic protocol over HTTP.
 type Session struct {
 	ID         string
 	PipelineID string

