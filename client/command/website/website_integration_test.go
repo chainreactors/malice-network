@@ -115,7 +115,7 @@ func TestWebContentLifecycleIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("WriteTempFile failed: %v", err)
 	}
-	content, err := AddWebContent(clientHarness.Console, indexPath, "/index.html", "site-content", "raw")
+	content, err := AddWebContent(clientHarness.Console, indexPath, "/index.html", "site-content", "raw", "")
 	if err != nil {
 		t.Fatalf("AddWebContent failed: %v", err)
 	}
