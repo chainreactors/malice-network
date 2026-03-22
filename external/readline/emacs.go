@@ -453,8 +453,22 @@ func (rl *Shell) selfInsert() {
 }
 
 func (rl *Shell) bracketedPasteBegin() {
-	// keys, _ := rl.Keys.PeekAllBytes()
-	// fmt.Println(string(keys))
+	rl.History.Save()
+
+	// Read all content until the bracketed paste end marker \e[201~
+	endMarker := []byte("\033[201~")
+	content := rl.Keys.ReadUntilSequence(endMarker)
+
+	if len(content) == 0 {
+		return
+	}
+
+	// Normalize line endings: \r\n -> \n, lone \r -> \n
+	text := strings.ReplaceAll(string(content), "\r\n", "\n")
+	text = strings.ReplaceAll(text, "\r", "\n")
+
+	rl.cursor.InsertAt([]rune(text)...)
+	rl.Display.Refresh()
 }
 
 // Drag the character before point forward over the character

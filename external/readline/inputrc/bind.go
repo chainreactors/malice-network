@@ -17,7 +17,7 @@ func DefaultVars() map[string]interface{} {
 		"convert-meta":                     true,
 		"disable-completion":               false,
 		"echo-control-characters":          true,
-		"enable-bracketed-paste":           false,
+		"enable-bracketed-paste":           true,
 		"enable-keypad":                    false,
 		"enable-meta-key":                  true,
 		"expand-tilde":                     false,
@@ -1466,10 +1466,10 @@ func DefaultBinds() map[string]map[string]Bind {
 			Unescape(`\M-[1;3D`): Bind{"backward-word", false},
 			Unescape(`\M-[1;5D`): Bind{"backward-word", false},
 			// beginning-of-history (not bound)
-			Unescape(`\M-OH`): Bind{"beginning-of-line", false},
-			Unescape(`\M-[H`): Bind{"beginning-of-line", false},
-			Unescape(`0`):     Bind{"beginning-of-line", false},
-			// bracketed-paste-begin (not bound)
+			Unescape(`\M-OH`):    Bind{"beginning-of-line", false},
+			Unescape(`\M-[H`):    Bind{"beginning-of-line", false},
+			Unescape(`0`):        Bind{"beginning-of-line", false},
+			Unescape(`\M-[200~`): Bind{"bracketed-paste-begin", false},
 			// call-last-kbd-macro (not bound)
 			// capitalize-word (not bound)
 			// character-search (not bound)
@@ -1682,10 +1682,10 @@ func DefaultBinds() map[string]map[string]Bind {
 			Unescape(`\M-[1;3D`): Bind{"backward-word", false},
 			Unescape(`\M-[1;5D`): Bind{"backward-word", false},
 			// beginning-of-history (not bound)
-			Unescape(`\M-OH`): Bind{"beginning-of-line", false},
-			Unescape(`\M-[H`): Bind{"beginning-of-line", false},
-			Unescape(`0`):     Bind{"beginning-of-line", false},
-			// bracketed-paste-begin (not bound)
+			Unescape(`\M-OH`):    Bind{"beginning-of-line", false},
+			Unescape(`\M-[H`):    Bind{"beginning-of-line", false},
+			Unescape(`0`):        Bind{"beginning-of-line", false},
+			Unescape(`\M-[200~`): Bind{"bracketed-paste-begin", false},
 			// call-last-kbd-macro (not bound)
 			// capitalize-word (not bound)
 			// character-search (not bound)
@@ -1898,10 +1898,10 @@ func DefaultBinds() map[string]map[string]Bind {
 			Unescape(`\M-[1;3D`): Bind{"backward-word", false},
 			Unescape(`\M-[1;5D`): Bind{"backward-word", false},
 			// beginning-of-history (not bound)
-			Unescape(`\M-OH`): Bind{"beginning-of-line", false},
-			Unescape(`\M-[H`): Bind{"beginning-of-line", false},
-			Unescape(`0`):     Bind{"beginning-of-line", false},
-			// bracketed-paste-begin (not bound)
+			Unescape(`\M-OH`):    Bind{"beginning-of-line", false},
+			Unescape(`\M-[H`):    Bind{"beginning-of-line", false},
+			Unescape(`0`):        Bind{"beginning-of-line", false},
+			Unescape(`\M-[200~`): Bind{"bracketed-paste-begin", false},
 			// call-last-kbd-macro (not bound)
 			// capitalize-word (not bound)
 			// character-search (not bound)

@@ -1,6 +1,7 @@
 package core
 
 import (
+	"bytes"
 	"errors"
 	"io"
 	"os"
@@ -350,6 +351,49 @@ func (k *Keys) IsEOF() bool {
 	k.mutex.RLock()
 	defer k.mutex.RUnlock()
 	return k.eof
+}
+
+// ReadUntilSequence reads bytes from the key buffer and stdin until the
+// end sequence is found. Returns all content before the end sequence.
+// The end sequence itself is consumed and discarded.
+// Used by bracketed paste to read until \e[201~.
+const maxPasteSize = 1 << 20 // 1MB safety limit
+
+func (k *Keys) ReadUntilSequence(end []byte) []byte {
+	var result []byte
+
+	for {
+		// Check if the end sequence is in the current buffer
+		if idx := bytes.Index(k.buf, end); idx >= 0 {
+			result = append(result, k.buf[:idx]...)
+			k.buf = k.buf[idx+len(end):]
+			return result
+		}
+
+		// Safety limit to prevent infinite reads
+		if len(result)+len(k.buf) > maxPasteSize {
+			result = append(result, k.buf...)
+			k.buf = nil
+			return result
+		}
+
+		// Keep buffer tail that might contain partial end sequence match
+		safe := len(k.buf) - len(end) + 1
+		if safe > 0 {
+			result = append(result, k.buf[:safe]...)
+			k.buf = k.buf[safe:]
+		}
+
+		// Read more from stdin
+		newKeys, err := k.readInputFiltered()
+		if err != nil {
+			result = append(result, k.buf...)
+			k.buf = nil
+			return result
+		}
+
+		k.buf = append(k.buf, newKeys...)
+	}
 }
 
 func (k *Keys) extractCursorPos(keys []byte) (cursor, remain []byte) {
