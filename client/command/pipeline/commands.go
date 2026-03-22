@@ -264,24 +264,32 @@ rem update interval --pipeline-id rem_graph_api_03 --agent-id uDM0BgG6 5000
 
 	newWebShellCmd := &cobra.Command{
 		Use:   "new [name]",
-		Short: "Register a new webshell pipeline",
-		Long:  "Register a CustomPipeline(type=webshell) for the webshell-bridge binary to connect to.",
+		Short: "Register a new webshell pipeline with suo5 transport",
+		Long:  "Register a WebShell pipeline that uses suo5 for full-duplex streaming to the target webshell.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return NewWebShellCmd(cmd, con)
 		},
 		Example: `~~~
-webshell new --listener my-listener
-webshell new ws1 --listener my-listener
+webshell new --listener my-listener --suo5 suo5://target/bridge.php --token secret
+webshell new ws1 --listener my-listener --suo5 suo5://target/bridge.php --token secret --dll /path/to/dll
 ~~~`,
 	}
 	common.BindFlag(newWebShellCmd, func(f *pflag.FlagSet) {
 		f.StringP("listener", "l", "", "listener id")
+		f.String("suo5", "", "suo5 URL to webshell (e.g., suo5://target/bridge.php)")
+		f.String("token", "", "stage token for DLL bootstrap authentication")
+		f.String("dll", "", "path to bridge DLL for auto-loading")
+		f.String("deps", "", "directory containing dependency files (e.g., jna.jar)")
 	})
 	common.BindFlagCompletions(newWebShellCmd, func(comp carapace.ActionMap) {
 		comp["listener"] = common.ListenerIDCompleter(con)
+		comp["suo5"] = carapace.ActionValues().Usage("suo5 URL")
+		comp["dll"] = carapace.ActionFiles().Usage("bridge DLL path")
+		comp["deps"] = carapace.ActionDirectories().Usage("deps directory")
 	})
 	newWebShellCmd.MarkFlagRequired("listener")
+	newWebShellCmd.MarkFlagRequired("suo5")
 
 	startWebShellCmd := &cobra.Command{
 		Use:   "start <name>",

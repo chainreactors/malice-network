@@ -2,6 +2,7 @@ package pipeline_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
@@ -12,14 +13,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func TestNewWebShellCmdUsesCachedListenerHost(t *testing.T) {
+func TestNewWebShellCmdStoresParamsInCustomPipeline(t *testing.T) {
 	h := testsupport.NewClientHarness(t)
-	h.Console.Listeners["listener-a"] = &clientpb.Listener{
-		Id: "listener-a",
-		Ip: "10.10.10.10",
-	}
 
-	cmd := newWebShellTestCommand(t, "--listener", "listener-a", "ws-a")
+	cmd := newWebShellTestCommand(t, "--listener", "listener-a", "--suo5", "suo5://target/bridge.php", "--token", "secret123", "ws-a")
 	if err := pipelinecmd.NewWebShellCmd(cmd, h.Console); err != nil {
 		t.Fatalf("NewWebShellCmd failed: %v", err)
 	}
@@ -36,64 +33,54 @@ func TestNewWebShellCmdUsesCachedListenerHost(t *testing.T) {
 	if !ok {
 		t.Fatalf("register request type = %T, want *clientpb.Pipeline", calls[0].Request)
 	}
+	if req.Type != "webshell" {
+		t.Fatalf("pipeline type = %q, want %q", req.Type, "webshell")
+	}
 	custom, ok := req.Body.(*clientpb.Pipeline_Custom)
 	if !ok {
 		t.Fatalf("register pipeline body = %T, want *clientpb.Pipeline_Custom", req.Body)
 	}
-	if custom.Custom.GetHost() != "10.10.10.10" {
-		t.Fatalf("custom host = %q, want %q", custom.Custom.GetHost(), "10.10.10.10")
+
+	var params struct {
+		Suo5URL    string `json:"suo5_url"`
+		StageToken string `json:"stage_token"`
+	}
+	if err := json.Unmarshal([]byte(custom.Custom.Params), &params); err != nil {
+		t.Fatalf("unmarshal params: %v", err)
+	}
+	if params.Suo5URL != "suo5://target/bridge.php" {
+		t.Fatalf("suo5_url = %q, want %q", params.Suo5URL, "suo5://target/bridge.php")
+	}
+	if params.StageToken != "secret123" {
+		t.Fatalf("stage_token = %q, want %q", params.StageToken, "secret123")
 	}
 }
 
-func TestNewWebShellCmdFallsBackToGetListenersForHost(t *testing.T) {
+func TestNewWebShellCmdRequiresSuo5Flag(t *testing.T) {
 	h := testsupport.NewClientHarness(t)
-	h.Recorder.OnListeners("GetListeners", func(_ context.Context, _ any) (*clientpb.Listeners, error) {
-		return &clientpb.Listeners{
-			Listeners: []*clientpb.Listener{{
-				Id: "listener-b",
-				Ip: "192.0.2.15",
-			}},
-		}, nil
-	})
-
 	cmd := newWebShellTestCommand(t, "--listener", "listener-b", "ws-b")
-	if err := pipelinecmd.NewWebShellCmd(cmd, h.Console); err != nil {
-		t.Fatalf("NewWebShellCmd failed: %v", err)
+	err := pipelinecmd.NewWebShellCmd(cmd, h.Console)
+	if err == nil {
+		t.Fatal("NewWebShellCmd error = nil, want error")
 	}
-
-	calls := h.Recorder.Calls()
-	if len(calls) != 3 {
-		t.Fatalf("call count = %d, want 3", len(calls))
-	}
-	if calls[0].Method != "GetListeners" {
-		t.Fatalf("first method = %s, want GetListeners", calls[0].Method)
-	}
-	req, ok := calls[1].Request.(*clientpb.Pipeline)
-	if !ok {
-		t.Fatalf("register request type = %T, want *clientpb.Pipeline", calls[1].Request)
-	}
-	custom, ok := req.Body.(*clientpb.Pipeline_Custom)
-	if !ok {
-		t.Fatalf("register pipeline body = %T, want *clientpb.Pipeline_Custom", req.Body)
-	}
-	if custom.Custom.GetHost() != "192.0.2.15" {
-		t.Fatalf("custom host = %q, want %q", custom.Custom.GetHost(), "192.0.2.15")
+	if !strings.Contains(err.Error(), "--suo5") {
+		t.Fatalf("error = %q, want suo5 requirement", err)
 	}
 }
 
-func TestNewWebShellCmdWrapsRegisterErrorWithBridgeHint(t *testing.T) {
+func TestNewWebShellCmdWrapsRegisterError(t *testing.T) {
 	h := testsupport.NewClientHarness(t)
 	h.Recorder.OnEmpty("RegisterPipeline", func(_ context.Context, _ any) (*clientpb.Empty, error) {
 		return nil, errors.New("listener not found")
 	})
 
-	cmd := newWebShellTestCommand(t, "--listener", "listener-c", "ws-c")
+	cmd := newWebShellTestCommand(t, "--listener", "listener-c", "--suo5", "suo5://target/x.php", "--token", "secret", "ws-c")
 	err := pipelinecmd.NewWebShellCmd(cmd, h.Console)
 	if err == nil {
 		t.Fatal("NewWebShellCmd error = nil, want error")
 	}
-	if !strings.Contains(err.Error(), "start webshell-bridge for listener listener-c first") {
-		t.Fatalf("error = %q, want bridge hint", err)
+	if !strings.Contains(err.Error(), "register webshell pipeline") {
+		t.Fatalf("error = %q, want register error", err)
 	}
 }
 
@@ -163,6 +150,10 @@ func newWebShellTestCommand(t *testing.T, args ...string) *cobra.Command {
 
 	cmd := &cobra.Command{}
 	cmd.Flags().StringP("listener", "l", "", "listener id")
+	cmd.Flags().String("suo5", "", "suo5 URL")
+	cmd.Flags().String("token", "", "stage token")
+	cmd.Flags().String("dll", "", "DLL path")
+	cmd.Flags().String("deps", "", "deps directory")
 	if err := cmd.Flags().Parse(args); err != nil {
 		t.Fatalf("parse flags: %v", err)
 	}

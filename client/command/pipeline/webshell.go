@@ -1,6 +1,7 @@
 package pipeline
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
@@ -10,6 +11,14 @@ import (
 )
 
 const webshellPipelineType = "webshell"
+
+// webshellParams mirrors the server-side struct for JSON serialization.
+type webshellCmdParams struct {
+	Suo5URL    string `json:"suo5_url"`
+	StageToken string `json:"stage_token,omitempty"`
+	DLLPath    string `json:"dll_path,omitempty"`
+	DepsDir    string `json:"deps_dir,omitempty"`
+}
 
 // ListWebShellCmd lists all webshell pipelines for a given listener.
 func ListWebShellCmd(cmd *cobra.Command, con *core.Console) error {
@@ -39,18 +48,32 @@ func ListWebShellCmd(cmd *cobra.Command, con *core.Console) error {
 	return nil
 }
 
-// NewWebShellCmd registers a new webshell pipeline using the CustomPipeline mechanism.
-// The actual bridge binary (webshell-bridge) connects to this pipeline externally.
+// NewWebShellCmd registers a new webshell pipeline backed by suo5 transport.
 func NewWebShellCmd(cmd *cobra.Command, con *core.Console) error {
 	name := cmd.Flags().Arg(0)
 	listenerID, _ := cmd.Flags().GetString("listener")
+	suo5URL, _ := cmd.Flags().GetString("suo5")
+	token, _ := cmd.Flags().GetString("token")
+	dllPath, _ := cmd.Flags().GetString("dll")
+	depsDir, _ := cmd.Flags().GetString("deps")
 
 	if listenerID == "" {
 		return fmt.Errorf("listener id is required")
 	}
+	if suo5URL == "" {
+		return fmt.Errorf("--suo5 URL is required (e.g., suo5://target/bridge.php)")
+	}
 	if name == "" {
 		name = fmt.Sprintf("webshell_%s", listenerID)
 	}
+
+	params := webshellCmdParams{
+		Suo5URL:    suo5URL,
+		StageToken: token,
+		DLLPath:    dllPath,
+		DepsDir:    depsDir,
+	}
+	paramsJSON, _ := json.Marshal(params)
 
 	pipeline := &clientpb.Pipeline{
 		Name:       name,
@@ -61,16 +84,15 @@ func NewWebShellCmd(cmd *cobra.Command, con *core.Console) error {
 			Custom: &clientpb.CustomPipeline{
 				Name:       name,
 				ListenerId: listenerID,
-				Host:       resolveWebShellListenerHost(con, listenerID),
+				Params:     string(paramsJSON),
 			},
 		},
 	}
 
 	_, err := con.Rpc.RegisterPipeline(con.Context(), pipeline)
 	if err != nil {
-		return webShellBridgeHint(listenerID, fmt.Errorf("register webshell pipeline %s: %w", name, err))
+		return fmt.Errorf("register webshell pipeline %s: %w", name, err)
 	}
-
 	con.Log.Importantf("WebShell pipeline %s registered\n", name)
 
 	_, err = con.Rpc.StartPipeline(con.Context(), &clientpb.CtrlPipeline{
@@ -79,12 +101,10 @@ func NewWebShellCmd(cmd *cobra.Command, con *core.Console) error {
 		Pipeline:   pipeline,
 	})
 	if err != nil {
-		return webShellBridgeHint(listenerID, fmt.Errorf("start webshell pipeline %s: %w", name, err))
+		return fmt.Errorf("start webshell pipeline %s: %w", name, err)
 	}
 
-	con.Log.Importantf("WebShell pipeline %s started\n", name)
-	con.Log.Infof("The bridge should already be running for listener %s and waiting on pipeline control.\n", listenerID)
-	con.Log.Infof("If the DLL is not loaded yet, the bridge will keep retrying until the rem server becomes reachable.\n")
+	con.Log.Importantf("WebShell pipeline %s started (suo5: %s)\n", name, suo5URL)
 	return nil
 }
 
@@ -96,13 +116,12 @@ func StartWebShellCmd(cmd *cobra.Command, con *core.Console) error {
 	if err != nil {
 		return err
 	}
-	listenerID = pipeline.GetListenerId()
 	_, err = con.Rpc.StartPipeline(con.Context(), &clientpb.CtrlPipeline{
 		Name:       name,
-		ListenerId: listenerID,
+		ListenerId: pipeline.GetListenerId(),
 	})
 	if err != nil {
-		return webShellBridgeHint(listenerID, fmt.Errorf("start webshell pipeline %s: %w", name, err))
+		return fmt.Errorf("start webshell pipeline %s: %w", name, err)
 	}
 	con.Log.Importantf("WebShell pipeline %s started\n", name)
 	return nil
@@ -146,25 +165,6 @@ func DeleteWebShellCmd(cmd *cobra.Command, con *core.Console) error {
 	return nil
 }
 
-func resolveWebShellListenerHost(con *core.Console, listenerID string) string {
-	if listenerID == "" || con == nil {
-		return ""
-	}
-	if listener, ok := con.Listeners[listenerID]; ok && listener.GetIp() != "" {
-		return listener.GetIp()
-	}
-	listeners, err := con.Rpc.GetListeners(con.Context(), &clientpb.Empty{})
-	if err != nil {
-		return ""
-	}
-	for _, listener := range listeners.GetListeners() {
-		if listener.GetId() == listenerID {
-			return listener.GetIp()
-		}
-	}
-	return ""
-}
-
 func resolveWebShellPipeline(con *core.Console, name, listenerID string) (*clientpb.Pipeline, error) {
 	if name == "" {
 		return nil, fmt.Errorf("webshell pipeline name is required")
@@ -203,11 +203,4 @@ func resolveWebShellPipeline(con *core.Console, name, listenerID string) (*clien
 		return nil, fmt.Errorf("webshell pipeline %s not found", name)
 	}
 	return match, nil
-}
-
-func webShellBridgeHint(listenerID string, err error) error {
-	if listenerID == "" {
-		return err
-	}
-	return fmt.Errorf("%w; start webshell-bridge for listener %s first", err, listenerID)
 }
