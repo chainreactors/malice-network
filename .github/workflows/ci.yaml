@@ -39,7 +39,7 @@ jobs:
         env:
           CGO_ENABLED: 0
 
-  core_race:
+  race:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout
@@ -56,8 +56,12 @@ jobs:
       - name: Go mod tidy
         run: go mod tidy
 
-      - name: Core race tests
-        run: go test -race ./server/internal/core -count=1 -timeout 300s
+      - name: Race detection — core, parser, stream
+        run: >-
+          go test -race -count=1 -timeout 300s
+          ./server/internal/core
+          ./server/internal/parser/...
+          ./server/internal/stream
 
   mock_implant:
     runs-on: ubuntu-22.04
