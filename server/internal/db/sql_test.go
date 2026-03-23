@@ -11,6 +11,9 @@ import (
 
 func setupTestDB(t *testing.T) {
 	t.Helper()
+	configs.InitTestConfigRuntime(t)
+	configs.UseTestPaths(t, filepath.Join(t.TempDir(), ".malice"))
+
 	if err := os.MkdirAll(configs.ServerRootPath, 0700); err != nil {
 		t.Fatalf("failed to create ServerRootPath %q: %v", configs.ServerRootPath, err)
 	}

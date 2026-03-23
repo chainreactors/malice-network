@@ -24,7 +24,7 @@ func TestCommandsIncludeAIConfigSubcommand(t *testing.T) {
 	if aiCmd.Hidden {
 		t.Fatal("config ai command should be visible")
 	}
-	if !strings.Contains(aiCmd.Example, "config ai") {
+	if !strings.Contains(aiCmd.Example, "config ai\n") {
 		t.Fatalf("expected config ai examples, got:\n%s", aiCmd.Example)
 	}
 	if strings.Contains(aiCmd.Example, "ai-config --") {

@@ -2,14 +2,17 @@
 
 ## Overview
 
-The repository now uses three test layers:
+The repository now uses four test layers:
 
 - Unit tests: default `go test ./...`
 - Core race tests: `go test -race ./server/internal/core -count=1 -timeout 300s`
 - Integration tests: explicit `integration` build tag
 - Stress tests: reserved for future `stress`-tagged suites
 
-PR CI runs unit tests, the targeted core race suite, and the client/server integration suite. Stress tests are intentionally out of scope for the current pipeline.
+PR CI runs unit tests, the targeted core race suite, the client/server integration suite, and the core testing inventory command. Stress tests are intentionally out of scope for the current pipeline.
+
+The long-lived coverage plan lives in `docs/development/core-testing-roadmap.md`.
+The machine-readable inventory source of truth lives in `docs/development/core-testing-manifest.json`.
 
 ## Local Commands
 
@@ -18,6 +21,7 @@ Run the default CI-equivalent checks:
 ```bash
 go mod tidy
 go vet ./...
+go run ./scripts/testinventory -output dist/testing
 go test ./... -count=1 -timeout 300s
 CGO_ENABLED=0 go build ./...
 ```
@@ -45,6 +49,30 @@ Run the workflow locally with `act`:
 ```bash
 act pull_request -W .github/workflows/ci.yaml
 ```
+
+## Inventory Command
+
+The inventory command scans repository packages, classifies test files by layer, and compares them against the core manifest.
+
+Run it with:
+
+```bash
+go run ./scripts/testinventory -output dist/testing
+```
+
+The generated report includes:
+
+- package-level test presence and layer classification
+- core component status against expected layers
+- chain-level missing-layer summaries
+- a top gap list for broad package blind spots
+
+Use the report as a recommendation engine. The intended review order is:
+
+1. Tier-1 components with no direct coverage
+2. Tier-1 components missing expected layers
+3. chains with unresolved missing layers
+4. broad package gaps that are not yet in the manifest
 
 ## Test Layout
 

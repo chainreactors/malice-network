@@ -1,0 +1,213 @@
+{
+  "components": [
+    {
+      "id": "server-parser",
+      "name": "Transport Parser",
+      "path": "server/internal/parser",
+      "tier": "tier1",
+      "summary": "Protocol detection, framing, and parser selection for implant traffic.",
+      "chains": ["implant-transport"],
+      "expected_layers": ["unit", "mockimplant"],
+      "ci_lanes": ["unit", "mock_implant"]
+    },
+    {
+      "id": "server-certutils",
+      "name": "Certificate Utilities",
+      "path": "server/internal/certutils",
+      "tier": "tier1",
+      "summary": "CA, mTLS, self-signed, and ACME certificate lifecycle helpers.",
+      "chains": ["build-and-cert"],
+      "expected_layers": ["unit"],
+      "ci_lanes": ["unit"]
+    },
+    {
+      "id": "server-root-client",
+      "name": "Root Client",
+      "path": "server/root",
+      "tier": "tier1",
+      "summary": "Root control-plane bootstrap and command execution path.",
+      "chains": ["control-plane"],
+      "expected_layers": ["unit"],
+      "ci_lanes": ["unit"]
+    },
+    {
+      "id": "server-mutant",
+      "name": "Mutant Build Helpers",
+      "path": "server/internal/mutant",
+      "tier": "tier1",
+      "summary": "Wrapper logic around malefic-mutant build and patch operations.",
+      "chains": ["build-and-cert"],
+      "expected_layers": ["unit"],
+      "ci_lanes": ["unit"]
+    },
+    {
+      "id": "server-saas",
+      "name": "SaaS Artifact Client",
+      "path": "server/internal/saas",
+      "tier": "tier1",
+      "summary": "Artifact polling, license registration, and community artifact download path.",
+      "chains": ["build-and-cert"],
+      "expected_layers": ["unit"],
+      "ci_lanes": ["unit"]
+    },
+    {
+      "id": "server-audit",
+      "name": "Audit Service",
+      "path": "server/internal/audit",
+      "tier": "tier2",
+      "summary": "Audit log query and OPSEC-related server helpers.",
+      "chains": ["control-plane"],
+      "expected_layers": ["unit"],
+      "ci_lanes": ["unit"]
+    },
+    {
+      "id": "server-testsupport",
+      "name": "Server Test Harness",
+      "path": "server/testsupport",
+      "tier": "tier2",
+      "summary": "Reusable control-plane and mock-implant harness utilities.",
+      "chains": ["implant-transport", "control-plane"],
+      "expected_layers": ["unit"],
+      "ci_lanes": ["unit"]
+    },
+    {
+      "id": "helper-output",
+      "name": "Output Context Helpers",
+      "path": "helper/utils/output",
+      "tier": "tier1",
+      "summary": "Context parsing, formatting, and task response decoding.",
+      "chains": ["task-output"],
+      "expected_layers": ["unit"],
+      "ci_lanes": ["unit"]
+    },
+    {
+      "id": "helper-traffic-encoder",
+      "name": "Traffic Encoder",
+      "path": "helper/encoders/traffic",
+      "tier": "tier2",
+      "summary": "Traffic encoder compiler and interpreter loading path.",
+      "chains": ["implant-transport"],
+      "expected_layers": ["unit"],
+      "ci_lanes": ["unit"]
+    },
+    {
+      "id": "helper-certs",
+      "name": "Certificate Primitives",
+      "path": "helper/certs",
+      "tier": "tier2",
+      "summary": "Low-level certificate generation and subject formatting helpers.",
+      "chains": ["build-and-cert"],
+      "expected_layers": ["unit"],
+      "ci_lanes": ["unit"]
+    },
+    {
+      "id": "client-command-agent",
+      "name": "Agent Commands",
+      "path": "client/command/agent",
+      "tier": "tier1",
+      "summary": "Agent-facing CLI commands, skill loading, and bridge agent entrypoints.",
+      "chains": ["command-parsing"],
+      "expected_layers": ["command_conformance"],
+      "ci_lanes": ["unit"]
+    },
+    {
+      "id": "client-command-pivot",
+      "name": "Pivot Commands",
+      "path": "client/command/pivot",
+      "tier": "tier1",
+      "summary": "Pivot, forwarding, reverse, and REM CLI command assembly.",
+      "chains": ["command-parsing", "control-plane"],
+      "expected_layers": ["command_conformance", "integration"],
+      "ci_lanes": ["unit", "integration"]
+    },
+    {
+      "id": "client-command-pipe",
+      "name": "Pipe Commands",
+      "path": "client/command/pipe",
+      "tier": "tier1",
+      "summary": "Pipe open/read/upload/close command family for implant sessions.",
+      "chains": ["command-parsing"],
+      "expected_layers": ["command_conformance"],
+      "ci_lanes": ["unit"]
+    },
+    {
+      "id": "client-command-mutant",
+      "name": "Mutant Commands",
+      "path": "client/command/mutant",
+      "tier": "tier1",
+      "summary": "CLI entrypoints for SRDI, strip, donut, and signature forge actions.",
+      "chains": ["command-parsing", "build-and-cert"],
+      "expected_layers": ["command_conformance"],
+      "ci_lanes": ["unit"]
+    },
+    {
+      "id": "client-command-explorer",
+      "name": "Explorer Commands",
+      "path": "client/command/explorer",
+      "tier": "tier2",
+      "summary": "Explorer shortcuts that bind file, reg, and taskschd surfaces together.",
+      "chains": ["command-parsing"],
+      "expected_layers": ["command_conformance"],
+      "ci_lanes": ["unit"]
+    }
+  ],
+  "chains": [
+    {
+      "id": "command-parsing",
+      "name": "Command Parsing",
+      "summary": "Real Cobra command paths must map operator argv into the right RPC and protobuf shape.",
+      "primary_layers": ["command_conformance"],
+      "components": [
+        "client-command-agent",
+        "client-command-pivot",
+        "client-command-pipe",
+        "client-command-mutant",
+        "client-command-explorer"
+      ]
+    },
+    {
+      "id": "control-plane",
+      "name": "Control Plane",
+      "summary": "Client to gRPC/mTLS to server state reconciliation and admin/root flows.",
+      "primary_layers": ["integration", "unit"],
+      "components": [
+        "server-root-client",
+        "server-audit",
+        "client-command-pivot"
+      ]
+    },
+    {
+      "id": "implant-transport",
+      "name": "Implant Transport",
+      "summary": "Listener, parser, mock implant, and stream framing around checkin/task delivery.",
+      "primary_layers": ["mockimplant", "unit"],
+      "components": [
+        "server-parser",
+        "server-testsupport",
+        "helper-traffic-encoder"
+      ]
+    },
+    {
+      "id": "build-and-cert",
+      "name": "Build And Certificate",
+      "summary": "Artifact preparation, certificate generation, and build-side helpers.",
+      "primary_layers": ["unit"],
+      "components": [
+        "server-certutils",
+        "server-mutant",
+        "server-saas",
+        "helper-certs",
+        "client-command-mutant"
+      ]
+    },
+    {
+      "id": "task-output",
+      "name": "Task Output",
+      "summary": "Task context parsing and output formatting should remain deterministic across task types.",
+      "primary_layers": ["unit"],
+      "components": [
+        "helper-output"
+      ]
+    }
+  ]
+}

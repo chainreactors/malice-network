@@ -1,3 +1,6 @@
+//go:build bridge_agent_proto
+// +build bridge_agent_proto
+
 package llm
 
 import (
@@ -520,14 +523,14 @@ Rules:
 
 	// Verify the response contains key recon data
 	checks := map[string]string{
-		"hostname":       "recon-target",
-		"os":             "Ubuntu",
-		"kernel":         "5.15.0",
-		"user":           "operator",
-		"sudo":           "sudo",
-		"ip address":     "10.0.2.15",
-		"ssh port":       "22",
-		"postgres":       "5432",
+		"hostname":        "recon-target",
+		"os":              "Ubuntu",
+		"kernel":          "5.15.0",
+		"user":            "operator",
+		"sudo":            "sudo",
+		"ip address":      "10.0.2.15",
+		"ssh port":        "22",
+		"postgres":        "5432",
 		"credential leak": "AWS_ACCESS_KEY",
 	}
 

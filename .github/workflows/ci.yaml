@@ -28,6 +28,9 @@ jobs:
       - name: Go vet
         run: go vet ./...
 
+      - name: Test inventory
+        run: go run ./scripts/testinventory -output dist/testing
+
       - name: Go test
         run: go test ./... -count=1 -timeout 300s
 
