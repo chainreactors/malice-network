@@ -34,6 +34,34 @@ var (
 	Buildstamp = ""
 )
 
+// genericAddTask is the function used to persist a new task to the database.
+// It is a package-level variable to allow test injection.
+var genericAddTask = func(task *clientpb.Task) error {
+	return db.AddTask(task)
+}
+
+// genericWriteTaskRequest is the function used to cache the serialized request
+// to disk. It is a package-level variable to allow test injection.
+var genericWriteTaskRequest = func(task *core.Task, spite *implantpb.Spite) error {
+	spiteBytes, err := proto.Marshal(spite)
+	if err != nil {
+		return err
+	}
+	path, err := taskRequestPath(task)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return err
+	}
+	return os.WriteFile(path, spiteBytes, 0o600)
+}
+
+// taskRequestPath returns the filesystem path where a task's request spite is cached.
+func taskRequestPath(task *core.Task) (string, error) {
+	return fileutils.SafeJoin(configs.ContextPath, filepath.Join(task.SessionId, consts.RequestPath, strconv.Itoa(int(task.Id))))
+}
+
 func newGenericRequest(ctx context.Context, msg proto.Message, opts ...int) (*GenericRequest, error) {
 	req := &GenericRequest{
 		Message: msg,
@@ -84,28 +112,30 @@ func (r *GenericRequest) InitSpite(ctx context.Context) (*implantpb.Spite, error
 	spite.TaskId = r.Task.Id
 	clientName := getClientName(ctx)
 	r.Task.CallBy = clientName
-	err = db.AddTask(r.Task.ToProtobuf())
-	if err != nil {
+	if err = genericAddTask(r.Task.ToProtobuf()); err != nil {
+		r.Session.Tasks.Remove(r.Task.Id)
 		return nil, err
 	}
 
-	spiteBytes, err := proto.Marshal(spite)
-	if err != nil {
-		return nil, err
-	}
-
-	requestPath, err := fileutils.SafeJoin(configs.ContextPath, filepath.Join(r.Task.SessionId, consts.RequestPath, strconv.Itoa(int(r.Task.Id))))
-	if err != nil {
-		return nil, err
-	}
-	if err := os.MkdirAll(filepath.Dir(requestPath), 0o700); err != nil {
-		return nil, err
-	}
-	err = os.WriteFile(requestPath, spiteBytes, 0o600)
-	if err != nil {
+	if err = genericWriteTaskRequest(r.Task, spite); err != nil {
+		r.Session.Tasks.Remove(r.Task.Id)
+		_ = db.NewTaskQuery().WhereSessionID(r.Task.SessionId).WhereSeq(r.Task.Id).Delete()
 		return nil, err
 	}
 	return spite, nil
+}
+
+// rollbackTask removes the task from runtime, database and request cache.
+func (r *GenericRequest) rollbackTask() {
+	if r.Task == nil || r.Session == nil {
+		return
+	}
+	r.Session.Tasks.Remove(r.Task.Id)
+	_ = db.NewTaskQuery().WhereSessionID(r.Task.SessionId).WhereSeq(r.Task.Id).Delete()
+	r.Session.DeleteResp(r.Task.Id)
+	if p, err := taskRequestPath(r.Task); err == nil {
+		_ = os.Remove(p)
+	}
 }
 
 func (r *GenericRequest) NewSpite(msg proto.Message) (*implantpb.Spite, error) {
@@ -245,6 +275,7 @@ func (rpc *Server) GenericHandler(ctx context.Context, req *GenericRequest) (cha
 	}
 	streamVal, ok := pipelinesCh.Load(req.Session.PipelineID)
 	if !ok || streamVal == nil {
+		req.rollbackTask()
 		return nil, types.ErrNotFoundPipeline
 	}
 	out, err := req.Session.RequestWithAsync(
@@ -252,6 +283,7 @@ func (rpc *Server) GenericHandler(ctx context.Context, req *GenericRequest) (cha
 		streamVal.(grpc.ServerStream),
 		consts.MinTimeout)
 	if err != nil {
+		req.rollbackTask()
 		return nil, err
 	}
 
@@ -267,6 +299,7 @@ func (rpc *Server) StreamGenericHandler(ctx context.Context, req *GenericRequest
 	}
 	streamVal, ok := pipelinesCh.Load(req.Session.PipelineID)
 	if !ok || streamVal == nil {
+		req.rollbackTask()
 		return nil, nil, types.ErrNotFoundPipeline
 	}
 	in, out, err := req.Session.RequestWithStream(
@@ -274,6 +307,7 @@ func (rpc *Server) StreamGenericHandler(ctx context.Context, req *GenericRequest
 		streamVal.(grpc.ServerStream),
 		consts.MinTimeout)
 	if err != nil {
+		req.rollbackTask()
 		return nil, nil, err
 	}
 
@@ -452,6 +486,9 @@ func getMetadataValue(md metadata.MD, key string) string {
 // AssertAndHandle covers the common pattern for *implantpb.Request handlers:
 // assert request name → newGenericRequest → GenericHandler → HandlerResponse.
 func (rpc *Server) AssertAndHandle(ctx context.Context, req *implantpb.Request, module types.MsgName, expect types.MsgName, callbacks ...func(*implantpb.Spite)) (*clientpb.Task, error) {
+	if req == nil {
+		return nil, types.ErrMissingRequestField
+	}
 	if err := types.AssertRequestName(req, module); err != nil {
 		return nil, err
 	}
@@ -477,6 +514,9 @@ func (rpc *Server) GenericInternalWithSession(ctx context.Context, req proto.Mes
 
 // AssertAndHandleWithSession combines AssertRequestName with GenericInternalWithSession.
 func (rpc *Server) AssertAndHandleWithSession(ctx context.Context, req *implantpb.Request, module types.MsgName, expect types.MsgName, callback func(*GenericRequest, *implantpb.Spite)) (*clientpb.Task, error) {
+	if req == nil {
+		return nil, types.ErrMissingRequestField
+	}
 	if err := types.AssertRequestName(req, module); err != nil {
 		return nil, err
 	}

@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 
 	"github.com/chainreactors/IoM-go/consts"
@@ -154,8 +155,29 @@ func (rpc *Server) GetSessionHistory(ctx context.Context, req *clientpb.Int) (*c
 
 	files, err := os.ReadDir(taskDir)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return contexts, nil
+		}
 		return nil, err
 	}
+
+	// Sort files numerically by taskID_index (os.ReadDir returns lexicographic order
+	// which puts "10_0" before "2_0")
+	sort.Slice(files, func(i, j int) bool {
+		mi := re.FindStringSubmatch(files[i].Name())
+		mj := re.FindStringSubmatch(files[j].Name())
+		if mi == nil || mj == nil {
+			return files[i].Name() < files[j].Name()
+		}
+		ti, _ := strconv.Atoi(mi[1])
+		tj, _ := strconv.Atoi(mj[1])
+		if ti != tj {
+			return ti < tj
+		}
+		ii, _ := strconv.Atoi(mi[2])
+		ij, _ := strconv.Atoi(mj[2])
+		return ii < ij
+	})
 
 	for _, file := range files {
 		if !file.IsDir() {
