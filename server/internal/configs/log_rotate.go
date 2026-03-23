@@ -33,7 +33,7 @@ func RotateLogs(logDir string, maxAge int, compress bool, reopenFn func()) {
 		return
 	}
 
-	// Step 1: rotate active .log files
+	// Step 1: rotate active .log files (copy + truncate to avoid Windows locked-file errors)
 	for _, entry := range entries {
 		if entry.IsDir() {
 			continue
@@ -47,8 +47,8 @@ func RotateLogs(logDir string, maxAge int, compress bool, reopenFn func()) {
 		rotated := base + "." + today + ".log"
 		src := filepath.Join(logDir, name)
 		dst := filepath.Join(logDir, rotated)
-		if err := os.Rename(src, dst); err != nil {
-			logs.Log.Errorf("[log-rotate] failed to rename %s → %s: %v", name, rotated, err)
+		if err := copyAndTruncate(src, dst); err != nil {
+			logs.Log.Errorf("[log-rotate] failed to rotate %s → %s: %v", name, rotated, err)
 		}
 	}
 
@@ -131,6 +131,34 @@ func containsDate(name string) bool {
 		}
 	}
 	return false
+}
+
+// copyAndTruncate copies src to dst and truncates src to zero bytes.
+// Unlike os.Rename, this works on Windows even when src is held open by another process.
+func copyAndTruncate(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	if _, err := io.Copy(out, in); err != nil {
+		os.Remove(dst)
+		return err
+	}
+	if err := out.Close(); err != nil {
+		os.Remove(dst)
+		return err
+	}
+	in.Close()
+
+	return os.Truncate(src, 0)
 }
 
 // gzipFile compresses src to src.gz and removes the original.

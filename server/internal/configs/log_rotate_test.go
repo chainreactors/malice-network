@@ -24,22 +24,28 @@ func TestRotateLogs_RenamesAndCompresses(t *testing.T) {
 
 	today := time.Now().Format("2006-01-02")
 
-	// Original files should be renamed
-	if _, err := os.Stat(filepath.Join(dir, "rpc.log")); err == nil {
-		t.Error("rpc.log should have been renamed")
-	}
-	if _, err := os.Stat(filepath.Join(dir, "auth.log")); err == nil {
-		t.Error("auth.log should have been renamed")
+	// Original files should be truncated (still exist but empty)
+	for _, name := range []string{"rpc.log", "auth.log"} {
+		info, err := os.Stat(filepath.Join(dir, name))
+		if err != nil {
+			t.Errorf("%s should still exist after rotation: %v", name, err)
+		} else if info.Size() != 0 {
+			t.Errorf("%s should be truncated to 0 bytes, got %d", name, info.Size())
+		}
 	}
 
-	// Rotated files should exist
+	// Rotated files should exist with original content
 	rotatedRpc := filepath.Join(dir, "rpc."+today+".log")
 	rotatedAuth := filepath.Join(dir, "auth."+today+".log")
-	if _, err := os.Stat(rotatedRpc); err != nil {
+	if data, err := os.ReadFile(rotatedRpc); err != nil {
 		t.Errorf("rotated rpc file should exist: %v", err)
+	} else if string(data) != "line1\nline2\n" {
+		t.Errorf("rotated rpc file content mismatch: %q", data)
 	}
-	if _, err := os.Stat(rotatedAuth); err != nil {
+	if data, err := os.ReadFile(rotatedAuth); err != nil {
 		t.Errorf("rotated auth file should exist: %v", err)
+	} else if string(data) != "auth data\n" {
+		t.Errorf("rotated auth file content mismatch: %q", data)
 	}
 }
 
