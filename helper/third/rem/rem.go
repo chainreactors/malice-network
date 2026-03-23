@@ -79,7 +79,7 @@ func (rem *RemConsole) ToProtobuf() map[string]*clientpb.REMAgent {
 		a := value.(*agent.Agent)
 		agents[a.ID] = &clientpb.REMAgent{
 			Id:     a.Name(),
-			Mod:    a.Mod,
+			InboundSide: a.InboundSide,
 			Local:  a.LocalURL.String(),
 			Remote: a.RemoteURL.String(),
 		}

@@ -76,7 +76,7 @@ func TestGenericCommandConformance(t *testing.T) {
 						Contexts: []*clientpb.Context{
 							{
 								Type:  consts.ContextPivoting,
-								Value: (&output.PivotingContext{Enable: true, Listener: "listener-1", Pipeline: "pipe-1", RemAgentID: "agent-1", LocalURL: "tcp://127.0.0.1:8080", RemoteURL: "tcp://10.0.0.2:8080", Mod: "proxy"}).Marshal(),
+								Value: (&output.PivotingContext{Enable: true, Listener: "listener-1", Pipeline: "pipe-1", RemAgentID: "agent-1", LocalURL: "tcp://127.0.0.1:8080", RemoteURL: "tcp://10.0.0.2:8080", InboundSide: "local"}).Marshal(),
 							},
 						},
 					}, nil

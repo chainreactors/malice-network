@@ -63,7 +63,7 @@ func PrintPivots(contexts []*clientpb.Context, con *core.Console, all bool) {
 				"RemAgentID": pivot.RemAgentID,
 				"LocalURL":   pivot.LocalURL,
 				"RemoteURL":  pivot.RemoteURL,
-				"Mod":        pivot.Mod,
+				"InboundSide": pivot.InboundSide,
 			})
 		if all || pivot.Enable {
 			rowEntries = append(rowEntries, row)
@@ -78,7 +78,7 @@ func PrintPivots(contexts []*clientpb.Context, con *core.Console, all bool) {
 		table.NewColumn("RemAgentID", "Rem Agent ID", 10),
 		table.NewFlexColumn("LocalURL", "Local URL", 1),
 		table.NewFlexColumn("RemoteURL", "Remote URL", 1),
-		table.NewColumn("Mod", "Mod", 10),
+		table.NewColumn("InboundSide", "Inbound", 10),
 	}, true)
 
 	tableModel.SetMultiline()

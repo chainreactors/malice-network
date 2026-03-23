@@ -304,7 +304,7 @@ func (lns *listener) handlerRemAgentCtrl(job *clientpb.Job) error {
 	job.Body = &clientpb.Job_RemAgent{
 		RemAgent: &clientpb.REMAgent{
 			Id:     a.Name(),
-			Mod:    a.Mod,
+			InboundSide: a.InboundSide,
 			Local:  a.LocalURL.String(),
 			Remote: a.RemoteURL.String(),
 		},

@@ -238,7 +238,7 @@ func (rpc *Server) RemDial(ctx context.Context, req *implantpb.Request) (*client
 
 		if remOpt, ok := pipe.GetRem().Agents[spite.GetResponse().Output]; ok {
 			pivot := output.NewPivotingWithRem(remOpt, pipe)
-			event.Op = "pivot_" + pivot.Mod
+			event.Op = "pivot_" + pivot.InboundSide
 			event.Message = pivot.Abstract()
 			lns, err := core.Listeners.Get(pipe.ListenerId)
 			if err != nil {
@@ -323,7 +323,7 @@ func (rpc *Server) RemAgentCtrl(ctx context.Context, req *clientpb.REMAgent) (*c
 	pipe.GetRem().Agents[agent.Id] = agent
 	core.EventBroker.Publish(core.Event{
 		EventType: consts.EventPivot,
-		Op:        "pivot_" + pivot.Mod,
+		Op:        "pivot_" + pivot.InboundSide,
 		Message:   pivot.Abstract(),
 	})
 	return &clientpb.Empty{}, nil
@@ -436,7 +436,7 @@ func (rpc *Server) HealthCheckRem(ctx context.Context, req *clientpb.Pipeline) (
 		}
 		core.EventBroker.Publish(core.Event{
 			EventType: consts.EventPivot,
-			Op:        "pivot_" + pivot.Mod,
+			Op:        "pivot_" + pivot.InboundSide,
 			Message:   pivot.Abstract(),
 			Important: true,
 		})
