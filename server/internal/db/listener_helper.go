@@ -80,40 +80,37 @@ func DeletePipelineByListener(name, listenerID string) error {
 	return NewPipelineQuery().WhereName(name).WhereListenerID(listenerID).Delete()
 }
 
-func EnablePipeline(pid string) error {
-	pipeline, err := FindPipeline(pid)
+// setPipelineEnabled sets the Enable flag on a pipeline identified by name
+// and optional listenerID. If listenerID is empty, matches by name only.
+func setPipelineEnabled(pid, listenerID string, enabled bool) error {
+	var pipeline *models.Pipeline
+	var err error
+	if listenerID != "" {
+		pipeline, err = FindPipelineByListener(pid, listenerID)
+	} else {
+		pipeline, err = FindPipeline(pid)
+	}
 	if err != nil {
 		return err
 	}
-	pipeline.Enable = true
+	pipeline.Enable = enabled
 	return Save(pipeline)
+}
+
+func EnablePipeline(pid string) error {
+	return setPipelineEnabled(pid, "", true)
 }
 
 func EnablePipelineByListener(pid, listenerID string) error {
-	pipeline, err := FindPipelineByListener(pid, listenerID)
-	if err != nil {
-		return err
-	}
-	pipeline.Enable = true
-	return Save(pipeline)
+	return setPipelineEnabled(pid, listenerID, true)
 }
 
 func DisablePipeline(pid string) error {
-	pipeline, err := FindPipeline(pid)
-	if err != nil {
-		return err
-	}
-	pipeline.Enable = false
-	return Save(pipeline)
+	return setPipelineEnabled(pid, "", false)
 }
 
 func DisablePipelineByListener(pid, listenerID string) error {
-	pipeline, err := FindPipelineByListener(pid, listenerID)
-	if err != nil {
-		return err
-	}
-	pipeline.Enable = false
-	return Save(pipeline)
+	return setPipelineEnabled(pid, listenerID, false)
 }
 
 func FindPipelineCert(pipelineName, listenerID string) (*models.Certificate, error) {

@@ -21,19 +21,19 @@ func (rpc *Server) GetContexts(ctx context.Context, req *clientpb.Context) (*cli
 	query := db.NewContextQuery()
 
 	if req.Type != "" {
-		query.ByType(req.Type)
+		query.WhereType(req.Type)
 	}
 	if req.Session != nil {
-		query.BySession(req.Session.SessionId)
+		query.WhereSession(req.Session.SessionId)
 	}
 	if req.Task != nil {
-		query.ByTask(fmt.Sprintf("%s-%d", req.Task.SessionId, req.Task.TaskId))
+		query.WhereTask(fmt.Sprintf("%s-%d", req.Task.SessionId, req.Task.TaskId))
 	}
 	if req.Pipeline != nil {
-		query.ByPipeline(req.Pipeline.Name)
+		query.WherePipeline(req.Pipeline.Name)
 	}
 	if req.Nonce != "" {
-		query.ByNonce(req.Nonce)
+		query.WhereNonce(req.Nonce)
 	}
 
 	contexts, err := query.Find()

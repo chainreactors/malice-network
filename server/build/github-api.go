@@ -148,10 +148,8 @@ func downloadArtifactWhenReady(owner, repo, token string, isRemove bool, artifac
 			db.UpdateBuilderStatus(builder.ID, consts.BuildStatusCompleted)
 			if builder.Type == consts.CommandBuildBeacon {
 				if artifactID != 0 {
-					err = db.UpdatePulseRelink(artifactID, builder.ID)
-					if err != nil {
-						logs.Log.Errorf("failed to update pulse relink: %s", err)
-					}
+					// TODO: implement pulse relink when beacon build completes
+					_ = artifactID
 				}
 			}
 			return builder.Path, nil

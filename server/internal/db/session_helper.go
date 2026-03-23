@@ -320,7 +320,7 @@ func FindContext(contextID string) (*models.Context, error) {
 }
 
 func GetContextByTask(taskID string) (*models.Context, error) {
-	return NewContextQuery().ByTask(taskID).First()
+	return NewContextQuery().WhereTask(taskID).First()
 }
 
 func GetDownloadFiles(sid string) ([]*clientpb.File, error) {

@@ -475,12 +475,12 @@ func ListWebsitesByListener(listenerID string) (Pipelines, error) {
 // ContextQuery Builder
 // ============================================
 
-// ContextQuery 用于构建Context查询的结构体
+// ContextQuery is a builder for Context queries.
 type ContextQuery struct {
 	db *gorm.DB
 }
 
-// NewContextQuery 创建新的Context查询构建器
+// NewContextQuery creates a new Context query builder.
 func NewContextQuery() *ContextQuery {
 	return &ContextQuery{
 		db: Session().
@@ -490,50 +490,50 @@ func NewContextQuery() *ContextQuery {
 	}
 }
 
-// WhereID filters by context ID
+// WhereID filters by context ID.
 func (q *ContextQuery) WhereID(id uuid.UUID) *ContextQuery {
 	q.db = q.db.Where("id = ?", id)
 	return q
 }
 
-// ByType 按类型查询
-func (q *ContextQuery) ByType(typ string) *ContextQuery {
+// WhereType filters by context type.
+func (q *ContextQuery) WhereType(typ string) *ContextQuery {
 	q.db = q.db.Where("type = ?", typ)
 	return q
 }
 
-// BySession 按会话ID查询
-func (q *ContextQuery) BySession(sessionID string) *ContextQuery {
+// WhereSession filters by session ID.
+func (q *ContextQuery) WhereSession(sessionID string) *ContextQuery {
 	q.db = q.db.Where("session_id = ?", sessionID)
 	return q
 }
 
-// ByTask 按任务ID查询
-func (q *ContextQuery) ByTask(taskID string) *ContextQuery {
+// WhereTask filters by task ID.
+func (q *ContextQuery) WhereTask(taskID string) *ContextQuery {
 	q.db = q.db.Where("task_id = ?", taskID)
 	return q
 }
 
-// ByPipeline 按Pipeline ID查询
-func (q *ContextQuery) ByPipeline(pipelineID string) *ContextQuery {
+// WherePipeline filters by pipeline ID.
+func (q *ContextQuery) WherePipeline(pipelineID string) *ContextQuery {
 	q.db = q.db.Where("pipeline_id = ?", pipelineID)
 	return q
 }
 
-// ByNonce 按Nonce查询
-func (q *ContextQuery) ByNonce(nonce string) *ContextQuery {
+// WhereNonce filters by nonce.
+func (q *ContextQuery) WhereNonce(nonce string) *ContextQuery {
 	q.db = q.db.Where("nonce = ?", nonce)
 	return q
 }
 
-// Find 执行查询并返回结果
+// Find executes the query and returns all matching contexts.
 func (q *ContextQuery) Find() ([]*models.Context, error) {
 	var contexts []*models.Context
 	err := q.db.Find(&contexts).Error
 	return contexts, err
 }
 
-// First 查询单个结果
+// First returns the first matching context.
 func (q *ContextQuery) First() (*models.Context, error) {
 	var context models.Context
 	err := q.db.First(&context).Error

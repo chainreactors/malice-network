@@ -39,7 +39,7 @@ func (rpc *Server) RegisterRem(ctx context.Context, req *clientpb.Pipeline) (*cl
 
 func (rpc *Server) ListRems(ctx context.Context, req *clientpb.Listener) (*clientpb.Pipelines, error) {
 	var result []*clientpb.Pipeline
-	ctxs, err := db.NewContextQuery().ByType(consts.ContextPivoting).Find()
+	ctxs, err := db.NewContextQuery().WhereType(consts.ContextPivoting).Find()
 	if err != nil {
 		return nil, err
 	}
@@ -390,7 +390,7 @@ func (rpc *Server) HealthCheckRem(ctx context.Context, req *clientpb.Pipeline) (
 		return nil, err
 	}
 
-	ctxs, err := db.NewContextQuery().ByType(consts.ContextPivoting).ByPipeline(req.Name).Find()
+	ctxs, err := db.NewContextQuery().WhereType(consts.ContextPivoting).WherePipeline(req.Name).Find()
 	if err != nil {
 		return nil, err
 	}

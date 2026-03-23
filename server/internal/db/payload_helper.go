@@ -37,7 +37,7 @@ func validateProfileName(name string) error {
 	return nil
 }
 
-// readProfileDisk 从磁盘读取 profile 的全部配置文件
+// readProfileDisk reads all profile configuration files from disk.
 func readProfileDisk(profilePath string) (implantConfig []byte, preludeConfig []byte, resources *clientpb.BuildResources, err error) {
 	implantPath := filepath.Join(profilePath, "implant.yaml")
 	implantConfig, err = os.ReadFile(implantPath)
@@ -74,7 +74,7 @@ func readProfileDisk(profilePath string) (implantConfig []byte, preludeConfig []
 	return
 }
 
-// writeProfileDisk 将配置文件写入磁盘目录
+// writeProfileDisk writes configuration files to the disk directory.
 func writeProfileDisk(profilePath string, implantConfig []byte, preludeConfig []byte, resources *clientpb.BuildResources) error {
 	if err := os.MkdirAll(profilePath, 0700); err != nil {
 		return err
@@ -152,14 +152,14 @@ func NewProfile(profile *clientpb.Profile) error {
 		profile.ImplantConfig = consts.DefaultProfile
 	}
 
-	// 先生成 UUID，用于磁盘路径
+	// Generate UUID first for the disk path.
 	id, err := uuid.NewV4()
 	if err != nil {
 		return err
 	}
 	profilePath := filepath.Join(configs.ProfilePath, id.String())
 
-	// 处理 zip 上传
+	// Handle zip uploads.
 	contentType := fileutils.DetectContentType(profile.ImplantConfig)
 	if contentType == "zip" {
 		if err := os.MkdirAll(profilePath, 0700); err != nil {
@@ -190,7 +190,7 @@ func NewProfile(profile *clientpb.Profile) error {
 
 		profile.ImplantConfig = yamlContent
 
-		// ZIP 解压后，如果 proto 中单独带了 prelude/resources 则补写覆盖
+		// After ZIP decompression, overwrite with prelude/resources from proto if provided separately.
 		if profile.PreludeConfig != nil {
 			if err := os.WriteFile(filepath.Join(profilePath, "prelude.yaml"), profile.PreludeConfig, 0644); err != nil {
 				return err
@@ -208,7 +208,7 @@ func NewProfile(profile *clientpb.Profile) error {
 			}
 		}
 	} else {
-		// 非 zip：验证后写磁盘
+		// Non-zip: validate and write to disk.
 		_, err := implanttypes.LoadProfile(profile.ImplantConfig)
 		if err != nil {
 			return fmt.Errorf("profile validation failed: %w", err)
@@ -236,7 +236,7 @@ func GetProfile(name string) (*implanttypes.ProfileConfig, error) {
 		return nil, types.ErrNotFoundPipeline
 	}
 
-	// 从磁盘读取 implant.yaml
+	// Read implant.yaml from disk.
 	implantConfig, err := os.ReadFile(filepath.Join(profileModel.DiskPath(), "implant.yaml"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read implant.yaml from disk: %w", err)
@@ -251,12 +251,12 @@ func GetProfile(name string) (*implanttypes.ProfileConfig, error) {
 	}
 
 	if profileModel.Pipeline != nil {
-		// 为了向后兼容，创建一个简单的目标
+		// Create a simple target for backwards compatibility.
 		target := implanttypes.Target{
 			Address: profileModel.Pipeline.Address(),
 		}
 
-		// 如果是 TLS 管道，设置 TLS 配置
+		// Set TLS configuration for TLS pipelines.
 		if profileModel.Pipeline.Tls.Enable {
 			target.TLS = &implanttypes.TLSProfile{
 				Enable: true,
@@ -270,9 +270,9 @@ func GetProfile(name string) (*implanttypes.ProfileConfig, error) {
 		// profile.Basic.TLS.Enable = profileModel.Pipeline.Tls.Enable
 
 		if profileModel.Pipeline.Secure != nil && profileModel.Pipeline.Secure.Enable {
-			// Profile中需要保存implant编译时需要的密钥：
-			// - server公钥：implant用来加密发给server的数据
-			// - implant私钥：implant用来解密server发来的数据
+			// Profile must store the keys needed at implant compile time:
+			// - server public key: used by implant to encrypt data sent to server
+			// - implant private key: used by implant to decrypt data from server
 
 			profile.Basic.Secure = &implanttypes.SecureProfile{
 				Enable:            true,
@@ -280,18 +280,18 @@ func GetProfile(name string) (*implanttypes.ProfileConfig, error) {
 				ImplantPrivateKey: profileModel.Pipeline.Secure.ImplantPrivateKey,
 			}
 		}
-		// 注意：protocol 字段已移除，现在通过 targets 中的具体配置来确定协议
+		// Note: protocol field was removed; protocol is now determined by target-specific configuration.
 	}
 	if params := profileModel.Params; params != nil {
 		profile.Basic.Cron = profileModel.Params.Cron
 		profile.Basic.Jitter = profileModel.Params.Jitter
 		if params.REMPipeline != "" {
-			// 对于 REM 协议，我们需要添加到 targets 中
+			// For REM protocol, add to targets list.
 			pipeline, err := FindPipeline(params.REMPipeline)
 			if err != nil {
 				return nil, err
 			}
-			// 添加 REM 目标到 targets 列表
+			// Append REM target to the targets list.
 			profile.Basic.Targets = append(profile.Basic.Targets, implanttypes.Target{
 				Address: pipeline.Address(),
 				REM: &implanttypes.REMProfile{
@@ -340,7 +340,7 @@ func DeleteProfileByName(profileName string) error {
 		return err
 	}
 
-	// 用 UUID 路径删除磁盘文件
+	// Delete disk files using UUID path.
 	profilePath := existingProfile.DiskPath()
 	if fileutils.Exist(profilePath) {
 		if err := fileutils.ForceRemoveAll(profilePath); err != nil {
@@ -356,7 +356,7 @@ func DeleteProfileByName(profileName string) error {
 	return nil
 }
 
-// UpdateProfileDisk 更新 profile 的磁盘配置文件
+// UpdateProfileDisk updates the profile's configuration files on disk.
 func UpdateProfileDisk(profileName string, implantConfig []byte, preludeConfig []byte, resources *clientpb.BuildResources) error {
 	profileModel, err := GetProfileByName(profileName)
 	if err != nil {
@@ -364,7 +364,7 @@ func UpdateProfileDisk(profileName string, implantConfig []byte, preludeConfig [
 	}
 	profilePath := profileModel.DiskPath()
 
-	// implant.yaml 必须写
+	// implant.yaml must be written.
 	if err := os.MkdirAll(profilePath, 0700); err != nil {
 		return err
 	}
@@ -390,7 +390,7 @@ func UpdateProfileDisk(profileName string, implantConfig []byte, preludeConfig [
 	return nil
 }
 
-// GetProfileFullConfig 从磁盘读取 profile 的全部配置文件
+// GetProfileFullConfig reads all profile configuration files from disk.
 func GetProfileFullConfig(profileName string) (implantConfig []byte, preludeConfig []byte, resources *clientpb.BuildResources, err error) {
 	profileModel, err := GetProfileByName(profileName)
 	if err != nil {
@@ -399,7 +399,7 @@ func GetProfileFullConfig(profileName string) (implantConfig []byte, preludeConf
 	return readProfileDisk(profileModel.DiskPath())
 }
 
-// GetProfileByNameWithConfig 返回带磁盘完整配置的 Profile protobuf
+// GetProfileByNameWithConfig returns a Profile protobuf with full disk configuration.
 func GetProfileByNameWithConfig(profileName string) (*clientpb.Profile, error) {
 	profileModel, err := GetProfileByName(profileName)
 	if err != nil {
@@ -491,35 +491,6 @@ func UpdateBuilderPath(builder *models.Artifact) error {
 		Error
 }
 
-func UpdatePulseRelink(pusleID, beanconID uint32) error {
-	// todo
-	//pulse, err := GetArtifactById(pusleID)
-	//if err != nil {
-	//	return err
-	//}
-	//pulse.Params.RelinkBeaconID = beanconID
-	//err = Session().Model(pulse).
-	//	Select("ParamsData").
-	//	Updates(pulse).
-	//	Error
-	//if err != nil {
-	//	return err
-	//}
-	//originBeacon, err := GetArtifactById(pulse.Params.OriginBeaconID)
-	//if err != nil {
-	//	return err
-	//}
-	//originBeacon.Params.RelinkBeaconID = beanconID
-	//err = Session().Model(originBeacon).
-	//	Select("ParamsData").
-	//	Updates(originBeacon).
-	//	Error
-	//if err != nil {
-	//	return err
-	//}
-	return nil
-}
-
 func SaveArtifact(name, artifactType, platform, arch, source string) (*models.Artifact, error) {
 	absBuildOutputPath, err := filepath.Abs(configs.TempPath)
 	if err != nil {
@@ -596,7 +567,7 @@ func FindArtifact(target *clientpb.Artifact, bin bool) (*clientpb.Artifact, erro
 	var artifact *models.Artifact
 	var err error
 
-	// 根据 ID 或名称查找构建器
+	// Find builder by ID or name.
 	if target.Id != 0 {
 		artifact, err = NewArtifactQuery().WhereID(target.Id).WhereStatus(consts.BuildStatusCompleted).Last()
 	} else if target.Name != "" {

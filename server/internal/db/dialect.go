@@ -4,26 +4,26 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-// DialectAdapter 封装不同数据库方言的 SQL 差异
+// DialectAdapter encapsulates SQL dialect differences across database backends.
 type DialectAdapter interface {
-	// Name 返回方言名称
+	// Name returns the dialect name.
 	Name() string
 
-	// FindAliveSessionsUpdateSQL 返回标记不活跃会话的 UPDATE SQL
+	// FindAliveSessionsUpdateSQL returns the UPDATE SQL for marking inactive sessions.
 	FindAliveSessionsUpdateSQL() string
 
-	// FindAliveSessionsSelectSQL 返回查询活跃会话的 SELECT SQL
+	// FindAliveSessionsSelectSQL returns the SELECT SQL for querying alive sessions.
 	FindAliveSessionsSelectSQL() string
 
-	// AppendLogExpr 返回追加日志的表达式（处理 NULL + 字符串拼接）
+	// AppendLogExpr returns the expression for appending a log entry (handles NULL + string concatenation).
 	AppendLogExpr(logEntry string) clause.Expr
 
-	// CastIDAsText 返回将 ID 列转换为 TEXT 做 LIKE 前缀匹配的 WHERE 条件
+	// CastIDAsText returns a WHERE condition that casts the ID column to TEXT for LIKE prefix matching.
 	CastIDAsText(column string) string
 
-	// DateFunction 返回提取日期部分的 SQL 表达式
+	// DateFunction returns the SQL expression for extracting the date part of a column.
 	DateFunction(column string) string
 }
 
-// Adapter 全局方言适配器，在 NewDBClient 中初始化
+// Adapter is the global dialect adapter, initialized in NewDBClient.
 var Adapter DialectAdapter
