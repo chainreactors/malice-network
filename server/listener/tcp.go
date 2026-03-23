@@ -253,23 +253,11 @@ func (pipeline *TCPPipeline) handleBeacon(conn *cryptostream.Conn) {
 }
 
 func (pipeline *TCPPipeline) runtimeErrorHandler(scope string) core.GoErrorHandler {
-	label := fmt.Sprintf("tcp pipeline %s %s", pipeline.Name, scope)
-	return core.CombineErrorHandlers(
-		core.LogGuardedError(label),
-		func(err error) {
-			pipeline.Enable = false
+	return core.PipelineRuntimeErrorHandler("tcp", pipeline.Name+" "+scope, pipeline.ListenerID,
+		func() { pipeline.Enable = false },
+		func() {
 			if pipeline.ln != nil {
 				_ = pipeline.ln.Close()
-			}
-			if core.EventBroker != nil {
-				core.EventBroker.Publish(core.Event{
-					EventType: consts.EventListener,
-					Op:        consts.CtrlPipelineStop,
-					Listener:  &clientpb.Listener{Id: pipeline.ListenerID},
-					Message:   label,
-					Err:       core.ErrorText(err),
-					Important: true,
-				})
 			}
 		},
 	)

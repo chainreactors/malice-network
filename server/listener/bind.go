@@ -148,21 +148,5 @@ func (pipeline *BindPipeline) handlerReq(req *clientpb.SpiteRequest) error {
 }
 
 func (pipeline *BindPipeline) runtimeErrorHandler(scope string) core.GoErrorHandler {
-	label := fmt.Sprintf("bind pipeline %s %s", pipeline.Name, scope)
-	return core.CombineErrorHandlers(
-		core.LogGuardedError(label),
-		func(err error) {
-			pipeline.Enable = false
-			if core.EventBroker != nil {
-				core.EventBroker.Publish(core.Event{
-					EventType: consts.EventListener,
-					Op:        consts.CtrlPipelineStop,
-					Listener:  &clientpb.Listener{Id: pipeline.ListenerID},
-					Message:   label,
-					Err:       core.ErrorText(err),
-					Important: true,
-				})
-			}
-		},
-	)
+	return core.PipelineRuntimeErrorHandler("bind", pipeline.Name+" "+scope, pipeline.ListenerID, func() { pipeline.Enable = false }, nil)
 }

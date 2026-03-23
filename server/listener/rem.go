@@ -264,25 +264,14 @@ func (rem *REM) healthLoop() error {
 }
 
 func (rem *REM) runtimeErrorHandler(scope string) core.GoErrorHandler {
-	label := fmt.Sprintf("rem pipeline %s %s", rem.Name, scope)
-	return core.CombineErrorHandlers(
-		core.LogGuardedError(label),
-		func(err error) {
-			rem.Enable = false
+	return core.PipelineRuntimeErrorHandler("rem", rem.Name+" "+scope, rem.ListenerID,
+		func() { rem.Enable = false },
+		func() {
 			if rem.con != nil {
 				_ = rem.con.Close()
 			}
-			if core.EventBroker != nil {
-				core.EventBroker.Publish(core.Event{
-					EventType: consts.EventListener,
-					Op:        consts.CtrlRemStop,
-					Listener:  &clientpb.Listener{Id: rem.ListenerID},
-					Message:   label,
-					Err:       core.ErrorText(err),
-					Important: true,
-				})
-			}
 		},
+		consts.CtrlRemStop,
 	)
 }
 

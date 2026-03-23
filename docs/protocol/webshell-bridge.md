@@ -27,20 +27,19 @@ Listener Process (WebShellPipeline)
 ────────────────────────────────────
   Runs inside the listener, connects to Server via ListenerRPC (mTLS)
 
-  ┌─ Bootstrap (HTTP POST) ──────────────────────────────────┐
-  │  Body envelope: [1B stage][4B sid LE][1B tok_len][tok][…] │
-  │  Optional XOR obfuscation (key = sha256(token)[:16])     │
-  │  OPSEC: no User-Agent, Content-Type mimics form POST     │
+  ┌─ Bootstrap (HTTP POST + query string) ───────────────────┐
+  │  ?s=status / ?s=load / ?s=init / ?s=deps&name=...       │
+  │  Body = raw payload (DLL bytes, etc.)                    │
   └──────────────────────────────────────────────────────────┘
 
   ┌─ Data channel (suo5 full-duplex) ────────────────────────┐
   │  proxyclient/suo5 → net.Conn                             │
-  │  TLV frames: [0xd1][4B sid][4B len][spite bytes][0xd2]   │
-  │  Bidirectional streaming over persistent connection       │
+  │  Malefic wire format via MaleficParser (shared w/ TCP)   │
+  │  Compressed + optional Age encryption                    │
   └──────────────────────────────────────────────────────────┘
 
   ┌─ Forward integration ────────────────────────────────────┐
-  │  SpiteStream ↔ TLV frame translation                     │
+  │  SpiteStream ↔ MaleficParser read/write                  │
   │  Session registration, checkin, task routing              │
   └──────────────────────────────────────────────────────────┘
 
@@ -50,7 +49,7 @@ Target Web Server Process
   WebShell (JSP/PHP/ASPX)
     - Bridge DLL loading (ReflectiveLoader)
     - Export resolution (bridge_init, bridge_process)
-    - TLV frames → call bridge_process() → return TLV response
+    - malefic frames → call bridge_process() → return malefic frame response
     - No port opened, no TCP loopback
 
   Bridge Runtime DLL (in web server process memory)
@@ -71,11 +70,11 @@ Target Web Server Process
 Client exec("whoami")
   → Server (SpiteStream)
     → WebShellPipeline handler (receives SpiteRequest)
-      → writeFrame: TLV pack → suo5 conn
+      → MaleficParser.WritePacket → suo5 conn
         → WebShell (calls bridge_process via function pointer)
           → DLL module runtime → exec("whoami") → "root"
-        → TLV response via suo5 conn
-      → readLoop: TLV unpack → Forwarders.Send(SpiteResponse)
+        → malefic frame response via suo5 conn
+      → readLoop: MaleficParser.ReadPacket → Forwarders.Send(SpiteResponse)
     → Server → Client displays "root"
 ```
 
@@ -88,12 +87,12 @@ Deploy the suo5 webshell (JSP/PHP/ASPX) to the target web server.
 ### 2. Register and start the pipeline
 
 ```
-webshell new --listener my-listener --suo5 suo5://target/bridge.jsp --token SECRET --dll /path/to/bridge.dll
+webshell new --listener my-listener --suo5 suo5://target/bridge.jsp --dll /path/to/bridge.dll
 ```
 
-The optional `--token` must match the `STAGE_TOKEN` constant in the webshell if set. Use the suo5 URL scheme (`suo5://` or `suo5s://` for HTTPS).
+Use the suo5 URL scheme (`suo5://` or `suo5s://` for HTTPS).
 
-The `--dll` flag enables auto-loading: when the pipeline starts, the bridge automatically delivers the DLL to the webshell if it is not already loaded.
+The `--dll` flag enables auto-loading: when a session is initialized, the pipeline automatically delivers the DLL to the webshell if it is not already loaded.
 
 ### 3. Interact
 
@@ -106,33 +105,35 @@ download /remote/file
 
 ## Protocol
 
-### Bootstrap Envelope
+### Bootstrap (HTTP POST)
 
-Bootstrap requests use HTTP POST with `Content-Type: application/x-www-form-urlencoded` and no `User-Agent` header. The envelope is sent in plaintext; authentication is via the token field in the envelope header.
-
-**Envelope format (before optional XOR):** `[1B stage][4B sessionID LE][1B token_len][token bytes][payload...]`
-
-| Stage byte | Name | Payload | Response |
-|-----------|------|---------|----------|
-| `0x01` | load | Raw DLL bytes | `OK:memory` or error string |
-| `0x02` | status | (empty) | JSON `{"ready":true,...}` or legacy `LOADED`/`NOT_LOADED` |
-| `0x03` | init | (empty) | `[4B sessionID LE][Register protobuf]` |
-| `0x06` | deps | `[1B dep_name_len][dep_name][file bytes]` | `OK:<path>` or error string |
-
-Token validation uses HMAC-SHA256 for secrets longer than 32 characters (rotates every 30s with +/-30s tolerance). Short secrets use static comparison.
-
-### Data Channel TLV Frame
-
-After bootstrap, a persistent suo5 connection carries bidirectional TLV frames:
+Bootstrap requests use simple HTTP POST with stage in query string. Authentication relies on suo5's own transport security.
 
 ```
-[1B 0xd1][4B sessionID LE][4B payload_len LE][payload bytes][1B 0xd2]
+POST /bridge.jsp?s=status HTTP/1.1
+POST /bridge.jsp?s=load   HTTP/1.1  (body = raw DLL bytes)
+POST /bridge.jsp?s=init   HTTP/1.1
+POST /bridge.jsp?s=deps&name=.jna.jar HTTP/1.1  (body = file bytes)
 ```
 
-- `0xd1` / `0xd2` are start/end delimiters matching malefic wire format
-- Payload is serialized `Spites` protobuf
-- Maximum frame size: 10 MiB
-- Future: payload will be encrypted (outer streaming encryption layer)
+| Stage | Payload | Response |
+|-------|---------|----------|
+| `status` | (empty) | JSON `{"ready":true,...}` or `LOADED`/`NOT_LOADED` |
+| `load` | Raw DLL bytes | `OK:memory` or error string |
+| `init` | (empty) | `[4B sessionID LE][Register protobuf]` |
+| `deps` | File bytes (name in `?name=` param) | `OK:<path>` or error string |
+
+### Data Channel (Malefic Wire Format)
+
+After bootstrap, a persistent suo5 connection carries bidirectional frames using the standard malefic wire format (reuses `MaleficParser`):
+
+```
+[0xd1][4B sessionID LE][4B payload_len LE][compressed Spites protobuf][0xd2]
+```
+
+- Identical to the malefic implant wire format — same delimiters, same header layout
+- Payload is compressed (and optionally Age-encrypted via `WithSecure`)
+- Parsed by `server/internal/parser/malefic/parser.go` (shared with TCP/HTTP pipelines)
 
 ### DLL Export Interface
 
@@ -167,10 +168,9 @@ The DLL must also export `ReflectiveLoader` for the loading phase. The webshell 
 | Property | Status |
 |----------|--------|
 | Custom HTTP headers | None — no X-*, no custom cookies |
-| User-Agent | Empty (Go default stripped) |
-| Content-Type | `application/x-www-form-urlencoded` (common POST type) |
-| Bootstrap body | Plaintext envelope (token included for auth) |
-| Data channel | TLV-framed, ready for encryption layer |
+| Content-Type | `application/octet-stream` (bootstrap) |
+| Authentication | Delegated to suo5 transport |
+| Data channel | Malefic wire format with compression + optional Age encryption |
 | Ports opened | None on target |
 | Disk artifacts | None (DLL is memory-only) |
 
@@ -180,6 +180,7 @@ The DLL must also export `ReflectiveLoader` for the loading phase. The webshell 
 |---------|------|
 | WebShell pipeline | `server/listener/webshell.go` |
 | Pipeline tests | `server/listener/webshell_test.go` |
+| Malefic parser (shared) | `server/internal/parser/malefic/parser.go` |
 | Client commands | `client/command/pipeline/webshell.go` |
 | Webshell (ASPX) | `suo5-webshell/bridge.aspx` |
 | Webshell (PHP) | `suo5-webshell/bridge.php` |

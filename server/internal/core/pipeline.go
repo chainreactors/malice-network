@@ -2,9 +2,11 @@ package core
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"sync"
 
+	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/implanttypes"
 	"github.com/chainreactors/malice-network/server/internal/configs"
@@ -99,18 +101,33 @@ func (p *PipelineConfig) WrapBindConn(conn io.ReadWriteCloser) (*cryptostream.Co
 	return cryptostream.WrapBindConn(conn, crys)
 }
 
-//
-//func (p *PipelineConfig) ToFile() *clientpb.Pipeline {
-//	return &clientpb.Pipeline{
-//		Tls: &clientpb.TLS{
-//			TLSConfig:   p.TlsConfig.TLSConfig,
-//			Key:    p.TlsConfig.Key,
-//			Enable: p.TlsConfig.Enable,
-//		},
-//		Encryption: &clientpb.Encryption{
-//			Enable: p.Encryption.Enable,
-//			Type:   p.Encryption.Type,
-//			Key:    p.Encryption.Key,
-//		},
-//	}
-//}
+// PipelineRuntimeErrorHandler builds a standard error handler for pipeline
+// runtime goroutines. All pipeline types (tcp, http, bind, rem, webshell) share
+// the same pattern: log the error, disable the pipeline, optionally run cleanup,
+// and publish an event.
+func PipelineRuntimeErrorHandler(typeName, pipelineName, listenerID string, disabler func(), cleanup func(), op ...string) GoErrorHandler {
+	label := fmt.Sprintf("%s pipeline %s", typeName, pipelineName)
+	ctrlOp := consts.CtrlPipelineStop
+	if len(op) > 0 {
+		ctrlOp = op[0]
+	}
+	return CombineErrorHandlers(
+		LogGuardedError(label),
+		func(err error) {
+			disabler()
+			if cleanup != nil {
+				cleanup()
+			}
+			if EventBroker != nil {
+				EventBroker.Publish(Event{
+					EventType: consts.EventListener,
+					Op:        ctrlOp,
+					Listener:  &clientpb.Listener{Id: listenerID},
+					Message:   label,
+					Err:       ErrorText(err),
+					Important: true,
+				})
+			}
+		},
+	)
+}

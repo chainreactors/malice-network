@@ -345,23 +345,11 @@ func (pipeline *HTTPPipeline) writeError(w http.ResponseWriter, statusCode int, 
 }
 
 func (pipeline *HTTPPipeline) runtimeErrorHandler(scope string) core.GoErrorHandler {
-	label := fmt.Sprintf("http pipeline %s %s", pipeline.Name, scope)
-	return core.CombineErrorHandlers(
-		core.LogGuardedError(label),
-		func(err error) {
-			pipeline.Enable = false
+	return core.PipelineRuntimeErrorHandler("http", pipeline.Name+" "+scope, pipeline.ListenerID,
+		func() { pipeline.Enable = false },
+		func() {
 			if pipeline.srv != nil {
 				_ = pipeline.srv.Close()
-			}
-			if core.EventBroker != nil {
-				core.EventBroker.Publish(core.Event{
-					EventType: consts.EventListener,
-					Op:        consts.CtrlPipelineStop,
-					Listener:  &clientpb.Listener{Id: pipeline.ListenerID},
-					Message:   label,
-					Err:       core.ErrorText(err),
-					Important: true,
-				})
 			}
 		},
 	)
