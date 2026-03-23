@@ -66,6 +66,9 @@ func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) 
 }
 
 func (rpc *Server) SysInfo(ctx context.Context, req *implantpb.SysInfo) (*clientpb.Empty, error) {
+	if req == nil {
+		return nil, types.ErrMissingRequestField
+	}
 	id, err := getSessionID(ctx)
 	if err != nil {
 		return nil, err

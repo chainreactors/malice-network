@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"os"
@@ -19,9 +20,13 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"google.golang.org/protobuf/proto"
+	"gorm.io/gorm"
 )
 
 func (rpc *Server) GetSessions(ctx context.Context, req *clientpb.SessionRequest) (*clientpb.Sessions, error) {
+	if req == nil {
+		return nil, types.ErrMissingRequestField
+	}
 	var sessions *clientpb.Sessions
 	if req.All {
 		modelSessions, err := db.ListSessions()
@@ -54,15 +59,22 @@ func (rpc *Server) GetSessionCount(ctx context.Context, req *clientpb.Empty) (*c
 }
 
 func (rpc *Server) GetSession(ctx context.Context, req *clientpb.SessionRequest) (*clientpb.Session, error) {
+	if req == nil {
+		return nil, types.ErrMissingRequestField
+	}
 	session, err := core.Sessions.Get(req.SessionId)
 	if err == nil {
 		return session.ToProtobuf(), nil
 	}
 	// Session not in memory (dead/offline). Return DB data directly
 	// without recovering to memory — only Checkin/Register should revive.
-	dbSess, err := db.FindSession(req.SessionId)
-	if err != nil {
-		return nil, err
+	dbSess, dbErr := db.FindSession(req.SessionId)
+	if dbErr != nil {
+		// Treat "not found" as a valid empty result, not an error.
+		if errors.Is(dbErr, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, dbErr
 	}
 	if dbSess == nil {
 		return nil, nil
@@ -71,6 +83,9 @@ func (rpc *Server) GetSession(ctx context.Context, req *clientpb.SessionRequest)
 }
 
 func (rpc *Server) SessionManage(ctx context.Context, req *clientpb.BasicUpdateSession) (*clientpb.Empty, error) {
+	if req == nil {
+		return nil, types.ErrMissingRequestField
+	}
 	switch req.Op {
 	case "delete":
 		core.Sessions.Remove(req.SessionId)
@@ -104,6 +119,8 @@ func (rpc *Server) SessionManage(ctx context.Context, req *clientpb.BasicUpdateS
 				return nil, err
 			}
 		}
+	default:
+		return nil, fmt.Errorf("unknown session manage operation: %q", req.Op)
 	}
 
 	return &clientpb.Empty{}, nil

@@ -7,6 +7,7 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/listenerrpc"
+	"github.com/chainreactors/IoM-go/types"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"google.golang.org/protobuf/proto"
@@ -19,6 +20,9 @@ func (rpc *Server) GetListeners(ctx context.Context, req *clientpb.Empty) (*clie
 }
 
 func (rpc *Server) RegisterListener(ctx context.Context, req *clientpb.RegisterListener) (*clientpb.Empty, error) {
+	if req == nil || req.Name == "" {
+		return nil, types.ErrMissingRequestField
+	}
 	// Idempotent: if a listener with this name already exists (e.g. reconnect after crash),
 	// fully clean up the old state before creating the fresh instance.
 	if old, err := core.Listeners.Get(req.Name); err == nil {

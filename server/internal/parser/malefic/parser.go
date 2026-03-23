@@ -82,6 +82,9 @@ func splitPrivateKeys(keyPair *clientpb.KeyPair) []string {
 }
 
 func ParseSid(data []byte) uint32 {
+	if len(data) < MsgSessionEnd {
+		return 0
+	}
 	sessionId := data[MsgSessionStart:MsgSessionEnd]
 	return binary.LittleEndian.Uint32(sessionId)
 }
@@ -121,6 +124,9 @@ func (parser *MaleficParser) ReadHeader(conn io.ReadWriteCloser) (uint32, uint32
 }
 
 func (parser *MaleficParser) Parse(buf []byte) (*implantpb.Spites, error) {
+	if len(buf) == 0 {
+		return nil, fmt.Errorf("empty payload")
+	}
 	length := len(buf) - 1
 	if buf[length] != parser.EndDelimiter {
 		return nil, types.ErrInvalidEnd

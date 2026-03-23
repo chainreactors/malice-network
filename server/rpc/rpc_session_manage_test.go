@@ -261,22 +261,18 @@ func TestSessionManage_GroupOnDBOnly(t *testing.T) {
 	}
 }
 
-// Edge case: unknown operation is silently a no-op. This may be a design issue.
+// Unknown operation now returns an error instead of being a silent no-op.
 func TestSessionManage_UnknownOp(t *testing.T) {
 	env := newRPCTestEnv(t)
 	sess := env.seedSession(t, "sm-unknownop", "sm-unknownop-pipe", true)
 
-	resp, err := (&Server{}).SessionManage(context.Background(), &clientpb.BasicUpdateSession{
+	_, err := (&Server{}).SessionManage(context.Background(), &clientpb.BasicUpdateSession{
 		SessionId: sess.ID,
 		Op:        "foobar",
 		Arg:       "value",
 	})
-	// Currently returns empty response with no error. This is a silent no-op.
-	if err != nil {
-		t.Fatalf("SessionManage(unknown op) error: %v", err)
-	}
-	if resp == nil {
-		t.Fatal("expected non-nil empty response")
+	if err == nil {
+		t.Fatal("SessionManage(unknown op) should return error")
 	}
 }
 

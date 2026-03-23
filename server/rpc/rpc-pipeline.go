@@ -6,6 +6,7 @@ import (
 
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/types"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/implanttypes"
 	"github.com/chainreactors/malice-network/server/internal/core"
@@ -57,6 +58,9 @@ func resolveListenerID(req *clientpb.CtrlPipeline) (string, error) {
 }
 
 func (rpc *Server) RegisterPipeline(ctx context.Context, req *clientpb.Pipeline) (*clientpb.Empty, error) {
+	if req == nil {
+		return nil, types.ErrMissingRequestField
+	}
 	lns, err := core.Listeners.Get(req.ListenerId)
 	if err != nil {
 		return nil, err
@@ -79,6 +83,9 @@ func (rpc *Server) RegisterPipeline(ctx context.Context, req *clientpb.Pipeline)
 }
 
 func (rpc *Server) SyncPipeline(ctx context.Context, req *clientpb.Pipeline) (*clientpb.Empty, error) {
+	if req == nil {
+		return nil, types.ErrMissingRequestField
+	}
 	_, err := db.SavePipeline(models.FromPipelinePb(req))
 	if err != nil {
 		return nil, err
@@ -94,6 +101,9 @@ func (rpc *Server) SyncPipeline(ctx context.Context, req *clientpb.Pipeline) (*c
 }
 
 func (rpc *Server) ListPipelines(ctx context.Context, req *clientpb.Listener) (*clientpb.Pipelines, error) {
+	if req == nil {
+		return nil, types.ErrMissingRequestField
+	}
 	pipelines, err := db.ListPipelinesByListener(req.Id)
 	if err != nil {
 		return nil, err

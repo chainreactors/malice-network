@@ -101,7 +101,7 @@ func (parser *MessageParser) ReadPacket(conn io.ReadWriteCloser) (uint32, *impla
 	}
 
 	msg, err := parser.Parse(buf)
-	return sessionId, msg, nil
+	return sessionId, msg, err
 }
 
 func (parser *MessageParser) WritePacket(conn net.Conn, msg *implantpb.Spites, sid uint32) error {
