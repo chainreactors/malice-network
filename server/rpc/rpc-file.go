@@ -16,7 +16,10 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/parser"
 	"os"
 	"path/filepath"
+	"time"
 )
+
+const maxChunkRetries = 3
 
 var rpcFileSaveContext = db.SaveContext
 
@@ -345,8 +348,27 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 			return err
 		}
 
+		retries := 0
 		for {
-			resp, ok := recvSpite(greq.Task.Ctx, out)
+			var resp *implantpb.Spite
+			var ok bool
+			select {
+			case resp, ok = <-out:
+				retries = 0
+			case <-greq.Task.Ctx.Done():
+				return ErrTaskContextCancelled
+			case <-time.After(consts.MinTimeout):
+				retries++
+				if retries >= maxChunkRetries {
+					return fmt.Errorf("chunk %d timed out after %d retries", current_cur, maxChunkRetries)
+				}
+				logs.Log.Debugf("[download] chunk %d timeout, retrying (%d/%d)", current_cur, retries, maxChunkRetries)
+				if err := in.Send(curRequest); err != nil {
+					return err
+				}
+				continue
+			}
+
 			if !ok {
 				return ErrTaskContextCancelled
 			}
