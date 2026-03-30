@@ -35,6 +35,31 @@ type DockerBuilder struct {
 	volumes       []string
 }
 
+func resolveDockerMutantBinary() string {
+	candidates := []struct {
+		hostPath      string
+		containerPath string
+	}{
+		{
+			hostPath:      filepath.Join(configs.TargetPath, "release", "malefic-mutant"),
+			containerPath: filepath.Join(ContainerSourceCodePath, "target", "release", "malefic-mutant"),
+		},
+		{
+			hostPath:      filepath.Join(configs.SourceCodePath, "bin", "malefic-mutant"),
+			containerPath: filepath.Join(ContainerSourceCodePath, "bin", "malefic-mutant"),
+		},
+	}
+
+	for _, candidate := range candidates {
+		info, err := os.Stat(candidate.hostPath)
+		if err == nil && !info.IsDir() {
+			return filepath.ToSlash(candidate.containerPath)
+		}
+	}
+
+	return "malefic-mutant"
+}
+
 func NewDockerBuilder(req *clientpb.BuildConfig) *DockerBuilder {
 	os.MkdirAll(configs.BuildOutputPath, 0700)
 	os.MkdirAll(configs.SourceCodePath, 0700)
@@ -155,6 +180,7 @@ func (d *DockerBuilder) Execute() error {
 	if d.config.OutputType == "lib" {
 		libFlag = " --lib"
 	}
+	mutantBin := resolveDockerMutantBinary()
 
 	// 资源合并前缀命令：先合并 builtin 和 custom resources 到目标目录
 	resourceMergePrefix := "mkdir -p /root/src/resources && " +
@@ -164,23 +190,29 @@ func (d *DockerBuilder) Execute() error {
 	switch d.config.BuildType {
 	case consts.CommandBuildBeacon:
 		buildCommand = fmt.Sprintf(
-			"%smalefic-mutant generate beacon && malefic-mutant build%s malefic -t %s",
+			"%s%s generate beacon && %s build%s malefic -t %s",
 			resourceMergePrefix,
+			mutantBin,
+			mutantBin,
 			libFlag,
 			d.config.Target,
 		)
 	case consts.CommandBuildBind:
 		buildCommand = fmt.Sprintf(
-			"%smalefic-mutant generate bind && malefic-mutant build%s malefic -t %s",
+			"%s%s generate bind && %s build%s malefic -t %s",
 			resourceMergePrefix,
+			mutantBin,
+			mutantBin,
 			libFlag,
 			d.config.Target,
 		)
 	case consts.CommandBuildModules:
 		buildCommand = fmt.Sprintf(
-			"%smalefic-mutant generate modules -m %s && malefic-mutant build%s modules -m %s -t %s",
+			"%s%s generate modules -m %s && %s build%s modules -m %s -t %s",
 			resourceMergePrefix,
+			mutantBin,
 			strings.Join(profile.Implant.Modules, ","),
+			mutantBin,
 			libFlag,
 			strings.Join(profile.Implant.Modules, ","),
 			d.config.Target,
@@ -188,8 +220,10 @@ func (d *DockerBuilder) Execute() error {
 		d.enable3rd = false
 	case consts.CommandBuild3rdModules:
 		buildCommand = fmt.Sprintf(
-			"%smalefic-mutant generate modules && malefic-mutant build%s 3rd -m %s -t %s",
+			"%s%s generate modules && %s build%s 3rd -m %s -t %s",
 			resourceMergePrefix,
+			mutantBin,
+			mutantBin,
 			libFlag,
 			strings.Join(profile.Implant.ThirdModules, ","),
 			d.config.Target,
@@ -197,8 +231,10 @@ func (d *DockerBuilder) Execute() error {
 		d.enable3rd = true
 	case consts.CommandBuildPrelude:
 		buildCommand = fmt.Sprintf(
-			"%smalefic-mutant generate prelude prelude.yaml && malefic-mutant build prelude -t %s",
+			"%s%s generate prelude prelude.yaml && %s build prelude -t %s",
 			resourceMergePrefix,
+			mutantBin,
+			mutantBin,
 			d.config.Target,
 		)
 	case consts.CommandBuildPulse:
@@ -217,9 +253,12 @@ func (d *DockerBuilder) Execute() error {
 			shellcodeFlag = " --shellcode"
 		}
 		buildCommand = fmt.Sprintf(
-			"%smalefic-mutant generate pulse -a %s -p %s && malefic-mutant build%s pulse%s -t %s",
+			"%s%s generate pulse -a %s -p %s && %s build%s pulse%s -t %s",
 			resourceMergePrefix,
-			target.Arch, pulseOs, libFlag, shellcodeFlag, d.config.Target,
+			mutantBin,
+			target.Arch, pulseOs,
+			mutantBin,
+			libFlag, shellcodeFlag, d.config.Target,
 		)
 	}
 	d.containerName = "malefic_" + cryptography.RandomString(8)
