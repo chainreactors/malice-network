@@ -21,7 +21,6 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 )
 
@@ -240,7 +239,7 @@ func (d *DockerBuilder) Execute() error {
 	d.containerID = resp.ID
 
 	// 2. 启动容器
-	if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
+	if err := cli.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
 		db.UpdateBuilderStatus(d.artifact.ID, consts.BuildStatusFailure)
 		return fmt.Errorf("failed to start container: %w", err)
 	}

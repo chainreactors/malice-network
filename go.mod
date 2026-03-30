@@ -54,16 +54,15 @@ require (
 
 // compatibility
 require (
-	github.com/docker/distribution v2.8.2+incompatible // indirect
-	github.com/docker/docker v24.0.9+incompatible
+	github.com/docker/docker v27.5.1+incompatible
 	golang.org/x/crypto v0.48.0
 	golang.org/x/exp v0.0.0-20241210194714-1829a127f884
-	golang.org/x/net v0.50.0 // indirect
+	golang.org/x/net v0.51.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/sys v0.42.0 // indirect
 	golang.org/x/term v0.40.0
 	golang.org/x/text v0.34.0
-	google.golang.org/grpc v1.78.0
+	google.golang.org/grpc v1.79.3
 	google.golang.org/protobuf v1.36.11
 )
 
@@ -104,6 +103,7 @@ require (
 	github.com/catppuccin/go v0.3.0 // indirect
 	github.com/cbroglie/mustache v1.4.0 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
+	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/chainreactors/fingers v0.0.0-20240702104653-a66e34aa41df // indirect
 	github.com/chainreactors/proxyclient v1.0.4-0.20260218115902-74a84a4535b0 // indirect
 	github.com/charmbracelet/bubbles v0.21.1-0.20250623103423-23b8fd6302d7 // indirect
@@ -126,7 +126,9 @@ require (
 	github.com/clipperhouse/displaywidth v0.9.0 // indirect
 	github.com/clipperhouse/stringish v0.1.1 // indirect
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
+	github.com/containerd/log v0.1.0 // indirect
 	github.com/creack/pty v1.1.24 // indirect
+	github.com/distribution/reference v0.6.0 // indirect
 	github.com/dlclark/regexp2 v1.11.5 // indirect
 	github.com/docker/go-connections v0.5.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
@@ -134,11 +136,14 @@ require (
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
 	github.com/facebookincubator/nvdtools v0.1.5 // indirect
 	github.com/fatih/color v1.16.0 // indirect
+	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-acme/alidns-20150109/v4 v4.7.0 // indirect
 	github.com/go-dedup/megophone v0.0.0-20170830025436-f01be21026f5 // indirect
 	github.com/go-dedup/simhash v0.0.0-20170904020510-9ecaca7b509c // indirect
 	github.com/go-dedup/text v0.0.0-20170907015346-8bb1b95e3cb7 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.3 // indirect
+	github.com/go-logr/logr v1.4.3 // indirect
+	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-sql-driver/mysql v1.8.1 // indirect
 	github.com/go-telegram-bot-api/telegram-bot-api v4.6.4+incompatible // indirect
 	github.com/goccy/go-yaml v1.12.0 // indirect
@@ -170,6 +175,7 @@ require (
 	github.com/miekg/dns v1.1.72 // indirect
 	github.com/mitchellh/hashstructure/v2 v2.0.2 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
+	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/term v0.5.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
@@ -204,10 +210,19 @@ require (
 	github.com/yuin/gluamapper v0.0.0-20150323120927-d836955830e7 // indirect
 	github.com/yuin/goldmark v1.7.4 // indirect
 	github.com/yuin/goldmark-emoji v1.0.3 // indirect
+	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.61.0 // indirect
+	go.opentelemetry.io/otel v1.42.0 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.42.0 // indirect
+	go.opentelemetry.io/otel/metric v1.42.0 // indirect
+	go.opentelemetry.io/otel/sdk v1.42.0 // indirect
+	go.opentelemetry.io/otel/sdk/metric v1.42.0 // indirect
+	go.opentelemetry.io/otel/trace v1.42.0 // indirect
 	golang.org/x/mod v0.32.0 // indirect
 	golang.org/x/tools v0.41.0 // indirect
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260203192932-546029d2fa20 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20260319201613-d00831a3d3e7 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260319201613-d00831a3d3e7 // indirect
 	gopkg.in/ini.v1 v1.67.1 // indirect
 	gotest.tools/v3 v3.5.1 // indirect
 	mvdan.cc/sh/v3 v3.7.0 // indirect

@@ -17,14 +17,14 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
-	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
 )
 
 var (
 	//NameSpace                   = "ghcr.io/chainreactors"
-	//Tag                         = "nightly-2023-09-18-latest"
+	//Tag                         = "nightly-2024-02-03-latest"
 	Ver                          = "latest"
 	ContainerSourceCodePath      = "/root/src"
 	ContainerCargoRegistryCache  = "/root/cargo/registry"
@@ -86,7 +86,7 @@ func SaveArtifact(dst string, bin []byte) error {
 }
 
 func catchLogs(cli *client.Client, containerID, name string) error {
-	logOptions := types.ContainerLogsOptions{
+	logOptions := container.LogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
 		Follow:     true,
@@ -204,7 +204,7 @@ func sendContainerCtrlMsg(isEnd bool, containerName string, req *clientpb.BuildC
 
 func GetDockerStatus(cli *client.Client, containerName string) (string, error) {
 	ctx := context.Background()
-	containers, err := cli.ContainerList(ctx, types.ContainerListOptions{All: true})
+	containers, err := cli.ContainerList(ctx, container.ListOptions{All: true})
 	if err != nil {
 		return "", fmt.Errorf("failed to list containers: %w", err)
 	}
