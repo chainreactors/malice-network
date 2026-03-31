@@ -500,7 +500,7 @@ func (s *Session) isAlived() bool {
 		nextTime := parsedExpr.Next(time.Now())
 		remainingSeconds := int64(nextTime.Sub(time.Now()).Seconds())
 		remainingSeconds = int64(float64(remainingSeconds) * (1 + s.Jitter))
-		allowedOffline := utils.Max(remainingSeconds+30, int64(90)) // values are in seconds
+		allowedOffline := utils.Max(remainingSeconds+30, int64(150)) // values are in seconds
 		return time.Now().Unix()-s.LastCheckinUnix() <= allowedOffline
 	}
 }

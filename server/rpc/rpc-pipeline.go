@@ -16,7 +16,7 @@ import (
 
 func waitForCtrlStatus(action, name string, status *clientpb.JobStatus) error {
 	if status == nil {
-		return fmt.Errorf("%s %s failed: unknown error", action, name)
+		return fmt.Errorf("%s %s failed: timeout waiting for listener response", action, name)
 	}
 	if status.Status == consts.CtrlStatusSuccess {
 		return nil

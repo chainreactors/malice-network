@@ -693,23 +693,23 @@ func TestEdge_isAlived_ZeroJitter(t *testing.T) {
 
 func TestEdge_isAlived_Boundary(t *testing.T) {
 	// With expression "*/1 * * * *" (every minute):
-	// nextInterval ≈ 0..60s, allowedOffline = max(nextInterval*(1+jitter)+30, 90) = 90s
-	// So a session that last checked in 89s ago should be alive,
-	// and one that checked in 91s ago should be dead.
+	// nextInterval ≈ 0..60s, allowedOffline = max(nextInterval*(1+jitter)+30, 150) = 150s
+	// So a session that last checked in 149s ago should be alive,
+	// and one that checked in 151s ago should be dead.
 
 	sess := newTestSession("boundary",
 		withExpression("*/1 * * * *"),
 	)
 	sess.SessionContext.Jitter = 0.0
 
-	sess.SetLastCheckin(time.Now().Add(-89 * time.Second).Unix())
+	sess.SetLastCheckin(time.Now().Add(-149 * time.Second).Unix())
 	if !sess.isAlived() {
-		t.Fatal("session 89s ago should be alive (within 90s window)")
+		t.Fatal("session 149s ago should be alive (within 150s window)")
 	}
 
-	sess.SetLastCheckin(time.Now().Add(-91 * time.Second).Unix())
+	sess.SetLastCheckin(time.Now().Add(-151 * time.Second).Unix())
 	if sess.isAlived() {
-		t.Fatal("session 91s ago should be dead (beyond 90s window)")
+		t.Fatal("session 151s ago should be dead (beyond 150s window)")
 	}
 }
 

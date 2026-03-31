@@ -375,7 +375,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 				retries = 0
 			case <-greq.Task.Ctx.Done():
 				return ErrTaskContextCancelled
-			case <-time.After(consts.MinTimeout):
+			case <-time.After(2 * consts.MinTimeout):
 				retries++
 				if retries >= maxChunkRetries {
 					return fmt.Errorf("chunk %d timed out after %d retries", current_cur, maxChunkRetries)

@@ -31,7 +31,7 @@ type Listener struct {
 
 // DefaultCtrlTimeout is the maximum time to wait for a listener control response.
 // Kept short (5s) to prevent RPC handler starvation when a listener is disconnected.
-const DefaultCtrlTimeout = 5 * time.Second
+const DefaultCtrlTimeout = 10 * time.Second
 
 func NewListener(name, ip string) *Listener {
 	l := &Listener{
