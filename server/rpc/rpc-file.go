@@ -396,6 +396,15 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 			}
 
 			downloadResp := resp.GetDownloadResponse()
+
+			// Discard stale duplicate responses from retries
+			if downloadResp.Cur != current_cur {
+				chunkFile := filepath.Join(tempDir, fmt.Sprintf("%d.chunk", downloadResp.Cur))
+				os.WriteFile(chunkFile, downloadResp.Content, 0644)
+				logs.Log.Debugf("[download] discarding duplicate chunk %d (expected %d)", downloadResp.Cur, current_cur)
+				continue
+			}
+
 			chunkFile := filepath.Join(tempDir, fmt.Sprintf("%d.chunk", downloadResp.Cur))
 			err = os.WriteFile(chunkFile, downloadResp.Content, 0644)
 			if err != nil {
