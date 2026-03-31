@@ -334,6 +334,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 				os.Rename(tempDir, backupDir)
 				os.MkdirAll(tempDir, 0755)
 			} else {
+				greq.Task.Cur = int(current_cur) - 1
 				greq.Task.Done(resp, "resuming download")
 				var complete bool
 				current_cur, complete, err = scanDownloadChunks(tempDir, total)
