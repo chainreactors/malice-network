@@ -51,6 +51,18 @@ func scanDownloadChunks(tempDir string, total int) (int32, bool, error) {
 	return int32(total), true, nil
 }
 
+func isChunkSizeCompatible(tempDir string, bufferSize int, total int) bool {
+	if total <= 1 {
+		return true
+	}
+	firstChunk := filepath.Join(tempDir, "1.chunk")
+	info, err := os.Stat(firstChunk)
+	if err != nil {
+		return true
+	}
+	return info.Size() == int64(bufferSize)
+}
+
 // Upload - Upload a file from the remote file system
 func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*clientpb.Task, error) {
 	if req == nil {
@@ -316,16 +328,22 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 		tempDir := filepath.Join(configs.TempPath, "downloads", resp.GetDownloadResponse().Checksum)
 		var current_cur int32 = 1
 		if _, err := os.Stat(tempDir); err == nil {
-			greq.Task.Done(resp, "resuming download")
-			var complete bool
-			current_cur, complete, err = scanDownloadChunks(tempDir, total)
-			if err != nil {
-				return err
+			if !isChunkSizeCompatible(tempDir, greq.Session.GetPacketLength(), total) {
+				backupDir := tempDir + fmt.Sprintf(".bak.%d", time.Now().Unix())
+				logs.Log.Warnf("[download] buffer size changed, backing up stale chunks to %s", backupDir)
+				os.Rename(tempDir, backupDir)
+				os.MkdirAll(tempDir, 0755)
+			} else {
+				greq.Task.Done(resp, "resuming download")
+				var complete bool
+				current_cur, complete, err = scanDownloadChunks(tempDir, total)
+				if err != nil {
+					return err
+				}
+				if complete {
+					return finalizeDownload(greq, req, resp, downloadAbs, total, finalPath, tempDir)
+				}
 			}
-			if complete {
-				return finalizeDownload(greq, req, resp, downloadAbs, total, finalPath, tempDir)
-			}
-
 		} else {
 			err = os.MkdirAll(tempDir, 0755)
 			if err != nil {
