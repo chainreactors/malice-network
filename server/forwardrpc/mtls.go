@@ -1,10 +1,13 @@
 package forwardrpc
 
 import (
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/hex"
 	"encoding/pem"
 	"fmt"
+	"strings"
 
 	"github.com/chainreactors/IoM-go/consts"
 	mtls "github.com/chainreactors/IoM-go/mtls"
@@ -31,8 +34,8 @@ func ServerOptions(authPath string) ([]grpc.ServerOption, error) {
 	}, nil
 }
 
-func DialOptions(serverName string) ([]grpc.DialOption, error) {
-	tlsConfig, err := ClientTLSConfig(serverName)
+func DialOptions(serverName string, expectedFingerprint ...string) ([]grpc.DialOption, error) {
+	tlsConfig, err := ClientTLSConfig(serverName, expectedFingerprint...)
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +71,7 @@ func ServerTLSConfig(clientConf *mtls.ClientConfig) (*tls.Config, error) {
 	}, nil
 }
 
-func ClientTLSConfig(serverName string) (*tls.Config, error) {
+func ClientTLSConfig(serverName string, expectedFingerprint ...string) (*tls.Config, error) {
 	if serverName == "" {
 		return nil, fmt.Errorf("forward listener server name is empty")
 	}
@@ -89,12 +92,19 @@ func ClientTLSConfig(serverName string) (*tls.Config, error) {
 	}
 	caCertPool := x509.NewCertPool()
 	caCertPool.AddCert(caCert)
+	wantFingerprint := ""
+	if len(expectedFingerprint) > 0 {
+		wantFingerprint = normalizeFingerprint(expectedFingerprint[0])
+	}
 	return &tls.Config{
 		Certificates: []tls.Certificate{cert},
 		RootCAs:      caCertPool,
 		ServerName:   serverName,
+		// Forward listener certificates are bound to the listener identity
+		// fingerprint, not necessarily to the dial address used by the server.
+		InsecureSkipVerify: true,
 		VerifyPeerCertificate: func(rawCerts [][]byte, _ [][]*x509.Certificate) error {
-			return verifyPeerCertificate(caCertPool, rawCerts, x509.ExtKeyUsageServerAuth)
+			return verifyPeerCertificate(caCertPool, rawCerts, x509.ExtKeyUsageServerAuth, wantFingerprint)
 		},
 		MinVersion: tls.VersionTLS13,
 	}, nil
@@ -124,7 +134,7 @@ func requireCertificateUsage(certPEM []byte, usage x509.ExtKeyUsage, label strin
 	return fmt.Errorf("%s certificate missing required extended key usage %s", label, extKeyUsageName(usage))
 }
 
-func verifyPeerCertificate(roots *x509.CertPool, rawCerts [][]byte, usage x509.ExtKeyUsage) error {
+func verifyPeerCertificate(roots *x509.CertPool, rawCerts [][]byte, usage x509.ExtKeyUsage, expectedFingerprint string) error {
 	if len(rawCerts) == 0 {
 		return fmt.Errorf("peer did not provide a certificate")
 	}
@@ -148,7 +158,18 @@ func verifyPeerCertificate(roots *x509.CertPool, rawCerts [][]byte, usage x509.E
 	if err != nil {
 		return fmt.Errorf("verify peer certificate: %w", err)
 	}
+	if expectedFingerprint != "" {
+		hash := sha256.Sum256(cert.Raw)
+		got := hex.EncodeToString(hash[:])
+		if !strings.EqualFold(got, expectedFingerprint) {
+			return fmt.Errorf("verify peer certificate: fingerprint mismatch got %s want %s", got, expectedFingerprint)
+		}
+	}
 	return nil
+}
+
+func normalizeFingerprint(fp string) string {
+	return strings.ToLower(strings.ReplaceAll(strings.TrimSpace(fp), ":", ""))
 }
 
 func parseLeafCertificate(certPEM []byte) (*x509.Certificate, error) {

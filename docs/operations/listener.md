@@ -64,6 +64,37 @@ listeners:
 
 ![image-20250710233407269](../assets/listener_start.png)
 
+### forward listener 连接管理
+
+默认 `reverse` 模式下，Listener 主动连接 Server。`forward` 模式下，Listener 在本地启动 forward gRPC 服务，Server 主动拨入 Listener：
+
+```yaml
+listeners:
+  name: listener-a
+  ip: 10.10.1.20
+  transport: forward
+  forward:
+    listen_host: 0.0.0.0
+    listen_port: 5005
+    connect_host: 10.10.1.20
+    connect_port: 5005
+```
+
+如果不想只依赖 Server 启动配置，也可以由 Client 请求 Server 临时连接一个已注册的 forward Listener：
+
+```bash
+listener forward connect listener-a --host 10.10.1.20 --port 5005
+listener forward status listener-a
+listener forward list
+listener forward disconnect listener-a
+```
+
+动态连接的 `--host` 是必填项，表示 Server 当前要拨号访问的 Listener 地址；`--port` 默认是 `5005`。Server 不会把 DB 里的 `Remote` 自动当作 forward 连接地址，避免误连到 Client 注册来源或本机地址。
+
+这个命令不会把 Root CA 私钥、Listener 私钥或 `listener.auth` 发给 Client。Server 只用本地 Root CA 生成的 forward client cert 去连接 Listener；Listener 使用自己的 `listener.auth` 作为 server cert。`listener.auth` 的格式仍然只有 `ca/cert/key`，新生成的 Listener 证书同时支持 `clientAuth` 和 `serverAuth`。
+
+动态连接要求 Server DB 中已经存在同名 Listener Operator 记录。Server 会用该记录里的证书 fingerprint 校验 Listener forward server cert，防止 Client 把 Server 引到同 CA 下的其他证书。forward mTLS 不把拨号 host 当作 Listener 身份来源；证书身份由 Root CA、`serverAuth` EKU 和 Operator fingerprint 决定。forward 管理命令需要 admin 权限，普通 operator 不能发起或断开 forward Listener 连接。
+
 
 ### autobuild 配置
 目前启动一个listener时，可以通过autobuild的配置，来控制是否编译与当前listener通信的implant。
@@ -365,4 +396,3 @@ pipeline start tcp --cert-name cert-name
 
 - **`body_prefix` / `body_suffix`**：  
     在 HTTP 响应体的最前/最后拼接额外内容，用于混淆流量或伪装网页。
-    

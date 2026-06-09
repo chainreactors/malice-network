@@ -90,6 +90,7 @@ func ReInitLogs() {
 func ResetTransientRPCState() {
 	pipelinesCh = sync.Map{}
 	ptyStreamingSessions = sync.Map{}
+	resetForwardListenerRuntimes()
 }
 
 func RegisterRPCServices(grpcServer *grpc.Server) {

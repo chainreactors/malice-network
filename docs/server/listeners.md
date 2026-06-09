@@ -49,8 +49,25 @@ listeners:
 
 `listen_*` 是 Listener 端绑定地址；`connect_*` 是 Server 端拨号地址。forward 模式要求 Server 到 Listener 的 TCP 连接可达；如果双向都不可达，需要额外 relay/中继。
 
+### forward 动态连接
+
+forward Listener 可以通过配置在 Server 启动时自动连接，也可以由 Client 触发 Server 主动连接：
+
+```bash
+listener forward connect listener-a --host 10.10.1.20 --port 5005
+listener forward status listener-a
+listener forward list
+listener forward disconnect listener-a
+```
+
+动态连接时 `--host` 必须显式提供，`--port` 默认是 `5005`。Server 只把 `--host` 当作拨号地址，不会从 Operator `Remote` 字段推断 forward 地址，也不会把拨号地址作为证书身份授权依据。
+
+动态连接只负责建立 Server 到 Listener 的控制/任务通道，不会生成或分发证书。被连接的 `listener_id` 必须已经在 Server DB 中有 Listener Operator 记录，通常由 `listener add` / `listener reset` 或服务端初始化流程生成。Server 会读取该记录里的 Listener 证书 fingerprint，并在 mTLS 握手中要求 Listener forward server cert 与该 fingerprint 匹配。
+
+forward 管理 RPC 是 admin-only。普通 operator 即使默认可访问 MaliceRPC，也不能触发 `ConnectForwardListener` / `DisconnectForwardListener` / `GetForwardListenerStatus` / `ListForwardListeners`。DB 不新增 transport 字段；正向/反向是运行时连接方向和配置含义，身份校验仍由证书链、EKU 和 Operator fingerprint 决定。forward client 会用 CA、`serverAuth` EKU 和 DB fingerprint 校验 Listener 证书，不要求 Listener 证书的 DNS/IP SAN 必须等于当前拨号 host。
+
 !!! warning "forward 模式当前限制"
-    当前 forward transport 用于解决连接方向问题。旧的 client-only `listener.auth` 仍可用于 `reverse`，但用于 `forward` 时需要重新生成双用途 Listener auth。断线自动重连、Pulse artifact 拉取和 REM/Website 自动启动仍以 `reverse` 模式为主。
+    旧的 client-only `listener.auth` 仍可用于 `reverse`，但用于 `forward` 时需要重新生成双用途 Listener auth。forward transport 解决的是 Server 主动拨入 Listener 的方向问题；如果 Server 也无法访问 Listener，需要额外 relay/中继。
 
 ```
 ┌─────────┐  gRPC/mTLS  ┌──────────┐
@@ -207,6 +224,7 @@ Listener 可以独立部署在与 Server 不同的服务器上：
 | `server/listener/rem.go` | REM Pipeline 实现 |
 | `server/listener/custom.go` | Custom Pipeline 接入 |
 | `server/rpc/rpc-forward-listener.go` | forward transport Server 端拨号与 stream 适配 |
+| `server/rpc/rpc-forward-listener-manage.go` | Client 触发的 forward Listener 连接管理 RPC |
 | `server/forwardrpc/forwardrpc.go` | forward transport 手写 gRPC service descriptor |
 | `server/internal/core/pipeline.go` | Pipeline 运行时状态 |
 

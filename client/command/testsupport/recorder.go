@@ -31,50 +31,54 @@ type RecorderRPC struct {
 	sessionEvents []RecordedCall
 	taskID        atomic.Uint32
 
-	taskResponders         map[string]func(context.Context, any) (*clientpb.Task, error)
-	emptyResponders        map[string]func(context.Context, any) (*clientpb.Empty, error)
-	artifactResponders     map[string]func(context.Context, any) (*clientpb.Artifact, error)
-	buildConfigResponders  map[string]func(context.Context, any) (*clientpb.BuildConfig, error)
-	contextResponders      map[string]func(context.Context, any) (*clientpb.Context, error)
-	taskContextResponders  map[string]func(context.Context, any) (*clientpb.TaskContext, error)
-	taskContextsResponders map[string]func(context.Context, any) (*clientpb.TaskContexts, error)
-	tasksResponders        map[string]func(context.Context, any) (*clientpb.Tasks, error)
-	sessionResponders      map[string]func(context.Context, any) (*clientpb.Session, error)
-	basicResponders        map[string]func(context.Context, any) (*clientpb.Basic, error)
-	listenersResponders    map[string]func(context.Context, any) (*clientpb.Listeners, error)
-	pipelinesResponders    map[string]func(context.Context, any) (*clientpb.Pipelines, error)
-	webContentResponders   map[string]func(context.Context, any) (*clientpb.WebContent, error)
-	webContentsResponders  map[string]func(context.Context, any) (*clientpb.WebContents, error)
-	licenseResponders      map[string]func(context.Context, any) (*clientpb.LicenseInfo, error)
-	contextsResponders     map[string]func(context.Context, any) (*clientpb.Contexts, error)
-	certsResponders        map[string]func(context.Context, any) (*clientpb.Certs, error)
-	tlsResponders          map[string]func(context.Context, any) (*clientpb.TLS, error)
-	acmeConfigResponders   map[string]func(context.Context, any) (*clientpb.AcmeConfig, error)
-	sessions               map[string]*clientpb.Session
+	taskResponders            map[string]func(context.Context, any) (*clientpb.Task, error)
+	emptyResponders           map[string]func(context.Context, any) (*clientpb.Empty, error)
+	artifactResponders        map[string]func(context.Context, any) (*clientpb.Artifact, error)
+	buildConfigResponders     map[string]func(context.Context, any) (*clientpb.BuildConfig, error)
+	contextResponders         map[string]func(context.Context, any) (*clientpb.Context, error)
+	taskContextResponders     map[string]func(context.Context, any) (*clientpb.TaskContext, error)
+	taskContextsResponders    map[string]func(context.Context, any) (*clientpb.TaskContexts, error)
+	tasksResponders           map[string]func(context.Context, any) (*clientpb.Tasks, error)
+	sessionResponders         map[string]func(context.Context, any) (*clientpb.Session, error)
+	basicResponders           map[string]func(context.Context, any) (*clientpb.Basic, error)
+	listenersResponders       map[string]func(context.Context, any) (*clientpb.Listeners, error)
+	forwardStatusResponders   map[string]func(context.Context, any) (*clientpb.ForwardListenerStatus, error)
+	forwardStatusesResponders map[string]func(context.Context, any) (*clientpb.ForwardListenerStatuses, error)
+	pipelinesResponders       map[string]func(context.Context, any) (*clientpb.Pipelines, error)
+	webContentResponders      map[string]func(context.Context, any) (*clientpb.WebContent, error)
+	webContentsResponders     map[string]func(context.Context, any) (*clientpb.WebContents, error)
+	licenseResponders         map[string]func(context.Context, any) (*clientpb.LicenseInfo, error)
+	contextsResponders        map[string]func(context.Context, any) (*clientpb.Contexts, error)
+	certsResponders           map[string]func(context.Context, any) (*clientpb.Certs, error)
+	tlsResponders             map[string]func(context.Context, any) (*clientpb.TLS, error)
+	acmeConfigResponders      map[string]func(context.Context, any) (*clientpb.AcmeConfig, error)
+	sessions                  map[string]*clientpb.Session
 }
 
 func NewRecorderRPC() *RecorderRPC {
 	r := &RecorderRPC{
-		taskResponders:         map[string]func(context.Context, any) (*clientpb.Task, error){},
-		emptyResponders:        map[string]func(context.Context, any) (*clientpb.Empty, error){},
-		artifactResponders:     map[string]func(context.Context, any) (*clientpb.Artifact, error){},
-		buildConfigResponders:  map[string]func(context.Context, any) (*clientpb.BuildConfig, error){},
-		contextResponders:      map[string]func(context.Context, any) (*clientpb.Context, error){},
-		taskContextResponders:  map[string]func(context.Context, any) (*clientpb.TaskContext, error){},
-		taskContextsResponders: map[string]func(context.Context, any) (*clientpb.TaskContexts, error){},
-		tasksResponders:        map[string]func(context.Context, any) (*clientpb.Tasks, error){},
-		sessionResponders:      map[string]func(context.Context, any) (*clientpb.Session, error){},
-		basicResponders:        map[string]func(context.Context, any) (*clientpb.Basic, error){},
-		listenersResponders:    map[string]func(context.Context, any) (*clientpb.Listeners, error){},
-		pipelinesResponders:    map[string]func(context.Context, any) (*clientpb.Pipelines, error){},
-		webContentResponders:   map[string]func(context.Context, any) (*clientpb.WebContent, error){},
-		webContentsResponders:  map[string]func(context.Context, any) (*clientpb.WebContents, error){},
-		licenseResponders:      map[string]func(context.Context, any) (*clientpb.LicenseInfo, error){},
-		contextsResponders:     map[string]func(context.Context, any) (*clientpb.Contexts, error){},
-		certsResponders:        map[string]func(context.Context, any) (*clientpb.Certs, error){},
-		tlsResponders:          map[string]func(context.Context, any) (*clientpb.TLS, error){},
-		acmeConfigResponders:   map[string]func(context.Context, any) (*clientpb.AcmeConfig, error){},
-		sessions:               map[string]*clientpb.Session{},
+		taskResponders:            map[string]func(context.Context, any) (*clientpb.Task, error){},
+		emptyResponders:           map[string]func(context.Context, any) (*clientpb.Empty, error){},
+		artifactResponders:        map[string]func(context.Context, any) (*clientpb.Artifact, error){},
+		buildConfigResponders:     map[string]func(context.Context, any) (*clientpb.BuildConfig, error){},
+		contextResponders:         map[string]func(context.Context, any) (*clientpb.Context, error){},
+		taskContextResponders:     map[string]func(context.Context, any) (*clientpb.TaskContext, error){},
+		taskContextsResponders:    map[string]func(context.Context, any) (*clientpb.TaskContexts, error){},
+		tasksResponders:           map[string]func(context.Context, any) (*clientpb.Tasks, error){},
+		sessionResponders:         map[string]func(context.Context, any) (*clientpb.Session, error){},
+		basicResponders:           map[string]func(context.Context, any) (*clientpb.Basic, error){},
+		listenersResponders:       map[string]func(context.Context, any) (*clientpb.Listeners, error){},
+		forwardStatusResponders:   map[string]func(context.Context, any) (*clientpb.ForwardListenerStatus, error){},
+		forwardStatusesResponders: map[string]func(context.Context, any) (*clientpb.ForwardListenerStatuses, error){},
+		pipelinesResponders:       map[string]func(context.Context, any) (*clientpb.Pipelines, error){},
+		webContentResponders:      map[string]func(context.Context, any) (*clientpb.WebContent, error){},
+		webContentsResponders:     map[string]func(context.Context, any) (*clientpb.WebContents, error){},
+		licenseResponders:         map[string]func(context.Context, any) (*clientpb.LicenseInfo, error){},
+		contextsResponders:        map[string]func(context.Context, any) (*clientpb.Contexts, error){},
+		certsResponders:           map[string]func(context.Context, any) (*clientpb.Certs, error){},
+		tlsResponders:             map[string]func(context.Context, any) (*clientpb.TLS, error){},
+		acmeConfigResponders:      map[string]func(context.Context, any) (*clientpb.AcmeConfig, error){},
+		sessions:                  map[string]*clientpb.Session{},
 	}
 	r.taskID.Store(100)
 	return r
@@ -150,6 +154,14 @@ func (r *RecorderRPC) OnBasic(method string, fn func(context.Context, any) (*cli
 
 func (r *RecorderRPC) OnListeners(method string, fn func(context.Context, any) (*clientpb.Listeners, error)) {
 	r.listenersResponders[method] = fn
+}
+
+func (r *RecorderRPC) OnForwardListenerStatus(method string, fn func(context.Context, any) (*clientpb.ForwardListenerStatus, error)) {
+	r.forwardStatusResponders[method] = fn
+}
+
+func (r *RecorderRPC) OnForwardListenerStatuses(method string, fn func(context.Context, any) (*clientpb.ForwardListenerStatuses, error)) {
+	r.forwardStatusesResponders[method] = fn
 }
 
 func (r *RecorderRPC) OnPipelines(method string, fn func(context.Context, any) (*clientpb.Pipelines, error)) {
@@ -343,6 +355,26 @@ func (r *RecorderRPC) GetListeners(ctx context.Context, in *clientpb.Empty, opts
 		return responder(ctx, in)
 	}
 	return &clientpb.Listeners{}, nil
+}
+
+func (r *RecorderRPC) ConnectForwardListener(ctx context.Context, in *clientpb.ForwardListenerConnect, opts ...grpc.CallOption) (*clientpb.ForwardListenerStatus, error) {
+	return r.forwardListenerStatusResponse(ctx, "ConnectForwardListener", in)
+}
+
+func (r *RecorderRPC) DisconnectForwardListener(ctx context.Context, in *clientpb.Listener, opts ...grpc.CallOption) (*clientpb.ForwardListenerStatus, error) {
+	return r.forwardListenerStatusResponse(ctx, "DisconnectForwardListener", in)
+}
+
+func (r *RecorderRPC) GetForwardListenerStatus(ctx context.Context, in *clientpb.Listener, opts ...grpc.CallOption) (*clientpb.ForwardListenerStatus, error) {
+	return r.forwardListenerStatusResponse(ctx, "GetForwardListenerStatus", in)
+}
+
+func (r *RecorderRPC) ListForwardListeners(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.ForwardListenerStatuses, error) {
+	r.recordPrimary(ctx, "ListForwardListeners", in)
+	if responder, ok := r.forwardStatusesResponders["ListForwardListeners"]; ok {
+		return responder(ctx, in)
+	}
+	return &clientpb.ForwardListenerStatuses{}, nil
 }
 
 func (r *RecorderRPC) ListJobs(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Pipelines, error) {
@@ -763,6 +795,29 @@ func (r *RecorderRPC) emptyResponse(ctx context.Context, method string, request 
 		return responder(ctx, request)
 	}
 	return &clientpb.Empty{}, nil
+}
+
+func (r *RecorderRPC) forwardListenerStatusResponse(ctx context.Context, method string, request any) (*clientpb.ForwardListenerStatus, error) {
+	r.recordPrimary(ctx, method, request)
+	if responder, ok := r.forwardStatusResponders[method]; ok {
+		return responder(ctx, request)
+	}
+	switch in := request.(type) {
+	case *clientpb.ForwardListenerConnect:
+		return &clientpb.ForwardListenerStatus{
+			ListenerId:  in.GetListenerId(),
+			ConnectHost: in.GetConnectHost(),
+			ConnectPort: in.GetConnectPort(),
+			Address:     fmt.Sprintf("%s:%d", in.GetConnectHost(), in.GetConnectPort()),
+			Active:      true,
+		}, nil
+	case *clientpb.Listener:
+		return &clientpb.ForwardListenerStatus{
+			ListenerId: in.GetId(),
+		}, nil
+	default:
+		return &clientpb.ForwardListenerStatus{}, nil
+	}
 }
 
 func (r *RecorderRPC) artifactResponse(ctx context.Context, method string, request any) (*clientpb.Artifact, error) {

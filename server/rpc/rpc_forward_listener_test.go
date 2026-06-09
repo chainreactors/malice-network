@@ -10,12 +10,17 @@ import (
 	"time"
 
 	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/mtls"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/forwardrpc"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
+	"github.com/chainreactors/malice-network/server/internal/db"
+	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"gopkg.in/yaml.v3"
 )
 
@@ -60,13 +65,9 @@ func (s *fakeForwardListenerServer) TaskStream(stream forwardrpc.ForwardListener
 	}
 }
 
-func writeForwardAuthConfig(t testing.TB) string {
+func writeForwardAuthConfig(t testing.TB) (string, string) {
 	t.Helper()
-	configs.UseTestPaths(t, filepath.Join(t.TempDir(), "malice"))
-	if err := certutils.GenerateRootCert(); err != nil {
-		t.Fatalf("GenerateRootCert failed: %v", err)
-	}
-	auth, _, err := certutils.GenerateListenerCert("127.0.0.1", "forward-rpc-test", 0)
+	auth, fingerprint, err := certutils.GenerateListenerCert("127.0.0.1", "forward-rpc-test", 0)
 	if err != nil {
 		t.Fatalf("GenerateListenerCert failed: %v", err)
 	}
@@ -78,12 +79,14 @@ func writeForwardAuthConfig(t testing.TB) string {
 	if err := os.WriteFile(path, data, 0600); err != nil {
 		t.Fatalf("write auth failed: %v", err)
 	}
-	return path
+	return path, fingerprint
 }
 
 func TestStartForwardListenerClientDeliversCtrlAndReceivesStatus(t *testing.T) {
+	initForwardRPCTestDB(t)
 	withIsolatedListenersAndJobs(t)
 	withIsolatedPipelinesCh(t)
+	t.Cleanup(resetForwardListenerRuntimes)
 	oldBroker := core.EventBroker
 	core.EventBroker = core.NewBroker()
 	t.Cleanup(func() {
@@ -97,7 +100,7 @@ func TestStartForwardListenerClientDeliversCtrlAndReceivesStatus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("listen fake forward listener: %v", err)
 	}
-	authPath := writeForwardAuthConfig(t)
+	authPath, fingerprint := writeForwardAuthConfig(t)
 	serverOptions, err := forwardrpc.ServerOptions(authPath)
 	if err != nil {
 		t.Fatalf("build forward server options: %v", err)
@@ -126,6 +129,7 @@ func TestStartForwardListenerClientDeliversCtrlAndReceivesStatus(t *testing.T) {
 			ConnectPort: uint16(addr.Port),
 		},
 	}
+	seedForwardListenerOperator(t, cfg.Name, fingerprint)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := StartForwardListenerClient(ctx, cfg); err != nil {
@@ -182,4 +186,214 @@ func TestStartForwardListenerClientDeliversCtrlAndReceivesStatus(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		t.Fatal("timed out waiting for forwarded task")
 	}
+}
+
+func TestStartForwardListenerClientRejectsUnexpectedListenerFingerprint(t *testing.T) {
+	initForwardRPCTestDB(t)
+	withIsolatedListenersAndJobs(t)
+	withIsolatedPipelinesCh(t)
+	t.Cleanup(resetForwardListenerRuntimes)
+
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen fake forward listener: %v", err)
+	}
+	authPath, _ := writeForwardAuthConfig(t)
+	serverOptions, err := forwardrpc.ServerOptions(authPath)
+	if err != nil {
+		t.Fatalf("build forward server options: %v", err)
+	}
+	grpcServer := grpc.NewServer(serverOptions...)
+	forwardrpc.RegisterForwardListenerServer(grpcServer, &fakeForwardListenerServer{
+		ctrls: make(chan *clientpb.JobCtrl, 1),
+		tasks: make(chan *clientpb.SpiteRequest, 1),
+	})
+	go func() { _ = grpcServer.Serve(ln) }()
+	t.Cleanup(func() {
+		grpcServer.Stop()
+		_ = ln.Close()
+	})
+
+	addr := ln.Addr().(*net.TCPAddr)
+	cfg := &configs.ListenerConfig{
+		Enable:    true,
+		Name:      "forward-fp-mismatch",
+		Auth:      authPath,
+		IP:        "127.0.0.1",
+		Transport: configs.ListenerTransportForward,
+		Forward: &configs.ForwardListenerConfig{
+			ConnectHost: "127.0.0.1",
+			ConnectPort: uint16(addr.Port),
+		},
+	}
+	seedForwardListenerOperator(t, cfg.Name, "deadbeef")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	err = StartForwardListenerClient(ctx, cfg)
+	if err == nil {
+		t.Fatal("StartForwardListenerClient succeeded with mismatched listener fingerprint")
+	}
+}
+
+func TestRequireAdminRoleRejectsOperatorRole(t *testing.T) {
+	initForwardRPCTestDB(t)
+	if err := db.CreateOperator(&models.Operator{
+		Name:        "plain-operator",
+		Type:        mtls.Client,
+		Role:        models.RoleOperator,
+		Fingerprint: "operator-forward-fp",
+	}); err != nil {
+		t.Fatalf("CreateOperator failed: %v", err)
+	}
+	opCache.Invalidate()
+	ctx := contextWithIdentity(context.Background(), &PeerIdentity{Fingerprint: "operator-forward-fp"})
+
+	err := requireAdminRole(ctx)
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("requireAdminRole error = %v, want PermissionDenied", err)
+	}
+}
+
+func TestConnectForwardListenerRequiresAdminAndRegisteredListener(t *testing.T) {
+	initForwardRPCTestDB(t)
+	seedForwardAdminOperator(t, "admin-client", "admin-forward-fp")
+
+	_, err := (&Server{}).ConnectForwardListener(
+		contextWithIdentity(context.Background(), &PeerIdentity{Fingerprint: "admin-forward-fp"}),
+		&clientpb.ForwardListenerConnect{
+			ListenerId:  "missing-listener",
+			ConnectHost: "127.0.0.1",
+			ConnectPort: 5005,
+		},
+	)
+	if status.Code(err) != codes.NotFound {
+		t.Fatalf("ConnectForwardListener error = %v, want NotFound for missing listener", err)
+	}
+}
+
+func TestConnectForwardListenerRejectsMissingHostAndPortOverflow(t *testing.T) {
+	initForwardRPCTestDB(t)
+	seedForwardAdminOperator(t, "admin-client", "admin-forward-fp")
+	seedForwardListenerOperator(t, "forward-input-listener", "listener-forward-fp")
+	ctx := contextWithIdentity(context.Background(), &PeerIdentity{Fingerprint: "admin-forward-fp"})
+
+	_, err := (&Server{}).ConnectForwardListener(ctx, &clientpb.ForwardListenerConnect{
+		ListenerId:     "forward-input-listener",
+		TimeoutSeconds: 1,
+	})
+	if status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("ConnectForwardListener missing host error = %v, want InvalidArgument", err)
+	}
+
+	_, err = (&Server{}).ConnectForwardListener(ctx, &clientpb.ForwardListenerConnect{
+		ListenerId:     "forward-input-listener",
+		ConnectHost:    "127.0.0.1",
+		ConnectPort:    70000,
+		TimeoutSeconds: 1,
+	})
+	if status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("ConnectForwardListener port overflow error = %v, want InvalidArgument", err)
+	}
+}
+
+func TestStartForwardListenerClientRejectsActiveCoreListenerCollision(t *testing.T) {
+	initForwardRPCTestDB(t)
+	withIsolatedListenersAndJobs(t)
+	withIsolatedPipelinesCh(t)
+	t.Cleanup(resetForwardListenerRuntimes)
+	oldBroker := core.EventBroker
+	core.EventBroker = core.NewBroker()
+	t.Cleanup(func() {
+		if core.EventBroker != nil {
+			core.EventBroker.Stop()
+		}
+		core.EventBroker = oldBroker
+	})
+
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen fake forward listener: %v", err)
+	}
+	authPath, fingerprint := writeForwardAuthConfig(t)
+	serverOptions, err := forwardrpc.ServerOptions(authPath)
+	if err != nil {
+		t.Fatalf("build forward server options: %v", err)
+	}
+	grpcServer := grpc.NewServer(serverOptions...)
+	forwardrpc.RegisterForwardListenerServer(grpcServer, &fakeForwardListenerServer{
+		ctrls: make(chan *clientpb.JobCtrl, 1),
+		tasks: make(chan *clientpb.SpiteRequest, 1),
+	})
+	go func() { _ = grpcServer.Serve(ln) }()
+	t.Cleanup(func() {
+		grpcServer.Stop()
+		_ = ln.Close()
+	})
+
+	addr := ln.Addr().(*net.TCPAddr)
+	cfg := &configs.ListenerConfig{
+		Enable:    true,
+		Name:      "listener-collision",
+		Auth:      authPath,
+		IP:        "127.0.0.1",
+		Transport: configs.ListenerTransportForward,
+		Forward: &configs.ForwardListenerConfig{
+			ConnectHost: "127.0.0.1",
+			ConnectPort: uint16(addr.Port),
+		},
+	}
+	seedForwardListenerOperator(t, cfg.Name, fingerprint)
+	core.Listeners.Add(core.NewListener(cfg.Name, "10.0.0.9"))
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	err = StartForwardListenerClient(ctx, cfg)
+	if status.Code(err) != codes.FailedPrecondition {
+		t.Fatalf("StartForwardListenerClient collision error = %v, want FailedPrecondition", err)
+	}
+}
+
+func seedForwardAdminOperator(t testing.TB, name, fingerprint string) {
+	t.Helper()
+	if err := db.CreateOperator(&models.Operator{
+		Name:        name,
+		Type:        mtls.Client,
+		Role:        models.RoleAdmin,
+		Fingerprint: fingerprint,
+	}); err != nil {
+		t.Fatalf("CreateOperator admin failed: %v", err)
+	}
+	opCache.Invalidate()
+}
+
+func seedForwardListenerOperator(t testing.TB, listenerID, fingerprint string) {
+	t.Helper()
+	if err := db.CreateOperator(&models.Operator{
+		Name:        listenerID,
+		Remote:      "127.0.0.1",
+		Type:        mtls.Listener,
+		Role:        models.RoleListener,
+		Fingerprint: fingerprint,
+	}); err != nil {
+		t.Fatalf("CreateOperator listener failed: %v", err)
+	}
+	opCache.Invalidate()
+}
+
+func initForwardRPCTestDB(t testing.TB) {
+	t.Helper()
+	configs.InitTestConfigRuntime(t)
+	configs.UseTestPaths(t, filepath.Join(t.TempDir(), ".malice"))
+	if err := os.MkdirAll(configs.ServerRootPath, 0700); err != nil {
+		t.Fatalf("create test root failed: %v", err)
+	}
+	client, err := db.NewDBClient(nil)
+	if err != nil {
+		t.Fatalf("NewDBClient failed: %v", err)
+	}
+	db.Client = client
+	if err := certutils.GenerateRootCert(); err != nil {
+		t.Fatalf("GenerateRootCert failed: %v", err)
+	}
+	opCache.Invalidate()
 }

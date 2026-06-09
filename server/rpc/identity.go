@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"net"
 
+	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"
@@ -78,3 +79,30 @@ func contextWithIdentity(ctx context.Context, id *PeerIdentity) context.Context 
 	return context.WithValue(ctx, peerIdentityKey{}, id)
 }
 
+func identityFromContext(ctx context.Context) (*PeerIdentity, bool) {
+	id, ok := ctx.Value(peerIdentityKey{}).(*PeerIdentity)
+	return id, ok && id != nil
+}
+
+func requireAdminRole(ctx context.Context) error {
+	id, ok := identityFromContext(ctx)
+	if !ok || id.Fingerprint == "" {
+		return status.Error(codes.Unauthenticated, "missing peer identity")
+	}
+	if id.IsLoopback {
+		if fp := getCAFingerprint(); fp != "" && id.Fingerprint == fp {
+			return nil
+		}
+	}
+	op, ok := opCache.LookupByFingerprint(id.Fingerprint)
+	if !ok {
+		return status.Errorf(codes.PermissionDenied, "admin role required")
+	}
+	if op.Revoked {
+		return status.Errorf(codes.PermissionDenied, "operator %s has been revoked", op.Name)
+	}
+	if op.Role != models.RoleAdmin {
+		return status.Errorf(codes.PermissionDenied, "admin role required")
+	}
+	return nil
+}

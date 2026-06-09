@@ -2,12 +2,15 @@ package rpc
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/mtls"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/logs"
@@ -15,42 +18,106 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
+	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 )
 
+var (
+	errForwardListenerAlreadyConnected = errors.New("forward listener already connected")
+	forwardListenerRuntimeMu           sync.Mutex
+	forwardListenerRuntimes            sync.Map
+)
+
+type forwardListenerRuntime struct {
+	listenerID   string
+	connectHost  string
+	connectPort  uint32
+	address      string
+	fingerprint  string
+	cancel       context.CancelFunc
+	conn         *grpc.ClientConn
+	ownsListener bool
+	stopOnce     sync.Once
+}
+
 func StartForwardListenerClient(ctx context.Context, cfg *configs.ListenerConfig) error {
+	_, err := startForwardListenerClient(ctx, cfg, 5*time.Second)
+	return err
+}
+
+func startForwardListenerClient(ctx context.Context, cfg *configs.ListenerConfig, timeout time.Duration) (*forwardListenerRuntime, error) {
 	if cfg == nil {
-		return fmt.Errorf("listener config is nil")
+		return nil, fmt.Errorf("listener config is nil")
+	}
+	if strings.TrimSpace(cfg.Name) == "" {
+		return nil, fmt.Errorf("listener name is empty")
+	}
+	listenerOp, err := loadForwardListenerOperator(cfg.Name)
+	if err != nil {
+		return nil, err
+	}
+	if timeout <= 0 {
+		timeout = 5 * time.Second
+	}
+	if _, ok := forwardListenerRuntimes.Load(cfg.Name); ok {
+		return nil, errForwardListenerAlreadyConnected
 	}
 	forwardCfg := cfg.ForwardConfigOrDefault()
-	dialOptions, err := forwardrpc.DialOptions(forwardCfg.ConnectHost)
+	dialOptions, err := forwardrpc.DialOptions(forwardCfg.ConnectHost, listenerOp.Fingerprint)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	dialCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
+	dialCtx, cancelDial := context.WithTimeout(ctx, timeout)
+	defer cancelDial()
 	conn, err := grpc.DialContext(
 		dialCtx,
 		forwardCfg.ConnectAddress(),
 		dialOptions...,
 	)
 	if err != nil {
-		return fmt.Errorf("connect forward listener %s: %w", forwardCfg.ConnectAddress(), err)
+		return nil, fmt.Errorf("connect forward listener %s: %w", forwardCfg.ConnectAddress(), err)
 	}
+	runtimeCtx, cancelRuntime := context.WithCancel(context.Background())
 	client := forwardrpc.NewForwardListenerClient(conn)
-	stream, err := client.ControlStream(ctx)
+	stream, err := client.ControlStream(runtimeCtx)
 	if err != nil {
+		cancelRuntime()
 		_ = conn.Close()
-		return fmt.Errorf("open forward listener control stream: %w", err)
+		return nil, fmt.Errorf("open forward listener control stream: %w", err)
 	}
+	runtime := &forwardListenerRuntime{
+		listenerID:  cfg.Name,
+		connectHost: forwardCfg.ConnectHost,
+		connectPort: uint32(forwardCfg.ConnectPort),
+		address:     forwardCfg.ConnectAddress(),
+		fingerprint: listenerOp.Fingerprint,
+		cancel:      cancelRuntime,
+		conn:        conn,
+	}
+	forwardListenerRuntimeMu.Lock()
+	if _, ok := forwardListenerRuntimes.Load(cfg.Name); ok {
+		forwardListenerRuntimeMu.Unlock()
+		runtime.stop()
+		return nil, errForwardListenerAlreadyConnected
+	}
+	lns, ownsListener, err := ensureForwardListenerRegistered(cfg)
+	if err != nil {
+		forwardListenerRuntimeMu.Unlock()
+		runtime.stop()
+		return nil, err
+	}
+	runtime.ownsListener = ownsListener
+	forwardListenerRuntimes.Store(cfg.Name, runtime)
+	forwardListenerRuntimeMu.Unlock()
 
-	lns := ensureForwardListenerRegistered(cfg)
 	core.GoGuarded("forward-listener-control-send:"+cfg.Name, func() error {
 		for {
 			select {
-			case <-ctx.Done():
+			case <-runtimeCtx.Done():
 				return nil
 			case msg, ok := <-lns.Ctrl:
 				if !ok {
@@ -58,7 +125,7 @@ func StartForwardListenerClient(ctx context.Context, cfg *configs.ListenerConfig
 				}
 				lns.CtrlJob.Store(msg.Id, nil)
 				if msg.Job != nil && msg.Job.Pipeline != nil {
-					if err := ensureForwardTaskStream(ctx, client, msg.Job.Pipeline.ListenerId, msg.Job.Pipeline.Name); err != nil {
+					if err := ensureForwardTaskStream(runtimeCtx, client, msg.Job.Pipeline.ListenerId, msg.Job.Pipeline.Name); err != nil {
 						lns.CtrlJob.Delete(msg.Id)
 						return err
 					}
@@ -69,7 +136,7 @@ func StartForwardListenerClient(ctx context.Context, cfg *configs.ListenerConfig
 				}
 			}
 		}
-	}, core.LogGuardedError("forward-listener-control-send:"+cfg.Name), func() { _ = conn.Close() })
+	}, core.LogGuardedError("forward-listener-control-send:"+cfg.Name), runtime.stop)
 
 	core.GoGuarded("forward-listener-control-recv:"+cfg.Name, func() error {
 		for {
@@ -82,28 +149,142 @@ func StartForwardListenerClient(ctx context.Context, cfg *configs.ListenerConfig
 			}
 			handleJobStatus(lns, msg)
 			if msg.Status == consts.CtrlStatusSuccess && msg.Job != nil && msg.Job.Pipeline != nil {
-				if err := ensureForwardTaskStream(ctx, client, msg.Job.Pipeline.ListenerId, msg.Job.Pipeline.Name); err != nil {
+				if err := ensureForwardTaskStream(runtimeCtx, client, msg.Job.Pipeline.ListenerId, msg.Job.Pipeline.Name); err != nil {
 					return err
 				}
 			}
 		}
-	}, core.LogGuardedError("forward-listener-control-recv:"+cfg.Name), func() { _ = conn.Close() })
+	}, core.LogGuardedError("forward-listener-control-recv:"+cfg.Name), runtime.stop)
 
 	core.GoGuarded("forward-listener-config-start:"+cfg.Name, func() error {
-		return registerAndStartForwardConfiguredPipelines(ctx, cfg)
+		return registerAndStartForwardConfiguredPipelines(runtimeCtx, cfg)
 	}, core.LogGuardedError("forward-listener-config-start:"+cfg.Name))
 
 	logs.Log.Importantf("server.forward - connected listener=%s address=%s", cfg.Name, forwardCfg.ConnectAddress())
-	return nil
+	return runtime, nil
 }
 
-func ensureForwardListenerRegistered(cfg *configs.ListenerConfig) *core.Listener {
+func ensureForwardListenerRegistered(cfg *configs.ListenerConfig) (*core.Listener, bool, error) {
 	if existing, err := core.Listeners.Get(cfg.Name); err == nil {
-		return existing
+		if existing.Active() {
+			return nil, false, status.Errorf(codes.FailedPrecondition, "listener %s is already active", cfg.Name)
+		}
+		for _, pipe := range existing.AllPipelines() {
+			deletePipelineStream(pipe.ListenerId, pipe.Name)
+		}
+		_ = core.Listeners.Stop(cfg.Name)
+		core.Listeners.Map.Delete(cfg.Name)
 	}
 	lns := core.NewListener(cfg.Name, cfg.IP)
 	core.Listeners.Add(lns)
-	return lns
+	return lns, true, nil
+}
+
+func loadForwardListenerOperator(listenerID string) (*models.Operator, error) {
+	listenerID = strings.TrimSpace(listenerID)
+	if listenerID == "" {
+		return nil, status.Error(codes.InvalidArgument, "listener_id is required")
+	}
+	op, err := db.FindOperatorByName(listenerID)
+	if err != nil || op == nil {
+		return nil, status.Errorf(codes.NotFound, "listener %s is not registered", listenerID)
+	}
+	if op.Type != mtls.Listener || op.Role != models.RoleListener {
+		return nil, status.Errorf(codes.FailedPrecondition, "operator %s is not a listener identity", listenerID)
+	}
+	if op.Revoked {
+		return nil, status.Errorf(codes.FailedPrecondition, "listener %s has been revoked", listenerID)
+	}
+	if strings.TrimSpace(op.Fingerprint) == "" {
+		return nil, status.Errorf(codes.FailedPrecondition, "listener %s is missing certificate fingerprint", listenerID)
+	}
+	return op, nil
+}
+
+func (r *forwardListenerRuntime) stop() {
+	if r == nil {
+		return
+	}
+	r.stopOnce.Do(func() {
+		forwardListenerRuntimes.Delete(r.listenerID)
+		clearForwardTaskStreams(r.listenerID)
+		if r.cancel != nil {
+			r.cancel()
+		}
+		if r.conn != nil {
+			_ = r.conn.Close()
+		}
+		if r.ownsListener {
+			listener, err := core.Listeners.Get(r.listenerID)
+			if err != nil {
+				return
+			}
+			_ = core.Listeners.Stop(r.listenerID)
+			core.Listeners.Remove(listener)
+		}
+	})
+}
+
+func stopForwardListenerClient(listenerID string) (*clientpb.ForwardListenerStatus, error) {
+	listenerID = strings.TrimSpace(listenerID)
+	if listenerID == "" {
+		return nil, status.Error(codes.InvalidArgument, "listener_id is required")
+	}
+	val, ok := forwardListenerRuntimes.Load(listenerID)
+	if !ok {
+		return inactiveForwardListenerStatus(listenerID), status.Errorf(codes.NotFound, "forward listener %s is not connected", listenerID)
+	}
+	runtime := val.(*forwardListenerRuntime)
+	status := runtime.toProto()
+	status.Active = false
+	runtime.stop()
+	return status, nil
+}
+
+func resetForwardListenerRuntimes() {
+	forwardListenerRuntimeMu.Lock()
+	defer forwardListenerRuntimeMu.Unlock()
+	forwardListenerRuntimes.Range(func(_, value interface{}) bool {
+		value.(*forwardListenerRuntime).stop()
+		return true
+	})
+	forwardListenerRuntimes = sync.Map{}
+}
+
+func getForwardListenerRuntime(listenerID string) (*forwardListenerRuntime, bool) {
+	val, ok := forwardListenerRuntimes.Load(strings.TrimSpace(listenerID))
+	if !ok {
+		return nil, false
+	}
+	return val.(*forwardListenerRuntime), true
+}
+
+func clearForwardTaskStreams(listenerID string) {
+	prefix := listenerID + ":"
+	pipelinesCh.Range(func(key, _ interface{}) bool {
+		if k, ok := key.(string); ok && strings.HasPrefix(k, prefix) {
+			pipelinesCh.Delete(k)
+		}
+		return true
+	})
+}
+
+func (r *forwardListenerRuntime) toProto() *clientpb.ForwardListenerStatus {
+	return &clientpb.ForwardListenerStatus{
+		ListenerId:  r.listenerID,
+		ConnectHost: r.connectHost,
+		ConnectPort: r.connectPort,
+		Address:     r.address,
+		Active:      true,
+		Fingerprint: r.fingerprint,
+	}
+}
+
+func inactiveForwardListenerStatus(listenerID string) *clientpb.ForwardListenerStatus {
+	return &clientpb.ForwardListenerStatus{
+		ListenerId: listenerID,
+		Active:     false,
+	}
 }
 
 func registerAndStartForwardConfiguredPipelines(ctx context.Context, cfg *configs.ListenerConfig) error {

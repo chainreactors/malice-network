@@ -118,5 +118,66 @@ pipeline list listener_id
 
 	pipelineCmd.AddCommand(startPipelineCmd, stopPipelineCmd, listPipelineCmd, deletePipeCmd)
 
+	forwardCmd := &cobra.Command{
+		Use:   "forward",
+		Short: "Manage forward listeners",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cmd.Help()
+		},
+	}
+	forwardConnectCmd := &cobra.Command{
+		Use:   "connect [listener_id]",
+		Short: "Connect to a forward listener",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return ForwardConnectCmd(cmd, con)
+		},
+		Example: `~~~
+listener forward connect listener --host 10.0.0.5 --port 5005
+~~~`,
+	}
+	common.BindFlag(forwardConnectCmd, func(f *pflag.FlagSet) {
+		f.String("host", "", "forward listener host")
+		f.Uint16("port", 5005, "forward listener port")
+		f.Uint32("timeout", 5, "connect timeout in seconds")
+	})
+	_ = forwardConnectCmd.MarkFlagRequired("host")
+	common.BindArgCompletions(forwardConnectCmd, nil, common.ListenerIDCompleter(con))
+	common.BindFlagCompletions(forwardConnectCmd, func(comp carapace.ActionMap) {
+		comp["host"] = carapace.ActionValues().Usage("forward listener host")
+		comp["port"] = carapace.ActionValues("5005").Usage("forward listener port")
+		comp["timeout"] = carapace.ActionValues("5", "10", "30").Usage("connect timeout in seconds")
+	})
+
+	forwardDisconnectCmd := &cobra.Command{
+		Use:   "disconnect [listener_id]",
+		Short: "Disconnect a forward listener",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return ForwardDisconnectCmd(cmd, con)
+		},
+	}
+	common.BindArgCompletions(forwardDisconnectCmd, nil, common.ListenerIDCompleter(con))
+
+	forwardStatusCmd := &cobra.Command{
+		Use:   "status [listener_id]",
+		Short: "Show forward listener status",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return ForwardStatusCmd(cmd, con)
+		},
+	}
+	common.BindArgCompletions(forwardStatusCmd, nil, common.ListenerIDCompleter(con))
+
+	forwardListCmd := &cobra.Command{
+		Use:   "list",
+		Short: "List connected forward listeners",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return ForwardListCmd(cmd, con)
+		},
+	}
+	forwardCmd.AddCommand(forwardConnectCmd, forwardDisconnectCmd, forwardStatusCmd, forwardListCmd)
+	listenerCmd.AddCommand(forwardCmd)
+
 	return []*cobra.Command{listenerCmd, jobCmd, pipelineCmd}
 }
