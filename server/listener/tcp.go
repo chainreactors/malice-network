@@ -11,7 +11,6 @@ import (
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
-	"github.com/chainreactors/IoM-go/proto/services/listenerrpc"
 	"github.com/chainreactors/IoM-go/types"
 
 	"github.com/chainreactors/logs"
@@ -21,7 +20,7 @@ import (
 	cryptostream "github.com/chainreactors/malice-network/server/internal/stream"
 )
 
-func NewTcpPipeline(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline) (*TCPPipeline, error) {
+func NewTcpPipeline(rpc pipelineRPCClient, pipeline *clientpb.Pipeline) (*TCPPipeline, error) {
 	tcp := pipeline.GetTcp()
 
 	pp := &TCPPipeline{
@@ -38,7 +37,7 @@ func NewTcpPipeline(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeli
 
 type TCPPipeline struct {
 	ln       net.Listener
-	rpc      listenerrpc.ListenerRPCClient
+	rpc      pipelineRPCClient
 	Name     string
 	Port     uint16
 	Host     string
@@ -236,7 +235,7 @@ func (pipeline *TCPPipeline) handlePulse(conn *cryptostream.Conn) {
 }
 
 func (pipeline *TCPPipeline) handleBeacon(conn *cryptostream.Conn) {
-	connect, err := core.GetConnection(conn, pipeline.ID(), pipeline.SecureConfig)
+	connect, err := core.GetConnection(conn, core.PipelineRuntimeKey(pipeline.ListenerID, pipeline.ID()), pipeline.SecureConfig)
 	if err != nil {
 		logs.Log.Warnf("tcp pipeline %s peek read header error from %s: %v", pipeline.Name, conn.RemoteAddr(), err)
 		return

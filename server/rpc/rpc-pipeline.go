@@ -62,6 +62,9 @@ func (rpc *Server) RegisterPipeline(ctx context.Context, req *clientpb.Pipeline)
 	if req == nil {
 		return nil, types.ErrMissingRequestField
 	}
+	if err := validatePipelineIdentity(req); err != nil {
+		return nil, err
+	}
 	lns, err := core.Listeners.Get(req.ListenerId)
 	if err != nil {
 		return nil, err
@@ -103,6 +106,9 @@ func registerDefaultProfileForPipeline(req *clientpb.Pipeline) error {
 func (rpc *Server) SyncPipeline(ctx context.Context, req *clientpb.Pipeline) (*clientpb.Empty, error) {
 	if req == nil {
 		return nil, types.ErrMissingRequestField
+	}
+	if err := validatePipelineIdentity(req); err != nil {
+		return nil, err
 	}
 	_, err := db.SavePipeline(models.FromPipelinePb(req))
 	if err != nil {

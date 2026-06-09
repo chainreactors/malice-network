@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -370,6 +371,10 @@ func (opt *Options) PrepareListener() error {
 	return nil
 }
 
+func (opt *Options) PrepareForwardListenerClient() error {
+	return rpc.StartForwardListenerClient(context.Background(), opt.Listeners)
+}
+
 func (opt *Options) Handler() error {
 	c := make(chan os.Signal, 2)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
@@ -550,6 +555,10 @@ func RecoverPipelines(listenerID string) error {
 }
 
 func StartListener(opt *configs.ListenerConfig, serverEnable bool) error {
+	if opt.IsForwardTransport() {
+		_, err := listener.NewForwardListener(opt)
+		return err
+	}
 	if listenerConf, err := mtls.ReadConfig(opt.Auth); err != nil {
 		return err
 	} else {

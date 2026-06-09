@@ -26,6 +26,9 @@ func (rpc *Server) RegisterListener(ctx context.Context, req *clientpb.RegisterL
 	if req == nil || req.Name == "" {
 		return nil, types.ErrMissingRequestField
 	}
+	if err := validateScopedResourceName("listener", req.Name); err != nil {
+		return nil, err
+	}
 	// Idempotent: if a listener with this name already exists (e.g. reconnect after crash),
 	// fully clean up the old state before creating the fresh instance.
 	if old, err := core.Listeners.Get(req.Name); err == nil {
@@ -34,7 +37,7 @@ func (rpc *Server) RegisterListener(ctx context.Context, req *clientpb.RegisterL
 				"listener %q is already active, use a different name or stop the existing one first", req.Name)
 		}
 		for _, pipe := range old.AllPipelines() {
-			pipelinesCh.Delete(pipe.Name)
+			deletePipelineStream(pipe.ListenerId, pipe.Name)
 		}
 		// Use Stop + Map.Delete instead of Remove to avoid event publishing
 		// which could block or panic during concurrent cleanup.
@@ -53,16 +56,25 @@ func (rpc *Server) RegisterListener(ctx context.Context, req *clientpb.RegisterL
 	return &clientpb.Empty{}, nil
 }
 
+func deletePipelineStream(listenerID, pipelineID string) {
+	pipelinesCh.Delete(core.PipelineRuntimeKey(listenerID, pipelineID))
+	if listenerID != "" {
+		pipelinesCh.Delete(pipelineID)
+	}
+}
+
 func (rpc *Server) SpiteStream(stream listenerrpc.ListenerRPC_SpiteStreamServer) error {
 	pipelineID, err := getPipelineID(stream.Context())
 	if err != nil {
 		logs.Log.Error(err.Error())
 		return err
 	}
-	pipelinesCh.Store(pipelineID, stream)
+	listenerID, _ := getListenerID(stream.Context())
+	pipelineKey := core.PipelineRuntimeKey(listenerID, pipelineID)
+	pipelinesCh.Store(pipelineKey, stream)
 	defer func() {
-		pipelinesCh.Delete(pipelineID)
-		logs.Log.Warnf("pipeline %s SpiteStream disconnected, cleaned from pipelinesCh", pipelineID)
+		pipelinesCh.Delete(pipelineKey)
+		logs.Log.Warnf("pipeline %s SpiteStream disconnected, cleaned from pipelinesCh", pipelineKey)
 	}()
 
 	for {
@@ -150,7 +162,7 @@ func (rpc *Server) JobStream(stream listenerrpc.ListenerRPC_JobStreamServer) err
 		// Listener disconnected — full cleanup.
 		// Clean up associated SpiteStream entries from pipelinesCh.
 		for _, pipe := range lns.AllPipelines() {
-			pipelinesCh.Delete(pipe.Name)
+			deletePipelineStream(pipe.ListenerId, pipe.Name)
 		}
 		// Fully remove listener + pipelines + jobs.
 		// Use Stop (which doesn't publish events) + delete from map directly,

@@ -6,7 +6,6 @@ import (
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
-	"github.com/chainreactors/IoM-go/proto/services/listenerrpc"
 	"github.com/chainreactors/IoM-go/types"
 	"net"
 
@@ -16,7 +15,7 @@ import (
 )
 
 type bindRPCClient interface {
-	SpiteStream(ctx context.Context, opts ...grpc.CallOption) (listenerrpc.ListenerRPC_SpiteStreamClient, error)
+	core.ForwardClient
 	Register(ctx context.Context, in *clientpb.RegisterSession, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	Checkin(ctx context.Context, in *implantpb.Ping, opts ...grpc.CallOption) (*clientpb.Empty, error)
 }
@@ -88,7 +87,7 @@ func (pipeline *BindPipeline) Close() error {
 func (pipeline *BindPipeline) handler() error {
 	defer logs.Log.Debugf("bind pipeline %s exit", pipeline.Name)
 	for {
-		forward := core.Forwarders.Get(pipeline.ID())
+		forward := core.Forwarders.Get(core.PipelineRuntimeKey(pipeline.ListenerID, pipeline.ID()))
 		if forward == nil {
 			return fmt.Errorf("bind pipeline %s forwarder missing", pipeline.Name)
 		}
@@ -126,7 +125,7 @@ func (pipeline *BindPipeline) handlerReq(req *clientpb.SpiteRequest) error {
 		return err
 	}
 	keyPair := core.GetKeyPairForSession(req.Session.RawId, pipeline.SecureConfig)
-	connect := core.NewConnection(peekConn.Parser, req.Session.RawId, pipeline.Name, keyPair)
+	connect := core.NewConnection(peekConn.Parser, req.Session.RawId, core.PipelineRuntimeKey(pipeline.ListenerID, pipeline.Name), keyPair)
 	core.Connections.Add(connect)
 
 	err = connect.Handler(ctx, peekConn)

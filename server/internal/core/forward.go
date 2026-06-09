@@ -38,26 +38,56 @@ type forwardRPCClient interface {
 	Register(ctx context.Context, in *clientpb.RegisterSession, opts ...grpc.CallOption) (*clientpb.Empty, error)
 }
 
-type forwardClient interface {
+type ForwardClient interface {
 	forwardRPCClient
-	SpiteStream(ctx context.Context, opts ...grpc.CallOption) (listenerrpc.ListenerRPC_SpiteStreamClient, error)
+	OpenForwardStream(ctx context.Context, pipeline Pipeline) (ForwardStream, error)
 }
 
-type forwardStream interface {
+type ForwardStream interface {
 	Send(*clientpb.SpiteResponse) error
 	Recv() (*clientpb.SpiteRequest, error)
 }
 
-var openForwardStream = func(rpc forwardClient, ctx context.Context) (forwardStream, error) {
-	return rpc.SpiteStream(ctx)
+type reverseForwardClient struct {
+	client listenerrpc.ListenerRPCClient
+}
+
+func NewReverseForwardClient(client listenerrpc.ListenerRPCClient) ForwardClient {
+	return &reverseForwardClient{client: client}
+}
+
+func (c *reverseForwardClient) Checkin(ctx context.Context, in *implantpb.Ping, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+	return c.client.Checkin(ctx, in, opts...)
+}
+
+func (c *reverseForwardClient) Register(ctx context.Context, in *clientpb.RegisterSession, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+	return c.client.Register(ctx, in, opts...)
+}
+
+func (c *reverseForwardClient) OpenForwardStream(ctx context.Context, pipeline Pipeline) (ForwardStream, error) {
+	listenerID := ""
+	if pb := pipeline.ToProtobuf(); pb != nil {
+		listenerID = pb.ListenerId
+	}
+	return c.client.SpiteStream(metadata.NewOutgoingContext(ctx, metadata.Pairs(
+		"pipeline_id", pipeline.ID(),
+		"listener_id", listenerID),
+	))
 }
 
 type forwarders struct {
 	forwarders *sync.Map
 }
 
+func PipelineRuntimeKey(listenerID, pipelineID string) string {
+	if listenerID == "" || pipelineID == "" {
+		return pipelineID
+	}
+	return listenerID + ":" + pipelineID
+}
+
 func (f *forwarders) Add(fw *Forward) {
-	f.forwarders.Store(fw.ID(), fw)
+	f.forwarders.Store(fw.RuntimeKey(), fw)
 }
 
 func (f *forwarders) Get(id string) *Forward {
@@ -91,20 +121,23 @@ func (f *forwarders) Send(id string, msg *Message) {
 	fw.Add(msg)
 }
 
-func NewForward(rpc forwardClient, pipeline Pipeline) (*Forward, error) {
+func NewForward(rpc ForwardClient, pipeline Pipeline) (*Forward, error) {
 	var err error
+	listenerID := ""
+	if pb := pipeline.ToProtobuf(); pb != nil {
+		listenerID = pb.ListenerId
+	}
 	forward := &Forward{
 		implantC:    make(chan *Message, 255),
 		ListenerRpc: rpc,
 		Pipeline:    pipeline,
+		ListenerId:  listenerID,
 		ctx:         context.Background(),
 		done:        make(chan struct{}),
 	}
 	forward.alive.Store(true)
 
-	forward.Stream, err = openForwardStream(rpc, metadata.NewOutgoingContext(context.Background(), metadata.Pairs(
-		"pipeline_id", pipeline.ID()),
-	))
+	forward.Stream, err = rpc.OpenForwardStream(context.Background(), pipeline)
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +153,7 @@ type Forward struct {
 	count int
 	Pipeline
 	ListenerId string
-	Stream     forwardStream
+	Stream     ForwardStream
 	implantC   chan *Message // data from implant
 
 	ListenerRpc forwardRPCClient
@@ -128,6 +161,13 @@ type Forward struct {
 	alive     atomic.Bool
 	done      chan struct{}
 	closeOnce sync.Once
+}
+
+func (f *Forward) RuntimeKey() string {
+	if f == nil {
+		return ""
+	}
+	return PipelineRuntimeKey(f.ListenerId, f.ID())
 }
 
 func (f *Forward) Add(msg *Message) {
@@ -158,6 +198,7 @@ func (f *Forward) Context(sid string) context.Context {
 	return metadata.NewOutgoingContext(f.ctx, metadata.Pairs(
 		"session_id", sid,
 		"listener_id", f.ListenerId,
+		"pipeline_id", f.ID(),
 		"timestamp", strconv.FormatInt(time.Now().Unix(), 10),
 	))
 }

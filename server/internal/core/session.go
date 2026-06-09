@@ -655,7 +655,7 @@ func (s *Session) SaveAndNotify(msg string) error {
 // GetPipelineEncryptionKey returns the transport encryption key from the
 // session's pipeline config. Returns "" if not found.
 func (s *Session) GetPipelineEncryptionKey() string {
-	pipeline, ok := Listeners.Find(s.PipelineID)
+	pipeline, ok := s.findPipeline()
 	if !ok || pipeline == nil {
 		return ""
 	}
@@ -668,11 +668,21 @@ func (s *Session) GetPipelineEncryptionKey() string {
 
 // GetPacketLength returns the per-pipeline packet length or falls back to global config.
 func (s *Session) GetPacketLength() int {
-	pipeline, ok := Listeners.Find(s.PipelineID)
+	pipeline, ok := s.findPipeline()
 	if ok && pipeline != nil && pipeline.PacketLength > 0 {
 		return int(pipeline.PacketLength)
 	}
 	return config.Int(consts.ConfigMaxPacketLength)
+}
+
+func (s *Session) findPipeline() (*clientpb.Pipeline, bool) {
+	if s == nil || s.PipelineID == "" {
+		return nil, false
+	}
+	if s.ListenerID != "" {
+		return Listeners.FindByListener(s.ListenerID, s.PipelineID)
+	}
+	return Listeners.Find(s.PipelineID)
 }
 
 func (s *Session) Update(req *clientpb.RegisterSession) {

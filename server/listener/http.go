@@ -8,7 +8,6 @@ import (
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
-	"github.com/chainreactors/IoM-go/proto/services/listenerrpc"
 	types "github.com/chainreactors/IoM-go/types"
 	"github.com/chainreactors/malice-network/helper/implanttypes"
 	"io"
@@ -23,7 +22,7 @@ import (
 	cryptostream "github.com/chainreactors/malice-network/server/internal/stream"
 )
 
-func NewHttpPipeline(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline) (*HTTPPipeline, error) {
+func NewHttpPipeline(rpc pipelineRPCClient, pipeline *clientpb.Pipeline) (*HTTPPipeline, error) {
 	http := pipeline.GetHttp()
 
 	params, err := implanttypes.UnmarshalPipelineParams(http.Params)
@@ -49,7 +48,7 @@ func NewHttpPipeline(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipel
 
 type HTTPPipeline struct {
 	srv      net.Listener
-	rpc      listenerrpc.ListenerRPCClient
+	rpc      pipelineRPCClient
 	Name     string
 	Port     uint16
 	Host     string
@@ -227,7 +226,7 @@ func (pipeline *HTTPPipeline) handlePulse(resp http.ResponseWriter, req *http.Re
 func (pipeline *HTTPPipeline) handleMalefic(w http.ResponseWriter, r *http.Request, conn *cryptostream.Conn) {
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
-	connect, err := core.GetOrReuseConnection(conn, pipeline.ID(), pipeline.SecureConfig)
+	connect, err := core.GetOrReuseConnection(conn, core.PipelineRuntimeKey(pipeline.ListenerID, pipeline.ID()), pipeline.SecureConfig)
 	if err != nil {
 		pipeline.writeError(w, http.StatusBadRequest, "Invalid request")
 		return

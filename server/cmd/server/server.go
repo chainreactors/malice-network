@@ -109,6 +109,7 @@ func Start(defaultConfig []byte) error {
 		return nil
 	}
 
+	serverReady := false
 	if !opt.ListenerOnly && opt.Server.Enable {
 		if err := assets.SetupGithubFile(); err != nil {
 			logs.Log.Warnf("failed to setup github files: %s", err)
@@ -117,12 +118,18 @@ func Start(defaultConfig []byte) error {
 		if err != nil {
 			return fmt.Errorf("cannot prepare server, %s", err.Error())
 		}
+		serverReady = true
 	}
 
 	if !opt.ServerOnly && opt.Listeners.Enable {
 		err = opt.PrepareListener()
 		if err != nil {
 			return fmt.Errorf("cannot prepare listener, %s", err.Error())
+		}
+	}
+	if serverReady && opt.Listeners.Enable && opt.Listeners.IsForwardTransport() {
+		if err := opt.PrepareForwardListenerClient(); err != nil {
+			return fmt.Errorf("cannot prepare forward listener client, %s", err.Error())
 		}
 	}
 	return opt.Handler()

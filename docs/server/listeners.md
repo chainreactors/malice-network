@@ -14,6 +14,44 @@ Listener 是 malice-network 的分布式通信层，与 Server 解耦设计：
 - **与 Server 解耦**：通过 gRPC Stream 与 Server 全双工通信，独立运行和故障隔离
 - **多 Pipeline 承载**：每个 Listener 可运行多个不同类型的 Pipeline
 
+### Server 与 Listener 的传输模式
+
+`listeners.transport` 控制 Server 与 Listener 之间的控制/任务通道方向：
+
+| 模式 | 方向 | 适用场景 |
+|------|------|----------|
+| `reverse` | Listener 主动连接 Server | 默认模式；Listener 能访问 Server 的 gRPC 端口 |
+| `forward` | Server 主动连接 Listener | Listener 不能访问 Server，但 Server 能访问 Listener 的 forward 端口 |
+
+`reverse` 是默认值，沿用 `listener.auth` 和 `ListenerRPC` 的 `JobStream` / `SpiteStream`。`forward` 会让 Listener 本地启动一个 forward gRPC 服务，Server 拨入后通过 `ControlStream` 下发 pipeline 控制，通过 `TaskStream` 下发任务并接收 session 事件/任务响应。
+
+两种模式都保持同一个 Root CA 层级。`listener.auth` 只包含 CA 公钥证书和 Listener 自己的小证书私钥，不包含 Root CA 私钥。新生成的 Listener 小证书同时具备 `clientAuth` 和 `serverAuth`：
+
+- `reverse` 模式下，Listener 用 `listener.auth` 的 `cert/key` 作为客户端证书主动连接 Server。
+- `forward` 模式下，Listener 用同一份 `cert/key` 作为 forward gRPC server 证书等待 Server 拨入。
+- Server 拨入 Listener 时使用 Server 本地 Root CA 签发/保存的 forward client cert，不会读取或复用 Listener 的私钥。
+- 双方都用 Root CA 公钥验证对端证书链和证书用途。
+
+forward 示例：
+
+```yaml
+listeners:
+  enable: true
+  name: listener-a
+  ip: 10.10.1.20
+  transport: forward
+  forward:
+    listen_host: 0.0.0.0
+    listen_port: 5005
+    connect_host: 10.10.1.20
+    connect_port: 5005
+```
+
+`listen_*` 是 Listener 端绑定地址；`connect_*` 是 Server 端拨号地址。forward 模式要求 Server 到 Listener 的 TCP 连接可达；如果双向都不可达，需要额外 relay/中继。
+
+!!! warning "forward 模式当前限制"
+    当前 forward transport 用于解决连接方向问题。旧的 client-only `listener.auth` 仍可用于 `reverse`，但用于 `forward` 时需要重新生成双用途 Listener auth。断线自动重连、Pulse artifact 拉取和 REM/Website 自动启动仍以 `reverse` 模式为主。
+
 ```
 ┌─────────┐  gRPC/mTLS  ┌──────────┐
 │  Server  │◄───────────►│ Listener │
@@ -163,10 +201,13 @@ Listener 可以独立部署在与 Server 不同的服务器上：
 | 文件 | 职责 |
 |------|------|
 | `server/listener/listener.go` | Listener 生命周期管理 |
+| `server/listener/forward.go` | forward transport Listener 端服务 |
 | `server/listener/tcp.go` | TCP Pipeline 实现 |
 | `server/listener/http.go` | HTTP Pipeline 实现 |
 | `server/listener/rem.go` | REM Pipeline 实现 |
 | `server/listener/custom.go` | Custom Pipeline 接入 |
+| `server/rpc/rpc-forward-listener.go` | forward transport Server 端拨号与 stream 适配 |
+| `server/forwardrpc/forwardrpc.go` | forward transport 手写 gRPC service descriptor |
 | `server/internal/core/pipeline.go` | Pipeline 运行时状态 |
 
 ## 相关文档

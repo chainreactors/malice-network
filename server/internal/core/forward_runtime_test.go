@@ -92,3 +92,31 @@ func TestForwardersRemoveDeletesOnCloseError(t *testing.T) {
 		t.Fatalf("expected forwarder to be deleted, got %#v", got)
 	}
 }
+
+func TestForwardersScopeDuplicatePipelineNamesByListener(t *testing.T) {
+	store := &forwarders{forwarders: &sync.Map{}}
+	forwardA := &Forward{
+		Pipeline:   testPipeline{id: "shared-pipe"},
+		ListenerId: "listener-a",
+		Stream:     testForwardStream{},
+		done:       make(chan struct{}),
+	}
+	forwardB := &Forward{
+		Pipeline:   testPipeline{id: "shared-pipe"},
+		ListenerId: "listener-b",
+		Stream:     testForwardStream{},
+		done:       make(chan struct{}),
+	}
+	forwardA.alive.Store(true)
+	forwardB.alive.Store(true)
+
+	store.Add(forwardA)
+	store.Add(forwardB)
+
+	if got := store.Get(PipelineRuntimeKey("listener-a", "shared-pipe")); got != forwardA {
+		t.Fatalf("listener-a forwarder = %#v, want %#v", got, forwardA)
+	}
+	if got := store.Get(PipelineRuntimeKey("listener-b", "shared-pipe")); got != forwardB {
+		t.Fatalf("listener-b forwarder = %#v, want %#v", got, forwardB)
+	}
+}

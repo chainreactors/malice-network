@@ -328,3 +328,60 @@ func TestDeleteWebsiteByListenerDoesNotDeleteAmbiguousLegacyContent(t *testing.T
 		t.Fatalf("legacy content count = %d, want 1", count)
 	}
 }
+
+func TestAddContentDoesNotClaimAmbiguousLegacyRow(t *testing.T) {
+	configs.InitTestConfigRuntime(t)
+	configs.UseTestPaths(t, filepath.Join(t.TempDir(), ".malice"))
+	initTestDB(t)
+
+	for _, listenerID := range []string{"listener-a", "listener-b"} {
+		if _, err := SavePipeline(&models.Pipeline{
+			Name:       "site-add-legacy-shared",
+			ListenerId: listenerID,
+			Type:       consts.WebsitePipeline,
+			IP:         "127.0.0.1",
+			Port:       8080,
+			PipelineParams: &implanttypes.PipelineParams{
+				WebPath: "/",
+				Tls:     &implanttypes.TlsConfig{},
+			},
+		}); err != nil {
+			t.Fatalf("SavePipeline(%s) failed: %v", listenerID, err)
+		}
+	}
+	legacy := &models.WebsiteContent{
+		PipelineID:  "site-add-legacy-shared",
+		ListenerID:  "",
+		Path:        "/index.html",
+		Type:        "raw",
+		ContentType: "text/plain",
+	}
+	if err := Session().Create(legacy).Error; err != nil {
+		t.Fatalf("Create legacy content failed: %v", err)
+	}
+
+	added, err := AddContent(&clientpb.WebContent{
+		WebsiteId:  "site-add-legacy-shared",
+		ListenerId: "listener-a",
+		Path:       "/index.html",
+		Type:       "raw",
+		Content:    []byte("listener-a"),
+	})
+	if err != nil {
+		t.Fatalf("AddContent failed: %v", err)
+	}
+	if added.ID == legacy.ID {
+		t.Fatalf("AddContent reused ambiguous legacy ID %s", added.ID)
+	}
+	if added.ListenerID != "listener-a" {
+		t.Fatalf("added listener = %q, want listener-a", added.ListenerID)
+	}
+
+	var legacyAfter models.WebsiteContent
+	if err := Session().Where("id = ?", legacy.ID).First(&legacyAfter).Error; err != nil {
+		t.Fatalf("Find legacy content failed: %v", err)
+	}
+	if legacyAfter.ListenerID != "" {
+		t.Fatalf("legacy listener = %q, want empty", legacyAfter.ListenerID)
+	}
+}

@@ -49,6 +49,28 @@ func TestRegisterPipeline_UnknownListener(t *testing.T) {
 	}
 }
 
+func TestRegisterPipelineRejectsColonName(t *testing.T) {
+	_ = newRPCTestEnv(t)
+	core.Listeners.Add(core.NewListener("listener-colon-pipeline", "127.0.0.1"))
+
+	_, err := (&Server{}).RegisterPipeline(context.Background(), &clientpb.Pipeline{
+		Name:       "pipe:bad",
+		ListenerId: "listener-colon-pipeline",
+		Type:       consts.TCPPipeline,
+		Body: &clientpb.Pipeline_Tcp{
+			Tcp: &clientpb.TCPPipeline{
+				Name:       "pipe:bad",
+				ListenerId: "listener-colon-pipeline",
+				Host:       "127.0.0.1",
+				Port:       5555,
+			},
+		},
+	})
+	if err == nil {
+		t.Fatal("RegisterPipeline should reject ':' in pipeline name")
+	}
+}
+
 func TestRegisterPipeline_Valid(t *testing.T) {
 	env := newRPCTestEnv(t)
 	// seedSession creates a listener named "test-listener".

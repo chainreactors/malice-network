@@ -14,6 +14,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/certs"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
+	"os"
 	"path"
 )
 
@@ -67,6 +68,7 @@ func GetOperatorServerMTLSConfig(host string) *tls.Config {
 }
 
 func GenerateRootCert() error {
+	configs.GetCertDir()
 	rootCertPath := path.Join(configs.CertsPath, certs.RootCert)
 	rootKeyPath := path.Join(configs.CertsPath, certs.RootKey)
 	if fileutils.Exist(rootCertPath) && fileutils.Exist(rootKeyPath) {
@@ -144,7 +146,10 @@ func GenerateListenerCert(host, name string, port int) (*mtls.ClientConfig, stri
 	if err != nil {
 		return nil, "", err
 	}
-	cert, key, err = certs.GenerateChildCert(host, true, ca, caKey)
+	cert, key, err = certs.GenerateChildCertWithUsages(host, []x509.ExtKeyUsage{
+		x509.ExtKeyUsageClientAuth,
+		x509.ExtKeyUsageServerAuth,
+	}, ca, caKey)
 	if err != nil {
 		return nil, "", err
 	}
@@ -161,6 +166,43 @@ func GenerateListenerCert(host, name string, port int) (*mtls.ClientConfig, stri
 		PrivateKey:    string(key),
 		Certificate:   string(cert),
 	}, fp, nil
+}
+
+func GetOrCreateForwardClientCert(name string) ([]byte, []byte, error) {
+	certPath := path.Join(configs.GetCertDir(), certs.ForwardClientCert)
+	keyPath := path.Join(configs.GetCertDir(), certs.ForwardClientKey)
+	if fileutils.Exist(certPath) && fileutils.Exist(keyPath) {
+		certPEM, err := os.ReadFile(certPath)
+		if err != nil {
+			return nil, nil, err
+		}
+		keyPEM, err := os.ReadFile(keyPath)
+		if err != nil {
+			return nil, nil, err
+		}
+		return certPEM, keyPEM, nil
+	}
+	return GenerateForwardClientCert(name)
+}
+
+func GenerateForwardClientCert(name string) ([]byte, []byte, error) {
+	certPath := path.Join(configs.GetCertDir(), certs.ForwardClientCert)
+	keyPath := path.Join(configs.GetCertDir(), certs.ForwardClientKey)
+	ca, caKey, err := GetCertificateAuthority()
+	if err != nil {
+		return nil, nil, err
+	}
+	cert, key, err := certs.GenerateChildCertWithUsages(name, []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}, ca, caKey)
+	if err != nil {
+		return nil, nil, err
+	}
+	if err := certs.SaveToPEMFile(certPath, cert); err != nil {
+		return nil, nil, err
+	}
+	if err := certs.SaveToPEMFile(keyPath, key); err != nil {
+		return nil, nil, err
+	}
+	return cert, key, nil
 }
 
 func GenerateSelfTLS(name string, certsSubject *clientpb.CertificateSubject) (*clientpb.TLS, error) {

@@ -28,6 +28,9 @@ func findRuntimePipeline(pipelineID, agentID string) (*clientpb.Pipeline, bool) 
 			pipe := lns.GetPipeline(name)
 			return pipe, pipe != nil
 		}
+		if runtimePipelineNameCount(pipelineID) != 1 {
+			return nil, false
+		}
 		if pipe, ok := core.Listeners.Find(pipelineID); ok {
 			return pipe, true
 		}
@@ -35,7 +38,7 @@ func findRuntimePipeline(pipelineID, agentID string) (*clientpb.Pipeline, bool) 
 	if agentID == "" {
 		return nil, false
 	}
-	return core.Listeners.FindByRemAgent(agentID)
+	return findRuntimePipelineByUniqueRemAgent(agentID)
 }
 
 func runtimePipelineNameCount(name string) int {
@@ -52,6 +55,39 @@ func runtimePipelineNameCount(name string) int {
 		return true
 	})
 	return count
+}
+
+func findRuntimePipelineByUniqueRemAgent(agentID string) (*clientpb.Pipeline, bool) {
+	if agentID == "" {
+		return nil, false
+	}
+	var found *clientpb.Pipeline
+	ambiguous := false
+	core.Listeners.Range(func(_, value interface{}) bool {
+		listener, ok := value.(*core.Listener)
+		if !ok {
+			return true
+		}
+		for _, pipe := range listener.AllPipelines() {
+			rem := pipe.GetRem()
+			if rem == nil {
+				continue
+			}
+			if _, ok := rem.Agents[agentID]; !ok {
+				continue
+			}
+			if found != nil {
+				ambiguous = true
+				return false
+			}
+			found = pipe
+		}
+		return true
+	})
+	if ambiguous || found == nil {
+		return nil, false
+	}
+	return found, true
 }
 
 func findRuntimePipelineForPivot(pipelineID, listenerID string) (*clientpb.Pipeline, bool) {
@@ -86,6 +122,9 @@ func pivotBelongsToPipeline(pivot *output.PivotingContext, pipeline *clientpb.Pi
 func (rpc *Server) RegisterRem(ctx context.Context, req *clientpb.Pipeline) (*clientpb.Empty, error) {
 	if req == nil || req.GetRem() == nil {
 		return nil, types.ErrMissingRequestField
+	}
+	if err := validatePipelineIdentity(req); err != nil {
+		return nil, err
 	}
 	lns, err := core.Listeners.Get(req.ListenerId)
 	if err != nil {

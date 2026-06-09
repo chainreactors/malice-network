@@ -216,6 +216,71 @@ func TestGetPacketLengthWithPipelineConfig(t *testing.T) {
 	}
 }
 
+func TestGetPacketLengthUsesSessionListener(t *testing.T) {
+	withIsolatedListeners(t)
+	withIsolatedBroker(t)
+
+	config.Set(consts.ConfigMaxPacketLength, 10485760)
+	t.Cleanup(func() { config.Set(consts.ConfigMaxPacketLength, 0) })
+
+	listenerA := NewListener("pkt-listener-a", "10.0.0.1")
+	listenerB := NewListener("pkt-listener-b", "10.0.0.2")
+	Listeners.Add(listenerA)
+	Listeners.Add(listenerB)
+	listenerA.AddPipeline(&clientpb.Pipeline{
+		Name:         "shared-pipe",
+		ListenerId:   listenerA.Name,
+		PacketLength: 1024,
+	})
+	listenerB.AddPipeline(&clientpb.Pipeline{
+		Name:         "shared-pipe",
+		ListenerId:   listenerB.Name,
+		PacketLength: 4096,
+	})
+
+	sess := newTestSession("pkt-scoped")
+	sess.PipelineID = "shared-pipe"
+	sess.ListenerID = listenerB.Name
+
+	got := sess.GetPacketLength()
+	if got != 4096 {
+		t.Fatalf("GetPacketLength() = %d, want listener B packet length 4096", got)
+	}
+}
+
+func TestGetPipelineEncryptionKeyUsesSessionListener(t *testing.T) {
+	withIsolatedListeners(t)
+	withIsolatedBroker(t)
+
+	listenerA := NewListener("enc-listener-a", "10.0.0.1")
+	listenerB := NewListener("enc-listener-b", "10.0.0.2")
+	Listeners.Add(listenerA)
+	Listeners.Add(listenerB)
+	listenerA.AddPipeline(&clientpb.Pipeline{
+		Name:       "shared-pipe",
+		ListenerId: listenerA.Name,
+		Encryption: []*clientpb.Encryption{
+			{Type: consts.CryptorAES, Key: "listener-a-key"},
+		},
+	})
+	listenerB.AddPipeline(&clientpb.Pipeline{
+		Name:       "shared-pipe",
+		ListenerId: listenerB.Name,
+		Encryption: []*clientpb.Encryption{
+			{Type: consts.CryptorAES, Key: "listener-b-key"},
+		},
+	})
+
+	sess := newTestSession("enc-scoped")
+	sess.PipelineID = "shared-pipe"
+	sess.ListenerID = listenerB.Name
+
+	got := sess.GetPipelineEncryptionKey()
+	if got != "listener-b-key" {
+		t.Fatalf("GetPipelineEncryptionKey() = %q, want listener-b-key", got)
+	}
+}
+
 func TestGetPacketLengthFallsBackToGlobal(t *testing.T) {
 	withIsolatedListeners(t)
 	withIsolatedBroker(t)

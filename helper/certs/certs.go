@@ -27,12 +27,14 @@ const (
 
 const (
 	// RSAKey - Namespace for RSA keys
-	RSAKey     = "rsa"
-	RootName   = "Root"
-	RootCert   = "root_ca.pem"
-	RootKey    = "root_key.pem"
-	ServerCert = "server_crt.pem"
-	ServerKey  = "server_key.pem"
+	RSAKey            = "rsa"
+	RootName          = "Root"
+	RootCert          = "root_ca.pem"
+	RootKey           = "root_key.pem"
+	ServerCert        = "server_crt.pem"
+	ServerKey         = "server_key.pem"
+	ForwardClientCert = "forward_client_crt.pem"
+	ForwardClientKey  = "forward_client_key.pem"
 
 	RootNamespace     = "root"
 	ListenerNamespace = "listener" // Listener servers
@@ -153,7 +155,17 @@ func GenerateCACert(commonName string, subject *pkix.Name) ([]byte, []byte, erro
 }
 
 func GenerateChildCert(commonName string, isClient bool, caCert *x509.Certificate, caKey *rsa.PrivateKey) ([]byte, []byte, error) {
-	var template x509.Certificate
+	usages := []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}
+	if isClient {
+		usages = []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}
+	}
+	return GenerateChildCertWithUsages(commonName, usages, caCert, caKey)
+}
+
+func GenerateChildCertWithUsages(commonName string, extKeyUsages []x509.ExtKeyUsage, caCert *x509.Certificate, caKey *rsa.PrivateKey) ([]byte, []byte, error) {
+	if len(extKeyUsages) == 0 {
+		return nil, nil, fmt.Errorf("missing extended key usages")
+	}
 	privateKey, _ := rsa.GenerateKey(rand.Reader, RsaKeySize())
 	subject := RandomSubject(commonName)
 	notBefore := time.Now()
@@ -163,28 +175,17 @@ func GenerateChildCert(commonName string, isClient bool, caCert *x509.Certificat
 
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
 	serialNumber, _ := rand.Int(rand.Reader, serialNumberLimit)
-	if isClient {
-		template = x509.Certificate{
-			SerialNumber:          serialNumber,
-			Subject:               *subject,
-			NotBefore:             notBefore,
-			NotAfter:              notAfter,
-			KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
-			ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
-			BasicConstraintsValid: true,
-			IsCA:                  false,
-		}
-	} else {
-		template = x509.Certificate{
-			SerialNumber:          serialNumber,
-			Subject:               *subject,
-			NotBefore:             notBefore,
-			NotAfter:              notAfter,
-			KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
-			ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
-			BasicConstraintsValid: false,
-		}
-
+	template := x509.Certificate{
+		SerialNumber:          serialNumber,
+		Subject:               *subject,
+		NotBefore:             notBefore,
+		NotAfter:              notAfter,
+		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:           extKeyUsages,
+		BasicConstraintsValid: true,
+		IsCA:                  false,
+	}
+	if hasExtKeyUsage(extKeyUsages, x509.ExtKeyUsageServerAuth) {
 		if ip := net.ParseIP(subject.CommonName); ip != nil {
 			template.IPAddresses = append(template.IPAddresses, ip)
 		} else {
@@ -203,4 +204,13 @@ func GenerateChildCert(commonName string, isClient bool, caCert *x509.Certificat
 	pem.Encode(keyOut, pemBlockForKey(privateKey))
 
 	return certOut.Bytes(), keyOut.Bytes(), nil
+}
+
+func hasExtKeyUsage(usages []x509.ExtKeyUsage, want x509.ExtKeyUsage) bool {
+	for _, usage := range usages {
+		if usage == want {
+			return true
+		}
+	}
+	return false
 }

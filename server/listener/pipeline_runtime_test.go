@@ -12,7 +12,6 @@ import (
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
-	"github.com/chainreactors/IoM-go/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/helper/implanttypes"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
@@ -23,7 +22,7 @@ type failingBindRPCClient struct {
 	err error
 }
 
-func (c *failingBindRPCClient) SpiteStream(context.Context, ...grpc.CallOption) (listenerrpc.ListenerRPC_SpiteStreamClient, error) {
+func (c *failingBindRPCClient) OpenForwardStream(context.Context, core.Pipeline) (core.ForwardStream, error) {
 	return nil, c.err
 }
 

@@ -79,6 +79,18 @@ func TestRegisterListener_CreatesNew(t *testing.T) {
 	}
 }
 
+func TestRegisterListenerRejectsColonName(t *testing.T) {
+	_ = newRPCTestEnv(t)
+
+	_, err := (&Server{}).RegisterListener(context.Background(), &clientpb.RegisterListener{
+		Name: "team:a",
+		Host: "10.0.0.1",
+	})
+	if err == nil {
+		t.Fatal("RegisterListener should reject ':' in listener name")
+	}
+}
+
 func TestRegisterListener_RejectsActiveDuplicate(t *testing.T) {
 	_ = newRPCTestEnv(t)
 

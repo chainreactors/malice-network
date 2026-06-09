@@ -61,6 +61,7 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig, ser
 		cfg:       cfg,
 		websites:  make(map[string]*Website),
 	}
+	lns.pipelineRPC = &reversePipelineRPC{ListenerRPCClient: lns.Rpc}
 
 	_, err = lns.Rpc.RegisterListener(lns.Context(), &clientpb.RegisterListener{
 		Name: lns.Name,
@@ -204,13 +205,14 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig, ser
 }
 
 type listener struct {
-	Rpc       listenerrpc.ListenerRPCClient
-	Name      string
-	IP        string
-	pipelines core.Pipelines
-	conn      *grpc.ClientConn
-	cfg       *configs.ListenerConfig
-	websites  map[string]*Website
+	Rpc         listenerrpc.ListenerRPCClient
+	pipelineRPC pipelineRPCClient
+	Name        string
+	IP          string
+	pipelines   core.Pipelines
+	conn        *grpc.ClientConn
+	cfg         *configs.ListenerConfig
+	websites    map[string]*Website
 }
 
 func (lns *listener) Close() error {
@@ -328,56 +330,9 @@ func (lns *listener) Handler() error {
 			return fmt.Errorf("listener %s job stream recv: %w", lns.ID(), err)
 		}
 
-		var handlerErr error
-		switch msg.Ctrl {
-		case consts.CtrlPipelineStart:
-			handlerErr = lns.handlerStart(msg.Job)
-		case consts.CtrlPipelineStop, consts.CtrlRemStop:
-			handlerErr = lns.handlerStop(msg.Job)
-		case consts.CtrlPipelineSync:
-			handlerErr = lns.syncPipeline(msg.Job)
-		case consts.CtrlWebsiteStart:
-			handlerErr = lns.handleStartWebsite(msg.Job)
-		case consts.CtrlWebsiteStop:
-			handlerErr = lns.handleStopWebsite(msg.Job)
-		case consts.CtrlWebsiteRegister:
-			handlerErr = lns.handleRegisterWebsite(msg.Job)
-		case consts.CtrlWebContentAdd:
-			handlerErr = lns.handleWebContentAdd(msg)
-		case consts.CtrlWebContentUpdate:
-			handlerErr = lns.handleWebContentUpdate(msg)
-		case consts.CtrlWebContentRemove:
-			handlerErr = lns.handleWebContentRemove(msg.Job)
-		case consts.CtrlWebContentAddArtifact:
-			handlerErr = lns.handleAmountArtifact(msg)
-		case consts.CtrlRemStart:
-			handlerErr = lns.handleStartRem(msg.Job)
-		case consts.CtrlRemAgentCtrl:
-			handlerErr = lns.handlerRemAgentCtrl(msg.Job)
-		case consts.CtrlRemAgentLog:
-			handlerErr = lns.handlerRemAgentLog(msg.Job)
-		case consts.CtrlRemAgentStop:
-			handlerErr = lns.handlerRemAgentStop(msg.Job)
-		case consts.CtrlRemAgentReconfigure:
-			handlerErr = lns.handlerRemAgentReconfigure(msg.Job)
-		case consts.CtrlListenerSyncSession:
-			core.ListenerSessions.Add(msg.Session)
+		status := lns.handleJobCtrl(msg)
+		if status == nil {
 			continue
-		}
-
-		status := &clientpb.JobStatus{
-			ListenerId: lns.ID(),
-			Ctrl:       msg.Ctrl,
-			CtrlId:     msg.Id,
-			Job:        msg.Job,
-		}
-		if handlerErr != nil {
-			status.Status = consts.CtrlStatusFailed
-			status.Error = handlerErr.Error()
-			logs.Log.Errorf("listener.%s - job_ctrl_failed listener=%s ctrl_id=%d job=%s ctrl=%s error=%q", lns.ID(), lns.ID(), msg.Id, msg.Job.Name, msg.Ctrl, handlerErr)
-		} else {
-			status.Status = consts.CtrlStatusSuccess
-			logs.Log.Importantf("listener.%s - job_ctrl_success listener=%s ctrl_id=%d job=%s ctrl=%s", lns.ID(), lns.ID(), msg.Id, msg.Job.Name, msg.Ctrl)
 		}
 		if err := stream.Send(status); err != nil {
 			return fmt.Errorf("listener %s job stream send: %w", lns.ID(), err)
@@ -385,16 +340,81 @@ func (lns *listener) Handler() error {
 	}
 }
 
+func (lns *listener) handleJobCtrl(msg *clientpb.JobCtrl) *clientpb.JobStatus {
+	if msg == nil {
+		return nil
+	}
+	var handlerErr error
+	switch msg.Ctrl {
+	case consts.CtrlPipelineStart:
+		handlerErr = lns.handlerStart(msg.Job)
+	case consts.CtrlPipelineStop, consts.CtrlRemStop:
+		handlerErr = lns.handlerStop(msg.Job)
+	case consts.CtrlPipelineSync:
+		handlerErr = lns.syncPipeline(msg.Job)
+	case consts.CtrlWebsiteStart:
+		handlerErr = lns.handleStartWebsite(msg.Job)
+	case consts.CtrlWebsiteStop:
+		handlerErr = lns.handleStopWebsite(msg.Job)
+	case consts.CtrlWebsiteRegister:
+		handlerErr = lns.handleRegisterWebsite(msg.Job)
+	case consts.CtrlWebContentAdd:
+		handlerErr = lns.handleWebContentAdd(msg)
+	case consts.CtrlWebContentUpdate:
+		handlerErr = lns.handleWebContentUpdate(msg)
+	case consts.CtrlWebContentRemove:
+		handlerErr = lns.handleWebContentRemove(msg.Job)
+	case consts.CtrlWebContentAddArtifact:
+		handlerErr = lns.handleAmountArtifact(msg)
+	case consts.CtrlRemStart:
+		handlerErr = lns.handleStartRem(msg.Job)
+	case consts.CtrlRemAgentCtrl:
+		handlerErr = lns.handlerRemAgentCtrl(msg.Job)
+	case consts.CtrlRemAgentLog:
+		handlerErr = lns.handlerRemAgentLog(msg.Job)
+	case consts.CtrlRemAgentStop:
+		handlerErr = lns.handlerRemAgentStop(msg.Job)
+	case consts.CtrlRemAgentReconfigure:
+		handlerErr = lns.handlerRemAgentReconfigure(msg.Job)
+	case consts.CtrlListenerSyncSession:
+		core.ListenerSessions.Add(msg.Session)
+		return nil
+	}
+
+	jobName := ""
+	if msg.Job != nil {
+		jobName = msg.Job.Name
+	}
+	status := &clientpb.JobStatus{
+		ListenerId: lns.ID(),
+		Ctrl:       msg.Ctrl,
+		CtrlId:     msg.Id,
+		Job:        msg.Job,
+	}
+	if handlerErr != nil {
+		status.Status = consts.CtrlStatusFailed
+		status.Error = handlerErr.Error()
+		logs.Log.Errorf("listener.%s - job_ctrl_failed listener=%s ctrl_id=%d job=%s ctrl=%s error=%q", lns.ID(), lns.ID(), msg.Id, jobName, msg.Ctrl, handlerErr)
+	} else {
+		status.Status = consts.CtrlStatusSuccess
+		logs.Log.Importantf("listener.%s - job_ctrl_success listener=%s ctrl_id=%d job=%s ctrl=%s", lns.ID(), lns.ID(), msg.Id, jobName, msg.Ctrl)
+	}
+	return status
+}
+
 func (lns *listener) handlerStart(job *clientpb.Job) error {
 	pipeline, err := lns.startPipeline(job.GetPipeline())
 	if err != nil {
 		return err
 	}
-	_, err = lns.Rpc.SyncPipeline(lns.Context(), pipeline.ToProtobuf())
-	if err != nil {
-		return err
+	if lns.Rpc != nil {
+		_, err = lns.Rpc.SyncPipeline(lns.Context(), pipeline.ToProtobuf())
+		if err != nil {
+			return err
+		}
 	}
 	job.Name = pipeline.ID()
+	job.Pipeline = pipeline.ToProtobuf()
 	return nil
 }
 
@@ -497,11 +517,11 @@ func (lns *listener) startPipeline(pipelinepb *clientpb.Pipeline) (core.Pipeline
 	var p core.Pipeline
 	switch pipelinepb.Body.(type) {
 	case *clientpb.Pipeline_Tcp:
-		p, err = NewTcpPipeline(lns.Rpc, pipelinepb)
+		p, err = NewTcpPipeline(lns.pipelineRPC, pipelinepb)
 	case *clientpb.Pipeline_Bind:
-		p, err = NewBindPipeline(lns.Rpc, pipelinepb)
+		p, err = NewBindPipeline(lns.pipelineRPC, pipelinepb)
 	case *clientpb.Pipeline_Http:
-		p, err = NewHttpPipeline(lns.Rpc, pipelinepb)
+		p, err = NewHttpPipeline(lns.pipelineRPC, pipelinepb)
 	case *clientpb.Pipeline_Custom:
 		p = NewCustomPipeline(pipelinepb)
 	default:

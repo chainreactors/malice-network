@@ -118,6 +118,59 @@ func TestRemAgentCtrlUsesScopedPipelineID(t *testing.T) {
 	}
 }
 
+func TestRemAgentCtrlRejectsAmbiguousBarePipelineID(t *testing.T) {
+	newRPCTestEnv(t)
+	pipelineName := "rem-runtime-ambiguous"
+	listenerA, _ := seedRemRuntimeWithListener(t, "listener-rem-ambiguous-a", pipelineName)
+	listenerB, _ := seedRemRuntimeWithListener(t, "listener-rem-ambiguous-b", pipelineName)
+
+	_, err := (&Server{}).RemAgentCtrl(context.Background(), &clientpb.REMAgent{
+		PipelineId: pipelineName,
+		Id:         "agent-ambiguous",
+		Args:       []string{"reconfigure", "500"},
+	})
+	if err == nil {
+		t.Fatal("RemAgentCtrl should reject ambiguous bare pipeline ID")
+	}
+	select {
+	case ctrl := <-listenerA.Ctrl:
+		t.Fatalf("unexpected ctrl on listener A: %#v", ctrl)
+	default:
+	}
+	select {
+	case ctrl := <-listenerB.Ctrl:
+		t.Fatalf("unexpected ctrl on listener B: %#v", ctrl)
+	default:
+	}
+}
+
+func TestRemAgentCtrlRejectsDuplicateAgentWithoutPipelineID(t *testing.T) {
+	newRPCTestEnv(t)
+	agentID := "agent-duplicate"
+	listenerA, pipelineA := seedRemRuntimeWithListener(t, "listener-rem-agent-a", "rem-agent-a")
+	listenerB, pipelineB := seedRemRuntimeWithListener(t, "listener-rem-agent-b", "rem-agent-b")
+	pipelineA.GetRem().Agents[agentID] = &clientpb.REMAgent{Id: agentID}
+	pipelineB.GetRem().Agents[agentID] = &clientpb.REMAgent{Id: agentID}
+
+	_, err := (&Server{}).RemAgentCtrl(context.Background(), &clientpb.REMAgent{
+		Id:   agentID,
+		Args: []string{"reconfigure", "500"},
+	})
+	if err == nil {
+		t.Fatal("RemAgentCtrl should reject duplicate agent ID without pipeline ID")
+	}
+	select {
+	case ctrl := <-listenerA.Ctrl:
+		t.Fatalf("unexpected ctrl on listener A: %#v", ctrl)
+	default:
+	}
+	select {
+	case ctrl := <-listenerB.Ctrl:
+		t.Fatalf("unexpected ctrl on listener B: %#v", ctrl)
+	default:
+	}
+}
+
 func TestRemDialUsesScopedPipelineBeforeAgentExists(t *testing.T) {
 	env := newRPCTestEnv(t)
 	sess := env.seedSession(t, "rem-dial-session", "rem-dial-transport", true)
@@ -327,6 +380,27 @@ func TestRegisterRemPreservesExistingDBAndBackfillsConfig(t *testing.T) {
 	cfg := configs.GetListenerConfig()
 	if cfg.REMs[0].Console != "tcp://0.0.0.0:20000" || cfg.REMs[0].Link != "tcp://127.0.0.1:20000" {
 		t.Fatalf("config REM was not backfilled from DB: %#v", cfg.REMs[0])
+	}
+}
+
+func TestRegisterRemRejectsColonName(t *testing.T) {
+	newRPCTestEnv(t)
+	core.Listeners.Add(core.NewListener("listener-rem-colon", "127.0.0.1"))
+
+	_, err := (&Server{}).RegisterRem(context.Background(), &clientpb.Pipeline{
+		Name:       "rem:bad",
+		ListenerId: "listener-rem-colon",
+		Type:       consts.RemPipeline,
+		Body: &clientpb.Pipeline_Rem{
+			Rem: &clientpb.REM{
+				Name:       "rem:bad",
+				ListenerId: "listener-rem-colon",
+				Console:    "tcp://127.0.0.1:19001",
+			},
+		},
+	})
+	if err == nil {
+		t.Fatal("RegisterRem should reject ':' in REM pipeline name")
 	}
 }
 

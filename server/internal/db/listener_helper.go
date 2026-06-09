@@ -376,9 +376,21 @@ func AddContent(content *clientpb.WebContent) (*models.WebsiteContent, error) {
 		content.ListenerId = pipeline.ListenerId
 	}
 
-	err := Session().Preload("Pipeline").
-		Where("pipeline_id = ? AND path = ? AND (listener_id = ? OR listener_id = '')", webModel.PipelineID, content.Path, webModel.ListenerID).
-		First(&existingContent).Error
+	existingQuery := Session().Preload("Pipeline").Where("pipeline_id = ? AND path = ?", webModel.PipelineID, content.Path)
+	if webModel.ListenerID != "" {
+		includeLegacy, err := shouldIncludeLegacyWebsiteContent(webModel.PipelineID, webModel.ListenerID)
+		if err != nil {
+			return nil, err
+		}
+		if includeLegacy {
+			existingQuery = existingQuery.Where("listener_id = ? OR listener_id = ''", webModel.ListenerID)
+		} else {
+			existingQuery = existingQuery.Where("listener_id = ?", webModel.ListenerID)
+		}
+	} else {
+		existingQuery = existingQuery.Where("listener_id = ''")
+	}
+	err := existingQuery.First(&existingContent).Error
 	if err == nil {
 		webModel.ID = existingContent.ID
 		query := Session()

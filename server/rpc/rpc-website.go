@@ -268,6 +268,9 @@ func (rpc *Server) RegisterWebsite(ctx context.Context, req *clientpb.Pipeline) 
 	if req == nil || req.GetWeb() == nil {
 		return nil, types.ErrMissingRequestField
 	}
+	if err := validatePipelineIdentity(req); err != nil {
+		return nil, err
+	}
 	lns, err := core.Listeners.Get(req.ListenerId)
 	if err != nil {
 		return nil, err

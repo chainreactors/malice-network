@@ -176,6 +176,52 @@ func TestSessionOrphanedAfterPipelineDisconnect(t *testing.T) {
 	}
 }
 
+func TestPipelineStreamLookupScopesDuplicatePipelineNamesByListener(t *testing.T) {
+	withIsolatedPipelinesCh(t)
+
+	streamA := &testRPCServerStream{}
+	streamB := &testRPCServerStream{}
+	pipelinesCh.Store(core.PipelineRuntimeKey("listener-a", "shared-pipe"), streamA)
+	pipelinesCh.Store(core.PipelineRuntimeKey("listener-b", "shared-pipe"), streamB)
+
+	gotA, ok := loadPipelineStreamForSession(&core.Session{
+		PipelineID: "shared-pipe",
+		ListenerID: "listener-a",
+	})
+	if !ok || gotA != streamA {
+		t.Fatalf("listener-a stream = %#v/%v, want streamA/true", gotA, ok)
+	}
+
+	gotB, ok := loadPipelineStreamForSession(&core.Session{
+		PipelineID: "shared-pipe",
+		ListenerID: "listener-b",
+	})
+	if !ok || gotB != streamB {
+		t.Fatalf("listener-b stream = %#v/%v, want streamB/true", gotB, ok)
+	}
+}
+
+func TestPipelineStreamLookupRejectsAmbiguousLegacyFallback(t *testing.T) {
+	withIsolatedListenersAndJobs(t)
+	withIsolatedPipelinesCh(t)
+
+	listenerA := core.NewListener("legacy-stream-a", "10.0.0.1")
+	listenerB := core.NewListener("legacy-stream-b", "10.0.0.2")
+	core.Listeners.Map.Store(listenerA.Name, listenerA)
+	core.Listeners.Map.Store(listenerB.Name, listenerB)
+	listenerA.AddPipeline(&clientpb.Pipeline{Name: "shared-pipe", ListenerId: listenerA.Name})
+	listenerB.AddPipeline(&clientpb.Pipeline{Name: "shared-pipe", ListenerId: listenerB.Name})
+	pipelinesCh.Store("shared-pipe", &testRPCServerStream{})
+
+	got, ok := loadPipelineStreamForSession(&core.Session{
+		PipelineID: "shared-pipe",
+		ListenerID: listenerB.Name,
+	})
+	if ok || got != nil {
+		t.Fatalf("legacy stream fallback = %#v/%v, want nil/false for ambiguous duplicate pipelines", got, ok)
+	}
+}
+
 // S4: Two goroutines consuming same Ctrl channel — messages randomly distributed.
 // This is a known design limitation, not a bug. Documenting the behavior.
 func TestDualCtrlConsumersRaceOnChannel(t *testing.T) {

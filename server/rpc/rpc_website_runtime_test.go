@@ -199,3 +199,23 @@ func TestWebsiteHandlersRejectNilRequest(t *testing.T) {
 		t.Fatalf("StartWebsite(nil) error = %v, want %v", err, types.ErrMissingRequestField)
 	}
 }
+
+func TestRegisterWebsiteRejectsColonName(t *testing.T) {
+	newRPCTestEnv(t)
+	core.Listeners.Add(core.NewListener("listener-web-colon", "127.0.0.1"))
+
+	_, err := (&Server{}).RegisterWebsite(context.Background(), &clientpb.Pipeline{
+		Name:       "web:bad",
+		ListenerId: "listener-web-colon",
+		Type:       consts.WebsitePipeline,
+		Body: &clientpb.Pipeline_Web{
+			Web: &clientpb.Website{
+				Name:       "web:bad",
+				ListenerId: "listener-web-colon",
+			},
+		},
+	})
+	if err == nil {
+		t.Fatal("RegisterWebsite should reject ':' in website pipeline name")
+	}
+}

@@ -171,10 +171,16 @@ func DeletePipelineCmd(cmd *cobra.Command, con *core.Console) error {
 
 func resolvePipelineCtrlTarget(con *core.Console, key string) (string, string, bool) {
 	if con == nil || con.Pipelines == nil {
+		if listenerID, name, ok := strings.Cut(key, ":"); ok && listenerID != "" && name != "" {
+			return name, listenerID, false
+		}
 		return key, "", false
 	}
 	pipeline, ok := con.Pipelines[key]
 	if !ok || pipeline == nil {
+		if listenerID, name, ok := strings.Cut(key, ":"); ok && listenerID != "" && name != "" {
+			return name, listenerID, false
+		}
 		return key, "", false
 	}
 	return pipeline.Name, pipeline.ListenerId, true

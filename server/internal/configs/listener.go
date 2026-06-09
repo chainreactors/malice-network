@@ -3,7 +3,9 @@ package configs
 import (
 	"crypto/x509/pkix"
 	"fmt"
+	"net"
 	"os"
+	"strings"
 
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
@@ -17,9 +19,11 @@ import (
 var ListenerConfigFileName = "listener.yaml"
 
 type ListenerConfig struct {
-	Enable bool   `config:"enable" default:"true" yaml:"enable"`
-	Name   string `config:"name" default:"listener" yaml:"name"`
-	Auth   string `config:"auth" default:"listener.auth" yaml:"auth"`
+	Enable    bool                   `config:"enable" default:"true" yaml:"enable"`
+	Name      string                 `config:"name" default:"listener" yaml:"name"`
+	Auth      string                 `config:"auth" default:"listener.auth" yaml:"auth"`
+	Transport string                 `config:"transport" default:"reverse" yaml:"transport"`
+	Forward   *ForwardListenerConfig `config:"forward" yaml:"forward"`
 	//Server             string                `config:"server" default:"127.0.0.1"`
 	IP                 string                `config:"ip" yaml:"ip"`
 	TcpPipelines       []*TcpPipelineConfig  `config:"tcp" yaml:"tcp"`
@@ -28,6 +32,60 @@ type ListenerConfig struct {
 	Websites           []*WebsiteConfig      `config:"website" yaml:"website"`
 	REMs               []*REMConfig          `config:"rem" yaml:"rem"`
 	AutoBuildConfig    *AutoBuildConfig      `config:"auto_build" yaml:"auto_build"`
+}
+
+const (
+	ListenerTransportReverse = "reverse"
+	ListenerTransportForward = "forward"
+)
+
+type ForwardListenerConfig struct {
+	ListenHost  string `config:"listen_host" default:"0.0.0.0" yaml:"listen_host"`
+	ListenPort  uint16 `config:"listen_port" default:"5005" yaml:"listen_port"`
+	ConnectHost string `config:"connect_host" default:"" yaml:"connect_host"`
+	ConnectPort uint16 `config:"connect_port" default:"0" yaml:"connect_port"`
+}
+
+func (l *ListenerConfig) TransportMode() string {
+	if l == nil || strings.TrimSpace(l.Transport) == "" {
+		return ListenerTransportReverse
+	}
+	return strings.ToLower(strings.TrimSpace(l.Transport))
+}
+
+func (l *ListenerConfig) IsForwardTransport() bool {
+	return l.TransportMode() == ListenerTransportForward
+}
+
+func (l *ListenerConfig) ForwardConfigOrDefault() *ForwardListenerConfig {
+	cfg := &ForwardListenerConfig{}
+	if l != nil && l.Forward != nil {
+		*cfg = *l.Forward
+	}
+	if cfg.ListenHost == "" {
+		cfg.ListenHost = "0.0.0.0"
+	}
+	if cfg.ListenPort == 0 {
+		cfg.ListenPort = 5005
+	}
+	if cfg.ConnectHost == "" && l != nil && l.IP != "" {
+		cfg.ConnectHost = l.IP
+	}
+	if cfg.ConnectHost == "" {
+		cfg.ConnectHost = "127.0.0.1"
+	}
+	if cfg.ConnectPort == 0 {
+		cfg.ConnectPort = cfg.ListenPort
+	}
+	return cfg
+}
+
+func (c *ForwardListenerConfig) ListenAddress() string {
+	return net.JoinHostPort(c.ListenHost, fmt.Sprintf("%d", c.ListenPort))
+}
+
+func (c *ForwardListenerConfig) ConnectAddress() string {
+	return net.JoinHostPort(c.ConnectHost, fmt.Sprintf("%d", c.ConnectPort))
 }
 
 type TcpPipelineConfig struct {
