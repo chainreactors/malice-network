@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -181,6 +182,101 @@ func TestCommandSchema_WithAnnotations(t *testing.T) {
 	}
 	if !found {
 		t.Error("Expected 'command' to be in required fields")
+	}
+}
+
+func TestCommandSchema_WithCommandArgsAndPassthrough(t *testing.T) {
+	cmd := &cobra.Command{
+		Use:     "execute_exe [exe]",
+		Short:   "Executes the given PE",
+		Aliases: []string{"bexecute_exe"},
+	}
+	cmd.Flags().Uint32("timeout", 60, "timeout, in seconds")
+
+	flag := cmd.Flags().Lookup("timeout")
+	if flag == nil {
+		t.Fatal("timeout flag not found")
+	}
+	flag.Annotations = map[string][]string{
+		"group": {"execute"},
+	}
+
+	SetCommandArgs(cmd, PathArg("exe", true, 0))
+	SetPassthrough(cmd, &PassthroughSchema{
+		Name:      "args",
+		Label:     "Program arguments",
+		Kind:      "raw",
+		Separator: "--",
+	})
+
+	testCmd := &Command{
+		Name:    "execute_exe",
+		Command: cmd,
+	}
+
+	schema, err := testCmd.GenerateSchema()
+	if err != nil {
+		t.Fatalf("Failed to generate schema: %v", err)
+	}
+
+	if schema.Name != "execute_exe" {
+		t.Fatalf("Expected schema name execute_exe, got %q", schema.Name)
+	}
+	if !strings.Contains(schema.Usage, "execute_exe [exe]") {
+		t.Fatalf("Expected usage to contain execute_exe [exe], got %q", schema.Usage)
+	}
+	if len(schema.Aliases) != 1 || schema.Aliases[0] != "bexecute_exe" {
+		t.Fatalf("Expected alias bexecute_exe, got %#v", schema.Aliases)
+	}
+	if len(schema.Args) != 1 {
+		t.Fatalf("Expected 1 arg, got %d", len(schema.Args))
+	}
+	if schema.Args[0].Name != "exe" || schema.Args[0].Kind != "path_local" || !schema.Args[0].Required {
+		t.Fatalf("Unexpected arg schema: %#v", schema.Args[0])
+	}
+	if schema.Passthrough == nil {
+		t.Fatal("Expected passthrough schema")
+	}
+	if schema.Passthrough.Separator != "--" || schema.Passthrough.Kind != "raw" {
+		t.Fatalf("Unexpected passthrough schema: %#v", schema.Passthrough)
+	}
+
+	timeout := schema.Properties["timeout"]
+	if timeout == nil {
+		t.Fatal("timeout property not found")
+	}
+	if timeout.Type != "integer" {
+		t.Fatalf("Expected timeout type integer, got %q", timeout.Type)
+	}
+	if timeout.Default != int64(60) {
+		t.Fatalf("Expected timeout default int64(60), got %#v", timeout.Default)
+	}
+	if group := timeout.AdditionalProperties["ui:group"]; group != "execute" {
+		t.Fatalf("Expected ui:group execute, got %#v", group)
+	}
+}
+
+func TestCommandSchema_DoesNotRequireEmptyDefaultFlags(t *testing.T) {
+	cmd := &cobra.Command{
+		Use:   "shell [cmdline]",
+		Short: "Execute cmd",
+	}
+	cmd.Flags().String("shell", "", "custom shell path")
+
+	testCmd := &Command{
+		Name:    "shell",
+		Command: cmd,
+	}
+
+	schema, err := testCmd.GenerateSchema()
+	if err != nil {
+		t.Fatalf("Failed to generate schema: %v", err)
+	}
+
+	for _, req := range schema.Required {
+		if req == "shell" {
+			t.Fatalf("Expected shell flag to be optional, required list: %#v", schema.Required)
+		}
 	}
 }
 

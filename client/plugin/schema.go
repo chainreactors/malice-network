@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -12,11 +13,47 @@ import (
 // CommandSchema represents the JSON Schema for a command (including UI information)
 type CommandSchema struct {
 	Type        string                     `json:"type"`
+	Name        string                     `json:"name"`
 	Title       string                     `json:"title,omitempty"`
+	Usage       string                     `json:"usage,omitempty"`
+	Aliases     []string                   `json:"aliases,omitempty"`
 	Description string                     `json:"description,omitempty"`
+	Args        []*ArgSchema               `json:"args,omitempty"`
+	Passthrough *PassthroughSchema         `json:"passthrough,omitempty"`
 	Properties  map[string]*PropertySchema `json:"properties"`
 	Required    []string                   `json:"required,omitempty"`
+	Subcommands map[string]*CommandSchema  `json:"subcommands,omitempty"`
+	Execution   *ExecutionSchema           `json:"execution,omitempty"`
 	XMetadata   *CommandMetadata           `json:"x-metadata,omitempty"`
+}
+
+// ArgSchema describes a positional CLI argument for UI rendering.
+type ArgSchema struct {
+	Name        string `json:"name"`
+	Label       string `json:"label,omitempty"`
+	Description string `json:"description,omitempty"`
+	Kind        string `json:"kind"`
+	Required    bool   `json:"required"`
+	Variadic    bool   `json:"variadic,omitempty"`
+	Position    int    `json:"position"`
+	Placeholder string `json:"placeholder,omitempty"`
+}
+
+// PassthroughSchema describes arguments passed after a "--" delimiter.
+type PassthroughSchema struct {
+	Name        string `json:"name"`
+	Label       string `json:"label,omitempty"`
+	Description string `json:"description,omitempty"`
+	Kind        string `json:"kind"`
+	Separator   string `json:"separator"`
+	Placeholder string `json:"placeholder,omitempty"`
+}
+
+// ExecutionSchema describes command execution behavior that is not a normal flag.
+type ExecutionSchema struct {
+	RequiresSession bool `json:"requiresSession"`
+	Waitable        bool `json:"waitable"`
+	Confirmable     bool `json:"confirmable"`
 }
 
 // PropertySchema represents a property in the JSON Schema
@@ -97,10 +134,16 @@ func (cmd *Command) GenerateSchema() (*CommandSchema, error) {
 
 	schema := &CommandSchema{
 		Type:        "object",
+		Name:        cmd.Command.Name(),
 		Title:       cmd.Command.Use,
+		Usage:       cmd.Command.UseLine(),
+		Aliases:     cmd.Command.Aliases,
 		Description: cmd.Command.Short,
+		Args:        extractArgs(cmd.Command),
+		Passthrough: extractPassthrough(cmd.Command),
 		Properties:  make(map[string]*PropertySchema),
 		Required:    []string{},
+		Execution:   inferExecution(cmd.Command),
 		XMetadata:   extractMetadata(cmd),
 	}
 
@@ -115,7 +158,132 @@ func (cmd *Command) GenerateSchema() (*CommandSchema, error) {
 		}
 	})
 
+	for _, sub := range cmd.Command.Commands() {
+		if sub == nil || sub.Hidden {
+			continue
+		}
+		pluginCmd := &Command{
+			Name:    sub.Name(),
+			Command: sub,
+			Example: sub.Example,
+		}
+		subSchema, err := pluginCmd.GenerateSchema()
+		if err != nil {
+			continue
+		}
+		if schema.Subcommands == nil {
+			schema.Subcommands = make(map[string]*CommandSchema)
+		}
+		schema.Subcommands[sub.Name()] = subSchema
+	}
+
 	return schema, nil
+}
+
+func extractArgs(cmd *cobra.Command) []*ArgSchema {
+	if cmd == nil {
+		return nil
+	}
+	if raw, ok := cmd.Annotations["ui:args"]; ok && raw != "" {
+		var args []*ArgSchema
+		if err := json.Unmarshal([]byte(raw), &args); err == nil {
+			return args
+		}
+	}
+	return inferArgsFromUse(cmd.Use)
+}
+
+func extractPassthrough(cmd *cobra.Command) *PassthroughSchema {
+	if cmd == nil {
+		return nil
+	}
+	if raw, ok := cmd.Annotations["ui:passthrough"]; ok && raw != "" {
+		var passthrough PassthroughSchema
+		if err := json.Unmarshal([]byte(raw), &passthrough); err == nil {
+			return &passthrough
+		}
+	}
+	return nil
+}
+
+func inferExecution(cmd *cobra.Command) *ExecutionSchema {
+	if cmd == nil {
+		return nil
+	}
+	requiresSession := cmd.Annotations["resource"] != "true" && cmd.Annotations["static"] != "true"
+	return &ExecutionSchema{
+		RequiresSession: requiresSession,
+		Waitable:        requiresSession,
+		Confirmable:     requiresSession,
+	}
+}
+
+func inferArgsFromUse(use string) []*ArgSchema {
+	fields := strings.Fields(use)
+	if len(fields) <= 1 {
+		return nil
+	}
+	var args []*ArgSchema
+	position := 0
+	for _, field := range fields[1:] {
+		name, optional, ok := parseUseArgToken(field)
+		if !ok {
+			continue
+		}
+		args = append(args, &ArgSchema{
+			Name:     name,
+			Label:    name,
+			Kind:     inferArgKind(name),
+			Required: !optional,
+			Variadic: isVariadicArgName(name),
+			Position: position,
+		})
+		position++
+	}
+	return args
+}
+
+func parseUseArgToken(token string) (string, bool, bool) {
+	token = strings.TrimSpace(token)
+	if token == "" {
+		return "", false, false
+	}
+	optional := false
+	if strings.HasPrefix(token, "[") && strings.HasSuffix(token, "]") {
+		optional = true
+		token = strings.TrimSuffix(strings.TrimPrefix(token, "["), "]")
+	} else if strings.HasPrefix(token, "<") && strings.HasSuffix(token, ">") {
+		token = strings.TrimSuffix(strings.TrimPrefix(token, "<"), ">")
+	} else {
+		return "", false, false
+	}
+	token = strings.TrimSuffix(token, "...")
+	token = strings.Trim(token, " ,")
+	if token == "" {
+		return "", false, false
+	}
+	return token, optional, true
+}
+
+func inferArgKind(name string) string {
+	lower := strings.ToLower(name)
+	switch {
+	case lower == "cmdline" || lower == "command" || lower == "cmd" || lower == "args":
+		return "raw"
+	case strings.Contains(lower, "session"):
+		return "session"
+	case strings.Contains(lower, "exe") || strings.Contains(lower, "dll") || strings.Contains(lower, "file"):
+		return "path_local"
+	case strings.Contains(lower, "path") || strings.Contains(lower, "dir"):
+		return "path_remote"
+	default:
+		return "string"
+	}
+}
+
+func isVariadicArgName(name string) bool {
+	lower := strings.ToLower(name)
+	return lower == "cmdline" || lower == "args" || strings.HasSuffix(lower, "args")
 }
 
 // extractMetadata extracts command metadata from annotations
@@ -179,6 +347,13 @@ func setTypeAndDefault(propSchema *PropertySchema, flag *pflag.Flag) {
 				propSchema.Default = val
 			}
 		}
+	case "uint", "uint32", "uint64":
+		propSchema.Type = "integer"
+		if flag.DefValue != "" {
+			if val, err := strconv.ParseUint(flag.DefValue, 10, 64); err == nil {
+				propSchema.Default = int64(val)
+			}
+		}
 	case "float", "float32", "float64":
 		propSchema.Type = "number"
 		if flag.DefValue != "" {
@@ -233,6 +408,9 @@ func extractAnnotations(propSchema *PropertySchema, flag *pflag.Flag) {
 
 		if len(values) == 1 {
 			value := values[0]
+			if key == "group" {
+				propSchema.AdditionalProperties["ui:group"] = value
+			}
 			// Parse numeric values for specific keys
 			if key == "ui:order" || key == "ui:min" || key == "ui:max" {
 				if numVal, err := strconv.Atoi(value); err == nil {
@@ -259,8 +437,10 @@ func isRequired(flag *pflag.Flag) bool {
 	if requiredAnnotation, ok := flag.Annotations["ui:required"]; ok && len(requiredAnnotation) > 0 {
 		return requiredAnnotation[0] == "true"
 	}
-	// Default: required if no default value and not optional
-	return flag.NoOptDefVal == "" && flag.DefValue == ""
+	if requiredAnnotation, ok := flag.Annotations[cobra.BashCompOneRequiredFlag]; ok && len(requiredAnnotation) > 0 {
+		return requiredAnnotation[0] == "true"
+	}
+	return false
 }
 
 // ToJSON exports CommandSchema as JSON string
@@ -299,6 +479,67 @@ func GenerateSchemasFromCommands(commands []*cobra.Command) (map[string]*Command
 	}
 
 	return schemas, nil
+}
+
+// SetCommandArgs declares positional arguments for dynamic UI rendering.
+func SetCommandArgs(cmd *cobra.Command, args ...*ArgSchema) {
+	if cmd == nil {
+		return
+	}
+	setCommandJSONAnnotation(cmd, "ui:args", args)
+}
+
+// SetPassthrough declares a "--" passthrough argument region for dynamic UI rendering.
+func SetPassthrough(cmd *cobra.Command, passthrough *PassthroughSchema) {
+	if cmd == nil || passthrough == nil {
+		return
+	}
+	setCommandJSONAnnotation(cmd, "ui:passthrough", passthrough)
+}
+
+func setCommandJSONAnnotation(cmd *cobra.Command, key string, value interface{}) {
+	data, err := json.Marshal(value)
+	if err != nil {
+		return
+	}
+	if cmd.Annotations == nil {
+		cmd.Annotations = make(map[string]string)
+	}
+	cmd.Annotations[key] = string(data)
+}
+
+// RawArg creates a raw/command-line positional argument.
+func RawArg(name string, required bool, variadic bool, position int) *ArgSchema {
+	return &ArgSchema{
+		Name:     name,
+		Label:    name,
+		Kind:     "raw",
+		Required: required,
+		Variadic: variadic,
+		Position: position,
+	}
+}
+
+// PathArg creates a local path positional argument.
+func PathArg(name string, required bool, position int) *ArgSchema {
+	return &ArgSchema{
+		Name:     name,
+		Label:    name,
+		Kind:     "path_local",
+		Required: required,
+		Position: position,
+	}
+}
+
+// SessionArg creates a session-id positional argument.
+func SessionArg(name string, required bool, position int) *ArgSchema {
+	return &ArgSchema{
+		Name:     name,
+		Label:    name,
+		Kind:     "session",
+		Required: required,
+		Position: position,
+	}
 }
 
 // Lua API functions for setting flag annotations

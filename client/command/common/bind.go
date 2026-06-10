@@ -29,7 +29,8 @@ func Bind(desc string, persistent bool, cmd *cobra.Command, flags func(f *pflag.
 func SetFlagSetGroup(flagSet *pflag.FlagSet, name string) {
 	flagSet.VisitAll(func(flag *pflag.Flag) {
 		flag.Annotations = map[string][]string{
-			"group": {name},
+			"group":    {name},
+			"ui:group": {name},
 		}
 	})
 }

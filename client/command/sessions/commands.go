@@ -5,6 +5,7 @@ import (
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/malice-network/client/plugin"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -51,6 +52,7 @@ session -a
 		f.StringP("target", "t", "", "session target")
 		f.String("pipeline", "", "pipeline id")
 	})
+	plugin.SetCommandArgs(bindSessNewCmd, plugin.SessionArg("session", false, 0))
 	bindSessNewCmd.MarkFlagRequired("target")
 	bindSessNewCmd.MarkFlagRequired("pipeline")
 	common.BindFlagCompletions(bindSessNewCmd, func(comp carapace.ActionMap) {
@@ -80,6 +82,10 @@ note newNote
 		common.SessionIDCompleter(con),
 		carapace.ActionValues().Usage("session note name"),
 	)
+	plugin.SetCommandArgs(noteCommand,
+		&plugin.ArgSchema{Name: "note", Label: "note", Kind: "string", Required: true, Position: 0},
+		plugin.SessionArg("session", false, 1),
+	)
 
 	groupCommand := &cobra.Command{
 		Use:   consts.CommandSessionGroup + " [group] [session]",
@@ -104,6 +110,10 @@ group newGroup
 		common.SessionIDCompleter(con),
 		carapace.ActionValues().Usage("session group name"),
 	)
+	plugin.SetCommandArgs(groupCommand,
+		&plugin.ArgSchema{Name: "group", Label: "group", Kind: "string", Required: true, Position: 0},
+		plugin.SessionArg("session", false, 1),
+	)
 
 	removeCommand := &cobra.Command{
 		Use:   consts.CommandRemoveSession + " [session]",
@@ -120,6 +130,7 @@ remove 08d6c05a21512a79a1dfeb9d2a8f262f
 	}
 
 	common.BindArgCompletions(removeCommand, nil, common.SessionIDCompleter(con))
+	plugin.SetCommandArgs(removeCommand, plugin.SessionArg("session", true, 0))
 
 	sessCmd.AddCommand(bindSessNewCmd, noteCommand, groupCommand, removeCommand)
 	useCommand := &cobra.Command{
@@ -140,6 +151,7 @@ use 08d6c05a21512a79a1dfeb9d2a8f262f
 	}
 
 	common.BindArgCompletions(useCommand, nil, common.SessionIDCompleter(con))
+	plugin.SetCommandArgs(useCommand, plugin.SessionArg("session", true, 0))
 
 	backCommand := &cobra.Command{
 		Use:   consts.CommandBackground,

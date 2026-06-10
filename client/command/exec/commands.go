@@ -5,6 +5,7 @@ import (
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/malice-network/client/plugin"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -35,6 +36,13 @@ run gogo.exe -- -i 127.0.0.1 -p http
 		carapace.ActionValues().Usage("command to execute"),
 		carapace.ActionValues().Usage("arguments to the command"),
 	)
+	plugin.SetCommandArgs(runCmd, plugin.RawArg("cmdline", true, true, 0))
+	plugin.SetPassthrough(runCmd, &plugin.PassthroughSchema{
+		Name:      "args",
+		Label:     "Program arguments",
+		Kind:      "raw",
+		Separator: "--",
+	})
 	common.BindOutputFlags(runCmd)
 
 	executeCmd := &cobra.Command{
@@ -61,6 +69,13 @@ execute gogo.exe -- -i 127.0.0.1 -p http
 	common.BindArgCompletions(executeCmd, nil,
 		carapace.ActionValues().Usage("command to execute"),
 	)
+	plugin.SetCommandArgs(executeCmd, plugin.RawArg("cmdline", true, true, 0))
+	plugin.SetPassthrough(executeCmd, &plugin.PassthroughSchema{
+		Name:      "args",
+		Label:     "Program arguments",
+		Kind:      "raw",
+		Separator: "--",
+	})
 	common.BindOutputFlags(executeCmd)
 
 	shellCmd := &cobra.Command{
@@ -81,6 +96,13 @@ execute gogo.exe -- -i 127.0.0.1 -p http
 		carapace.ActionValues().Usage("cmd to execute"),
 		carapace.ActionValues().Usage("arguments to the command"),
 	)
+	plugin.SetCommandArgs(shellCmd, plugin.RawArg("cmdline", true, true, 0))
+	plugin.SetPassthrough(shellCmd, &plugin.PassthroughSchema{
+		Name:      "args",
+		Label:     "Shell arguments",
+		Kind:      "raw",
+		Separator: "--",
+	})
 
 	common.BindFlag(shellCmd, func(f *pflag.FlagSet) {
 		f.BoolP("quiet", "q", false, "disable output")
@@ -191,6 +213,13 @@ execute_assembly potato.exe "whoami"
 	common.BindArgCompletions(execAssemblyCmd, nil,
 		carapace.ActionFiles().Usage("path the assembly file"),
 		carapace.ActionValues().Usage("arguments to pass to the assembly args"))
+	plugin.SetCommandArgs(execAssemblyCmd, plugin.PathArg("file", true, 0))
+	plugin.SetPassthrough(execAssemblyCmd, &plugin.PassthroughSchema{
+		Name:      "args",
+		Label:     "Assembly arguments",
+		Kind:      "raw",
+		Separator: "--",
+	})
 
 	common.BindFlag(execAssemblyCmd, common.SacrificeFlagSet, common.CLRFlagSet)
 	common.BindOutputFlags(execAssemblyCmd)
@@ -223,6 +252,13 @@ inline_assembly --amsi potato.exe -- cmd /c whoami
 	common.BindArgCompletions(inlineAssemblyCmd, nil,
 		carapace.ActionFiles().Usage("path the assembly file"),
 		carapace.ActionValues().Usage("arguments to pass to the assembly args"))
+	plugin.SetCommandArgs(inlineAssemblyCmd, plugin.PathArg("file", true, 0))
+	plugin.SetPassthrough(inlineAssemblyCmd, &plugin.PassthroughSchema{
+		Name:      "args",
+		Label:     "Assembly arguments",
+		Kind:      "raw",
+		Separator: "--",
+	})
 
 	common.BindFlag(inlineAssemblyCmd, common.CLRFlagSet)
 	common.BindOutputFlags(inlineAssemblyCmd)
@@ -250,6 +286,7 @@ execute_shellcode example.bin
 	common.BindArgCompletions(execShellcodeCmd, nil,
 		carapace.ActionFiles().Usage("path the shellcode file"),
 		carapace.ActionValues().Usage("arguments to pass to the assembly entrypoint"))
+	plugin.SetCommandArgs(execShellcodeCmd, plugin.PathArg("shellcode_file", true, 0))
 
 	common.BindFlag(execShellcodeCmd, common.ExecuteFlagSet, common.SacrificeFlagSet)
 	common.BindOutputFlags(execShellcodeCmd)
@@ -279,6 +316,7 @@ inline_shellcode example.bin
 
 	common.BindArgCompletions(inlineShellcodeCmd, nil,
 		carapace.ActionFiles().Usage("path the shellcode file"))
+	plugin.SetCommandArgs(inlineShellcodeCmd, plugin.PathArg("shellcode_file", true, 0))
 	common.BindFlag(inlineShellcodeCmd, common.ExecuteFlagSet)
 	common.BindOutputFlags(inlineShellcodeCmd)
 
@@ -311,6 +349,13 @@ execute_dll example.dll -e entrypoint -- arg1 arg2
 	common.BindArgCompletions(execDLLCmd, nil,
 		carapace.ActionFiles().Usage("path the DLL file"),
 		carapace.ActionValues().Usage("arguments to pass to the assembly entrypoint"))
+	plugin.SetCommandArgs(execDLLCmd, plugin.PathArg("dll", true, 0))
+	plugin.SetPassthrough(execDLLCmd, &plugin.PassthroughSchema{
+		Name:      "args",
+		Label:     "DLL arguments",
+		Kind:      "raw",
+		Separator: "--",
+	})
 
 	common.BindFlag(execDLLCmd, common.ExecuteFlagSet, common.SacrificeFlagSet, func(f *pflag.FlagSet) {
 		f.StringP("entrypoint", "e", "", "custom entrypoint")
@@ -342,6 +387,13 @@ dllspawn example.dll
 	common.BindArgCompletions(execDLLSpawnCmd, nil,
 		carapace.ActionFiles().Usage("path the DLL file"),
 		carapace.ActionValues().Usage("arguments to pass to the assembly entrypoint"))
+	plugin.SetCommandArgs(execDLLSpawnCmd, plugin.PathArg("dll", true, 0))
+	plugin.SetPassthrough(execDLLSpawnCmd, &plugin.PassthroughSchema{
+		Name:      "args",
+		Label:     "DLL arguments",
+		Kind:      "raw",
+		Separator: "--",
+	})
 
 	common.BindFlag(execDLLSpawnCmd, common.ExecuteFlagSet, common.SacrificeFlagSet, func(f *pflag.FlagSet) {
 		f.StringP("entrypoint", "e", "", "custom entrypoint")
@@ -381,6 +433,13 @@ inline_dll example.dll -e RunFunction -- arg1 arg2
 
 	common.BindArgCompletions(inlineDLLCmd, nil,
 		carapace.ActionFiles().Usage("path the DLL file"))
+	plugin.SetCommandArgs(inlineDLLCmd, plugin.PathArg("dll", true, 0))
+	plugin.SetPassthrough(inlineDLLCmd, &plugin.PassthroughSchema{
+		Name:      "args",
+		Label:     "DLL arguments",
+		Kind:      "raw",
+		Separator: "--",
+	})
 
 	common.BindFlag(inlineDLLCmd, common.ExecuteFlagSet, func(f *pflag.FlagSet) {
 		f.StringP("entrypoint", "e", "", "entrypoint")
@@ -408,6 +467,13 @@ execute_exe gogo.exe -- -i 123.123.123.123 -p top2
 	common.BindArgCompletions(execExeCmd, nil,
 		carapace.ActionFiles().Usage("path the PE file"),
 		carapace.ActionValues().Usage("arguments to pass to the assembly entrypoint"))
+	plugin.SetCommandArgs(execExeCmd, plugin.PathArg("exe", true, 0))
+	plugin.SetPassthrough(execExeCmd, &plugin.PassthroughSchema{
+		Name:      "args",
+		Label:     "Program arguments",
+		Kind:      "raw",
+		Separator: "--",
+	})
 
 	common.BindFlag(execExeCmd, common.ExecuteFlagSet, common.SacrificeFlagSet)
 	common.BindOutputFlags(execExeCmd)
@@ -440,6 +506,13 @@ inline_exe hackbrowserdata.exe -- -h
 	common.BindOutputFlags(inlinePECmd)
 	common.BindArgCompletions(inlinePECmd, nil,
 		carapace.ActionFiles().Usage("path the PE file"))
+	plugin.SetCommandArgs(inlinePECmd, plugin.PathArg("exe", true, 0))
+	plugin.SetPassthrough(inlinePECmd, &plugin.PassthroughSchema{
+		Name:      "args",
+		Label:     "Program arguments",
+		Kind:      "raw",
+		Separator: "--",
+	})
 
 	execBofCmd := &cobra.Command{
 		Use:   consts.ModuleExecuteBof + " [bof]",
@@ -473,6 +546,13 @@ bof dir.x64.o -- wstr:"C:\\Windows\\System32"
 	common.BindArgCompletions(execBofCmd, nil,
 		carapace.ActionFiles().Usage("path the BOF file"),
 		carapace.ActionValues().Usage("arguments to pass to the assembly entrypoint"))
+	plugin.SetCommandArgs(execBofCmd, plugin.PathArg("bof", true, 0))
+	plugin.SetPassthrough(execBofCmd, &plugin.PassthroughSchema{
+		Name:      "args",
+		Label:     "BOF arguments",
+		Kind:      "raw",
+		Separator: "--",
+	})
 	common.BindOutputFlags(execBofCmd)
 
 	powerpickCmd := &cobra.Command{
@@ -497,6 +577,7 @@ powerpick -s powerview.ps1 -- Get-NetUser
 
 	common.BindArgCompletions(powerpickCmd, nil,
 		carapace.ActionValues().Usage("powershell script path"))
+	plugin.SetCommandArgs(powerpickCmd, plugin.RawArg("args", false, true, 0))
 
 	common.BindFlagCompletions(powerpickCmd, func(comp carapace.ActionMap) {
 		comp["script"] = carapace.ActionFiles()
