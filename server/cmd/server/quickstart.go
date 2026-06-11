@@ -54,14 +54,17 @@ func RunQuickstart(opt *Options) error {
 	enableTLS := true
 
 	// Group 4: Build (optional)
-	enableAutoBuild := true
-	buildPulse := true
+	buildDefaults := quickstartDefaultBuildOptions()
+	enableBuild := buildDefaults.enableBuild
+	enableAutoBuild := buildDefaults.enableAutoBuild
+	buildPulse := buildDefaults.buildPulse
 	var buildTargets []string
-	buildSource := "saas"
-	saasURL := "https://build.chainreactors.red"
-	saasToken := ""
+	buildSource := buildDefaults.buildSource
+	saasURL := buildDefaults.saasURL
+	saasToken := buildDefaults.saasToken
 
 	// Group 5: Notify (optional)
+	enableNotify := true
 	notifyType := "lark"
 	notifyParam1 := "" // webhook URL / API key / token
 	notifyParam2 := "" // chat ID / secret (optional depending on type)
@@ -149,9 +152,15 @@ func RunQuickstart(opt *Options) error {
 			},
 		},
 		{
-			Name:  "build",
-			Title: "Build",
+			Name:     "build",
+			Title:    "Build",
+			Optional: true,
 			Fields: []*wizard.FormField{
+				{
+					Name: "enable_build", Title: "Enable Build Service",
+					Kind: wizard.KindConfirm, ConfirmVal: enableBuild,
+					Value: &enableBuild,
+				},
 				{
 					Name: "enable_auto_build", Title: "Enable Auto-Build",
 					Kind: wizard.KindConfirm, ConfirmVal: enableAutoBuild,
@@ -185,8 +194,13 @@ func RunQuickstart(opt *Options) error {
 				{
 					Name: "saas_url", Title: "SaaS Build URL",
 					Kind: wizard.KindInput, InputValue: saasURL,
-					Validate: validateURL,
-					Value:    &saasURL,
+					Validate: func(s string) error {
+						if !enableBuild || buildSource != "saas" {
+							return nil
+						}
+						return validateURL(s)
+					},
+					Value: &saasURL,
 				},
 				{
 					Name: "saas_token", Title: "SaaS Token (empty=auto)",
@@ -201,6 +215,11 @@ func RunQuickstart(opt *Options) error {
 			Optional: true,
 			Fields: []*wizard.FormField{
 				{
+					Name: "enable_notify", Title: "Enable Notify",
+					Kind: wizard.KindConfirm, ConfirmVal: enableNotify,
+					Value: &enableNotify,
+				},
+				{
 					Name: "notify_type", Title: "Notification Service",
 					Kind:    wizard.KindSelect,
 					Options: []string{"lark", "telegram", "dingtalk", "serverchan", "pushplus"},
@@ -210,8 +229,13 @@ func RunQuickstart(opt *Options) error {
 					Name: "notify_param1", Title: "Webhook/Token/APIKey",
 					Description: "main credential for the service",
 					Kind:        wizard.KindInput, InputValue: notifyParam1,
-					Required: true,
-					Value:    &notifyParam1,
+					Validate: func(s string) error {
+						if !enableNotify {
+							return nil
+						}
+						return validateNotEmpty("Webhook/Token/APIKey")(s)
+					},
+					Value: &notifyParam1,
 				},
 				{
 					Name: "notify_param2", Title: "Secret/ChatID (optional)",
@@ -269,9 +293,11 @@ func RunQuickstart(opt *Options) error {
 		}
 	}
 
-	// Auto-build (only if Build group was expanded and enabled)
+	buildGroupEnabled := quickstartBuildSectionEnabled(enableBuild)
+
+	// Auto-build (only if Build group is active and enabled)
 	var autoBuild *configs.AutoBuildConfig
-	if groups[3].Expanded && enableAutoBuild {
+	if buildGroupEnabled && enableAutoBuild {
 		pipelineNames := collectPipelineNames(tcpPipelines, httpPipelines, remConfigs)
 		autoBuild = &configs.AutoBuildConfig{
 			Enable:     true,
@@ -284,7 +310,7 @@ func RunQuickstart(opt *Options) error {
 	// Build source
 	var githubConfig *configs.GithubConfig
 	saasConfig := &configs.SaasConfig{Enable: false}
-	if groups[3].Expanded {
+	if buildGroupEnabled {
 		switch buildSource {
 		case "saas":
 			saasConfig = &configs.SaasConfig{
@@ -302,7 +328,7 @@ func RunQuickstart(opt *Options) error {
 
 	// Notify (only if Notify group was expanded)
 	var notifyConfig *configs.NotifyConfig
-	if groups[4].Expanded && notifyParam1 != "" {
+	if quickstartSectionEnabled(groups[4], enableNotify) && notifyParam1 != "" {
 		notifyConfig = buildNotifyConfig(notifyType, notifyParam1, notifyParam2)
 	}
 
@@ -336,6 +362,41 @@ func RunQuickstart(opt *Options) error {
 
 	logs.Log.Importantf("quickstart config saved to %s", configPath)
 	return nil
+}
+
+func quickstartGroupActive(group *wizard.FormGroup) bool {
+	if group == nil {
+		return false
+	}
+	return !group.Optional || group.Expanded
+}
+
+func quickstartSectionEnabled(group *wizard.FormGroup, enabled bool) bool {
+	return enabled && quickstartGroupActive(group)
+}
+
+func quickstartBuildSectionEnabled(enabled bool) bool {
+	return enabled
+}
+
+type quickstartBuildOptions struct {
+	enableBuild     bool
+	enableAutoBuild bool
+	buildPulse      bool
+	buildSource     string
+	saasURL         string
+	saasToken       string
+}
+
+func quickstartDefaultBuildOptions() quickstartBuildOptions {
+	return quickstartBuildOptions{
+		enableBuild:     true,
+		enableAutoBuild: false,
+		buildPulse:      true,
+		buildSource:     "saas",
+		saasURL:         "https://build.chainreactors.red",
+		saasToken:       "",
+	}
 }
 
 // collectPipelineNames gathers names from all configured pipelines.

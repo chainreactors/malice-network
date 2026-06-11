@@ -4,6 +4,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/chainreactors/malice-network/client/wizard"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 )
 
@@ -176,6 +177,112 @@ func TestShouldOfferQuickstart(t *testing.T) {
 				t.Fatalf("shouldOfferQuickstart() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestQuickstartGroupActive(t *testing.T) {
+	tests := []struct {
+		name  string
+		group *wizard.FormGroup
+		want  bool
+	}{
+		{
+			name:  "required collapsed group is active",
+			group: &wizard.FormGroup{Optional: false, Expanded: false},
+			want:  true,
+		},
+		{
+			name:  "optional collapsed group is inactive",
+			group: &wizard.FormGroup{Optional: true, Expanded: false},
+			want:  false,
+		},
+		{
+			name:  "optional expanded group is active",
+			group: &wizard.FormGroup{Optional: true, Expanded: true},
+			want:  true,
+		},
+		{
+			name:  "nil group is inactive",
+			group: nil,
+			want:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := quickstartGroupActive(tt.group)
+			if got != tt.want {
+				t.Fatalf("quickstartGroupActive() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestQuickstartSectionEnabled(t *testing.T) {
+	tests := []struct {
+		name    string
+		group   *wizard.FormGroup
+		enabled bool
+		want    bool
+	}{
+		{
+			name:    "expanded optional section with enable on is enabled",
+			group:   &wizard.FormGroup{Optional: true, Expanded: true},
+			enabled: true,
+			want:    true,
+		},
+		{
+			name:    "expanded optional section with enable off is disabled",
+			group:   &wizard.FormGroup{Optional: true, Expanded: true},
+			enabled: false,
+			want:    false,
+		},
+		{
+			name:    "collapsed optional section is disabled even when enable defaults true",
+			group:   &wizard.FormGroup{Optional: true, Expanded: false},
+			enabled: true,
+			want:    false,
+		},
+		{
+			name:    "required section still respects explicit enable",
+			group:   &wizard.FormGroup{Optional: false, Expanded: false},
+			enabled: false,
+			want:    false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := quickstartSectionEnabled(tt.group, tt.enabled)
+			if got != tt.want {
+				t.Fatalf("quickstartSectionEnabled() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestQuickstartBuildSectionEnabled(t *testing.T) {
+	if !quickstartBuildSectionEnabled(true) {
+		t.Fatal("Build section should be enabled by default even when collapsed")
+	}
+	if quickstartBuildSectionEnabled(false) {
+		t.Fatal("Build section should be disabled when explicitly turned off")
+	}
+}
+
+func TestQuickstartBuildDefaults(t *testing.T) {
+	defaults := quickstartDefaultBuildOptions()
+	if !defaults.enableBuild {
+		t.Fatal("Build service should default to enabled when the Build section is expanded")
+	}
+	if defaults.enableAutoBuild {
+		t.Fatal("Auto-build should default to disabled")
+	}
+	if !defaults.buildPulse {
+		t.Fatal("Build pulse should default to enabled")
+	}
+	if defaults.buildSource != "saas" {
+		t.Fatalf("Build source = %q, want saas", defaults.buildSource)
 	}
 }
 
