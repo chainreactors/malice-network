@@ -129,6 +129,8 @@ hashdump 用于提取Windows本地用户的NTLM密码哈希
 ```
 hashdump
 ```
+执行成功后，hashdump 输出会自动识别为 NTLM 凭证；空哈希不会记录。
+
 ![img_5.png](../assets/embed/usage/hashdump_tui.png)
 
 ### ipconfig

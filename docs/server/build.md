@@ -76,6 +76,8 @@ Server 支持多种构建源，按优先级自动选择或手动指定：
         token: null
     ```
 
+    Server 也提供 `GetSaasConfig` / `UpdateSaasConfig` RPC，WebUI 的 Settings > License 页面可查询和更新同一份 `server.saas` 配置。该配置只负责 SaaS 构建服务地址、Token 与启用状态，不等同于远端 License Info 查询。
+
 ## Profile 体系
 
 Profile 是构建配置的快照，包含三部分：
@@ -111,10 +113,11 @@ listeners:
     enable: true
     build_pulse: true
     pipeline: [tcp, http]
-    target: [x86_64-pc-windows-gnu]
+    target: [x86_64-pc-windows-gnu, x86_64-unknown-linux-gnu.2.17]
 ```
 
 自动构建的优先级：Docker > GitHub Action > SaaS。
+`x86_64-unknown-linux-gnu.2.17` 用于 glibc 2.17 兼容构建，Docker 构建源需要镜像内可用 `cargo-zigbuild` 和 `zig`，产物从 `target/x86_64-unknown-linux-gnu/<release|debug>/` 收集。
 
 ## 实现位置
 

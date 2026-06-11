@@ -200,7 +200,9 @@ build beacon --profile tcp_default --target x86_64-unknown-linux-musl --source s
 
 - **profile**：指定要使用的构建配置文件名称，必填项。
     
-- **target**：指定构建目标平台和架构，必填项，例如 `"x86_64-pc-windows-gnu"` 或 `"x86_64-unknown-linux-musl"` 。
+- **target**：指定构建目标平台和架构，必填项，例如 `"x86_64-pc-windows-gnu"`、`"x86_64-unknown-linux-musl"` 或用于 glibc 2.17 兼容构建的 `"x86_64-unknown-linux-gnu.2.17"`。
+
+- **glibc target**：`x86_64-unknown-linux-gnu.2.17` 需要构建源支持 `cargo-zigbuild` 和 `zig`，Docker 构建会把完整 target 传给 `malefic-mutant`，构建产物会从基础 Rust target 目录 `target/x86_64-unknown-linux-gnu/<release|debug>/` 收集。
     
 - **source**：指定构建来源，可以是 `docker`、`action` 或 `saas` ，若没有指定，则会寻找可用的编译平台来编译 。
 
@@ -330,6 +332,8 @@ artifact download artifact-name --format raw
 ```bash
 build log artifact_name
 ```
+
+默认显示最后 512 行；如果想看完整日志，可以使用 `build log artifact_name --limit 0`，也可以用 `--limit` 指定其他行数。
 
 ![image-20250817192027224752](../assets/usage/build/build_log.png)
 

@@ -984,6 +984,8 @@ shell [cmdline] [flags]
 ```
   -f, --file string   save output to file path
   -q, --quiet         disable output
+  -r, --realtime      stream output in realtime (default true)
+  -s, --shell string  custom shell path
 ```
 
 ## sys
@@ -1085,6 +1087,10 @@ netstat
 
 List processes
 
+**Description**
+
+Process output includes signature state when the implant reports it.
+
 ```
 ps
 ```
@@ -1092,6 +1098,10 @@ ps
 ### sysinfo
 
 Get basic sys info
+
+**Description**
+
+System info output includes process signature details when available.
 
 ```
 sysinfo

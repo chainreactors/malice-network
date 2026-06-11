@@ -2569,7 +2569,7 @@ Show build log
 
 **Description**
 
-Displays the log for the specified number of rows
+Displays the build log. By default it shows the last 512 rows; use `--limit` to choose the row count, or `--limit 0` to show all rows.
 
 ```
 build log [flags]
@@ -2586,7 +2586,7 @@ build log artifact_name --limit 70
 **Options**
 
 ```
-      --limit int   limit of rows (default 50)
+      --limit int   limit of rows; 0 shows all rows (default 512)
 ```
 
 **Options inherited from parent commands**
@@ -3023,7 +3023,7 @@ Malefic-mutant tools for PE/DLL manipulation
 
 **Description**
 
-Tools for converting DLL to shellcode, stripping binaries, and PE signature manipulation
+Tools for converting DLL to shellcode, patching runtime config, encoding payloads, and PE manipulation
 
 ```
 mutant
@@ -3031,9 +3031,22 @@ mutant
 
 **SEE ALSO**
 
+* [mutant bdf](#mutant-bdf)	 - Patch PE binary with shellcode
+* [mutant binder](#mutant-binder)	 - Bind, extract, or check embedded PE payloads
+* [mutant encode](#mutant-encode)	 - Payload encoding tool
+* [mutant entropy](#mutant-entropy)	 - Measure and reduce PE Shannon entropy
+* [mutant hijack](#mutant-hijack)	 - Trace-based DLL hijack code cave injection
+* [mutant icon](#mutant-icon)	 - Replace or extract icons in PE files
+* [mutant lnk](#mutant-lnk)	 - Generate evasion LNK shortcut files
+* [mutant mutate](#mutant-mutate)	 - Generate mutated artifacts offline
+* [mutant objcopy](#mutant-objcopy)	 - Object copy utility for binary extraction
+* [mutant patch](#mutant-patch)	 - Patch runtime config blob in compiled binaries
+* [mutant relink](#mutant-relink)	 - PE post-link randomization
+* [mutant run](#mutant-run)	 - Run a raw malefic-mutant tool command
 * [mutant sigforge](#mutant-sigforge)	 - PE file signature manipulation tool
 * [mutant srdi](#mutant-srdi)	 - Convert DLL to shellcode using SRDI
 * [mutant strip](#mutant-strip)	 - Strip paths from binary files
+* [mutant watermark](#mutant-watermark)	 - PE watermark embedding and reading
 
 #### mutant sigforge
 
@@ -3055,16 +3068,21 @@ mutant sigforge [flags]
   mutant sigforge --operation inject --source unsigned.exe --signature signature.bin --output signed.exe
   mutant sigforge --operation remove --source signed.exe --output unsigned.exe
   mutant sigforge --operation check --source target.exe
+  mutant sigforge --operation carbon-copy --host www.microsoft.com --target unsigned.exe --output result.exe
 
 
 **Options**
 
 ```
-      --operation string   Operation: extract, copy, inject, remove, or check
+      --cert-file string   Local certificate file for carbon-copy
+      --host string        Remote host for carbon-copy
+      --operation string   Operation: extract, copy, inject, remove, check, or carbon-copy
   -o, --output string      Output file path
+      --port uint16        Remote port for carbon-copy (default 443)
       --signature string   Signature file (for inject operation)
   -s, --source string      Source PE file
   -t, --target string      Target PE file (for copy operation)
+      --timeout uint32     mutant tool timeout in seconds (default 300)
       --wizard             Start interactive wizard mode
 ```
 
@@ -3100,7 +3118,8 @@ mutant srdi [flags]
   -i, --input string           Source DLL file path
   -o, --output string          Target shellcode path (default: <input>.bin)
   -p, --platform string        Platform: win (default "win")
-  -t, --type string            SRDI type: link (no TLS) or malefic (with TLS) (default "malefic")
+      --timeout uint32         mutant tool timeout in seconds (default 300)
+  -t, --type string            SRDI type: malefic (default "malefic")
       --userdata-path string   User data file path
       --wizard                 Start interactive wizard mode
 ```
@@ -3134,6 +3153,7 @@ mutant strip [flags]
       --custom-paths string   Additional custom paths to replace (comma separated)
   -i, --input string          Source binary file path
   -o, --output string         Output binary file path (default: <input>.stripped)
+      --timeout uint32        mutant tool timeout in seconds (default 300)
       --wizard                Start interactive wizard mode
 ```
 
@@ -3141,3 +3161,116 @@ mutant strip [flags]
 
 * [mutant](#mutant)	 - Malefic-mutant tools for PE/DLL manipulation
 
+#### mutant patch
+
+Patch runtime config blob in compiled binaries.
+
+```
+mutant patch -i malefic.exe --from-implant implant.yaml -o patched.exe
+```
+
+#### mutant objcopy
+
+Object copy utility for binary extraction.
+
+```
+mutant objcopy -f binary -i input.o -o output.bin
+```
+
+#### mutant encode
+
+Payload encoding tool.
+
+```
+mutant encode -i payload.bin -e aes -f bin -o encoded.bin
+mutant encode --list
+```
+
+#### mutant entropy
+
+Measure or reduce PE Shannon entropy.
+
+```
+mutant entropy -i malefic.exe --measure-only
+mutant entropy -i malefic.exe -o reduced.exe -t 6.0 -s null_bytes
+```
+
+#### mutant binder
+
+Bind, extract, or check embedded PE payloads.
+
+```
+mutant binder bind -p carrier.exe -s payload.exe -o bound.exe
+mutant binder extract -i bound.exe -o extracted.exe
+mutant binder check -i bound.exe
+```
+
+#### mutant icon
+
+Replace or extract PE icons.
+
+```
+mutant icon replace -i target.exe --ico new.ico -o output.exe
+mutant icon extract -i target.exe -o extracted.ico
+```
+
+#### mutant mutate
+
+Generate mutated artifacts offline.
+
+```
+mutant mutate -i payload.bin -f shellcode -e xor -o payload-mutated.bin
+mutant mutate -i payload.bin -n 5 --out-dir out
+```
+
+#### mutant bdf
+
+Patch PE binary with shellcode. Requires a malefic-mutant build that includes this tool.
+
+```
+mutant bdf -i notepad.exe --find-caves
+mutant bdf -i notepad.exe -p payload.bin -o backdoored.exe
+```
+
+#### mutant watermark
+
+PE watermark embedding and reading. Requires a malefic-mutant build that includes this tool.
+
+```
+mutant watermark write -i target.exe -o marked.exe -m dosstub -w TEAM-001
+mutant watermark read -i marked.exe -m dosstub -s 8
+```
+
+#### mutant lnk
+
+Generate LNK shortcut files. Requires a malefic-mutant build that includes this tool.
+
+```
+mutant lnk exec -c "/c calc.exe" -o calc.lnk
+mutant lnk embed -i payload.bin -o implant.lnk --method powershell
+```
+
+#### mutant relink
+
+PE post-link randomization. Requires a malefic-mutant build that includes this tool.
+
+```
+mutant relink -i malefic.exe -o relinked.exe
+```
+
+#### mutant hijack
+
+Trace-based DLL hijack code cave injection. Requires a malefic-mutant build that includes this tool.
+
+```
+mutant hijack -i target.dll --analyze
+mutant hijack -i target.dll -p payload.bin -o patched.dll
+```
+
+#### mutant run
+
+Raw malefic-mutant tool passthrough for newly added tools.
+
+```
+mutant run --input-file input.exe:./input.exe --output-file output.exe:./output.exe -- sigforge remove -i input.exe -o output.exe
+```
