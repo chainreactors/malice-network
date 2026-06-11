@@ -35,11 +35,23 @@ func AutopairInsertOrJump(key rune, line *core.Line, cur *core.Cursor) (skipInse
 		return
 	}
 
-	switch {
-	case closer && cur.Char() == key:
+	if closer && cur.Char() == key {
 		skipInsert = true
 
 		cur.Inc()
+
+		return
+	}
+
+	// If we are currently inside a quoted string, we don't want to insert pairs.
+	// This also effectively allows closing the quote we are currently in.
+	if key == '"' || key == '\'' {
+		if unclosed, _ := strutil.GetQuotedWordStart((*line)[:cur.Pos()]); unclosed {
+			return
+		}
+	}
+
+	switch {
 	case closer && key != '\'' && key != '"':
 		return
 	default:

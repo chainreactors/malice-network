@@ -2,27 +2,54 @@ package rpc
 
 import (
 	"context"
-	"errors"
-	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/utils/mtls"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/peer"
-	"net"
+	"crypto/sha256"
+	"encoding/hex"
 	"reflect"
 	"strings"
+	"sync"
+
+	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/server/internal/certutils"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
+
+// caFingerprintOnce lazily computes and caches the CA certificate fingerprint.
+// The RootClient (used by CLI commands like "user add") authenticates with the
+// CA certificate itself, whose fingerprint is not stored in the operators table.
+// This allows the localhost admin bypass to recognize it.
+var (
+	caFingerprintOnce sync.Once
+	caFingerprint     string
+)
+
+func getCAFingerprint() string {
+	caFingerprintOnce.Do(func() {
+		ca, _, err := certutils.GetCertificateAuthority()
+		if err != nil {
+			return
+		}
+		hash := sha256.Sum256(ca.Raw)
+		caFingerprint = hex.EncodeToString(hash[:])
+	})
+	return caFingerprint
+}
 
 type contextKey int
 
 const (
 	Transport contextKey = iota
-	Operator
-	rootName = "Root"
 )
 
-func buildOptions(option []grpc.ServerOption, interceptors ...grpc.UnaryServerInterceptor) []grpc.ServerOption {
-	option = append(option, grpc.ChainUnaryInterceptor(interceptors...))
+func buildOptions(option []grpc.ServerOption,
+	unaryInterceptors []grpc.UnaryServerInterceptor,
+	streamInterceptors []grpc.StreamServerInterceptor,
+) []grpc.ServerOption {
+	option = append(option, grpc.ChainUnaryInterceptor(unaryInterceptors...))
+	if len(streamInterceptors) > 0 {
+		option = append(option, grpc.ChainStreamInterceptor(streamInterceptors...))
+	}
 	return option
 }
 
@@ -58,45 +85,132 @@ func auditInterceptor() grpc.UnaryServerInterceptor {
 	}
 }
 
-// authInterceptor - Auth middleware
+// authInterceptor - Auth middleware for unary RPCs
 func authInterceptor(log *logs.Logger) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-		client, ok := peer.FromContext(ctx)
-		if !ok {
-			log.Errorf("[auth] failed to get peers information from context")
-			return ctx, errors.New("failed to get peers information from context")
+		identity, err := extractPeerIdentity(ctx)
+		if err != nil {
+			log.Errorf("[auth] identity extraction failed: %v", err)
+			return nil, err
 		}
-		if client.AuthInfo == nil {
-			log.Errorf("[auth] auth info not found")
-			return ctx, errors.New("auth info not found")
-		}
-		caType := client.AuthInfo.(credentials.TLSInfo).State.ServerName
-		if len(caType) == 0 {
-			log.Errorf("[auth] certificate type not found")
-			return ctx, errors.New("certificate type not found")
-		}
-		if caType == rootName {
-			if !strings.Contains(info.FullMethod, "."+caType) {
-				log.Errorf("[auth] certificate type does not match method")
-				return ctx, errors.New("certificate type does not match method")
-			}
-			host, _, err := net.SplitHostPort(client.Addr.String())
-			if err != nil {
-				log.Errorf("[auth] invalid remote address format")
-				return ctx, errors.New("invalid remote address format")
-			}
 
-			parsed := net.ParseIP(host)
-			if !(parsed != nil && parsed.IsLoopback()) {
-				log.Errorf("[auth] invalid remote address")
-				return ctx, errors.New("invalid remote address")
+		ctx = contextWithIdentity(ctx, identity)
+
+		log.Debugf("[auth] peer: cn=%s fp=%s remote=%s",
+			identity.CommonName, identity.Fingerprint[:16], identity.RemoteAddr)
+
+		// Localhost admin bypass: registered admin operator OR the CA certificate itself
+		// (the CLI RootClient uses the CA cert directly for local admin commands)
+		if identity.IsLoopback {
+			if op, ok := opCache.LookupByFingerprint(identity.Fingerprint); ok && op.Role == "admin" {
+				return handler(ctx, req)
 			}
-		} else {
-			if !strings.HasPrefix(info.FullMethod, "/"+caType) && caType == mtls.Listener {
-				log.Errorf("[auth] certificate type does not match method")
-				return ctx, errors.New("certificate type does not match method")
+			if fp := getCAFingerprint(); fp != "" && identity.Fingerprint == fp {
+				log.Debugf("[auth] localhost CA certificate bypass for %s", info.FullMethod)
+				return handler(ctx, req)
 			}
 		}
+
+		if err := authenticateByFingerprint(identity, info.FullMethod); err != nil {
+			return nil, err
+		}
+
+		// Root operation localhost check
+		if isRootOperation(info.FullMethod) && !identity.IsLoopback {
+			return nil, status.Errorf(codes.PermissionDenied,
+				"root operations only allowed from localhost, got: %s", identity.RemoteIP)
+		}
+
 		return handler(ctx, req)
 	}
+}
+
+// authStreamInterceptor - Auth middleware for streaming RPCs
+func authStreamInterceptor(log *logs.Logger) grpc.StreamServerInterceptor {
+	return func(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+		ctx := ss.Context()
+
+		identity, err := extractPeerIdentity(ctx)
+		if err != nil {
+			log.Errorf("[auth-stream] identity extraction failed: %v", err)
+			return err
+		}
+
+		log.Debugf("[auth-stream] peer: cn=%s fp=%s method=%s",
+			identity.CommonName, identity.Fingerprint[:16], info.FullMethod)
+
+		// Localhost admin bypass: registered admin operator OR the CA certificate itself
+		if identity.IsLoopback {
+			if op, ok := opCache.LookupByFingerprint(identity.Fingerprint); ok && op.Role == "admin" {
+				wrapped := &identityServerStream{ServerStream: ss, identity: identity}
+				return handler(srv, wrapped)
+			}
+			if fp := getCAFingerprint(); fp != "" && identity.Fingerprint == fp {
+				log.Debugf("[auth-stream] localhost CA certificate bypass for %s", info.FullMethod)
+				wrapped := &identityServerStream{ServerStream: ss, identity: identity}
+				return handler(srv, wrapped)
+			}
+		}
+
+		if err := authenticateByFingerprint(identity, info.FullMethod); err != nil {
+			return err
+		}
+
+		wrapped := &identityServerStream{ServerStream: ss, identity: identity}
+		return handler(srv, wrapped)
+	}
+}
+
+// identityServerStream wraps grpc.ServerStream to override Context() with identity.
+type identityServerStream struct {
+	grpc.ServerStream
+	identity *PeerIdentity
+}
+
+func (s *identityServerStream) Context() context.Context {
+	ctx := s.ServerStream.Context()
+	ctx = contextWithIdentity(ctx, s.identity)
+	return ctx
+}
+
+// authenticateByFingerprint looks up the operator by cert fingerprint and checks permissions.
+func authenticateByFingerprint(identity *PeerIdentity, method string) error {
+	op, ok := opCache.LookupByFingerprint(identity.Fingerprint)
+	if !ok {
+		return status.Errorf(codes.Unauthenticated,
+			"certificate fingerprint not registered: %s", identity.Fingerprint[:16])
+	}
+	if op.Revoked {
+		return status.Errorf(codes.Unauthenticated,
+			"operator %s has been revoked", op.Name)
+	}
+	return authorizeByRole(op.Role, method)
+}
+
+// authorizeByRole checks if a role is allowed to call the given method
+// using the authz_rules table (via cache).
+func authorizeByRole(role, method string) error {
+	rules := ruleCache.GetRules(role)
+	if len(rules) == 0 {
+		return status.Errorf(codes.PermissionDenied,
+			"no authorization rules found for role %q", role)
+	}
+
+	for _, rule := range rules {
+		if matchMethod(rule.Method, method) {
+			if rule.Allow {
+				return nil
+			}
+			return status.Errorf(codes.PermissionDenied,
+				"access denied by rule for role %q on %s", role, method)
+		}
+	}
+
+	return status.Errorf(codes.PermissionDenied,
+		"no matching rule for role %q on method %s", role, method)
+}
+
+// isRootOperation checks if the method is a root operation requiring localhost access.
+func isRootOperation(method string) bool {
+	return strings.Contains(method, ".Root")
 }

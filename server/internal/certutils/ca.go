@@ -6,6 +6,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/certs"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"io/ioutil"
 	"os"
@@ -15,11 +16,11 @@ import (
 
 func ParseCertificateAuthority(certPEM, keyPEM []byte) (*x509.Certificate, *rsa.PrivateKey, error) {
 	certBlock, _ := pem.Decode(certPEM)
-	var err error
 	if certBlock == nil {
 		certsLog.Error("Failed to parse certificate PEM")
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("failed to decode certificate PEM")
 	}
+	var err error
 	cert, err := x509.ParseCertificate(certBlock.Bytes)
 	if err != nil {
 		certsLog.Errorf("Failed to parse certificate: %v", err)
@@ -29,7 +30,7 @@ func ParseCertificateAuthority(certPEM, keyPEM []byte) (*x509.Certificate, *rsa.
 	keyBlock, _ := pem.Decode(keyPEM)
 	if keyBlock == nil {
 		certsLog.Error("Failed to parse certificate PEM")
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("failed to decode private key PEM")
 	}
 	key, err := x509.ParsePKCS1PrivateKey(keyBlock.Bytes)
 	if err != nil {
@@ -42,7 +43,7 @@ func ParseCertificateAuthority(certPEM, keyPEM []byte) (*x509.Certificate, *rsa.
 
 // GetCertificateAuthority - Get the current CA certificate
 func GetCertificateAuthority() (*x509.Certificate, *rsa.PrivateKey, error) {
-	certPEM, keyPEM, err := GetCertificateAuthorityPEM(path.Join(configs.GetCertDir(), rootCert), path.Join(configs.GetCertDir(), rootKey))
+	certPEM, keyPEM, err := GetCertificateAuthorityPEM(path.Join(configs.GetCertDir(), certs.RootCert), path.Join(configs.GetCertDir(), certs.RootKey))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -77,8 +78,8 @@ func SaveCertificateAuthority(caType int, cert []byte, key []byte) {
 
 	// CAs get written to the filesystem since we control the names and makes them
 	// easier to move around/backup
-	certFilePath := filepath.Join(storageDir, fmt.Sprintf("%s-ca-cert.pem", caType))
-	keyFilePath := filepath.Join(storageDir, fmt.Sprintf("%s-ca-key.pem", caType))
+	certFilePath := filepath.Join(storageDir, fmt.Sprintf("%d-ca-cert.pem", caType))
+	keyFilePath := filepath.Join(storageDir, fmt.Sprintf("%d-ca-key.pem", caType))
 
 	err := ioutil.WriteFile(certFilePath, cert, 0600)
 	if err != nil {

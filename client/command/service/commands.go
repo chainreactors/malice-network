@@ -2,14 +2,15 @@ package service
 
 import (
 	"github.com/carapace-sh/carapace"
+	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/malice-network/client/wizard"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
-func Commands(con *repl.Console) []*cobra.Command {
+func Commands(con *core.Console) []*cobra.Command {
 	serviceCmd := &cobra.Command{
 		Use:   consts.CommandService,
 		Short: "Perform service operations",
@@ -68,6 +69,8 @@ Control the start type and error control by providing appropriate values.`,
 		comp["start_type"] = common.ServiceStartTypeCompleter()
 		comp["error"] = common.ServiceErrorControlCompleter()
 	})
+	_ = serviceCreateCmd.MarkFlagRequired("name")
+	_ = serviceCreateCmd.MarkFlagRequired("path")
 
 	serviceStartCmd := &cobra.Command{
 		Use:   consts.SubCommandName(consts.ModuleServiceStart) + " [service_name]",
@@ -143,10 +146,40 @@ Control the start type and error control by providing appropriate values.`,
 
 	serviceCmd.AddCommand(serviceListCmd, serviceCreateCmd, serviceStartCmd, serviceStopCmd, serviceQueryCmd, serviceDeleteCmd)
 
+	// Enable wizard for service commands that need configuration
+	common.EnableWizardForCommands(serviceCreateCmd)
+
+	// Register wizard providers for dynamic options
+	registerWizardProviders(serviceCreateCmd)
+
 	return []*cobra.Command{serviceCmd}
 }
 
-func Register(con *repl.Console) {
+// registerWizardProviders registers dynamic option providers for wizard.
+func registerWizardProviders(cmd *cobra.Command) {
+	// Service start type options
+	wizard.RegisterProviderForCommand(cmd, "start_type", func() []string {
+		return []string{
+			"AutoStart",
+			"BootStart",
+			"SystemStart",
+			"DemandStart",
+			"Disabled",
+		}
+	})
+
+	// Service error control options
+	wizard.RegisterProviderForCommand(cmd, "error", func() []string {
+		return []string{
+			"Normal",
+			"Ignore",
+			"Severe",
+			"Critical",
+		}
+	})
+}
+
+func Register(con *core.Console) {
 	RegisterServiceListFunc(con)
 	RegisterServiceCreateFunc(con)
 	RegisterServiceStartFunc(con)

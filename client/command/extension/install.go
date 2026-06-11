@@ -3,9 +3,9 @@ package extension
 import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/command/common"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
-	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
 	"io/ioutil"
 	"os"
@@ -14,18 +14,21 @@ import (
 )
 
 // ExtensionsInstallCmd - Install an extension
-func ExtensionsInstallCmd(cmd *cobra.Command, con *repl.Console) {
+func ExtensionsInstallCmd(cmd *cobra.Command, con *core.Console) {
 	extLocalPath := cmd.Flags().Arg(0)
 	_, err := os.Stat(extLocalPath)
 	if os.IsNotExist(err) {
 		con.Log.Errorf("Extension path '%s' does not exist", extLocalPath)
 		return
 	}
-	InstallFromDir(extLocalPath, true, con, strings.HasSuffix(extLocalPath, ".tar.gz"))
+	_, err = InstallFromDir(extLocalPath, true, con, strings.HasSuffix(extLocalPath, ".tar.gz"), cmd)
+	if err != nil {
+		con.Log.Errorf("Error installing extension: %s\n", err)
+	}
 }
 
 // Install an extension from a directory
-func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *repl.Console, isGz bool) {
+func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *core.Console, isGz bool, cmd *cobra.Command) (string, error) {
 	var manifestData []byte
 	var err error
 
@@ -35,45 +38,42 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *repl.Conso
 		manifestData, err = os.ReadFile(filepath.Join(extLocalPath, ManifestFileName))
 	}
 	if err != nil {
-		con.Log.Errorf("Error reading %s: %s", ManifestFileName, err)
-		return
+		return "", fmt.Errorf("read %s: %w", ManifestFileName, err)
 	}
 
 	manifest, err := ParseExtensionManifest(manifestData)
 	if err != nil {
-		con.Log.Errorf("Error parsing %s: %s", ManifestFileName, err)
-		return
+		return "", fmt.Errorf("parse %s: %w", ManifestFileName, err)
 	}
 
 	installPath := filepath.Join(assets.GetExtensionsDir(), filepath.Base(manifest.Name))
 	if _, err := os.Stat(installPath); !os.IsNotExist(err) {
 		if promptToOverwrite {
 			con.Log.Infof("Extension '%s' already exists", manifest.Name)
-			confirmModel := tui.NewConfirm("Overwrite current install?")
-			newConfirm := tui.NewModel(confirmModel, nil, false, true)
-			err = newConfirm.Run()
+			var confirmed bool
+			confirmed, err = common.Confirm(cmd, con, "Overwrite current install?")
 			if err != nil {
 				con.Log.Errorf("Error running confirm model: %s", err)
-				return
+				return "", err
 			}
-			if !confirmModel.Confirmed {
-				return
+			if !confirmed {
+				return "", nil
 			}
+			fileutils.ForceRemoveAll(installPath)
+		} else {
+			fileutils.ForceRemoveAll(installPath)
 		}
-		fileutils.ForceRemoveAll(installPath)
 	}
 
 	con.Log.Infof("Installing extension '%s' (%s) ... ", manifest.Name, manifest.Version)
 	err = os.MkdirAll(installPath, 0700)
 	if err != nil {
-		con.Log.Errorf("\nError creating extension directory: %s\n", err)
-		return
+		return "", fmt.Errorf("create extension directory: %w", err)
 	}
 	err = os.WriteFile(filepath.Join(installPath, ManifestFileName), manifestData, 0o600)
 	if err != nil {
-		con.Log.Errorf("\nFailed to write %s: %s\n", ManifestFileName, err)
 		fileutils.ForceRemoveAll(installPath)
-		return
+		return "", fmt.Errorf("write %s: %w", ManifestFileName, err)
 	}
 	for _, manifestCmd := range manifest.ExtCommand {
 		newInstallPath := filepath.Join(installPath)
@@ -86,9 +86,8 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *repl.Conso
 					dst := filepath.Join(newInstallPath, fileutils.ResolvePath(manifestFile.Path))
 					err = os.MkdirAll(filepath.Dir(dst), 0700) //required for extensions with multiple dirs between the .o file and the manifest
 					if err != nil {
-						con.Log.Errorf("\nError creating extension directory: %s\n", err)
 						fileutils.ForceRemoveAll(newInstallPath)
-						return
+						return "", fmt.Errorf("create extension subdirectory: %w", err)
 					}
 					err = fileutils.CopyFile(src, dst)
 					if err != nil {
@@ -96,13 +95,13 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *repl.Conso
 					}
 				}
 				if err != nil {
-					con.Log.Errorf("Error installing command: %s\n", err)
 					fileutils.ForceRemoveAll(newInstallPath)
-					return
+					return "", err
 				}
 			}
 		}
 	}
+	return installPath, nil
 }
 
 // InstallFromFilePath - Install an extension from a .tar.gz file
@@ -178,10 +177,13 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *repl.Conso
 //}
 
 func installArtifact(extGzFilePath string, installPath string, artifactPath string) error {
-	artifactPath = strings.ReplaceAll(artifactPath, `\`, "")
+	artifactPath = strings.TrimPrefix(strings.ReplaceAll(artifactPath, `\`, `/`), "/")
 	data, err := fileutils.ReadFileFromTarGz(extGzFilePath, artifactPath)
 	if err != nil {
-		return err
+		data, err = fileutils.ReadFileFromTarGz(extGzFilePath, "./"+artifactPath)
+		if err != nil {
+			return err
+		}
 	}
 	if len(data) == 0 {
 		return fmt.Errorf("archive path '%s' is empty", "."+artifactPath)

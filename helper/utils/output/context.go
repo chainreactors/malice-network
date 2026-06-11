@@ -3,10 +3,9 @@ package output
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"strings"
-
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 )
 
 type FileDescriptor struct {
@@ -94,6 +93,8 @@ func ParseContext(typ string, content []byte) (Context, error) {
 		ctx, err = NewUploadContext(content)
 	case consts.ContextPort:
 		ctx, err = NewPortContext(content)
+	case consts.ContextMedia:
+		ctx, err = NewMediaContext(content)
 
 	}
 	return ctx, err
@@ -136,7 +137,7 @@ func (s *ScreenShotContext) Marshal() []byte {
 }
 
 func (s *ScreenShotContext) String() string {
-	return fmt.Sprintf("Screenshot: %s (Size: %.2f KB)", s.Name, float64(s.Size)/1024)
+	return fmt.Sprintf("%s (Size: %.2f KB)", s.Name, float64(s.Size)/1024)
 }
 
 type KeyLoggerContext struct {
@@ -170,12 +171,12 @@ func NewDownloadContext(content []byte) (*DownloadContext, error) {
 }
 
 func NewKeyLogger(content []byte) (*KeyLoggerContext, error) {
-	keyLogger := &KeyLoggerContext{}
+	keyLogger := &FileDescriptor{}
 	err := json.Unmarshal(content, keyLogger)
 	if err != nil {
 		return nil, err
 	}
-	return keyLogger, nil
+	return &KeyLoggerContext{FileDescriptor: keyLogger}, nil
 }
 
 func NewScreenShot(content []byte) (*ScreenShotContext, error) {

@@ -1,44 +1,72 @@
 package server
 
 import (
-	"context"
+	"bufio"
 	"fmt"
+	"io"
+	"os"
+	"strings"
+
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/codenames"
-	"github.com/chainreactors/malice-network/helper/utils/configutil"
-	"github.com/chainreactors/malice-network/helper/utils/fileutils"
-	"github.com/chainreactors/malice-network/helper/utils/mtls"
 	"github.com/chainreactors/malice-network/server/assets"
-	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
-	"github.com/chainreactors/malice-network/server/internal/core"
-	"github.com/chainreactors/malice-network/server/internal/db"
-	"github.com/chainreactors/malice-network/server/listener"
-	"github.com/chainreactors/malice-network/server/rpc"
 	"github.com/gookit/config/v2"
 	"github.com/gookit/config/v2/yaml"
 	"github.com/jessevdk/go-flags"
-	"os"
-	"os/signal"
-	"syscall"
 )
 
 func init() {
-	err := configs.InitConfig()
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
 	config.WithOptions(func(opt *config.Options) {
 		opt.DecoderConfig.TagName = "config"
 		opt.ParseDefault = true
 	})
 	config.AddDriver(yaml.Driver)
 	codenames.SetupCodenames()
-	assets.SetupGithubFile()
 }
 
-func Execute() {
+func isInteractiveTerminal() bool {
+	stdinInfo, err := os.Stdin.Stat()
+	if err != nil {
+		return false
+	}
+	stdoutInfo, err := os.Stdout.Stat()
+	if err != nil {
+		return false
+	}
+	return stdinInfo.Mode()&os.ModeCharDevice != 0 && stdoutInfo.Mode()&os.ModeCharDevice != 0
+}
+
+func shouldOfferQuickstart(opt *Options, configMissing bool, interactive bool, hasActiveCommand bool) bool {
+	if opt == nil {
+		return false
+	}
+	if opt.Quickstart || !configMissing || !interactive || hasActiveCommand {
+		return false
+	}
+	if opt.ServerOnly || opt.ListenerOnly || opt.Daemon {
+		return false
+	}
+	return true
+}
+
+func promptQuickstart(configPath string) (bool, error) {
+	if configPath == "" {
+		configPath = configs.ServerConfigFileName
+	}
+
+	fmt.Printf("config %s not found. Run quickstart wizard now? [y/N] ", configPath)
+	reader := bufio.NewReader(os.Stdin)
+	line, err := reader.ReadString('\n')
+	if err != nil && err != io.EOF {
+		return false, err
+	}
+
+	answer := strings.ToLower(strings.TrimSpace(line))
+	return answer == "y" || answer == "yes", nil
+}
+
+func Start(defaultConfig []byte) error {
 	var opt Options
 	var err error
 	parser := flags.NewParser(&opt, flags.Default)
@@ -46,176 +74,56 @@ func Execute() {
 	args, err := parser.Parse()
 	if err != nil {
 		if err.(*flags.Error).Type != flags.ErrHelp {
-			fmt.Println(err.Error())
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		}
-		return
-	}
-	if !fileutils.Exist(opt.Config) {
-		confStr := configutil.InitDefaultConfig(&opt, 0)
-		err := os.WriteFile(opt.Config, confStr, 0644)
-		if err != nil {
-			logs.Log.Errorf("cannot write default config , %s ", err.Error())
-			return
-		}
-		logs.Log.Warnf("config file not found, created default config %s", opt.Config)
+		return nil
 	}
 
-	// load config
-	err = configutil.LoadConfig(opt.Config, &opt)
-	if err != nil {
-		logs.Log.Warnf("cannot load config , %s ", err.Error())
-		return
+	configMissing := configs.FindConfig(opt.Config) == ""
+	if opt.Quickstart {
+		if err := RunQuickstart(&opt); err != nil {
+			return fmt.Errorf("quickstart failed: %w", err)
+		}
+	} else if shouldOfferQuickstart(&opt, configMissing, isInteractiveTerminal(), parser.Active != nil) {
+		runWizard, promptErr := promptQuickstart(opt.Config)
+		if promptErr != nil {
+			return fmt.Errorf("prompt quickstart: %w", promptErr)
+		}
+		if runWizard {
+			if err := RunQuickstart(&opt); err != nil {
+				return fmt.Errorf("quickstart failed: %w", err)
+			}
+		}
 	}
+
+	err = opt.PrepareConfig(defaultConfig)
+	if err != nil {
+		return err
+	}
+
 	if parser.Active != nil {
 		err = opt.Execute(args, parser)
 		if err != nil {
 			logs.Log.Error(err)
 		}
-		return
-	}
-	configs.CurrentServerConfigFilename = opt.Config
-	// load config
-	if opt.Debug {
-		logs.Log.SetLevel(logs.DebugLevel)
-	}
-	err = opt.Validate()
-	if err != nil {
-		logs.Log.Errorf(err.Error())
-		return
+		return nil
 	}
 
-	if opt.Server.Enable {
-		db.Client = db.NewDBClient()
-		core.NewBroker()
-		core.NewSessions()
-		if opt.IP != "" {
-			logs.Log.Infof("manually specified IP: %s will override %s config: %s", opt.IP, opt.Config, opt.Server.IP)
-			opt.Server.IP = opt.IP
-			config.Set("server.ip", opt.IP)
+	if !opt.ListenerOnly && opt.Server.Enable {
+		if err := assets.SetupGithubFile(); err != nil {
+			logs.Log.Warnf("failed to setup github files: %s", err)
 		}
-
-		if opt.Server.IP == "" {
-			logs.Log.Errorf("IP address not set, please set config.yaml `ip: [server_ip]` or `./malice_network -i [server_ip]`")
-			return
-		}
-
-		err = core.EventBroker.InitService(opt.Server.NotifyConfig)
+		err = opt.PrepareServer()
 		if err != nil {
-			logs.Log.Errorf("cannot init notifier , %s ", err.Error())
-			return
+			return fmt.Errorf("cannot prepare server, %s", err.Error())
 		}
-		err = certutils.GenerateRootCert()
+	}
+
+	if !opt.ServerOnly && opt.Listeners.Enable {
+		err = opt.PrepareListener()
 		if err != nil {
-			logs.Log.Errorf("cannot init root ca , %s ", err.Error())
-			return
-		}
-		//if opt.Daemon == true {
-		//	err = RecoverAliveSession()
-		//	if err != nil {
-		//		logs.Log.Errorf("cannot start alive session , %s ", err.Error())
-		//		return
-		//	}
-		//	rpc.DaemonStart(opt.Server, opt.Listeners)
-		//}
-
-		err = StartGrpc(fmt.Sprintf("%s:%d", opt.Server.GRPCHost, opt.Server.GRPCPort))
-		if err != nil {
-			logs.Log.Errorf("cannot start grpc , %s ", err.Error())
-			return
-		}
-
-		err = opt.InitUser()
-		if err != nil {
-			logs.Log.Errorf(err.Error())
-			return
-		}
-		err = opt.InitListener()
-		if err != nil {
-			logs.Log.Errorf(err.Error())
-			return
+			return fmt.Errorf("cannot prepare listener, %s", err.Error())
 		}
 	}
-
-	if opt.Listeners.Enable {
-		logs.Log.Importantf("[listener] listener config enabled, Starting listeners")
-		if opt.IP != "" {
-			logs.Log.Infof("manually specified IP: %s will override %s config: %s", opt.IP, opt.Config, opt.Server.IP)
-			opt.Listeners.IP = opt.IP
-			config.Set("listener.ip", opt.IP)
-		}
-		err := StartListener(opt.Listeners)
-		if err != nil {
-			logs.Log.Errorf(err.Error())
-			return
-		}
-	}
-
-	_, cancel := context.WithCancel(context.Background())
-	go func() {
-		c := make(chan os.Signal, 2)
-		signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-
-		<-c
-		logs.Log.Importantf("exit signal, save stat and exit")
-
-		signal.Stop(c)
-
-		for _, session := range core.Sessions.All() {
-			session.Save()
-		}
-		//pprof.StopCPUProfile()
-		core.GlobalTicker.RemoveAll()
-		cancel()
-		os.Exit(0)
-	}()
-
-	select {}
-}
-
-// Start - Starts the server console
-func StartGrpc(address string) error {
-	// start alive session
-	err := RecoverAliveSession()
-	if err != nil {
-		return err
-	}
-
-	_, _, err = rpc.StartClientListener(address)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func RecoverAliveSession() error {
-	// start alive session
-	sessions, err := db.FindAliveSessions()
-	if err != nil {
-		return err
-	}
-
-	if len(sessions) > 0 {
-		logs.Log.Debugf("recover %d sessions", len(sessions))
-		for _, session := range sessions {
-			newSession, err := core.RecoverSession(session)
-			if err != nil {
-				logs.Log.Errorf("cannot recover session %s , %s ", session.SessionID, err.Error())
-				continue
-			}
-			core.Sessions.Add(newSession)
-		}
-	}
-	return nil
-}
-
-func StartListener(opt *configs.ListenerConfig) error {
-	if listenerConf, err := mtls.ReadConfig(opt.Auth); err != nil {
-		return err
-	} else {
-		err = listener.NewListener(listenerConf, opt)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+	return opt.Handler()
 }

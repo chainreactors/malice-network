@@ -2,14 +2,14 @@ package exec
 
 import (
 	"fmt"
+	"github.com/chainreactors/IoM-go/client"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/malice-network/helper/utils/pe"
@@ -20,18 +20,17 @@ import (
 )
 
 // ExecuteShellcodeCmd - Execute shellcode in-memory
-func ExecuteShellcodeCmd(cmd *cobra.Command, con *repl.Console) error {
+func ExecuteShellcodeCmd(cmd *cobra.Command, con *core.Console) error {
 	session := con.GetInteractive()
 	path, args, output, timeout, arch, process := common.ParseFullBinaryFlags(cmd)
 	task, err := ExecShellcode(con.Rpc, session, path, args, output, timeout, arch, process, common.ParseSacrificeFlags(cmd))
 	if err != nil {
 		return err
 	}
-	session.Console(task, path)
-	return nil
+	return common.HandleTaskOutput(cmd, con, task)
 }
 
-func ExecShellcode(rpc clientrpc.MaliceRPCClient, sess *core.Session, shellcodePath string,
+func ExecShellcode(rpc clientrpc.MaliceRPCClient, sess *client.Session, shellcodePath string,
 	args []string, out bool, timeout uint32, arch string, process string,
 	sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 	if arch == "" {
@@ -58,18 +57,17 @@ func ExecShellcode(rpc clientrpc.MaliceRPCClient, sess *core.Session, shellcodeP
 	return task, nil
 }
 
-func InlineShellcodeCmd(cmd *cobra.Command, con *repl.Console) error {
+func InlineShellcodeCmd(cmd *cobra.Command, con *core.Console) error {
 	session := con.GetInteractive()
 	path, args, output, timeout, arch, process := common.ParseFullBinaryFlags(cmd)
 	task, err := InlineShellcode(con.Rpc, session, path, args, output, timeout, arch, process)
 	if err != nil {
 		return err
 	}
-	con.GetInteractive().Console(task, path)
-	return nil
+	return common.HandleTaskOutput(cmd, con, task)
 }
 
-func InlineShellcode(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, args []string,
+func InlineShellcode(rpc clientrpc.MaliceRPCClient, sess *client.Session, path string, args []string,
 	out bool, timeout uint32, arch string, process string) (*clientpb.Task, error) {
 	if arch == "" {
 		arch = sess.Os.Arch
@@ -94,13 +92,13 @@ func InlineShellcode(rpc clientrpc.MaliceRPCClient, sess *core.Session, path str
 	return shellcodeTask, err
 }
 
-func RegisterShellcodeFunc(con *repl.Console) {
+func RegisterShellcodeFunc(con *core.Console) {
 
 	con.RegisterImplantFunc(
 		consts.ModuleExecuteShellcode,
 		ExecShellcode,
 		"bshinject",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, ppid uint32, arch, path string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *client.Session, ppid uint32, arch, path string) (*clientpb.Task, error) {
 			return ExecShellcode(rpc, sess, path, nil, true, math.MaxUint32, sess.Os.Arch, "", output.NewSacrifice(ppid, false, true, true, ""))
 		},
 		output.ParseBinaryResponse,
@@ -126,7 +124,7 @@ func RegisterShellcodeFunc(con *repl.Console) {
 		consts.ModuleAliasInlineShellcode,
 		InlineShellcode,
 		"binline_shellcode",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *client.Session, path string) (*clientpb.Task, error) {
 			return InlineShellcode(rpc, sess, path, nil, true, math.MaxUint32, sess.Os.Arch, "")
 		},
 		output.ParseBinaryResponse,

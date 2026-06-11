@@ -1,41 +1,34 @@
 package generic
 
 import (
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/spf13/cobra"
 	"strings"
 )
 
-func BroadcastCmd(cmd *cobra.Command, con *repl.Console) {
+func BroadcastCmd(cmd *cobra.Command, con *core.Console) error {
 	msg := cmd.Flags().Args()
 	isNotify, _ := cmd.Flags().GetBool("notify")
-	var err error
 	if isNotify {
-		_, err = Notify(con, &clientpb.Event{
+		_, err := Notify(con, &clientpb.Event{
 			Type:    consts.EventNotify,
 			Client:  con.Client,
 			Message: []byte(strings.Join(msg, " ")),
 		})
-		if err != nil {
-			con.Log.Errorf("notify error: %s\n", err)
-			return
-		}
-	} else {
-		_, err = Broadcast(con, &clientpb.Event{
-			Type:    consts.EventBroadcast,
-			Client:  con.Client,
-			Message: []byte(strings.Join(msg, " ")),
-		})
-		if err != nil {
-			con.Log.Errorf("broadcast error: %s\n", err)
-			return
-		}
+		return err
 	}
+
+	_, err := Broadcast(con, &clientpb.Event{
+		Type:    consts.EventBroadcast,
+		Client:  con.Client,
+		Message: []byte(strings.Join(msg, " ")),
+	})
+	return err
 }
 
-func Broadcast(con *repl.Console, event *clientpb.Event) (bool, error) {
+func Broadcast(con *core.Console, event *clientpb.Event) (bool, error) {
 	_, err := con.Rpc.Broadcast(con.Context(), event)
 	if err != nil {
 		return false, err
@@ -43,7 +36,7 @@ func Broadcast(con *repl.Console, event *clientpb.Event) (bool, error) {
 	return true, nil
 }
 
-func Notify(con *repl.Console, event *clientpb.Event) (bool, error) {
+func Notify(con *core.Console, event *clientpb.Event) (bool, error) {
 	_, err := con.Rpc.Notify(con.Context(), event)
 	if err != nil {
 		return false, err

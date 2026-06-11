@@ -2,17 +2,17 @@ package sys
 
 import (
 	"fmt"
+	"github.com/chainreactors/IoM-go/client"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
 )
 
-func BypassCmd(cmd *cobra.Command, con *repl.Console) error {
+func BypassCmd(cmd *cobra.Command, con *core.Console) error {
 	bypass_amsi, _ := cmd.Flags().GetBool("amsi")
 	bypass_etw, _ := cmd.Flags().GetBool("etw")
 	session := con.GetInteractive()
@@ -20,11 +20,11 @@ func BypassCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	session.Console(task, fmt.Sprintf("bypass_amsi %t, bypass_etw %t", bypass_amsi, bypass_etw))
+	session.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 
-func Bypass(rpc clientrpc.MaliceRPCClient, session *core.Session, bypass_amsi, bypass_etw bool) (*clientpb.Task, error) {
+func Bypass(rpc clientrpc.MaliceRPCClient, session *client.Session, bypass_amsi, bypass_etw bool) (*clientpb.Task, error) {
 	return rpc.Bypass(session.Context(), &implantpb.BypassRequest{
 		ETW:      bypass_etw,
 		AMSI:     bypass_amsi,
@@ -32,7 +32,7 @@ func Bypass(rpc clientrpc.MaliceRPCClient, session *core.Session, bypass_amsi, b
 	})
 }
 
-func RegisterBypassFunc(con *repl.Console) {
+func RegisterBypassFunc(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleBypass,
 		Bypass,

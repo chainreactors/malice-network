@@ -1,26 +1,25 @@
 package basic
 
 import (
-	"fmt"
+	"github.com/chainreactors/IoM-go/client"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/spf13/cobra"
 )
 
-func SuicideCmd(cmd *cobra.Command, con *repl.Console) error {
+func SuicideCmd(cmd *cobra.Command, con *core.Console) error {
 	session := con.GetInteractive()
 	task, err := Suicide(con.Rpc, session)
 	if err != nil {
 		return err
 	}
-	session.Console(task, fmt.Sprintf("%s suicide", session.SessionId))
+	session.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 
-func Suicide(rpc clientrpc.MaliceRPCClient, session *core.Session) (*clientpb.Task, error) {
+func Suicide(rpc clientrpc.MaliceRPCClient, session *client.Session) (*clientpb.Task, error) {
 	return rpc.Suicide(session.Context(), &implantpb.Request{Name: consts.ModuleSuicide})
 }

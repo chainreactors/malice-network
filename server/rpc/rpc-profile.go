@@ -2,15 +2,23 @@ package rpc
 
 import (
 	"context"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"fmt"
+
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/implanttypes"
 	"github.com/chainreactors/malice-network/server/internal/db"
 )
 
 func (rpc *Server) NewProfile(ctx context.Context, req *clientpb.Profile) (*clientpb.Empty, error) {
+	if req.Name == "" {
+		return nil, fmt.Errorf("profile name cannot be empty")
+	}
+
 	err := db.NewProfile(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create profile: %w", err)
 	}
+
 	return &clientpb.Empty{}, nil
 }
 
@@ -28,10 +36,31 @@ func (rpc *Server) GetProfiles(ctx context.Context, req *clientpb.Empty) (*clien
 	return &profiles, nil
 }
 
+func (rpc *Server) GetProfileByName(ctx context.Context, req *clientpb.Profile) (*clientpb.Profile, error) {
+	return db.GetProfileByNameWithConfig(req.Name)
+}
+
 func (rpc *Server) DeleteProfile(ctx context.Context, req *clientpb.Profile) (*clientpb.Empty, error) {
-	return &clientpb.Empty{}, db.DeleteProfileByName(req.Name)
+	if req.Name == "" {
+		return nil, fmt.Errorf("profile name cannot be empty")
+	}
+
+	err := db.DeleteProfileByName(req.Name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to delete profile: %w", err)
+	}
+	return &clientpb.Empty{}, nil
 }
 
 func (rpc *Server) UpdateProfile(ctx context.Context, req *clientpb.Profile) (*clientpb.Empty, error) {
-	return &clientpb.Empty{}, db.UpdateProfileRaw(req.Name, req.Content)
+	if req.Name == "" {
+		return nil, fmt.Errorf("profile name cannot be empty")
+	}
+	if _, err := implanttypes.LoadProfile(req.ImplantConfig); err != nil {
+		return nil, fmt.Errorf("failed to update profile: %w", err)
+	}
+	if err := db.UpdateProfileDisk(req.Name, req.ImplantConfig, req.PreludeConfig, req.Resources); err != nil {
+		return nil, fmt.Errorf("failed to update profile: %w", err)
+	}
+	return &clientpb.Empty{}, nil
 }

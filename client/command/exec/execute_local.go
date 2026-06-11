@@ -1,22 +1,21 @@
 package exec
 
 import (
+	"github.com/chainreactors/IoM-go/client"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
-	"strings"
 )
 
 // ExecuteLocalCmd - Execute local PE on sacrifice process
-func ExecuteLocalCmd(cmd *cobra.Command, con *repl.Console) error {
+func ExecuteLocalCmd(cmd *cobra.Command, con *core.Console) error {
 	args := cmd.Flags().Args()
 	process, _ := cmd.Flags().GetString("process")
 	quiet, _ := cmd.Flags().GetBool("quiet")
@@ -25,11 +24,10 @@ func ExecuteLocalCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	con.GetInteractive().Console(task, strings.Join(args, " "))
-	return nil
+	return common.HandleTaskOutput(cmd, con, task)
 }
 
-func ExecLocal(rpc clientrpc.MaliceRPCClient, sess *core.Session,
+func ExecLocal(rpc clientrpc.MaliceRPCClient, sess *client.Session,
 	args []string, output bool, process string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 	args[0] = fileutils.FormatWindowPath(args[0])
 	if process == "" {
@@ -43,6 +41,7 @@ func ExecLocal(rpc clientrpc.MaliceRPCClient, sess *core.Session,
 		Output:      output,
 		Sacrifice:   sac,
 		Type:        consts.ModuleExecuteLocal,
+		Delay:       2000,
 	}
 
 	task, err := rpc.ExecuteLocal(sess.Context(), binary)
@@ -52,7 +51,7 @@ func ExecLocal(rpc clientrpc.MaliceRPCClient, sess *core.Session,
 	return task, nil
 }
 
-func InlineLocalCmd(cmd *cobra.Command, con *repl.Console) error {
+func InlineLocalCmd(cmd *cobra.Command, con *core.Console) error {
 	args := cmd.Flags().Args()
 	process, _ := cmd.Flags().GetString("process")
 	output, _ := cmd.Flags().GetBool("output")
@@ -60,11 +59,10 @@ func InlineLocalCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	con.GetInteractive().Console(task, strings.Join(args, " "))
-	return nil
+	return common.HandleTaskOutput(cmd, con, task)
 }
 
-func InlineLocal(rpc clientrpc.MaliceRPCClient, sess *core.Session,
+func InlineLocal(rpc clientrpc.MaliceRPCClient, sess *client.Session,
 	args []string, output bool, process string) (*clientpb.Task, error) {
 	args[0] = fileutils.FormatWindowPath(args[0])
 
@@ -74,6 +72,7 @@ func InlineLocal(rpc clientrpc.MaliceRPCClient, sess *core.Session,
 		ProcessName: process,
 		Output:      output,
 		Type:        consts.ModuleInlineLocal,
+		Delay:       2000,
 	}
 
 	task, err := rpc.InlineLocal(sess.Context(), binary)
@@ -83,12 +82,12 @@ func InlineLocal(rpc clientrpc.MaliceRPCClient, sess *core.Session,
 	return task, nil
 }
 
-func RegisterExecuteLocalFunc(con *repl.Console) {
+func RegisterExecuteLocalFunc(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleExecuteLocal,
 		ExecLocal,
 		"bexecute",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, cmdline string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *client.Session, cmdline string) (*clientpb.Task, error) {
 			args, err := shellquote.Split(cmdline)
 			if err != nil {
 				return nil, err

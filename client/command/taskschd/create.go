@@ -1,41 +1,40 @@
 package taskschd
 
 import (
-	"fmt"
+	"github.com/chainreactors/IoM-go/client"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
 	"strings"
 )
 
 // TaskSchdCreateCmd creates a new scheduled task.
-func TaskSchdCreateCmd(cmd *cobra.Command, con *repl.Console) error {
+func TaskSchdCreateCmd(cmd *cobra.Command, con *core.Console) error {
 	// 内嵌的 Flag 解析
 	name, _ := cmd.Flags().GetString("name")
 	path, _ := cmd.Flags().GetString("path")
 	triggerType, _ := cmd.Flags().GetString("trigger_type")
 	startBoundary, _ := cmd.Flags().GetString("start_boundary")
-
+	taskFolder, _ := cmd.Flags().GetString("task_folder")
 	session := con.GetInteractive()
-	task, err := TaskSchdCreate(con.Rpc, session, name, path, triggerType, startBoundary)
+	task, err := TaskSchdCreate(con.Rpc, session, name, path, taskFolder, triggerType, startBoundary)
 	if err != nil {
 		return err
 	}
 
-	session.Console(task, fmt.Sprintf("create scheduled task: %s", name))
+	session.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 
-func TaskSchdCreate(rpc clientrpc.MaliceRPCClient, session *core.Session, name, path, triggerType, startBoundary string) (*clientpb.Task, error) {
+func TaskSchdCreate(rpc clientrpc.MaliceRPCClient, session *client.Session, name, path, taskFolder, triggerType, startBoundary string) (*clientpb.Task, error) {
 	request := &implantpb.TaskScheduleRequest{
 		Type: consts.ModuleTaskSchdCreate,
 		Taskschd: &implantpb.TaskSchedule{
-			Path:           "\\",
+			Path:           taskFolder,
 			Name:           name,
 			ExecutablePath: path,
 			//TriggerType:    triggerType,
@@ -57,7 +56,7 @@ func TaskSchdCreate(rpc clientrpc.MaliceRPCClient, session *core.Session, name, 
 	return rpc.TaskSchdCreate(session.Context(), request)
 }
 
-func RegisterTaskSchdCreateFunc(con *repl.Console) {
+func RegisterTaskSchdCreateFunc(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleTaskSchdCreate,
 		TaskSchdCreate,
@@ -76,6 +75,7 @@ func RegisterTaskSchdCreateFunc(con *repl.Console) {
 			"sess: special session",
 			"name: name of the scheduled task",
 			"path: path to the executable for the scheduled task",
+			"task_folder: task folder for the scheduled task",
 			"triggerType: trigger type for the task",
 			"startBoundary: start boundary for the scheduled task",
 		},

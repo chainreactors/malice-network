@@ -1,0 +1,132 @@
+package build
+
+import (
+	"bytes"
+	"errors"
+	"fmt"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/codenames"
+	"github.com/chainreactors/malice-network/helper/utils/httputils"
+	"github.com/chainreactors/malice-network/server/internal/configs"
+	"github.com/chainreactors/malice-network/server/internal/db"
+	"github.com/chainreactors/malice-network/server/internal/db/models"
+	"github.com/chainreactors/malice-network/server/internal/saas"
+	"google.golang.org/protobuf/encoding/protojson"
+	"net/http"
+	"time"
+)
+
+type SaasBuilder struct {
+	config      *clientpb.BuildConfig
+	builder     *models.Artifact
+	executeUrl  string
+	downloadUrl string
+}
+
+func NewSaasBuilder(req *clientpb.BuildConfig) *SaasBuilder {
+	return &SaasBuilder{
+		config: req,
+	}
+}
+
+func (s *SaasBuilder) Generate() (*clientpb.Artifact, error) {
+	saasConfig := configs.GetSaasConfig()
+	if !saasConfig.Enable {
+		return nil, errors.New("saas is unable in server config")
+	}
+	var artifact *models.Artifact
+	var err error
+	if s.config.BuildName == "" {
+		s.config.BuildName = codenames.GetCodename()
+	}
+	//profileByte, err := GenerateProfile(s.config)
+
+	// get profile
+	if needsProfileFiles(s.config) {
+		implant, prelude, resources, pErr := db.GetProfileFullConfig(s.config.ProfileName)
+		if pErr != nil {
+			return nil, fmt.Errorf("failed to get profile config: %s", pErr)
+		}
+		mergeProfileFiles(s.config, implant, prelude, resources)
+	}
+	//profile, err := types.LoadProfileFromContent(profileByte)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//preludeConfig := s.config.PreludeConfig
+	//println(preludeConfig)
+	//base64Encoded := encode.Base64Encode(profileByte)
+	//s.config.Inputs = make(map[string]string)
+	//s.config.Inputs["malefic_config_yaml"] = base64Encoded
+
+	// Process autorun.zip if source is provided
+	//autorunYamlBase64, paramsString, err := ProcessAutorunZipToBase64(s.config.ParamsBytes, s.config.ProfileName)
+	//if err != nil {
+	//	return nil, fmt.Errorf("failed to process autorun.zip: %w", err)
+	//} else if autorunYamlBase64 != "" {
+	//	s.config.Inputs["autorun_yaml"] = autorunYamlBase64
+	//}
+	//s.config.ParamsBytes = []byte(paramsString)
+	//paramsBase64Encoded := encode.Base64Encode(s.config.ParamsBytes)
+	//s.config.Inputs["build_params"] = paramsBase64Encoded
+	artifactId := s.config.ArtifactId
+	if artifactId != 0 && (s.config.BuildType == consts.CommandBuildBeacon || s.config.BuildType == consts.CommandBuildBind) {
+		artifact, err = db.SaveArtifactFromID(s.config, artifactId)
+	} else {
+		artifact, err = db.SaveArtifactFromConfig(s.config)
+	}
+	if err != nil {
+		logs.Log.Errorf("failed to save build: %s", err)
+		return nil, err
+	}
+	s.builder = artifact
+	db.UpdateBuilderStatus(s.builder.ID, consts.BuildStatusWaiting)
+	s.executeUrl = fmt.Sprintf("%s/api/build", saasConfig.Url)
+	return artifact.ToProtobuf([]byte{}), nil
+}
+
+func (s *SaasBuilder) Execute() error {
+	profileName := s.config.ProfileName
+	s.config.ProfileName = ""
+	data, err := protojson.Marshal(s.config)
+	if err != nil {
+		return fmt.Errorf("failed to marshal config %s: %s", profileName, err)
+	}
+	headers := saas.SaasHeaders(s.getToken())
+	var respObj clientpb.Artifact
+	err = httputils.DoJSONRequest("POST", s.executeUrl, bytes.NewReader(data), headers, http.StatusOK, &respObj)
+	if err != nil {
+		db.UpdateBuilderStatus(s.builder.ID, consts.BuildStatusFailure)
+		return fmt.Errorf("failed to post saas service: %w", err)
+	}
+	return nil
+}
+
+func (s *SaasBuilder) Collect() (string, string, error) {
+	statusUrl := fmt.Sprintf("/api/build/status/%s", s.builder.Name)
+	downloadUrl := fmt.Sprintf("/api/build/download/%s", s.builder.Name)
+
+	path, status, err := saas.CheckAndDownloadArtifact(statusUrl, downloadUrl, s.getToken(), s.builder, 30*time.Second, 30*time.Minute)
+	if err != nil {
+		logs.Log.Errorf("failed to collect artifact %s: %s", s.builder.Name, err)
+		db.UpdateBuilderStatus(s.builder.ID, consts.BuildStatusFailure)
+		return "", consts.BuildStatusFailure, err
+	}
+	db.UpdateBuilderStatus(s.builder.ID, status)
+	//if s.config.BuildName == consts.CommandBuildBeacon {
+	//	if s.config.ArtifactId != 0 {
+	//		err = db.UpdatePulseRelink(s.config.ArtifactId, s.builder.ID)
+	//		if err != nil {
+	//			logs.Log.Errorf("failed to update pulse relink: %s", err)
+	//		}
+	//	}
+	//}
+	return path, status, nil
+}
+
+func (s *SaasBuilder) getToken() string {
+	saasConfig := configs.GetSaasConfig()
+	return saasConfig.Token
+}

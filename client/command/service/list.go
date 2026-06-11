@@ -3,36 +3,36 @@ package service
 import (
 	"errors"
 	"fmt"
+	"github.com/chainreactors/IoM-go/client"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
 	"strconv"
 )
 
-func ServiceListCmd(cmd *cobra.Command, con *repl.Console) error {
+func ServiceListCmd(cmd *cobra.Command, con *core.Console) error {
 	session := con.GetInteractive()
 	task, err := ServiceList(con.Rpc, session)
 	if err != nil {
 		return err
 	}
 
-	session.Console(task, "service list")
+	session.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 
-func ServiceList(rpc clientrpc.MaliceRPCClient, session *core.Session) (*clientpb.Task, error) {
+func ServiceList(rpc clientrpc.MaliceRPCClient, session *client.Session) (*clientpb.Task, error) {
 	return rpc.ServiceList(session.Context(), &implantpb.Request{
 		Name: consts.ModuleServiceList,
 	})
 }
 
-func RegisterServiceListFunc(con *repl.Console) {
+func RegisterServiceListFunc(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleServiceList,
 		ServiceList,
@@ -48,13 +48,13 @@ func RegisterServiceListFunc(con *repl.Console) {
 			}
 
 			tableModel := tui.NewTable([]table.Column{
-				table.NewColumn("Name", "Name", 20),
-				table.NewColumn("Display Name", "Display Name", 25),
-				table.NewColumn("Executable Path", "Executable Path", 40),
+				table.NewFlexColumn("Name", "Name", 1),
+				table.NewFlexColumn("Display Name", "Display Name", 1),
+				table.NewFlexColumn("Executable Path", "Executable Path", 2),
 				table.NewColumn("Start Type", "Start Type", 10),
 				table.NewColumn("Error Control", "Error Control", 10),
-				table.NewColumn("Account Name", "Account Name", 20),
-				table.NewColumn("Current State", "Current State", 15),
+				table.NewFlexColumn("Account Name", "Account Name", 1),
+				table.NewColumn("Current State", "Current State", 13),
 				table.NewColumn("Process ID", "Process ID", 10),
 				table.NewColumn("Exit Code", "Exit Code", 10),
 				table.NewColumn("Checkpoint", "Checkpoint", 12),

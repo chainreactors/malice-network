@@ -1,16 +1,16 @@
 package filesystem
 
 import (
+	"github.com/chainreactors/IoM-go/client"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/spf13/cobra"
 )
 
-func MvCmd(cmd *cobra.Command, con *repl.Console) error {
+func MvCmd(cmd *cobra.Command, con *core.Console) error {
 	sourcePath := cmd.Flags().Arg(0)
 	targetPath := cmd.Flags().Arg(1)
 
@@ -20,11 +20,11 @@ func MvCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	session.Console(task, "mv "+sourcePath+" "+targetPath)
+	session.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 
-func Mv(rpc clientrpc.MaliceRPCClient, session *core.Session, sourcePath, targetPath string) (*clientpb.Task, error) {
+func Mv(rpc clientrpc.MaliceRPCClient, session *client.Session, sourcePath, targetPath string) (*clientpb.Task, error) {
 	task, err := rpc.Mv(session.Context(), &implantpb.Request{
 		Name: consts.ModuleMv,
 		Args: []string{sourcePath, targetPath},

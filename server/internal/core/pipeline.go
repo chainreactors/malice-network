@@ -1,11 +1,15 @@
 package core
 
 import (
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/utils/peek"
-	"github.com/chainreactors/malice-network/server/internal/configs"
-	"github.com/chainreactors/malice-network/server/internal/stream"
+	"errors"
 	"io"
+	"sync"
+
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/implanttypes"
+	"github.com/chainreactors/malice-network/server/internal/configs"
+	cryptostream "github.com/chainreactors/malice-network/server/internal/stream"
 )
 
 type Pipeline interface {
@@ -15,64 +19,101 @@ type Pipeline interface {
 	ToProtobuf() *clientpb.Pipeline
 }
 
-type Pipelines map[string]Pipeline
-
-func (ps Pipelines) Add(p Pipeline) {
-	ps[p.ID()] = p
+type Pipelines struct {
+	mu sync.RWMutex
+	m  map[string]Pipeline
 }
 
-func (ps Pipelines) Get(id string) Pipeline {
-	return ps[id]
+func NewPipelines() Pipelines {
+	return Pipelines{m: make(map[string]Pipeline)}
 }
 
-func (ps Pipelines) ToProtobuf() *clientpb.Pipelines {
+func (ps *Pipelines) Add(p Pipeline) {
+	ps.mu.Lock()
+	ps.m[p.ID()] = p
+	ps.mu.Unlock()
+}
+
+func (ps *Pipelines) Get(id string) Pipeline {
+	ps.mu.RLock()
+	defer ps.mu.RUnlock()
+	return ps.m[id]
+}
+
+func (ps *Pipelines) Delete(id string) {
+	ps.mu.Lock()
+	delete(ps.m, id)
+	ps.mu.Unlock()
+}
+
+func (ps *Pipelines) ToProtobuf() *clientpb.Pipelines {
+	ps.mu.RLock()
+	defer ps.mu.RUnlock()
 	var pls = &clientpb.Pipelines{
-		Pipelines: make([]*clientpb.Pipeline, 0),
+		Pipelines: make([]*clientpb.Pipeline, 0, len(ps.m)),
 	}
-	for _, p := range ps {
+	for _, p := range ps.m {
 		pls.Pipelines = append(pls.Pipelines, p.ToProtobuf())
 	}
 	return pls
 }
 
-func FromProtobuf(pipeline *clientpb.Pipeline) *PipelineConfig {
+func FromPipeline(pipeline *clientpb.Pipeline) *PipelineConfig {
 	return &PipelineConfig{
-		ListenerID: pipeline.ListenerId,
-		Parser:     pipeline.Parser,
-		Tls: &configs.CertConfig{
-			Cert:   pipeline.GetTls().Cert,
-			Key:    pipeline.GetTls().Key,
-			Enable: pipeline.GetTls().Enable,
-		},
-		Encryption: &configs.EncryptionConfig{
-			Enable: pipeline.GetEncryption().Enable,
-			Type:   pipeline.GetEncryption().Type,
-			Key:    pipeline.GetEncryption().Key,
-		},
+		ListenerID:   pipeline.ListenerId,
+		Parser:       pipeline.Parser,
+		TLSConfig:    implanttypes.FromTls(pipeline.Tls),
+		Encryption:   implanttypes.FromEncryptions(pipeline.GetEncryption()),
+		SecureConfig: implanttypes.FromSecure(pipeline.Secure),
+		PacketLength: int(pipeline.PacketLength),
 	}
 }
 
 type PipelineConfig struct {
-	ListenerID string
-	Parser     string
-	Tls        *configs.CertConfig
-	Encryption *configs.EncryptionConfig
+	ListenerID   string
+	Parser       string
+	TLSConfig    *implanttypes.TlsConfig
+	Encryption   implanttypes.EncryptionsConfig
+	SecureConfig *implanttypes.SecureConfig
+	PacketLength int
 }
 
-func (p *PipelineConfig) WrapConn(conn io.ReadWriteCloser) (*peek.Conn, error) {
-	cry, err := configs.NewCrypto(p.Encryption.ToProtobuf())
+func (p *PipelineConfig) WrapConn(conn io.ReadWriteCloser) (*cryptostream.Conn, error) {
+	if p == nil {
+		return nil, errors.New("pipeline config is nil")
+	}
+	enc := p.Encryption.ToProtobuf()
+	logs.Log.Debugf("crypto.wrap - encryption_configs_count=%d", len(enc))
+	for i, e := range enc {
+		logs.Log.Debugf("crypto.wrap - encryption[%d].type=%s encryption[%d].key=%q", i, e.Type, i, e.Key)
+	}
+	crys, err := configs.NewCrypto(enc)
+	if err != nil {
+		logs.Log.Debugf("crypto.wrap - new_crypto_failed error=%q", err)
+		return nil, err
+	}
+	logs.Log.Debugf("crypto.wrap - cryptors_created=%d parser=%s", len(crys), p.Parser)
+	return cryptostream.WrapPeekConn(conn, crys, p.Parser, uint32(p.PacketLength))
+}
+
+// WrapBindConn wraps a connection for bind mode without pre-reading
+// Bind mode expects server to send data first, then receive response
+func (p *PipelineConfig) WrapBindConn(conn io.ReadWriteCloser) (*cryptostream.Conn, error) {
+	if p == nil {
+		return nil, errors.New("pipeline config is nil")
+	}
+	crys, err := configs.NewCrypto(p.Encryption.ToProtobuf())
 	if err != nil {
 		return nil, err
 	}
-	conn = cryptostream.NewCryptoRWC(conn, cry)
-	return peek.WrapPeekConn(conn), nil
+	return cryptostream.WrapBindConn(conn, crys, uint32(p.PacketLength))
 }
 
 //
 //func (p *PipelineConfig) ToFile() *clientpb.Pipeline {
 //	return &clientpb.Pipeline{
 //		Tls: &clientpb.TLS{
-//			Cert:   p.TlsConfig.Cert,
+//			TLSConfig:   p.TlsConfig.TLSConfig,
 //			Key:    p.TlsConfig.Key,
 //			Enable: p.TlsConfig.Enable,
 //		},

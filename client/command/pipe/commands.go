@@ -2,14 +2,14 @@ package pipe
 
 import (
 	"github.com/carapace-sh/carapace"
+	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/spf13/cobra"
 )
 
 // Commands initializes and returns all pipe-related commands.
-func Commands(con *repl.Console) []*cobra.Command {
+func Commands(con *core.Console) []*cobra.Command {
 	pipeCmd := &cobra.Command{
 		Use:   consts.CommandPipe,
 		Short: "Manage named pipes",
@@ -80,16 +80,43 @@ func Commands(con *repl.Console) []*cobra.Command {
 		carapace.ActionValues().Usage("pipe name"),
 	)
 
+	pipeServerCmd := &cobra.Command{
+		Use:   consts.SubCommandName(consts.ModulePipeServer) + " [action] [pipe_name]",
+		Short: "Manage pipe server operations",
+		Long:  "Start, stop, or list pipe servers for receiving data from clients.",
+		Args:  cobra.RangeArgs(1, 2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return PipeServerCmd(cmd, con)
+		},
+		Annotations: map[string]string{
+			"depend": consts.ModulePipeServer,
+			"ttp":    "T1090",
+		},
+		Example: `Pipe server operations:
+  ~~~
+  pipe server start \\.\pipe\mypipe       # Start a pipe server
+  pipe server stop \\.\pipe\mypipe       # Stop a pipe server
+  pipe server list               # List all running pipe servers
+  pipe server status \\.\pipe\mypipe      # Check server status and cache size
+  pipe server clear \\.\pipe\mypipe       # Clear cached data for a pipe
+  ~~~`,
+	}
+	common.BindArgCompletions(pipeServerCmd, nil,
+		carapace.ActionValues("start", "stop", "list", "clear", "status").Usage("action"),
+		carapace.ActionValues().Usage("pipe name (required for start/stop/clear/status)"),
+	)
+
 	// Add subcommands to the main pipe command
-	pipeCmd.AddCommand(pipeUploadCmd, pipeReadCmd)
+	pipeCmd.AddCommand(pipeUploadCmd, pipeReadCmd, pipeServerCmd)
 	// , pipeCloseCmd
 
 	return []*cobra.Command{pipeCmd}
 }
 
 // Register registers all pipe-related commands.
-func Register(con *repl.Console) {
+func Register(con *core.Console) {
 	RegisterPipeUploadFunc(con)
 	RegisterPipeReadFunc(con)
 	RegisterPipeCloseFunc(con)
+	RegisterPipeServerFunc(con)
 }

@@ -2,47 +2,35 @@ package rpc
 
 import (
 	"context"
-	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/types"
-	"github.com/chainreactors/malice-network/helper/utils/handler"
+	"fmt"
+
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	types "github.com/chainreactors/IoM-go/types"
 	"github.com/chainreactors/malice-network/server/internal/parser"
-	"github.com/gookit/config/v2"
 )
 
 func (rpc *Server) PipeClose(ctx context.Context, req *implantpb.PipeRequest) (*clientpb.Task, error) {
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-
-	go greq.HandlerResponse(ch, types.MsgEmpty)
-	return greq.Task.ToProtobuf(), nil
+	return rpc.GenericInternal(ctx, req, types.MsgEmpty)
 }
 
 func (rpc *Server) PipeRead(ctx context.Context, req *implantpb.PipeRequest) (*clientpb.Task, error) {
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
+	return rpc.GenericInternalWithSession(ctx, req, types.MsgBinaryResponse, func(greq *GenericRequest, spite *implantpb.Spite) {
+		ContextCallback(greq.Task, ctx)(spite)
+	})
+}
 
-	go greq.HandlerResponse(ch, types.MsgResponse)
-	return greq.Task.ToProtobuf(), nil
+func (rpc *Server) PipeServer(ctx context.Context, req *implantpb.PipeRequest) (*clientpb.Task, error) {
+	return rpc.GenericInternal(ctx, req, types.MsgResponse)
 }
 
 func (rpc *Server) PipeUpload(ctx context.Context, pipe *implantpb.PipeRequest) (*clientpb.Task, error) {
+	if pipe == nil || pipe.Pipe == nil {
+		return nil, types.ErrMissingRequestField
+	}
 	req := pipe.Pipe
-	count := parser.Count(req.Data, config.Int(consts.ConfigMaxPacketLength))
+	count := parser.Count(req.Data, getPacketLength(ctx))
 	if count == 1 {
 		greq, err := newGenericRequest(ctx, pipe)
 		if err != nil {
@@ -52,7 +40,7 @@ func (rpc *Server) PipeUpload(ctx context.Context, pipe *implantpb.PipeRequest) 
 		if err != nil {
 			return nil, err
 		}
-		go greq.HandlerResponse(ch, types.MsgAck)
+		greq.HandlerResponse(ch, types.MsgAck)
 		return greq.Task.ToProtobuf(), nil
 	} else {
 		greq, err := newGenericRequest(ctx, &implantpb.PipeRequest{
@@ -62,19 +50,24 @@ func (rpc *Server) PipeUpload(ctx context.Context, pipe *implantpb.PipeRequest) 
 				Target: req.Target,
 			},
 		}, count)
+		if err != nil {
+			return nil, err
+		}
 		in, out, err := rpc.StreamGenericHandler(ctx, greq)
 		if err != nil {
 			return nil, err
 		}
 		var blockId = 0
-		go func() {
-			stat := <-out
-			err := handler.HandleMaleficError(stat)
-			if err != nil {
-				greq.Task.Panic(buildErrorEvent(greq.Task, err))
-				return
+		runTaskHandler(greq.Task, func() error {
+			stat, ok := recvSpite(greq.Task.Ctx, out)
+			if !ok {
+				return ErrTaskContextCancelled
 			}
-			for block := range parser.Chunked(req.Data, config.Int(consts.ConfigMaxPacketLength)) {
+			err := types.HandleMaleficError(stat)
+			if err != nil {
+				return buildTaskError(err)
+			}
+			for block := range parser.Chunked(req.Data, greq.Session.GetPacketLength()) {
 				msg := &implantpb.Block{
 					BlockId: uint32(blockId),
 					Content: block,
@@ -88,18 +81,22 @@ func (rpc *Server) PipeUpload(ctx context.Context, pipe *implantpb.PipeRequest) 
 					TaskId:  greq.Task.Id,
 				}, msg)
 				spite.Name = types.MsgUpload.String()
-				in <- spite
-				resp := <-out
-				err = handler.AssertSpite(resp, types.MsgAck)
+				if err := in.Send(spite); err != nil {
+					return err
+				}
+				resp, ok := recvSpite(greq.Task.Ctx, out)
+				if !ok {
+					return ErrTaskContextCancelled
+				}
+				err = types.AssertSpite(resp, types.MsgAck)
 				if err != nil {
-					return
+					return buildTaskError(err)
 				}
 				greq.Session.AddMessage(resp, blockId)
 
 				err = greq.Session.TaskLog(greq.Task, resp)
 				if err != nil {
-					logs.Log.Errorf("Failed to write task log: %v", err)
-					return
+					return fmt.Errorf("write task log: %w", err)
 				}
 				if resp.GetAck().Success {
 					greq.Task.Done(resp, "")
@@ -108,8 +105,8 @@ func (rpc *Server) PipeUpload(ctx context.Context, pipe *implantpb.PipeRequest) 
 					}
 				}
 			}
-			close(in)
-		}()
+			return nil
+		}, greq.Task.Close, in.Close)
 		return greq.Task.ToProtobuf(), nil
 	}
 }

@@ -3,8 +3,11 @@ package output
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"time"
+
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	rem "github.com/chainreactors/rem/protocol/core"
 )
 
 func NewPivoting(content []byte) (*PivotingContext, error) {
@@ -16,35 +19,41 @@ func NewPivoting(content []byte) (*PivotingContext, error) {
 	return pivoting, nil
 }
 
-func NewPivotingWithRem(agent *clientpb.REMAgent) *PivotingContext {
+func NewPivotingWithRem(agent *clientpb.REMAgent, pipe *clientpb.Pipeline) *PivotingContext {
 	return &PivotingContext{
 		Enable:     true,
-		Pipeline:   agent.PipelineId,
+		Pipeline:   pipe.Name,
+		ListenerIP: pipe.Ip,
+		Listener:   pipe.ListenerId,
 		RemAgentID: agent.Id,
-		Mod:        agent.Mod,
+		InboundSide: agent.InboundSide,
 		RemoteURL:  agent.Remote,
 		LocalURL:   agent.Local,
+		CreatedAt:  time.Now().Unix(),
 	}
 }
 
 type PivotingContext struct {
 	Enable     bool   `json:"enable"`
 	Listener   string `json:"listener_id"`
+	ListenerIP string `json:"listener_ip"`
 	Pipeline   string `json:"pipeline_id"`
 	RemAgentID string `json:"id"`
 	LocalURL   string `json:"local"`
 	RemoteURL  string `json:"remote"`
-	Mod        string `json:"mod"`
+	InboundSide string `json:"inbound_side"`
+	CreatedAt  int64  `json:"created_at,omitempty"`
 }
 
 func (p *PivotingContext) ToRemAgent() *clientpb.REMAgent {
 	return &clientpb.REMAgent{
 		Id:         p.RemAgentID,
 		PipelineId: p.Pipeline,
-		Mod:        p.Mod,
+		InboundSide: p.InboundSide,
 		Local:      p.LocalURL,
 		Remote:     p.RemoteURL,
 		Enable:     p.Enable,
+		CreatedAt:  p.CreatedAt,
 	}
 }
 
@@ -61,24 +70,26 @@ func (p *PivotingContext) Marshal() []byte {
 }
 
 func (p *PivotingContext) Abstract() string {
-	if p.Mod == "reverse" {
-		return fmt.Sprintf("%s serving %s", p.RemAgentID, p.RemoteURL)
-	} else if p.Mod == "proxy" {
+	if p.InboundSide == "remote" {
+		u, _ := rem.NewURL(p.RemoteURL)
+		u.SetHostname(p.ListenerIP)
+		return fmt.Sprintf("%s serving %s", p.RemAgentID, u.String())
+	} else if p.InboundSide == "local" {
 		return fmt.Sprintf("%s serving %s", p.RemAgentID, p.LocalURL)
-	} else if p.Mod == "connect" {
+	} else if p.InboundSide == "" {
 		return fmt.Sprintf("%s connecting to %s", p.RemAgentID, p.Pipeline)
 	} else {
-		return fmt.Sprintf("invalid mod %s", p.Mod)
+		return fmt.Sprintf("unknown inbound_side %s", p.InboundSide)
 	}
 }
 
 func (p *PivotingContext) String() string {
-	if p.Mod == "reverse" {
-		return fmt.Sprintf("Pivoting %s: %s %s <- %s on %s", p.RemAgentID, p.Mod, p.LocalURL, p.RemoteURL, p.Pipeline)
-	} else if p.Mod == "proxy" {
-		return fmt.Sprintf("Pivoting %s: %s %s -> %s on %s", p.RemAgentID, p.Mod, p.LocalURL, p.RemoteURL, p.Pipeline)
-	} else if p.Mod == "connect" {
-		return fmt.Sprintf("Pivoting %s: %s connected on %s", p.RemAgentID, p.Mod, p.Pipeline)
+	if p.InboundSide == "remote" {
+		return fmt.Sprintf("Pivoting %s: %s %s <- %s on %s", p.RemAgentID, p.InboundSide, p.LocalURL, p.RemoteURL, p.Pipeline)
+	} else if p.InboundSide == "local" {
+		return fmt.Sprintf("Pivoting %s: %s %s -> %s on %s", p.RemAgentID, p.InboundSide, p.LocalURL, p.RemoteURL, p.Pipeline)
+	} else if p.InboundSide == "" {
+		return fmt.Sprintf("Pivoting %s: connect-only on %s", p.RemAgentID, p.Pipeline)
 	} else {
 		return string(p.Marshal())
 	}

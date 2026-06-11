@@ -3,13 +3,14 @@ package common
 import (
 	"errors"
 	"fmt"
-	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/tui"
-	"github.com/spf13/cobra"
 	"strconv"
+
+	"github.com/chainreactors/malice-network/client/assets"
+	"github.com/chainreactors/malice-network/client/core"
+	"github.com/spf13/cobra"
 )
 
-func OpsecConfirm(cmd *cobra.Command) error {
+func OpsecConfirm(cmd *cobra.Command, con *core.Console) error {
 	opsec, err := strconv.ParseFloat(cmd.Annotations["opsec"], 64)
 	if err != nil {
 		return err
@@ -23,13 +24,11 @@ func OpsecConfirm(cmd *cobra.Command) error {
 		return err
 	}
 	if opsec < threshold {
-		newConfirm := tui.NewConfirm(fmt.Sprintf("This command opsec value %d is too low, command will not execute. Are you sure you want to continue?", opsec))
-		newModel := tui.NewModel(newConfirm, nil, false, true)
-		err = newModel.Run()
+		confirmed, err := Confirm(cmd, con, fmt.Sprintf("This command opsec value %.1f is too low, command will not execute. Are you sure you want to continue?", opsec))
 		if err != nil {
 			return err
 		}
-		if !newConfirm.Confirmed {
+		if !confirmed {
 			return errors.New("operation cancelled by user")
 		}
 	}

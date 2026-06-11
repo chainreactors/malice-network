@@ -2,34 +2,40 @@ package listener
 
 import (
 	"context"
-	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/encoders"
-	"github.com/chainreactors/malice-network/helper/encoders/hash"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
-	"github.com/chainreactors/malice-network/helper/types"
-	"github.com/chainreactors/malice-network/helper/utils/peek"
-	"github.com/chainreactors/malice-network/server/internal/core"
-	"github.com/chainreactors/malice-network/server/internal/parser"
-	"github.com/chainreactors/malice-network/server/internal/parser/malefic"
+	"fmt"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/proto/services/listenerrpc"
+	"github.com/chainreactors/IoM-go/types"
 	"net"
+
+	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/server/internal/core"
+	"google.golang.org/grpc"
 )
 
-func NewBindPipeline(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline) (*BindPipeline, error) {
+type bindRPCClient interface {
+	SpiteStream(ctx context.Context, opts ...grpc.CallOption) (listenerrpc.ListenerRPC_SpiteStreamClient, error)
+	Register(ctx context.Context, in *clientpb.RegisterSession, opts ...grpc.CallOption) (*clientpb.Empty, error)
+	Checkin(ctx context.Context, in *implantpb.Ping, opts ...grpc.CallOption) (*clientpb.Empty, error)
+}
+
+func NewBindPipeline(rpc bindRPCClient, pipeline *clientpb.Pipeline) (*BindPipeline, error) {
 	pp := &BindPipeline{
 		rpc:            rpc,
 		Name:           pipeline.Name,
-		Enable:         true,
-		PipelineConfig: core.FromProtobuf(pipeline),
+		CertName:       pipeline.CertName,
+		PipelineConfig: core.FromPipeline(pipeline),
 	}
 	return pp, nil
 }
 
 type BindPipeline struct {
-	rpc    listenerrpc.ListenerRPCClient
-	Name   string
-	Enable bool
+	rpc      bindRPCClient
+	Name     string
+	Enable   bool
+	CertName string
 	*core.PipelineConfig
 }
 
@@ -43,30 +49,34 @@ func (pipeline *BindPipeline) ToProtobuf() *clientpb.Pipeline {
 		Enable:     pipeline.Enable,
 		Type:       consts.BindPipeline,
 		ListenerId: pipeline.ListenerID,
+		CertName:   pipeline.CertName,
+		Parser:     pipeline.Parser,
 		Body: &clientpb.Pipeline_Bind{
 			Bind: &clientpb.BindPipeline{
 				Name:       pipeline.Name,
 				ListenerId: pipeline.ListenerID,
 			},
 		},
-		Tls:        pipeline.Tls.ToProtobuf(),
+		Tls:        pipeline.TLSConfig.ToProtobuf(),
 		Encryption: pipeline.Encryption.ToProtobuf(),
+		Secure:     pipeline.SecureConfig.ToProtobuf(),
 	}
 }
 
 func (pipeline *BindPipeline) Start() error {
-	if !pipeline.Enable {
+	if pipeline.Enable {
 		return nil
 	}
 	forward, err := core.NewForward(pipeline.rpc, pipeline)
-	forward.ListenerId = pipeline.ListenerID
 	if err != nil {
 		return err
 	}
+	forward.ListenerId = pipeline.ListenerID
 	core.Forwarders.Add(forward)
 
-	logs.Log.Infof("[pipeline] starting TCP Bind pipeline")
-	go pipeline.handler()
+	logs.Log.Infof("pipeline.bind - start")
+	pipeline.Enable = true
+	core.GoGuarded("bind-handler:"+pipeline.Name, pipeline.handler, pipeline.runtimeErrorHandler("handler loop"))
 
 	return nil
 }
@@ -76,19 +86,19 @@ func (pipeline *BindPipeline) Close() error {
 }
 
 func (pipeline *BindPipeline) handler() error {
-	defer logs.Log.Errorf("bind pipeline exit!!!")
+	defer logs.Log.Debugf("bind pipeline %s exit", pipeline.Name)
 	for {
 		forward := core.Forwarders.Get(pipeline.ID())
+		if forward == nil {
+			return fmt.Errorf("bind pipeline %s forwarder missing", pipeline.Name)
+		}
 		msg, err := forward.Stream.Recv()
 		if err != nil {
-			return err
+			return fmt.Errorf("bind pipeline %s recv failed: %w", pipeline.Name, err)
 		}
-		go func() {
-			err = pipeline.handlerReq(msg)
-			if err != nil {
-				logs.Log.Errorf("[pipeline] %s", err.Error())
-			}
-		}()
+		core.GoGuarded("bind-request:"+pipeline.Name, func() error {
+			return pipeline.handlerReq(msg)
+		}, core.LogGuardedError("bind-request:"+pipeline.Name))
 	}
 }
 
@@ -97,22 +107,27 @@ func (pipeline *BindPipeline) handlerReq(req *clientpb.SpiteRequest) error {
 	if err != nil {
 		return err
 	}
-	peekConn, err := pipeline.WrapConn(conn)
+
+	// Bind mode: Use WrapBindConn which doesn't pre-read
+	// Server needs to send data first, then receive response
+	peekConn, err := pipeline.WrapBindConn(conn)
+	if err != nil {
+		logs.Log.Errorf("wrap bind conn error: %v", err)
+		conn.Close()
+		return err
+	}
+	defer peekConn.Close()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	var connect *core.Connection
-	if req.Spite.Name == consts.ModuleInit {
-		connect, err = pipeline.initConnection(peekConn, req)
-		if err != nil {
-			return err
-		}
-	} else {
-		connect, err = pipeline.getConnection(peekConn, req.Session.RawId)
-		if err != nil {
-			return err
-		}
-		connect.C <- req
+
+	if err := peekConn.Parser.WritePacket(peekConn, types.BuildOneSpites(req.Spite), req.Session.RawId); err != nil {
+		logs.Log.Errorf("failed to send bind packet: %v", err)
+		return err
 	}
+	keyPair := core.GetKeyPairForSession(req.Session.RawId, pipeline.SecureConfig)
+	connect := core.NewConnection(peekConn.Parser, req.Session.RawId, pipeline.Name, keyPair)
+	core.Connections.Add(connect)
 
 	err = connect.Handler(ctx, peekConn)
 	if err != nil {
@@ -121,27 +136,22 @@ func (pipeline *BindPipeline) handlerReq(req *clientpb.SpiteRequest) error {
 	return nil
 }
 
-func (pipeline *BindPipeline) initConnection(conn *peek.Conn, req *clientpb.SpiteRequest) (*core.Connection, error) {
-	p := &parser.MessageParser{
-		Implant:      consts.ImplantMalefic,
-		PacketParser: &malefic.MaleficParser{},
-	}
-	go p.WritePacket(conn, types.BuildOneSpites(req.Spite), req.Session.RawId)
-	connect := core.NewConnection(p, req.Session.RawId, pipeline.ID())
-	core.Connections.Add(connect)
-	return connect, nil
-}
-
-func (pipeline *BindPipeline) getConnection(conn *peek.Conn, sid uint32) (*core.Connection, error) {
-	p, err := parser.NewParser(pipeline.Parser)
-	if err != nil {
-		return nil, err
-	}
-	if newC := core.Connections.Get(hash.Md5Hash(encoders.Uint32ToBytes(sid))); newC != nil {
-		return newC, nil
-	} else {
-		newC := core.NewConnection(p, sid, pipeline.ID())
-		core.Connections.Add(newC)
-		return newC, nil
-	}
+func (pipeline *BindPipeline) runtimeErrorHandler(scope string) core.GoErrorHandler {
+	label := fmt.Sprintf("bind pipeline %s %s", pipeline.Name, scope)
+	return core.CombineErrorHandlers(
+		core.LogGuardedError(label),
+		func(err error) {
+			pipeline.Enable = false
+			if core.EventBroker != nil {
+				core.EventBroker.Publish(core.Event{
+					EventType: consts.EventListener,
+					Op:        consts.CtrlPipelineStop,
+					Listener:  &clientpb.Listener{Id: pipeline.ListenerID},
+					Message:   label,
+					Err:       core.ErrorText(err),
+					Important: true,
+				})
+			}
+		},
+	)
 }

@@ -2,23 +2,28 @@ package website
 
 import (
 	"github.com/carapace-sh/carapace"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/malice-network/client/wizard"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/mals"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
-func Commands(con *repl.Console) []*cobra.Command {
+func Commands(con *core.Console) []*cobra.Command {
 	websiteCmd := &cobra.Command{
 		Use:   consts.CommandWebsite,
 		Short: "Register a new website",
 		Args:  cobra.MaximumNArgs(1),
-		Long:  `Register a new website with the specified listener. If **name** is not provided, it will be generated in the format **listenerID_web_port**.`,
+		Long:  `Register a new website with the specified listener. If **name** is not provided, it will be generated in the format **listenerID_web_port** .`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return NewWebsiteCmd(cmd, con)
+		},
+		Annotations: map[string]string{
+			"resource": "true",
 		},
 		Example: `~~~
 // Register a website with the default settings
@@ -34,6 +39,7 @@ website web_test --listener tcp_default --root /webtest --tls --cert /path/to/ce
 
 	common.BindFlag(websiteCmd, common.TlsCertFlagSet, common.PipelineFlagSet, func(f *pflag.FlagSet) {
 		f.String("root", "/", "website root path")
+		f.String("auth", "", "HTTP Basic Auth for all paths (user:pass)")
 	})
 
 	common.BindFlagCompletions(websiteCmd, func(comp carapace.ActionMap) {
@@ -43,19 +49,20 @@ website web_test --listener tcp_default --root /webtest --tls --cert /path/to/ce
 		comp["cert"] = carapace.ActionFiles().Usage("path to the cert file")
 		comp["key"] = carapace.ActionFiles().Usage("path to the key file")
 		comp["tls"] = carapace.ActionValues().Usage("enable tls")
+		comp["cert-name"] = common.CertNameCompleter(con)
 	})
 
 	common.BindArgCompletions(websiteCmd, nil, carapace.ActionValues().Usage("website name"))
 
 	websiteListCmd := &cobra.Command{
 		Use:   consts.CommandPipelineList,
-		Short: "List website in listener",
-		Long:  "Use a table to list websites along with their corresponding listeners",
+		Short: "List websites",
+		Long:  "List websites along with their corresponding listeners.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ListWebsitesCmd(cmd, con)
 		},
 		Example: `~~~
-website [listener]
+website list [listener]
 ~~~`,
 	}
 
@@ -73,15 +80,17 @@ website start web_test
 ~~~`,
 	}
 
+	common.BindArgCompletions(websiteStartCmd, nil, common.WebsiteCompleter(con))
 	common.BindFlag(websiteStartCmd, func(f *pflag.FlagSet) {
+		f.String("listener", "", "listener ID")
+		f.String("cert-name", "", "certificate name")
 	})
 
 	common.BindFlagCompletions(websiteStartCmd, func(comp carapace.ActionMap) {
 		comp["listener"] = common.ListenerIDCompleter(con)
-	})
+		comp["cert-name"] = common.CertNameCompleter(con)
 
-	common.BindArgCompletions(websiteStartCmd, nil,
-		carapace.ActionValues().Usage("website name"))
+	})
 
 	websiteStopCmd := &cobra.Command{
 		Use:   consts.CommandPipelineStop + " [name]",
@@ -106,7 +115,7 @@ website stop web_test --listener tcp_default
 	})
 
 	common.BindArgCompletions(websiteStopCmd, nil,
-		carapace.ActionValues().Usage("website name"))
+		common.WebsiteCompleter(con))
 
 	websiteAddContentCmd := &cobra.Command{
 		Use:   "add [file_path]",
@@ -129,6 +138,7 @@ website add /path/to/content.html --website web_test --path /custom/path --type 
 		f.String("website", "", "website name (required)")
 		f.String("path", "", "web path for the content (defaults to filename)")
 		f.String("type", "raw", "content type of the file")
+		f.String("auth", "", "HTTP Basic Auth for this path (user:pass), \"none\" to skip website default")
 	})
 	websiteAddContentCmd.MarkFlagRequired("website")
 
@@ -198,13 +208,52 @@ website list-content web_test
 	common.BindArgCompletions(websiteListContentCmd, nil,
 		common.WebsiteCompleter(con))
 
+	// Enable wizard for website commands that need configuration
+	common.EnableWizardForCommands(websiteCmd, websiteAddContentCmd, websiteUpdateContentCmd)
+
+	// Register wizard providers for dynamic options
+	registerWizardProviders(websiteCmd, con)
+
 	websiteCmd.AddCommand(websiteListCmd, websiteStartCmd, websiteStopCmd,
 		websiteAddContentCmd, websiteUpdateContentCmd, websiteRemoveContentCmd, websiteListContentCmd)
 
 	return []*cobra.Command{websiteCmd}
 }
 
-func Register(con *repl.Console) {
+// registerWizardProviders registers dynamic option providers for wizard.
+func registerWizardProviders(cmd *cobra.Command, con *core.Console) {
+	// Listener options - fetch from cached listeners
+	wizard.RegisterProviderForCommand(cmd, "listener", func() []string {
+		if len(con.Listeners) == 0 {
+			return nil
+		}
+		opts := make([]string, 0, len(con.Listeners))
+		for _, listener := range con.Listeners {
+			if listener.Id != "" {
+				opts = append(opts, listener.Id)
+			}
+		}
+		return opts
+	})
+
+	// Certificate name options - fetch from server
+	wizard.RegisterProviderForCommand(cmd, "cert-name", func() []string {
+		certificates, err := con.Rpc.GetAllCertificates(con.Context(), &clientpb.Empty{})
+		if err != nil || len(certificates.Certs) == 0 {
+			return nil
+		}
+		opts := make([]string, 0, len(certificates.Certs)+1)
+		opts = append(opts, "") // Allow empty option
+		for _, c := range certificates.Certs {
+			if c.Cert.Name != "" {
+				opts = append(opts, c.Cert.Name)
+			}
+		}
+		return opts
+	})
+}
+
+func Register(con *core.Console) {
 	con.RegisterServerFunc("website_new", NewWebsite, &mals.Helper{Group: intermediate.ListenerGroup})
 	con.RegisterServerFunc("website_start", StartWebsite, &mals.Helper{Group: intermediate.ListenerGroup})
 	con.RegisterServerFunc("website_stop", StopWebsite, &mals.Helper{Group: intermediate.ListenerGroup})

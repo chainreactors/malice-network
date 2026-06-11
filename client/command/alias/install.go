@@ -3,9 +3,9 @@ package alias
 import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/command/common"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
-	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
 	"os"
 	"path/filepath"
@@ -13,7 +13,7 @@ import (
 )
 
 // AliasesInstallCmd - Install an alias
-func AliasesInstallCmd(cmd *cobra.Command, con *repl.Console) {
+func AliasesInstallCmd(cmd *cobra.Command, con *core.Console) {
 	aliasLocalPath := cmd.Flags().Arg(0)
 	fi, err := os.Stat(aliasLocalPath)
 	if os.IsNotExist(err) {
@@ -21,14 +21,14 @@ func AliasesInstallCmd(cmd *cobra.Command, con *repl.Console) {
 		return
 	}
 	if !fi.IsDir() {
-		InstallFromFile(aliasLocalPath, "", false, con)
+		InstallFromFile(aliasLocalPath, "", false, con, cmd)
 	} else {
 		installFromDir(aliasLocalPath, con)
 	}
 }
 
 // Install an extension from a directory
-func installFromDir(aliasLocalPath string, con *repl.Console) {
+func installFromDir(aliasLocalPath string, con *core.Console) {
 	manifestData, err := os.ReadFile(filepath.Join(aliasLocalPath, ManifestFileName))
 	if err != nil {
 		con.Log.Errorf("Error reading %s: %s\n", ManifestFileName, err)
@@ -82,7 +82,7 @@ func installFromDir(aliasLocalPath string, con *repl.Console) {
 }
 
 // Install an extension from a .tar.gz file
-func InstallFromFile(aliasGzFilePath string, aliasName string, promptToOverwrite bool, con *repl.Console) *string {
+func InstallFromFile(aliasGzFilePath string, aliasName string, promptToOverwrite bool, con *core.Console, cmd *cobra.Command) *string {
 	manifestData, err := fileutils.ReadFileFromTarGz(aliasGzFilePath, fmt.Sprintf("./%s", ManifestFileName))
 	if err != nil {
 		con.Log.Errorf("Failed to read %s from '%s': %s\n", ManifestFileName, aliasGzFilePath, err)
@@ -96,25 +96,23 @@ func InstallFromFile(aliasGzFilePath string, aliasName string, promptToOverwrite
 		} else {
 			errorMsg = fmt.Sprintf("Failed to parse %s: %s\n", ManifestFileName, err)
 		}
-		con.Log.Errorf(errorMsg + "\n")
+		con.Log.Errorf("%s\n", errorMsg)
 		return nil
 	}
 	installPath := filepath.Join(assets.GetAliasesDir(), filepath.Base(manifest.CommandName))
 	if _, err := os.Stat(installPath); !os.IsNotExist(err) {
 		if promptToOverwrite {
 			con.Log.Infof("Alias '%s' already exists\n", manifest.CommandName)
-			confirmModel := tui.NewConfirm("Overwrite current install?")
-			newConfirm := tui.NewModel(confirmModel, nil, false, true)
-			err := newConfirm.Run()
+			confirmed, err := common.Confirm(cmd, con, "Overwrite current install?")
 			if err != nil {
 				con.Log.Errorf("Failed to run confirm model: %s\n", err)
 				return nil
 			}
-			if !confirmModel.Confirmed {
+			if !confirmed {
 				return nil
 			}
+			fileutils.ForceRemoveAll(installPath)
 		}
-		fileutils.ForceRemoveAll(installPath)
 	}
 
 	con.Log.Infof("Installing alias '%s' (%s) ... \n", manifest.Name, manifest.Version)

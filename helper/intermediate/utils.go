@@ -3,29 +3,19 @@ package intermediate
 import (
 	"context"
 	"fmt"
-	"github.com/chainreactors/malice-network/helper/utils/pe"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/types"
 	"math"
 	"os"
 	"path/filepath"
 
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/helper/utils/handler"
+
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
+	"github.com/chainreactors/malice-network/helper/utils/pe"
 )
-
-func GetResourceFile(pluginName, filename string) (string, error) {
-	resourceFile := filepath.Join(assets.GetMalsDir(), pluginName, "resources", filename)
-	return resourceFile, nil
-}
-
-func GetGlobalResourceFile(filename string) (string, error) {
-	resourceFile := filepath.Join(assets.GetResourceDir(), filename)
-	return resourceFile, nil
-}
 
 func NewSacrificeProcessMessage(ppid uint32, hidden, block_dll, bypassETW bool, argue string) (*implantpb.SacrificeProcess, error) {
 	return &implantpb.SacrificeProcess{
@@ -51,6 +41,7 @@ func NewBinary(module string, path string, args []string, out bool, timeout uint
 		Timeout:     timeout,
 		Arch:        consts.MapArch(arch),
 		ProcessName: process,
+		Delay:       2000,
 		Sacrifice:   sac,
 	}, nil
 }
@@ -71,6 +62,7 @@ func NewBinaryData(module string, path string, data string, out bool, timeout ui
 		Timeout:     timeout,
 		Arch:        consts.MapArch(arch),
 		ProcessName: process,
+		Delay:       2000,
 		Sacrifice:   sac,
 	}, nil
 }
@@ -90,6 +82,7 @@ func NewExecutable(module string, path string, args []string, arch string, sac *
 		Timeout:     math.MaxUint32,
 		Arch:        consts.MapArch(arch),
 		ProcessName: process,
+		Delay:       2000,
 		Sacrifice:   sac,
 	}, nil
 }
@@ -108,7 +101,7 @@ func WaitResult(rpc clientrpc.MaliceRPCClient, task *clientpb.Task) (*clientpb.T
 	if err != nil {
 		return nil, err
 	}
-	if err = handler.HandleMaleficError(content.Spite); err != nil {
+	if err = types.HandleMaleficError(content.Spite); err != nil {
 		return nil, fmt.Errorf("task %d failed, %w", task.TaskId, err)
 	}
 	return content, nil
@@ -120,7 +113,7 @@ func GetResult(rpc clientrpc.MaliceRPCClient, task *clientpb.Task, index int32) 
 	if err != nil {
 		return nil, err
 	}
-	if err = handler.HandleMaleficError(content.Spite); err != nil {
+	if err = types.HandleMaleficError(content.Spite); err != nil {
 		return nil, fmt.Errorf("task %d failed, %w", task.TaskId, err)
 	}
 	return content, nil
@@ -128,7 +121,7 @@ func GetResult(rpc clientrpc.MaliceRPCClient, task *clientpb.Task, index int32) 
 
 func PrintTask(task *clientpb.TaskContext) (*implantpb.Spite, error) {
 	logs.Log.Consolef("Session: %s, Task: %d, Index:%d \n", task.Task.SessionId, task.Task.TaskId, task.Task.Need)
-	err := handler.HandleMaleficError(task.Spite)
+	err := types.HandleMaleficError(task.Spite)
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +130,7 @@ func PrintTask(task *clientpb.TaskContext) (*implantpb.Spite, error) {
 }
 
 func ParseBinaryResponse(spite *implantpb.Spite) (string, error) {
-	err := handler.HandleMaleficError(spite)
+	err := types.HandleMaleficError(spite)
 	if err != nil {
 		return "", err
 	}
@@ -157,6 +150,6 @@ func ParseStatus(spite *implantpb.Spite) (bool, error) {
 	} else if spite.Error == 0 {
 		return true, nil
 	} else {
-		return false, handler.HandleMaleficError(spite)
+		return false, types.HandleMaleficError(spite)
 	}
 }

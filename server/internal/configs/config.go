@@ -1,9 +1,14 @@
 package configs
 
 import (
+	"github.com/chainreactors/files"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/utils/configutil"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/gookit/config/v2"
 	"os"
+	"path/filepath"
+	"strings"
 )
 
 func InitConfig() error {
@@ -21,9 +26,20 @@ func InitConfig() error {
 	os.MkdirAll(BinPath, perm)
 	os.MkdirAll(WebsitePath, perm)
 	os.MkdirAll(ListenerPath, perm)
-	os.MkdirAll(BuildOutputPath, perm)
-	os.MkdirAll(SourceCodePath, perm)
 	return nil
+}
+
+func FindConfig(filename string) string {
+	if filename == "" {
+		filename = ServerConfigFileName
+	}
+	if fileutils.Exist(filename) {
+		return filename
+	} else if path := filepath.Join(files.GetExcPath(), filename); fileutils.Exist(path) {
+		return path
+	} else {
+		return ""
+	}
 }
 
 func GetCertDir() string {
@@ -68,6 +84,39 @@ func GetNotifyConfig() *NotifyConfig {
 	return n
 }
 
+func GetSaasConfig() *SaasConfig {
+	s := &SaasConfig{}
+	err := config.MapStruct("server.saas", s)
+	if err != nil {
+		logs.Log.Errorf("Failed to map saas config %s", err)
+		return nil
+	}
+	return s
+
+}
+
+func GetLLMConfig() *LLMConfig {
+	l := &LLMConfig{
+		DefaultProvider: "openai",
+		Timeout:         120,
+	}
+	err := config.MapStruct("server.llm", l)
+	if err != nil {
+		if strings.Contains(err.Error(), "does not exist") {
+			return l
+		}
+		logs.Log.Errorf("Failed to map llm config %s", err)
+		return l
+	}
+	if l.Timeout <= 0 {
+		l.Timeout = 120
+	}
+	if l.DefaultProvider == "" {
+		l.DefaultProvider = "openai"
+	}
+	return l
+}
+
 func GetListenerConfig() *ListenerConfig {
 	l := &ListenerConfig{}
 	err := config.MapStruct("listeners", l)
@@ -88,7 +137,7 @@ func GetWorkDir() string {
 }
 
 func UpdateGithubConfig(g *GithubConfig) error {
-	err := config.Set("server.github", g)
+	err := configutil.SetStructByTag("server.github", g, "config")
 	if err != nil {
 		logs.Log.Errorf("Failed to update github config %s", err)
 		return err
@@ -97,9 +146,42 @@ func UpdateGithubConfig(g *GithubConfig) error {
 }
 
 func UpdateNotifyConfig(n *NotifyConfig) error {
-	err := config.Set("server.notify", n)
+	err := configutil.SetStructByTag("server.notify", n, "config")
 	if err != nil {
 		logs.Log.Errorf("Failed to update notify config %s", err)
+		return err
+	}
+	return nil
+}
+
+func UpdateSaasConfig(n *SaasConfig) error {
+	err := configutil.SetStructByTag("server.saas", n, "config")
+	if err != nil {
+		logs.Log.Errorf("Failed to update saas config %s", err)
+		return err
+	}
+	return nil
+}
+
+func GetAcmeConfig() *AcmeConfig {
+	a := &AcmeConfig{
+		CAUrl: "https://acme-v02.api.letsencrypt.org/directory",
+	}
+	err := config.MapStruct("server.acme", a)
+	if err != nil {
+		if strings.Contains(err.Error(), "does not exist") {
+			return a
+		}
+		logs.Log.Errorf("Failed to map acme config %s", err)
+		return nil
+	}
+	return a
+}
+
+func UpdateAcmeConfig(a *AcmeConfig) error {
+	err := configutil.SetStructByTag("server.acme", a, "config")
+	if err != nil {
+		logs.Log.Errorf("Failed to update acme config %s", err)
 		return err
 	}
 	return nil

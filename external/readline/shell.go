@@ -2,6 +2,7 @@ package readline
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/reeflective/readline/inputrc"
 	"github.com/reeflective/readline/internal/completion"
@@ -168,11 +169,31 @@ func (rl *Shell) PrintTransientf(msg string, args ...any) (n int, err error) {
 	fmt.Print(term.ClearScreenBelow)
 
 	// Print the logged message.
-	n, err = fmt.Printf(msg+"\n", args...)
+	// Ensure exactly one trailing newline to separate message from redrawn prompt.
+	formatted := fmt.Sprintf(msg, args...)
+	if !strings.HasSuffix(formatted, "\n") {
+		formatted += "\n"
+	}
+	n, err = fmt.Print(formatted)
 
 	// Redisplay the prompt, input line and active helpers.
 	rl.Prompt.PrimaryPrint()
 	rl.Display.Refresh()
 
 	return
+}
+
+// SetInlineSuggestion sets an inline suggestion to display after the cursor (fish-style).
+func (rl *Shell) SetInlineSuggestion(suggestion string) {
+	rl.Display.SetInlineSuggestion(suggestion)
+}
+
+// ClearInlineSuggestion clears the inline suggestion.
+func (rl *Shell) ClearInlineSuggestion() {
+	rl.Display.ClearInlineSuggestion()
+}
+
+// GetInlineSuggestion returns the current inline suggestion.
+func (rl *Shell) GetInlineSuggestion() string {
+	return rl.Display.GetInlineSuggestion()
 }

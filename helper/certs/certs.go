@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/binary"
 	"encoding/pem"
 	"fmt"
@@ -17,9 +18,40 @@ import (
 	"time"
 )
 
+const (
+	OperatorCA = iota + 1
+	ListenerCA
+	ImplantCA
+	RootCA
+)
+
+const (
+	// RSAKey - Namespace for RSA keys
+	RSAKey     = "rsa"
+	RootName   = "Root"
+	RootCert   = "root_ca.pem"
+	RootKey    = "root_key.pem"
+	ServerCert = "server_crt.pem"
+	ServerKey  = "server_key.pem"
+
+	RootNamespace     = "root"
+	ListenerNamespace = "listener" // Listener servers
+	ClientNamespace   = "client"
+)
+
+const (
+	Acme       = "acme"
+	SelfSigned = "self_signed"
+	Imported   = "imported"
+)
+
+var CertTypes = []string{
+	Acme, SelfSigned, Imported,
+}
+
 // SaveToPEMFile save to PEM file
 func SaveToPEMFile(filename string, pemData []byte) error {
-	file, err := os.Create(filename)
+	file, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
 	if err != nil {
 		return err
 	}
@@ -82,8 +114,10 @@ func RsaKeySize() int {
 	return rsaKeySizes[randomInt(len(rsaKeySizes))]
 }
 
-func GenerateCACert(commonName string) ([]byte, []byte, error) {
-	subject := RandomSubject(commonName)
+func GenerateCACert(commonName string, subject *pkix.Name) ([]byte, []byte, error) {
+	if subject == nil {
+		subject = RandomSubject(commonName)
+	}
 	privateKey, _ := rsa.GenerateKey(rand.Reader, RsaKeySize())
 	notBefore := time.Now()
 	days := randomInt(365) * -1
@@ -136,9 +170,9 @@ func GenerateChildCert(commonName string, isClient bool, caCert *x509.Certificat
 			NotBefore:             notBefore,
 			NotAfter:              notAfter,
 			KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
-			ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}, // 确保包含 ClientAuth
-			BasicConstraintsValid: true,                                           // 对于证书通常需要为 true
-			IsCA:                  false,                                          // 确保不是 CA 证书
+			ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+			BasicConstraintsValid: true,
+			IsCA:                  false,
 		}
 	} else {
 		template = x509.Certificate{

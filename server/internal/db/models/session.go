@@ -3,11 +3,11 @@ package models
 import (
 	"encoding/json"
 	"errors"
+	"github.com/chainreactors/IoM-go/client"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"time"
 
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/types"
 	"gorm.io/gorm"
 )
 
@@ -24,18 +24,22 @@ type Session struct {
 	ListenerID  string
 	IsAlive     bool
 	LastCheckin int64
-	IsRemoved   bool                  `gorm:"default:false"`
-	Data        *types.SessionContext `gorm:"-"`
-	DataString  string                `gorm:"column:data"`
-	ProfileName string                `gorm:"index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:ProfileName;references:Name"`
-	Profile     Profile               `gorm:"foreignKey:ProfileName;references:Name;"`
+	IsRemoved   bool                   `gorm:"default:false"`
+	Data        *client.SessionContext `gorm:"-"`
+	DataString  string                 `gorm:"column:data"`
+
+	ProfileName string  `gorm:"index;"`
+	Profile     Profile `gorm:"foreignKey:ProfileName;references:Name;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 }
 
 func (s *Session) BeforeCreate(tx *gorm.DB) (err error) {
+	// Note: The CreateOrRecoverSession helper function handles checking for
+	// existing sessions (including soft-deleted ones) before creation,
+	// so this check is primarily a safety net for direct Create() calls
 	var existingSession Session
-	result := tx.Where("session_id = ?", s.SessionID).First(&existingSession)
+	result := tx.Unscoped().Where("session_id = ?", s.SessionID).First(&existingSession)
 	if result.Error == nil {
-		return errors.New("exists")
+		return errors.New("session exists - use CreateOrRecoverSession helper instead")
 	}
 	s.CreatedAt = time.Now()
 	return nil
@@ -95,24 +99,25 @@ func (s *Session) ToProtobuf() *clientpb.Session {
 		Proxy:         s.Data.ProxyURL,
 		Os:            s.Data.Os,
 		Process:       s.Data.Process,
-		Timer:         &implantpb.Timer{Interval: s.Data.Interval, Jitter: s.Data.Jitter},
+		Timer:         &implantpb.Timer{Expression: s.Data.Expression, Jitter: s.Data.Jitter},
 		Modules:       s.Data.Modules,
-		Timediff:      time.Now().Unix() - s.LastCheckin,
+		CreatedAt:     s.CreatedAt.Unix(),
 		Addons:        s.Data.Addons,
 		Name:          s.ProfileName,
+		KeyPair:       s.Data.KeyPair, // 添加密钥对
 		Data:          dataString,
 	}
 }
 
 type Timer struct {
-	Interval uint64  `json:"interval"`
-	Jitter   float64 `json:"jitter"`
+	Expression string  `json:"expression"`
+	Jitter     float64 `json:"jitter"`
 }
 
 func (t *Timer) toProtobuf() *implantpb.Timer {
 	return &implantpb.Timer{
-		Interval: t.Interval,
-		Jitter:   t.Jitter,
+		Expression: t.Expression,
+		Jitter:     t.Jitter,
 	}
 }
 
@@ -121,8 +126,8 @@ func FromTimePb(timer *implantpb.Timer) *Timer {
 		return &Timer{}
 	}
 	return &Timer{
-		Interval: timer.Interval,
-		Jitter:   timer.Jitter,
+		Expression: timer.Expression,
+		Jitter:     timer.Jitter,
 	}
 }
 

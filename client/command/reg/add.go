@@ -2,23 +2,22 @@ package reg
 
 import (
 	"encoding/hex"
-	"fmt"
+	"github.com/chainreactors/IoM-go/client"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"strconv"
 	"strings"
 
-	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/spf13/cobra"
 )
 
 // RegAddCmd adds or modifies a registry key value.
-func RegAddCmd(cmd *cobra.Command, con *repl.Console) error {
+func RegAddCmd(cmd *cobra.Command, con *core.Console) error {
 	// 解析注册表的各项参数
 	path := cmd.Flags().Arg(0)
 	hive, path := FormatRegPath(path)
@@ -34,11 +33,11 @@ func RegAddCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	session.Console(task, fmt.Sprintf("add or modify registry key: %s\\%s\\%s", hive, path, valueName))
+	session.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 
-func RegAdd(rpc clientrpc.MaliceRPCClient, session *core.Session, hive, path string, valueName, valueType, data string) (*clientpb.Task, error) {
+func RegAdd(rpc clientrpc.MaliceRPCClient, session *client.Session, hive, path string, valueName, valueType, data string) (*clientpb.Task, error) {
 	request := &implantpb.RegistryWriteRequest{
 		Hive: hive,
 		Path: fileutils.FormatWindowPath(path),
@@ -76,7 +75,7 @@ func RegAdd(rpc clientrpc.MaliceRPCClient, session *core.Session, hive, path str
 	return rpc.RegAdd(session.Context(), request)
 }
 
-func RegisterRegAddFunc(con *repl.Console) {
+func RegisterRegAddFunc(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleRegAdd,
 		RegAdd,

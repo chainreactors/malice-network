@@ -1,28 +1,46 @@
 package tasks
 
 import (
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
-func Commands(con *repl.Console) []*cobra.Command {
+func Commands(con *core.Console) []*cobra.Command {
 	taskCmd := &cobra.Command{
 		Use:   consts.CommandTasks,
 		Short: "List tasks",
+		Long:  "List tasks",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return GetTasksCmd(cmd, con)
+		},
+		Annotations: map[string]string{
+			"resource": "true",
 		},
 	}
 
 	common.Bind("tasks", true, taskCmd, func(f *pflag.FlagSet) {
 		f.BoolP("all", "a", false, "show all tasks")
+	})
+
+	fetchTaskCmd := &cobra.Command{
+		Use:   consts.CommandTaskFetch,
+		Short: "Fetch the details of a task",
+		Args:  cobra.MinimumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return TaskFetchCmd(cmd, con)
+		},
+	}
+
+	common.Bind("task_fetch", false, fetchTaskCmd, func(f *pflag.FlagSet) {
+		f.BoolP("file", "f", false, "output to file")
+		f.StringP("output", "o", "", "output file path")
 	})
 
 	fileCmd := &cobra.Command{
@@ -71,10 +89,10 @@ query_task <task_id>
 `}
 
 	common.BindArgCompletions(queryTaskCmd, nil, common.SessionTaskCompleter(con))
-	return []*cobra.Command{taskCmd, fileCmd, cancelTaskCmd, listTaskCmd, queryTaskCmd}
+	return []*cobra.Command{taskCmd, fetchTaskCmd, fileCmd, cancelTaskCmd, listTaskCmd, queryTaskCmd}
 }
 
-func Register(con *repl.Console) {
+func Register(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleCancelTask,
 		CancelTask,

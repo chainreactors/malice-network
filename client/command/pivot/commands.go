@@ -2,28 +2,31 @@ package pivot
 
 import (
 	"fmt"
+
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/generic"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
-func Commands(con *repl.Console) []*cobra.Command {
+func Commands(con *core.Console) []*cobra.Command {
 	remCmd := &cobra.Command{
 		Use:   consts.CommandRemDial + " [pipeline] [args]",
 		Short: "Run rem on the implant",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return RemDialCmd(cmd, con)
 		},
 		Annotations: map[string]string{
-			"depend": consts.ModuleRem,
+			"depend": consts.ModuleRemDial,
 		},
 	}
+
+	common.BindArgCompletions(remCmd, nil, common.RemPipelineCompleter(con))
 
 	forwardCmd := &cobra.Command{
 		Use:   consts.CommandPortForward + " [pipeline]",
@@ -34,11 +37,11 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return ForwardCmd(cmd, con)
 		},
 		Annotations: map[string]string{
-			"depend": consts.ModuleRem,
+			"depend": consts.ModuleRemDial,
 		},
 		Example: `Forward local port to remote target:
 ~~~
-forward pipeline1 --port 8080 --target 192.168.1.1:80
+portfwd rem_default --port 8080 --target 192.168.1.1:80
 ~~~`,
 	}
 	common.BindArgCompletions(forwardCmd, nil, common.RemPipelineCompleter(con))
@@ -55,11 +58,11 @@ forward pipeline1 --port 8080 --target 192.168.1.1:80
 			return ReverseCmd(cmd, con)
 		},
 		Annotations: map[string]string{
-			"depend": consts.ModuleRem,
+			"depend": consts.ModuleRemDial,
 		},
 		Example: `Create reverse port forward:
 ~~~
-reverse pipeline1 --port 12345
+reverse rem_default --port 12345
 ~~~`,
 	}
 	common.BindArgCompletions(reverseCmd, nil, common.RemPipelineCompleter(con))
@@ -74,11 +77,11 @@ reverse pipeline1 --port 12345
 			return ProxyCmd(cmd, con)
 		},
 		Annotations: map[string]string{
-			"depend": consts.ModuleRem,
+			"depend": consts.ModuleRemDial,
 		},
 		Example: `Create a proxy server:
 ~~~
-proxy pipeline1 --port 8080
+proxy rem_default --port 8080
 ~~~`,
 	}
 	common.BindArgCompletions(proxyCmd, nil, common.RemPipelineCompleter(con))
@@ -93,11 +96,11 @@ proxy pipeline1 --port 8080
 			return ReversePortForwardCmd(cmd, con)
 		},
 		Annotations: map[string]string{
-			"depend": consts.ModuleRem,
+			"depend": consts.ModuleRemDial,
 		},
 		Example: `Create remote port forward:
 ~~~
-rportforward pipeline1 --port 8080 --remote 192.168.1.1:80
+rportfwd rem_default --port 8080 --remote 192.168.1.1:80
 ~~~`,
 	}
 
@@ -115,7 +118,7 @@ rportforward pipeline1 --port 8080 --remote 192.168.1.1:80
 			return RPortForwardLocalCmd(cmd, con)
 		},
 		Annotations: map[string]string{
-			"depend": consts.ModuleRem,
+			"depend": consts.ModuleRemDial,
 		},
 	}
 
@@ -137,7 +140,7 @@ rportforward pipeline1 --port 8080 --remote 192.168.1.1:80
 			return PortForwardLocalCmd(cmd, con)
 		},
 		Annotations: map[string]string{
-			"depend": consts.ModuleRem,
+			"depend": consts.ModuleRemDial,
 		},
 	}
 	common.BindArgCompletions(portforwardLocalCmd, nil,
@@ -158,10 +161,10 @@ rportforward pipeline1 --port 8080 --remote 192.168.1.1:80
 	}
 }
 
-func Register(con *repl.Console) {
+func Register(con *core.Console) {
 	// Register all command functions
 	con.RegisterImplantFunc(
-		consts.ModuleRem,
+		consts.ModuleRemDial,
 		RemDial,
 		"",
 		nil,
@@ -175,9 +178,9 @@ func Register(con *repl.Console) {
 		nil,
 	)
 	con.AddCommandFuncHelper(
-		consts.ModuleRem,
-		consts.ModuleRem,
-		consts.ModuleRem+`(active(),"pipeline1",{"-p","1080"})`,
+		consts.ModuleRemDial,
+		consts.ModuleRemDial,
+		consts.ModuleRemDial+`(active(),"pipeline1",{"-p","1080"})`,
 		[]string{
 			"session: special session",
 			"pipeline: pipeline name",

@@ -15,14 +15,7 @@ const (
 // GetAliasesDir - Returns the path to the config dir
 func GetAliasesDir() string {
 	rootDir, _ := filepath.Abs(GetRootAppDir())
-	dir := filepath.Join(rootDir, AliasesDirName)
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		err = os.MkdirAll(dir, 0700)
-		if err != nil {
-			panic(err)
-		}
-	}
-	return dir
+	return ensureDir(filepath.Join(rootDir, AliasesDirName))
 }
 
 // GetInstalledAliasManifests - Returns a list of installed alias manifests
@@ -37,7 +30,7 @@ func GetInstalledAliasManifests() []string {
 	for _, alias := range aliases {
 		manifestPath := filepath.Join(aliasDir, alias, "alias.json")
 		if _, err := os.Stat(manifestPath); os.IsNotExist(err) {
-			logs.Log.Errorf("no manifest in %s, skipping ...\n", manifestPath)
+			logs.Log.Errorf("no alias manifest in %s, skipping ...\n", manifestPath)
 			continue
 		}
 		manifests = append(manifests, manifestPath)
@@ -48,14 +41,7 @@ func GetInstalledAliasManifests() []string {
 // GetExtensionsDir
 func GetExtensionsDir() string {
 	rootDir, _ := filepath.Abs(GetRootAppDir())
-	dir := filepath.Join(rootDir, ExtensionsDirName)
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		err = os.MkdirAll(dir, 0700)
-		if err != nil {
-			panic(err)
-		}
-	}
-	return dir
+	return ensureDir(filepath.Join(rootDir, ExtensionsDirName))
 }
 
 // GetInstalledExtensionManifests - Returns a list of installed extension manifests
@@ -70,7 +56,7 @@ func GetInstalledExtensionManifests() []string {
 	for _, extension := range extensions {
 		manifestPath := filepath.Join(extDir, extension, "extension.json")
 		if _, err := os.Stat(manifestPath); os.IsNotExist(err) {
-			logs.Log.Errorf("no manifest in %s, skipping ...\n", manifestPath)
+			logs.Log.Errorf("no extension manifest in %s, skipping ...\n", manifestPath)
 			continue
 		}
 		manifests = append(manifests, manifestPath)
@@ -80,14 +66,7 @@ func GetInstalledExtensionManifests() []string {
 
 func GetMalsDir() string {
 	rootDir, _ := filepath.Abs(GetRootAppDir())
-	dir := filepath.Join(rootDir, MalsDirName)
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		err = os.MkdirAll(dir, 0700)
-		if err != nil {
-			panic(err)
-		}
-	}
-	return dir
+	return ensureDir(filepath.Join(rootDir, MalsDirName))
 }
 
 func GetInstalledMalManifests() []string {
@@ -101,7 +80,7 @@ func GetInstalledMalManifests() []string {
 	for _, mal := range mals {
 		manifestPath := filepath.Join(dir, mal, "mal.yaml")
 		if _, err := os.Stat(manifestPath); os.IsNotExist(err) {
-			logs.Log.Errorf("no manifest in %s, skipping ...\n", manifestPath)
+			logs.Log.Debugf("no mal manifest in %s, skipping ...\n", manifestPath)
 			continue
 		}
 		manifests = append(manifests, manifestPath)

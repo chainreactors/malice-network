@@ -3,12 +3,32 @@ package server
 import (
 	"errors"
 	"fmt"
-	"github.com/chainreactors/malice-network/helper/proto/client/rootpb"
-	"github.com/chainreactors/malice-network/helper/utils/mtls"
+	"os"
+	"os/signal"
+	"path/filepath"
+	"strings"
+	"syscall"
+
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/mtls"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/client/rootpb"
+	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/certs"
+	"github.com/chainreactors/malice-network/helper/cryptography"
+	"github.com/chainreactors/malice-network/helper/utils/configutil"
+	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
+	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
+	"github.com/chainreactors/malice-network/server/internal/db/models"
+	"github.com/chainreactors/malice-network/server/internal/saas"
+	"github.com/chainreactors/malice-network/server/listener"
 	"github.com/chainreactors/malice-network/server/root"
+	"github.com/chainreactors/malice-network/server/rpc"
+	"github.com/gookit/config/v2"
 	"github.com/jessevdk/go-flags"
+	"gopkg.in/yaml.v3"
 )
 
 var (
@@ -17,13 +37,17 @@ var (
 )
 
 type Options struct {
-	Config      string               `short:"c" long:"config" default:"config.yaml" description:"Path to config file"`
-	IP          string               `short:"i" long:"ip" description:"external ip address, -i 123.123.123.123"`
-	Daemon      bool                 `long:"daemon" description:"Run as a daemon"`
-	Opsec       bool                 `long:"opsec" description:"Path to opsec file"`
-	Debug       bool                 `long:"debug" description:"Debug mode" config:"debug"`
-	UserCmd     root.UserCommand     `command:"user" description:"User commands" `
-	ListenerCmd root.ListenerCommand `command:"listener" description:"Listener commands" `
+	Config       string               `short:"c" long:"config" default:"config.yaml" description:"Path to config file"`
+	IP           string               `short:"i" long:"ip" description:"external ip address, -i 123.123.123.123"`
+	ServerOnly   bool                 `long:"server-only" description:"Run server only"`
+	ListenerOnly bool                 `long:"listener-only" description:"Run listener only"`
+	Daemon       bool                 `long:"daemon" description:"Run as a daemon"`
+	Opsec        bool                 `long:"opsec" description:"Path to opsec file"`
+	Debug        bool                 `long:"debug" description:"Debug mode" config:"debug"`
+	Quickstart   bool                 `long:"quickstart" description:"Interactive configuration wizard"`
+	UserCmd      root.UserCommand     `command:"user" description:"User commands" `
+	ListenerCmd  root.ListenerCommand `command:"listener" description:"Listener commands" `
+	License      root.LicenseCmd      `command:"license" description:"License management"`
 
 	// configs
 	Server    *configs.ServerConfig   `config:"server" `
@@ -33,8 +57,14 @@ type Options struct {
 }
 
 func (opt *Options) Validate() error {
+	if opt.Server == nil {
+		return errors.New("config section 'server' is missing or invalid, check config.yaml format")
+	}
+	if opt.Listeners == nil {
+		return errors.New("config section 'listeners' is missing or invalid, check config.yaml format")
+	}
 	if !opt.Server.Enable && !opt.Listeners.Enable {
-		return errors.New("must enable one of server/listener ")
+		return errors.New("must enable one of server/listener")
 	}
 	return nil
 }
@@ -79,18 +109,37 @@ func (opt *Options) InitUser() error {
 		return nil
 	}
 
-	client, err := root.NewRootClient(fmt.Sprintf("127.0.0.1:%d", opt.Server.GRPCPort))
+	name := "admin"
+	cfg := configs.GetServerConfig()
+	clientConf, fingerprint, err := certutils.GenerateClientCert(cfg.IP, name, int(cfg.GRPCPort))
 	if err != nil {
-		return err
+		return fmt.Errorf("generate client cert: %w", err)
 	}
-	err = client.Execute(&opt.UserCmd, &rootpb.Operator{
-		Name: "user",
-		Op:   "add",
-		Args: []string{"admin"},
-	})
+
+	op := &models.Operator{
+		Name:             name,
+		Type:             mtls.Client,
+		Role:             models.RoleAdmin,
+		Fingerprint:      fingerprint,
+		CAType:           certs.OperatorCA,
+		KeyType:          certs.RSAKey,
+		CaCertificatePEM: clientConf.CACertificate,
+		CertificatePEM:   clientConf.Certificate,
+		PrivateKeyPEM:    clientConf.PrivateKey,
+	}
+	if err := db.CreateOperator(op); err != nil {
+		return fmt.Errorf("create admin operator: %w", err)
+	}
+
+	data, err := yaml.Marshal(clientConf)
 	if err != nil {
-		return err
+		return fmt.Errorf("marshal client config: %w", err)
 	}
+	authPath := filepath.Join(configs.GetWorkDir(), fmt.Sprintf("%s_%s.auth", name, cfg.IP))
+	if err := os.WriteFile(authPath, data, 0600); err != nil {
+		return fmt.Errorf("write auth file: %w", err)
+	}
+	logs.Log.Importantf("client auth file written to %s", authPath)
 	return nil
 }
 
@@ -101,17 +150,453 @@ func (opt *Options) InitListener() error {
 		return nil
 	}
 
-	client, err := root.NewRootClient(fmt.Sprintf("127.0.0.1:%d", opt.Server.GRPCPort))
+	name := "listener"
+	cfg := configs.GetServerConfig()
+	listenerConf, fingerprint, err := certutils.GenerateListenerCert(cfg.IP, name, int(cfg.GRPCPort))
+	if err != nil {
+		return fmt.Errorf("generate listener cert: %w", err)
+	}
+
+	op := &models.Operator{
+		Name:             name,
+		Type:             mtls.Listener,
+		Role:             models.RoleListener,
+		Fingerprint:      fingerprint,
+		CAType:           certs.ListenerCA,
+		KeyType:          certs.RSAKey,
+		CaCertificatePEM: listenerConf.CACertificate,
+		CertificatePEM:   listenerConf.Certificate,
+		PrivateKeyPEM:    listenerConf.PrivateKey,
+	}
+	if err := db.CreateOperator(op); err != nil {
+		return fmt.Errorf("create listener operator: %w", err)
+	}
+
+	data, err := yaml.Marshal(listenerConf)
+	if err != nil {
+		return fmt.Errorf("marshal listener config: %w", err)
+	}
+	authPath := filepath.Join(configs.GetWorkDir(), fmt.Sprintf("%s.auth", name))
+	if err := os.WriteFile(authPath, data, 0600); err != nil {
+		return fmt.Errorf("write auth file: %w", err)
+	}
+	logs.Log.Importantf("listener auth file written to %s", authPath)
+	return nil
+}
+
+// Save 保存配置到文件
+func (opt *Options) Save() error {
+
+	configToSave := struct {
+		Server    *configs.ServerConfig   `yaml:"server"`
+		Listeners *configs.ListenerConfig `yaml:"listeners"`
+	}{
+		Server:    opt.Server,
+		Listeners: opt.Listeners,
+	}
+
+	data, err := yaml.Marshal(configToSave)
 	if err != nil {
 		return err
 	}
-	err = client.Execute(&opt.ListenerCmd, &rootpb.Operator{
-		Name: "listener",
-		Op:   "add",
-		Args: []string{"listener"},
+	err = os.WriteFile(opt.Config, data, 0600)
+	if err != nil {
+		logs.Log.Errorf("Failed to write config %s", err)
+		return err
+	}
+	return nil
+}
+
+func (opt *Options) PrepareConfig(defaultConfig []byte) error {
+	filename := configs.FindConfig(opt.Config)
+	if filename == "" {
+		target := opt.Config
+		if target == "" {
+			target = configs.ServerConfigFileName
+		}
+		err := os.WriteFile(target, defaultConfig, 0644)
+		if err != nil {
+			return err
+		}
+		logs.Log.Warnf("config file not found, created default config %s", target)
+		filename = target
+	}
+
+	config.WithOptions(config.WithHookFunc(func(event string, c *config.Config) {
+		if strings.HasPrefix(event, "set.") {
+			open, err := os.OpenFile(filename, os.O_WRONLY|os.O_TRUNC, 0644)
+			if err != nil {
+				logs.Log.Errorf("cannot open config , %s ", err.Error())
+				return
+			}
+			defer open.Close()
+			_, err = config.DumpTo(open, config.Yaml)
+			if err != nil {
+				logs.Log.Errorf("cannot dump config , %s ", err.Error())
+				return
+			}
+		}
+	}))
+
+	// load config
+	err := configutil.LoadConfig(filename, opt)
+	if err != nil {
+		return fmt.Errorf("cannot load config , %s", err.Error())
+	}
+
+	configs.CurrentServerConfigFilename = filename
+	// load config
+	if opt.Debug {
+		ConfigureDebugLogging()
+	}
+	err = opt.Validate()
+	if err != nil {
+		return fmt.Errorf("cannot validate config , %s", err.Error())
+	}
+	return nil
+}
+
+func (opt *Options) PrepareServer() error {
+	// Initialize .malice directory structure (only needed for server mode)
+	if err := configs.InitConfig(); err != nil {
+		return fmt.Errorf("cannot init config directories: %w", err)
+	}
+
+	// Override malefic root if configured
+	if opt.Server.SourceCodeRoot != "" {
+		configs.UpdateMaleficRoot(opt.Server.SourceCodeRoot)
+	}
+
+	var err error
+	db.Client, err = db.NewDBClient(opt.Server.DatabaseConfig)
+	if err != nil {
+		return fmt.Errorf("database initialization failed: %w", err)
+	}
+
+	// Backfill fingerprints for operators created before the fingerprint column existed
+	if err := db.BackfillOperatorFingerprints(); err != nil {
+		logs.Log.Warnf("failed to backfill operator fingerprints: %v", err)
+	}
+
+	// Seed default authorization rules if the table is empty
+	if err := db.SeedDefaultAuthzRules(); err != nil {
+		logs.Log.Warnf("failed to seed default authz rules: %v", err)
+	}
+
+	profileRoots := []string{filepath.Join(configs.SourceCodePath, "profiles")}
+	maleficRootProfiles := filepath.Join(configs.MaleficRoot, "profiles")
+	if maleficRootProfiles != profileRoots[0] {
+		profileRoots = append(profileRoots, maleficRootProfiles)
+	}
+	for _, profilesRoot := range profileRoots {
+		if result, err := db.RegisterProfileTemplates(profilesRoot); err != nil {
+			logs.Log.Warnf("failed to register profile templates from %s: %v", profilesRoot, err)
+		} else if result.Created > 0 || result.SkippedDeleted > 0 || result.SkippedInvalid > 0 {
+			logs.Log.Infof(
+				"profile templates checked root=%s created=%d existing=%d deleted=%d invalid=%d",
+				profilesRoot,
+				result.Created,
+				result.SkippedExisting,
+				result.SkippedDeleted,
+				result.SkippedInvalid,
+			)
+		}
+	}
+
+	err = saas.RegisterLicense()
+	if err != nil {
+		logs.Log.Warnf("register community license error %v", err)
+	}
+	core.NewBroker()
+	core.NewSessions()
+	if opt.IP != "" {
+		logs.Log.Infof("manually specified IP: %s will override config: %s", opt.IP, opt.Server.IP)
+		opt.Server.IP = opt.IP
+		config.Set("server.ip", opt.IP)
+	}
+
+	if opt.Server.IP == "" {
+		return fmt.Errorf("IP address not set, please set config.yaml `ip: [server_ip]` or `./malice_network -i [server_ip]`")
+	}
+
+	err = core.EventBroker.InitService(opt.Server.NotifyConfig)
+	if err != nil {
+		return fmt.Errorf("cannot init notifier , %s", err.Error())
+	}
+	err = certutils.GenerateRootCert()
+	if err != nil {
+		return fmt.Errorf("cannot init root ca , %s", err.Error())
+	}
+	cryptography.InitAES(opt.Server.EncryptionKey)
+	//if opt.Daemon == true {
+	//
+	//	DaemonStart(opt.Server, opt.Listeners)
+	//}
+
+	err = StartGrpc(fmt.Sprintf("%s:%d", opt.Server.GRPCHost, opt.Server.GRPCPort))
+	if err != nil {
+		return fmt.Errorf("cannot start grpc , %s", err.Error())
+	}
+
+	// Register daily log rotation at midnight
+	_, _ = core.GlobalTicker.AddCronFunc("0 0 * * *", func() {
+		configs.RotateLogs(configs.LogPath, configs.DefaultLogMaxAge, configs.DefaultLogCompress, rpc.ReInitLogs)
+		configs.CleanAuditLogs(configs.AuditPath, configs.DefaultLogMaxAge)
 	})
+
+	err = opt.InitUser()
+	if err != nil {
+		return err
+	}
+	err = opt.InitListener()
 	if err != nil {
 		return err
 	}
 	return nil
 }
+
+func (opt *Options) PrepareListener() error {
+	logs.Log.Importantf("listener - config_enabled action=start_listeners")
+	if opt.IP != "" {
+		logs.Log.Infof("manually specified IP: %s will override config: %s", opt.IP, opt.Server.IP)
+		opt.Listeners.IP = opt.IP
+		config.Set("listeners.ip", opt.IP)
+	}
+	serverEnabled := opt.Server.Enable && !opt.ListenerOnly // only treat server as local when it's actually running
+	err := StartListener(opt.Listeners, serverEnabled)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (opt *Options) Handler() error {
+	c := make(chan os.Signal, 2)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+
+	<-c
+	logs.Log.Importantf("exit signal, save stat and exit")
+
+	signal.Stop(c)
+
+	if core.Sessions != nil {
+		for _, session := range core.Sessions.All() {
+			err := session.Cache.Save()
+			if err != nil {
+				return err
+			}
+		}
+	}
+	//pprof.StopCPUProfile()
+	core.GlobalTicker.RemoveAll()
+	os.Exit(0)
+	return nil
+}
+
+// Start - Starts the server console
+func StartGrpc(address string) error {
+	// start alive session
+	err := RecoverAliveSession()
+	if err != nil {
+		return err
+	}
+
+	_, _, err = rpc.StartClientListener(address)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func RecoverAliveSession() error {
+	// start alive session
+	sessions, err := db.FindAliveSessions()
+	if err != nil {
+		return err
+	}
+
+	if len(sessions) > 0 {
+		logs.Log.Debugf("recover %d sessions", len(sessions))
+		for _, session := range sessions {
+			newSession, err := core.RecoverSession(session)
+			if err != nil {
+				logs.Log.Errorf("cannot recover session %s , %s ", session.SessionID, err.Error())
+				continue
+			}
+			core.Sessions.Add(newSession)
+		}
+	}
+	return nil
+}
+
+func RecoverWebsites() error {
+	websites, err := db.FindEnabledWebsites()
+	if err != nil {
+		return err
+	}
+
+	if len(websites) == 0 {
+		return nil
+	}
+
+	logs.Log.Debugf("recover %d websites", len(websites))
+	for _, website := range websites {
+		listener, err := core.Listeners.Get(website.ListenerId)
+		if err != nil {
+			logs.Log.Errorf("cannot find listener %s for website %s: %s", website.ListenerId, website.Name, err.Error())
+			continue
+		}
+		// If the pipeline already exists in memory (typically because it was started during listener boot),
+		// skip to avoid duplicate binds and unnecessary restarts.
+		if listener.GetPipeline(website.Name) != nil {
+			logs.Log.Debugf("skip recover website %s: already started", website.Name)
+			continue
+		}
+		webpb := website.ToProtobuf()
+		if webpb == nil {
+			logs.Log.Errorf("failed to convert website %s to protobuf", website.Name)
+			continue
+		}
+
+		err = rpc.MapContents(webpb)
+		if err != nil {
+			logs.Log.Errorf("failed to load contents for website %s: %s", website.Name, err.Error())
+			continue
+		}
+
+		job := &core.Job{
+			ID:       core.NextJobID(),
+			Pipeline: webpb,
+			Name:     website.Name,
+		}
+
+		listener.PushCtrl(&clientpb.JobCtrl{
+			Ctrl: consts.CtrlWebsiteStart,
+			Job:  job.ToProtobuf(),
+		})
+
+		logs.Log.Infof("recovered website %s on %s:%d", website.Name, website.IP, website.Port)
+	}
+
+	return nil
+}
+
+// RecoverPipelines tries to start all enabled pipelines (non-website) for the given listener.
+// If a pipeline启动失败（例如端口占用），会把数据库里的 enable 置回 false，避免 UI 误显示 Running。
+func RecoverPipelines(listenerID string) error {
+	pipelines, err := db.NewPipelineQuery().
+		WhereListenerID(listenerID).
+		WhereNotType(consts.WebsitePipeline).
+		WhereEnabled(true).
+		Find()
+	if err != nil {
+		return err
+	}
+
+	if len(pipelines) == 0 {
+		return nil
+	}
+
+	lns, err := core.Listeners.Get(listenerID)
+	if err != nil {
+		return err
+	}
+
+	for _, pipeline := range pipelines {
+		// If the pipeline already exists in memory (typically because it was started during listener boot),
+		// skip to avoid duplicate binds and unnecessary restarts.
+		if lns.GetPipeline(pipeline.Name) != nil {
+			logs.Log.Debugf("skip recover pipeline %s: already started", pipeline.Name)
+			continue
+		}
+
+		pipePb := pipeline.ToProtobuf()
+		if pipePb == nil {
+			logs.Log.Errorf("cannot recover pipeline %s: protobuf nil", pipeline.Name)
+			continue
+		}
+
+		job := &core.Job{
+			ID:       core.NextJobID(),
+			Pipeline: pipePb,
+			Name:     pipeline.Name,
+		}
+
+		ctrlType := consts.CtrlPipelineStart
+		// REM pipelines are started via CtrlRemStart (not CtrlPipelineStart).
+		if pipeline.Type == consts.RemPipeline {
+			ctrlType = consts.CtrlRemStart
+		}
+
+		ctrlID := lns.PushCtrl(&clientpb.JobCtrl{
+			Ctrl: ctrlType,
+			Job:  job.ToProtobuf(),
+		})
+
+		status := lns.WaitCtrl(ctrlID)
+		if status == nil || status.Status != consts.CtrlStatusSuccess {
+			_ = db.DisablePipelineByListener(pipeline.Name, listenerID)
+			if status != nil && status.Error != "" {
+				logs.Log.Warnf("recover pipeline %s failed: %s", pipeline.Name, status.Error)
+			} else {
+				logs.Log.Warnf("recover pipeline %s failed: unknown error", pipeline.Name)
+			}
+			continue
+		}
+
+		logs.Log.Infof("recovered pipeline %s on %s:%d", pipeline.Name, pipeline.IP, pipeline.Port)
+	}
+	return nil
+}
+
+func StartListener(opt *configs.ListenerConfig, serverEnable bool) error {
+	if listenerConf, err := mtls.ReadConfig(opt.Auth); err != nil {
+		return err
+	} else {
+		err = listener.NewListener(listenerConf, opt, serverEnable)
+		if err != nil {
+			return err
+		}
+	}
+
+	// DB-backed recovery only makes sense when the local server is running.
+	// In listener-only mode (remote listener), the DB is not initialized in this process.
+	if serverEnable {
+		// Recover websites from database after listener is started
+		err := RecoverWebsites()
+		if err != nil {
+			logs.Log.Errorf("failed to recover websites: %s", err.Error())
+			// Don't return error, just log it - website recovery failure shouldn't prevent listener from starting
+		}
+
+		// Recover enabled pipelines from DB after listener is started
+		if err := RecoverPipelines(opt.Name); err != nil {
+			logs.Log.Errorf("failed to recover pipelines: %s", err.Error())
+		}
+	}
+
+	return nil
+}
+
+//func DaemonStart(server *configs.ServerConfig, cfg *configs.ListenerConfig) {
+//	_, ln, err := rpc.StartClientListener(fmt.Sprintf("%s:%d", server.GRPCHost, server.GRPCPort))
+//	if err != nil {
+//		logs.Log.Errorf("cannot start gRPC server, %s", err.Error())
+//		return
+//	}
+//	err = StartListener(cfg)
+//	if err != nil {
+//		logs.Log.Errorf("cannot start listeners , %s ", err.Error())
+//		return
+//	}
+//	done := make(chan bool)
+//	signals := make(chan os.Signal, 1)
+//	signal.Notify(signals, syscall.SIGTERM)
+//	go func() {
+//		<-signals
+//		logs.Log.Infof("Received SIGTERM, exiting ...")
+//		ln.Close()
+//		done <- true
+//	}()
+//	<-done
+//}

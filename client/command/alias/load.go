@@ -3,31 +3,32 @@ package alias
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"path"
+	"path/filepath"
+	"strings"
+
+	"github.com/chainreactors/IoM-go/client"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	clientrpc "github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/mals"
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"os"
-	"path"
-	"path/filepath"
-	"strings"
 )
 
 const (
 	ManifestFileName = "alias.json"
 
-	windowsDefaultHostProc = `c:\\windows\\system32\\notepad.exe`
+	windowsDefaultHostProc = `c:\\windows\\system32\\svchost.exe`
 	linuxDefaultHostProc   = "/bin/bash"
 	macosDefaultHostProc   = "/Applications/Safari.app/Contents/MacOS/SafariForWebKitDevelopment"
 )
@@ -38,7 +39,7 @@ var (
 
 	defaultHostProc = map[string]string{
 		"windows": windowsDefaultHostProc,
-		"linux":   windowsDefaultHostProc,
+		"linux":   linuxDefaultHostProc,
 		"darwin":  macosDefaultHostProc,
 	}
 )
@@ -107,7 +108,7 @@ func (a *AliasManifest) getFileForTarget(cmdName string, targetOS string, target
 }
 
 // AliasesLoadCmd - Locally load a alias into the Sliver shell.
-func AliasesLoadCmd(cmd *cobra.Command, con *repl.Console) {
+func AliasesLoadCmd(cmd *cobra.Command, con *core.Console) {
 	dirPath := cmd.Flags().Arg(0)
 	alias, err := LoadAlias(dirPath, con)
 	if err != nil {
@@ -117,13 +118,13 @@ func AliasesLoadCmd(cmd *cobra.Command, con *repl.Console) {
 	}
 	err = RegisterAlias(alias, con.ImplantMenu(), con)
 	if err != nil {
-		con.Log.Errorf(err.Error() + "\n")
+		con.Log.Errorf("%s\n", err.Error())
 		return
 	}
 }
 
 // LoadAlias - Load an alias into the Malice-Network shell from a given directory
-func LoadAlias(manifestPath string, con *repl.Console) (*AliasManifest, error) {
+func LoadAlias(manifestPath string, con *core.Console) (*AliasManifest, error) {
 	// retrieve alias manifest
 	var err error
 	if !strings.HasPrefix(manifestPath, assets.GetAliasesDir()) {
@@ -155,7 +156,7 @@ func LoadAlias(manifestPath string, con *repl.Console) (*AliasManifest, error) {
 	return aliasManifest, nil
 }
 
-func RegisterAlias(aliasManifest *AliasManifest, cmd *cobra.Command, con *repl.Console) error {
+func RegisterAlias(aliasManifest *AliasManifest, cmd *cobra.Command, con *core.Console) error {
 	helpMsg := fmt.Sprintf("[%s] %s", aliasManifest.Name, aliasManifest.Help)
 	longHelpMsg := help.FormatHelpTmpl(aliasManifest.LongHelp)
 	longHelpMsg += "\n\n⚠️  If you're having issues passing arguments to the alias please read:\n"
@@ -184,7 +185,7 @@ func RegisterAlias(aliasManifest *AliasManifest, cmd *cobra.Command, con *repl.C
 	loadedAliases[aliasManifest.CommandName] = &loadedAlias{
 		Manifest: aliasManifest,
 		Command:  addAliasCmd,
-		Func: repl.WrapImplantFunc(con, func(rpc clientrpc.MaliceRPCClient, sess *core.Session, args string,
+		Func: core.WrapImplantFunc(con, func(rpc clientrpc.MaliceRPCClient, sess *client.Session, args string,
 			param map[string]string,
 			sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 			return ExecuteAlias(rpc, sess, aliasManifest.CommandName, args, param, sac)
@@ -195,10 +196,6 @@ func RegisterAlias(aliasManifest *AliasManifest, cmd *cobra.Command, con *repl.C
 		return err
 	}
 	profile.AddAlias(aliasManifest.CommandName)
-	err = assets.SaveProfile(profile)
-	if err != nil {
-		return err
-	}
 	cmd.AddCommand(addAliasCmd)
 
 	return nil
@@ -240,7 +237,7 @@ func ParseAliasManifest(data []byte) (*AliasManifest, error) {
 	return alias, nil
 }
 
-func runAliasCommand(cmd *cobra.Command, con *repl.Console) {
+func runAliasCommand(cmd *cobra.Command, con *core.Console) {
 	session := con.GetInteractive()
 	loadedAlias, ok := loadedAliases[cmd.Name()]
 	if !ok {
@@ -277,12 +274,12 @@ func runAliasCommand(cmd *cobra.Command, con *repl.Console) {
 			con.Log.Errorf("Execute error: %v\n", err)
 			return
 		}
-		session.Console(task, fmt.Sprintf("%s alias: %s", aliasModule(aliasManifest), cmd.Name()))
+		session.Console(task, string(*con.App.Shell().Line()))
 	}
 
 }
 
-func ExecuteAlias(rpc clientrpc.MaliceRPCClient, sess *core.Session, aliasName string, args string, param map[string]string,
+func ExecuteAlias(rpc clientrpc.MaliceRPCClient, sess *client.Session, aliasName string, args string, param map[string]string,
 	sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 	loadedAlias, ok := loadedAliases[aliasName]
 	if !ok {
@@ -311,6 +308,7 @@ func ExecuteAlias(rpc clientrpc.MaliceRPCClient, sess *core.Session, aliasName s
 			Args:   arg,
 			Param:  param,
 			Output: true,
+			Delay:  2000,
 		}
 
 		task, err = rpc.ExecuteAssembly(sess.Context(), binary)

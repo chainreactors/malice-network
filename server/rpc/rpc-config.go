@@ -2,19 +2,19 @@ package rpc
 
 import (
 	"context"
-	"github.com/chainreactors/malice-network/helper/errs"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/types"
 	"github.com/chainreactors/malice-network/helper/utils/configutil"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 )
 
-func (rpc *Server) GetGithubConfig(ctx context.Context, req *clientpb.Empty) (*clientpb.GithubWorkflowRequest, error) {
+func (rpc *Server) GetGithubConfig(ctx context.Context, req *clientpb.Empty) (*clientpb.GithubActionBuildConfig, error) {
 	githubConfig := configs.GetGithubConfig()
 	if githubConfig == nil {
-		return nil, errs.ErrNotFoundGithubConfig
+		return nil, types.ErrNotFoundGithubConfig
 	}
-	return &clientpb.GithubWorkflowRequest{
+	return &clientpb.GithubActionBuildConfig{
 		Owner:      githubConfig.Owner,
 		Repo:       githubConfig.Repo,
 		Token:      githubConfig.Token,
@@ -22,7 +22,7 @@ func (rpc *Server) GetGithubConfig(ctx context.Context, req *clientpb.Empty) (*c
 	}, nil
 }
 
-func (rpc *Server) UpdateGithubConfig(ctx context.Context, req *clientpb.GithubWorkflowRequest) (*clientpb.Empty, error) {
+func (rpc *Server) UpdateGithubConfig(ctx context.Context, req *clientpb.GithubActionBuildConfig) (*clientpb.Empty, error) {
 	err := configs.UpdateGithubConfig(&configs.GithubConfig{
 		Owner:    req.Owner,
 		Repo:     req.Repo,
@@ -38,7 +38,7 @@ func (rpc *Server) UpdateGithubConfig(ctx context.Context, req *clientpb.GithubW
 func (rpc *Server) GetNotifyConfig(ctx context.Context, req *clientpb.Empty) (*clientpb.Notify, error) {
 	notifyConfig := configs.GetNotifyConfig()
 	if notifyConfig == nil {
-		return nil, errs.ErrNotFoundNotifyConfig
+		return nil, types.ErrNotFoundNotifyConfig
 	}
 	if notifyConfig.Telegram == nil {
 		notifyConfig.Telegram = &configs.TelegramConfig{}
@@ -52,6 +52,9 @@ func (rpc *Server) GetNotifyConfig(ctx context.Context, req *clientpb.Empty) (*c
 	if notifyConfig.ServerChan == nil {
 		notifyConfig.ServerChan = &configs.ServerChanConfig{}
 	}
+	if notifyConfig.PushPlus == nil {
+		notifyConfig.PushPlus = &configs.PushPlusConfig{}
+	}
 	return &clientpb.Notify{
 		TelegramEnable:   notifyConfig.Telegram.Enable,
 		TelegramApiKey:   notifyConfig.Telegram.APIKey,
@@ -61,14 +64,19 @@ func (rpc *Server) GetNotifyConfig(ctx context.Context, req *clientpb.Empty) (*c
 		DingtalkToken:    notifyConfig.DingTalk.Token,
 		LarkEnable:       notifyConfig.Lark.Enable,
 		LarkWebhookUrl:   notifyConfig.Lark.WebHookUrl,
+		LarkSecret:       notifyConfig.Lark.Secret,
 		ServerchanEnable: notifyConfig.ServerChan.Enable,
 		ServerchanUrl:    notifyConfig.ServerChan.URL,
+		PushplusEnable:   notifyConfig.PushPlus.Enable,
+		PushplusToken:    notifyConfig.PushPlus.Token,
+		PushplusTopic:    notifyConfig.PushPlus.Topic,
+		PushplusChannel:  notifyConfig.PushPlus.Channel,
 	}, nil
 }
 
 func (rpc *Server) UpdateNotifyConfig(ctx context.Context, req *clientpb.Notify) (*clientpb.Empty, error) {
 	notifyConfig := &configs.NotifyConfig{
-		Enable: req.TelegramEnable || req.DingtalkEnable || req.LarkEnable || req.ServerchanEnable,
+		Enable: req.TelegramEnable || req.DingtalkEnable || req.LarkEnable || req.ServerchanEnable || req.PushplusEnable,
 		Telegram: &configs.TelegramConfig{
 			Enable: req.TelegramEnable,
 			APIKey: req.TelegramApiKey,
@@ -82,10 +90,17 @@ func (rpc *Server) UpdateNotifyConfig(ctx context.Context, req *clientpb.Notify)
 		Lark: &configs.LarkConfig{
 			Enable:     req.LarkEnable,
 			WebHookUrl: req.LarkWebhookUrl,
+			Secret:     req.LarkSecret,
 		},
 		ServerChan: &configs.ServerChanConfig{
 			Enable: req.ServerchanEnable,
 			URL:    req.ServerchanUrl,
+		},
+		PushPlus: &configs.PushPlusConfig{
+			Enable:  req.PushplusEnable,
+			Token:   req.PushplusToken,
+			Topic:   req.PushplusTopic,
+			Channel: req.PushplusChannel,
 		},
 	}
 	err := configs.UpdateNotifyConfig(notifyConfig)
@@ -102,6 +117,27 @@ func (rpc *Server) UpdateNotifyConfig(ctx context.Context, req *clientpb.Notify)
 func (rpc *Server) RefreshConfig(ctx context.Context, req *clientpb.Empty) (*clientpb.Empty, error) {
 	var server configs.ServerConfig
 	err := configutil.LoadConfig(configs.CurrentServerConfigFilename, &server)
+	if err != nil {
+		return nil, err
+	}
+	return &clientpb.Empty{}, nil
+}
+
+func (rpc *Server) GetAcmeConfig(ctx context.Context, req *clientpb.Empty) (*clientpb.AcmeConfig, error) {
+	acmeConfig := configs.GetAcmeConfig()
+	if acmeConfig == nil {
+		return &clientpb.AcmeConfig{}, nil
+	}
+	return acmeConfig.ToProtobuf(), nil
+}
+
+func (rpc *Server) UpdateAcmeConfig(ctx context.Context, req *clientpb.AcmeConfig) (*clientpb.Empty, error) {
+	err := configs.UpdateAcmeConfig(&configs.AcmeConfig{
+		Email:       req.Email,
+		CAUrl:       req.CaUrl,
+		Provider:    req.Provider,
+		Credentials: req.Credentials,
+	})
 	if err != nil {
 		return nil, err
 	}

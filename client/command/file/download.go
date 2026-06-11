@@ -1,31 +1,33 @@
 package file
 
 import (
+	"github.com/chainreactors/IoM-go/client"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/spf13/cobra"
-	"path/filepath"
 )
 
-func DownloadCmd(cmd *cobra.Command, con *repl.Console) error {
+func DownloadCmd(cmd *cobra.Command, con *core.Console) error {
 	path := cmd.Flags().Arg(0)
 	session := con.GetInteractive()
-	task, err := Download(con.Rpc, session, path)
+	is_dir, _ := cmd.Flags().GetBool("dir")
+	task, err := Download(con.Rpc, session, path, is_dir)
 	if err != nil {
 		return err
 	}
 
-	con.GetInteractive().Console(task, "Downloaded file "+path)
+	con.GetInteractive().Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 
-func Download(rpc clientrpc.MaliceRPCClient, session *core.Session, path string) (*clientpb.Task, error) {
+func Download(rpc clientrpc.MaliceRPCClient, session *client.Session, path string, is_dir bool) (*clientpb.Task, error) {
 	task, err := rpc.Download(session.Context(), &implantpb.DownloadRequest{
-		Name: filepath.Base(path),
+		Name: fileutils.RemoteBase(path),
 		Path: path,
+		Dir:  is_dir,
 	})
 	if err != nil {
 		return nil, err

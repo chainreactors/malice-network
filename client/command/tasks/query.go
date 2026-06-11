@@ -1,19 +1,18 @@
 package tasks
 
 import (
-	"fmt"
+	"github.com/chainreactors/IoM-go/client"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/client/core"
 	"strconv"
 
-	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/spf13/cobra"
 )
 
-func QueryTaskCmd(cmd *cobra.Command, con *repl.Console) error {
+func QueryTaskCmd(cmd *cobra.Command, con *core.Console) error {
 	taskId := cmd.Flags().Arg(0)
 	id, err := strconv.Atoi(taskId)
 	if err != nil {
@@ -24,12 +23,11 @@ func QueryTaskCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-
-	con.GetInteractive().Console(task, fmt.Sprintf("query task %d", id))
+	con.GetInteractive().Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 
-func QueryTask(rpc clientrpc.MaliceRPCClient, session *core.Session, taskId uint32) (*clientpb.Task, error) {
+func QueryTask(rpc clientrpc.MaliceRPCClient, session *client.Session, taskId uint32) (*clientpb.Task, error) {
 	return rpc.QueryTask(session.Context(), &implantpb.TaskCtrl{
 		TaskId: taskId,
 		Op:     consts.ModuleQueryTask,

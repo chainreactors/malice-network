@@ -4,7 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/command/common"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 
@@ -16,7 +17,7 @@ import (
 )
 
 // AliasesCmd - The alias command
-func AliasesCmd(cmd *cobra.Command, con *repl.Console) {
+func AliasesCmd(cmd *cobra.Command, con *core.Console) {
 	if 0 < len(loadedAliases) {
 		PrintAliases(con)
 	} else {
@@ -25,7 +26,7 @@ func AliasesCmd(cmd *cobra.Command, con *repl.Console) {
 }
 
 // PrintAliases - Print a list of loaded aliases
-func PrintAliases(con *repl.Console) {
+func PrintAliases(con *core.Console) {
 	var rowEntries []table.Row
 	var row table.Row
 	tableModel := tui.NewTable([]table.Column{
@@ -34,11 +35,11 @@ func PrintAliases(con *repl.Console) {
 		table.NewColumn("Platforms", "Platforms", 10),
 		table.NewColumn("Version", "Version", 10),
 		table.NewColumn("Installed", "Installed", 10),
-		table.NewColumn(".NET Assembly", ".NET Assembly", 15),
+		table.NewColumn(".NET Assembly", ".NET Assembly", 10),
 		table.NewColumn("Reflective", "Reflective", 10),
-		table.NewColumn("Tool Author", "Tool Author", 20),
-		table.NewColumn("Repository", "Repository", 20),
-	}, true)
+		table.NewFlexColumn("Tool Author", "Tool Author", 1),
+		table.NewFlexColumn("Repository", "Repository", 1),
+	}, common.ShouldUseStaticOutput(con))
 
 	installedManifests := getInstalledManifests()
 	for _, aliasPkg := range loadedAliases {
@@ -60,11 +61,14 @@ func PrintAliases(con *repl.Console) {
 			})
 		rowEntries = append(rowEntries, row)
 	}
+
 	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
-	newTable := tui.NewModel(tableModel, nil, false, false)
-	err := newTable.Run()
+	rendered, err := common.RunTable(con, tableModel)
 	if err != nil {
+		return
+	}
+	if rendered {
 		return
 	}
 }

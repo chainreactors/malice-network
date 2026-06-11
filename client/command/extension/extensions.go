@@ -1,10 +1,10 @@
 package extension
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/command/common"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 
@@ -15,7 +15,7 @@ import (
 )
 
 // ExtensionsCmd - List information about installed extensions
-func ExtensionsCmd(cmd *cobra.Command, con *repl.Console) {
+func ExtensionsCmd(cmd *cobra.Command, con *core.Console) {
 	if 0 < len(getInstalledManifests()) {
 		PrintExtensions(con)
 	} else {
@@ -24,7 +24,7 @@ func ExtensionsCmd(cmd *cobra.Command, con *repl.Console) {
 }
 
 // PrintExtensions - Print a list of loaded extensions
-func PrintExtensions(con *repl.Console) {
+func PrintExtensions(con *core.Console) {
 	var rowEntries []table.Row
 
 	tableModel := tui.NewTable([]table.Column{
@@ -33,10 +33,10 @@ func PrintExtensions(con *repl.Console) {
 		table.NewColumn("Platforms", "Platforms", 7),
 		table.NewColumn("Version", "Version", 7),
 		table.NewColumn("Installed", "Installed", 4),
-		table.NewColumn("Extension Author", "Extension Author", 10),
-		table.NewColumn("Original Author", "Original Author", 10),
-		table.NewColumn("Repository", "Repository", 20),
-	}, true)
+		table.NewFlexColumn("Extension Author", "Extension Author", 1),
+		table.NewFlexColumn("Original Author", "Original Author", 1),
+		table.NewFlexColumn("Repository", "Repository", 1),
+	}, common.ShouldUseStaticOutput(con))
 
 	installedManifests := getInstalledManifests()
 	for _, ext := range loadedExtensions {
@@ -59,10 +59,12 @@ func PrintExtensions(con *repl.Console) {
 	}
 	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
-	newTable := tui.NewModel(tableModel, nil, false, false)
-	err := newTable.Run()
+	rendered, err := common.RunTable(con, tableModel)
 	if err != nil {
 		con.Log.Errorf("Error running table: %s", err)
+		return
+	}
+	if rendered {
 		return
 	}
 }
@@ -87,18 +89,20 @@ func getInstalledManifests() map[string]*ExtensionManifest {
 		if err != nil {
 			continue
 		}
-		manifest := &ExtensionManifest{}
-		err = json.Unmarshal(data, manifest)
+		manifest, err := ParseExtensionManifest(data)
 		if err != nil {
 			continue
 		}
 		installedManifests[manifest.Name] = manifest
+		for _, extCmd := range manifest.ExtCommand {
+			installedManifests[extCmd.CommandName] = manifest
+		}
 	}
 	return installedManifests
 }
 
 // ExtensionsCommandNameCompleter - Completer for installed extensions command names.
-func ExtensionsCommandNameCompleter(con *repl.Console) carapace.Action {
+func ExtensionsCommandNameCompleter(con *core.Console) carapace.Action {
 	return carapace.ActionCallback(func(c carapace.Context) carapace.Action {
 		results := []string{}
 		for _, manifest := range loadedExtensions {

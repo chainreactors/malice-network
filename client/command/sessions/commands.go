@@ -2,17 +2,21 @@ package sessions
 
 import (
 	"github.com/carapace-sh/carapace"
+	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
-func Commands(con *repl.Console) []*cobra.Command {
+func Commands(con *core.Console) []*cobra.Command {
 	sessCmd := &cobra.Command{
-		Use:   consts.CommandSession,
-		Short: "List and Choice sessions",
+		Use: consts.CommandSession,
+		Annotations: map[string]string{
+			"resource": "true",
+			"static":   "true",
+		},
+		Short: "List and select sessions",
 		Long: `Display a table of active sessions on the server, 
 allowing you to navigate up and down to select a desired session. 
 Press the Enter key to use the selected session. 
@@ -36,7 +40,7 @@ session -a
 
 	bindSessNewCmd := &cobra.Command{
 		Use:   consts.CommandNewBindSession + " [session]",
-		Short: "new bind session",
+		Short: "Create a new bind session",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return NewBindSessionCmd(cmd, con)
 		},
@@ -46,10 +50,9 @@ session -a
 		f.StringP("name", "n", "", "session name")
 		f.StringP("target", "t", "", "session target")
 		f.String("pipeline", "", "pipeline id")
-		bindSessNewCmd.MarkFlagRequired("target")
-		bindSessNewCmd.MarkFlagRequired("pipeline")
 	})
-
+	bindSessNewCmd.MarkFlagRequired("target")
+	bindSessNewCmd.MarkFlagRequired("pipeline")
 	common.BindFlagCompletions(bindSessNewCmd, func(comp carapace.ActionMap) {
 		comp["pipeline"] = common.AllPipelineCompleter(con)
 	})
@@ -60,9 +63,8 @@ session -a
 		Long: `Add a note to a session. If a note already exists, it will be updated. 
 When using an active session, only provide the new note.`,
 		Args: cobra.MaximumNArgs(2),
-		Run: func(cmd *cobra.Command, args []string) {
-			noteCmd(cmd, con)
-			return
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return noteCmd(cmd, con)
 		},
 		Example: `~~~
 // Add a note to specified session
@@ -121,20 +123,27 @@ remove 08d6c05a21512a79a1dfeb9d2a8f262f
 
 	sessCmd.AddCommand(bindSessNewCmd, noteCommand, groupCommand, removeCommand)
 	useCommand := &cobra.Command{
-		Use:   consts.CommandUse + " [session]",
-		Short: "Use session",
-		Long:  "use",
-		Args:  cobra.MinimumNArgs(1),
+		Use:           consts.CommandUse + " [session]",
+		Short:         "Use a session",
+		Long:          "Switch to the specified session for implant-scoped commands.",
+		Args:          cobra.MinimumNArgs(1),
+		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return UseSessionCmd(cmd, con)
 		},
+		Example: `
+~~~
+// use session
+use 08d6c05a21512a79a1dfeb9d2a8f262f
+~~~
+`,
 	}
 
 	common.BindArgCompletions(useCommand, nil, common.SessionIDCompleter(con))
 
 	backCommand := &cobra.Command{
 		Use:   consts.CommandBackground,
-		Short: "back to root context",
+		Short: "Return to the root context",
 		Long:  "Exit the current session and return to the root context.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return BackGround(cmd, con)
@@ -143,17 +152,17 @@ remove 08d6c05a21512a79a1dfeb9d2a8f262f
 
 	observeCmd := &cobra.Command{
 		Use:   consts.CommandObverse,
-		Short: "observe manager",
+		Short: "Manage observers",
 		Long:  "Control observers to listen session in the background.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ObserveCmd(cmd, con)
 		},
 		Example: `~~~
 // List all observers
-observe -l
+obverse -l
 
 // Remove observer
-observe -r
+obverse -r
 ~~~`,
 	}
 
@@ -166,7 +175,7 @@ observe -r
 
 	historyCommand := &cobra.Command{
 		Use:   consts.CommandHistory,
-		Short: "show log history",
+		Short: "Show session log history",
 		Long:  "Displays the specified number of log lines of the current session.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

@@ -1,16 +1,16 @@
 package filesystem
 
 import (
+	"github.com/chainreactors/IoM-go/client"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/spf13/cobra"
 )
 
-func MkdirCmd(cmd *cobra.Command, con *repl.Console) error {
+func MkdirCmd(cmd *cobra.Command, con *core.Console) error {
 	path := cmd.Flags().Arg(0)
 	session := con.GetInteractive()
 	task, err := Mkdir(con.Rpc, session, path)
@@ -18,11 +18,11 @@ func MkdirCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	session.Console(task, "mkdir "+path)
+	session.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 
-func Mkdir(rpc clientrpc.MaliceRPCClient, session *core.Session, path string) (*clientpb.Task, error) {
+func Mkdir(rpc clientrpc.MaliceRPCClient, session *client.Session, path string) (*clientpb.Task, error) {
 	task, err := rpc.Mkdir(session.Context(), &implantpb.Request{
 		Name:  consts.ModuleMkdir,
 		Input: path,

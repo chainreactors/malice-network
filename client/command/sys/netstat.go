@@ -2,28 +2,28 @@ package sys
 
 import (
 	"fmt"
+	"github.com/chainreactors/IoM-go/client"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
 	"strings"
 )
 
-func NetstatCmd(cmd *cobra.Command, con *repl.Console) error {
+func NetstatCmd(cmd *cobra.Command, con *core.Console) error {
 	task, err := Netstat(con.Rpc, con.GetInteractive())
 	if err != nil {
 		return err
 	}
-	con.GetInteractive().Console(task, "netstat")
+	con.GetInteractive().Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 
-func Netstat(rpc clientrpc.MaliceRPCClient, session *core.Session) (*clientpb.Task, error) {
+func Netstat(rpc clientrpc.MaliceRPCClient, session *client.Session) (*clientpb.Task, error) {
 	task, err := rpc.Netstat(session.Context(), &implantpb.Request{
 		Name: consts.ModuleNetstat,
 	})
@@ -33,12 +33,12 @@ func Netstat(rpc clientrpc.MaliceRPCClient, session *core.Session) (*clientpb.Ta
 	return task, err
 }
 
-func RegisterNetstatFunc(con *repl.Console) {
+func RegisterNetstatFunc(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleNetstat,
 		Netstat,
 		"bnetstat",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *client.Session) (*clientpb.Task, error) {
 			return Netstat(rpc, sess)
 		},
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
@@ -59,10 +59,10 @@ func RegisterNetstatFunc(con *repl.Console) {
 			var rowEntries []table.Row
 			var row table.Row
 			tableModel := tui.NewTable([]table.Column{
-				table.NewColumn("LocalAddr", "LocalAddr", 30),
-				table.NewColumn("RemoteAddr", "RemoteAddr", 30),
-				table.NewColumn("SkState", "SkState", 20),
-				table.NewColumn("Pid", "Pid", 7),
+				table.NewFlexColumn("LocalAddr", "Local Addr", 1),
+				table.NewFlexColumn("RemoteAddr", "Remote Addr", 1),
+				table.NewColumn("SkState", "Sk State", 15),
+				table.NewColumn("Pid", "PID", 7),
 				table.NewColumn("Protocol", "Protocol", 10),
 			}, true)
 			for _, sock := range resp.GetSocks() {

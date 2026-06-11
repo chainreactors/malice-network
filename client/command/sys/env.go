@@ -2,27 +2,27 @@ package sys
 
 import (
 	"fmt"
+	"github.com/chainreactors/IoM-go/client"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
 )
 
-func EnvCmd(cmd *cobra.Command, con *repl.Console) error {
+func EnvCmd(cmd *cobra.Command, con *core.Console) error {
 	session := con.GetInteractive()
 	task, err := Env(con.Rpc, session)
 	if err != nil {
 		return err
 	}
-	session.Console(task, "env")
+	session.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 
-func Env(rpc clientrpc.MaliceRPCClient, session *core.Session) (*clientpb.Task, error) {
+func Env(rpc clientrpc.MaliceRPCClient, session *client.Session) (*clientpb.Task, error) {
 	task, err := rpc.Env(session.Context(), &implantpb.Request{
 		Name: consts.ModuleEnv,
 	})
@@ -32,7 +32,7 @@ func Env(rpc clientrpc.MaliceRPCClient, session *core.Session) (*clientpb.Task, 
 	return task, err
 }
 
-func SetEnvCmd(cmd *cobra.Command, con *repl.Console) error {
+func SetEnvCmd(cmd *cobra.Command, con *core.Console) error {
 	envName := cmd.Flags().Arg(0)
 	value := cmd.Flags().Arg(1)
 	if envName == "" || value == "" {
@@ -44,11 +44,11 @@ func SetEnvCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	session.Console(task, "setenv "+envName+" "+value)
+	session.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 
-func SetEnv(rpc clientrpc.MaliceRPCClient, session *core.Session, envName, value string) (*clientpb.Task, error) {
+func SetEnv(rpc clientrpc.MaliceRPCClient, session *client.Session, envName, value string) (*clientpb.Task, error) {
 	task, err := rpc.SetEnv(session.Context(), &implantpb.Request{
 		Name: consts.ModuleSetEnv,
 		Args: []string{envName, value},
@@ -59,7 +59,7 @@ func SetEnv(rpc clientrpc.MaliceRPCClient, session *core.Session, envName, value
 	return task, err
 }
 
-func UnsetEnvCmd(cmd *cobra.Command, con *repl.Console) error {
+func UnsetEnvCmd(cmd *cobra.Command, con *core.Console) error {
 	envName := cmd.Flags().Arg(0)
 	if envName == "" {
 		return fmt.Errorf("required arguments missing")
@@ -69,11 +69,11 @@ func UnsetEnvCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	session.Console(task, "unsetenv "+envName)
+	session.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 
-func UnSetEnv(rpc clientrpc.MaliceRPCClient, session *core.Session, envName string) (*clientpb.Task, error) {
+func UnSetEnv(rpc clientrpc.MaliceRPCClient, session *client.Session, envName string) (*clientpb.Task, error) {
 	task, err := rpc.UnsetEnv(session.Context(), &implantpb.Request{
 		Name:  consts.ModuleUnsetEnv,
 		Input: envName,
@@ -84,12 +84,12 @@ func UnSetEnv(rpc clientrpc.MaliceRPCClient, session *core.Session, envName stri
 	return task, err
 }
 
-func RegisterEnvFunc(con *repl.Console) {
+func RegisterEnvFunc(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleEnv,
 		Env,
 		"benv",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *client.Session) (*clientpb.Task, error) {
 			return Env(rpc, sess)
 		},
 		output.ParseKVResponse, output.FormatKVResponse)
@@ -107,7 +107,7 @@ func RegisterEnvFunc(con *repl.Console) {
 		consts.ModuleSetEnv,
 		SetEnv,
 		"bsetenv",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, envName, value string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *client.Session, envName, value string) (*clientpb.Task, error) {
 			return SetEnv(rpc, sess, envName, value)
 		},
 		output.ParseStatus,
@@ -129,7 +129,7 @@ func RegisterEnvFunc(con *repl.Console) {
 		consts.ModuleUnsetEnv,
 		UnSetEnv,
 		"bunsetenv",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, envName string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *client.Session, envName string) (*clientpb.Task, error) {
 			return UnSetEnv(rpc, sess, envName)
 		},
 		output.ParseStatus,

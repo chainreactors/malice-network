@@ -8,6 +8,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/chainreactors/malice-network/helper/intl"
 )
 
 type BOFArgsBuffer struct {
@@ -19,7 +21,7 @@ func (b *BOFArgsBuffer) AddData(d []byte) error {
 	return nil
 }
 
-func (b *BOFArgsBuffer) AddShort(d uint16) error {
+func (b *BOFArgsBuffer) AddShort(d int16) error {
 	data, err := PackShort(d)
 	if err != nil {
 		return err
@@ -28,7 +30,7 @@ func (b *BOFArgsBuffer) AddShort(d uint16) error {
 	return nil
 }
 
-func (b *BOFArgsBuffer) AddInt(d uint32) error {
+func (b *BOFArgsBuffer) AddInt(d int) error {
 	data, err := PackInt(d)
 	if err != nil {
 		return err
@@ -114,31 +116,31 @@ func PackFile(data string) string {
 }
 
 func PackURL(data string) string {
-	return "url" + data
+	return "url:" + data
 }
 
-func PackInt(i uint32) (string, error) {
+func PackInt(i int) (string, error) {
 	return fmt.Sprintf(`int:%d`, i), nil
 }
 
 func PackIntString(s string) (string, error) {
-	i, err := strconv.ParseUint(s, 10, 32)
+	i, err := strconv.ParseInt(s, 10, 32)
 	if err != nil {
 		return "", err
 	}
-	return PackInt(uint32(i))
+	return PackInt(int(i))
 }
 
-func PackShort(i uint16) (string, error) {
+func PackShort(i int16) (string, error) {
 	return fmt.Sprintf(`short:%d`, i), nil
 }
 
 func PackShortString(s string) (string, error) {
-	i, err := strconv.ParseUint(s, 10, 16)
+	i, err := strconv.ParseInt(s, 10, 16)
 	if err != nil {
 		return "", err
 	}
-	return PackShort(uint16(i))
+	return PackShort(int16(i))
 }
 
 func PackString(s string) string {
@@ -171,30 +173,56 @@ func UnpackURL(data string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode == 200 {
 		return io.ReadAll(resp.Body)
-	} else {
-		return nil, fmt.Errorf("request error %d", resp.StatusCode)
 	}
+	return nil, fmt.Errorf("request error %d", resp.StatusCode)
+}
+
+func UnpackEmbed(data string) ([]byte, error) {
+	// 处理embed://path格式
+	embedPath := "embed:" + data
+	return intl.ReadEmbedResource(embedPath)
 }
 
 func Unpack(data string) ([]byte, error) {
+	// 首先尝试直接作为文件路径读取
 	content, err := UnPackFile(data)
 	if err == nil {
 		return content, nil
 	}
+
+	if looksLikeWindowsDrive(data) {
+		return nil, fmt.Errorf("file not found: %s", data)
+	}
+
+	// 如果直接读取失败，解析数据类型
 	unpacked := strings.SplitN(data, ":", 2)
+	if len(unpacked) < 2 {
+		return nil, fmt.Errorf("invalid data format: %s", data)
+	}
+
 	switch unpacked[0] {
 	case "file":
 		return UnPackFile(unpacked[1])
+	case "embed":
+		return UnpackEmbed(unpacked[1])
 	case "bin":
 		return UnPackBinary(unpacked[1])
 	case "url":
 		return UnpackURL(unpacked[1])
 	default:
-		return nil, fmt.Errorf("Unknown data type %s", unpacked[0])
+		return nil, fmt.Errorf("unknown data type %s", unpacked[0])
 	}
+}
+
+func looksLikeWindowsDrive(s string) bool {
+	return len(s) > 2 &&
+		((s[0] >= 'A' && s[0] <= 'Z') || (s[0] >= 'a' && s[0] <= 'z')) &&
+		s[1] == ':' &&
+		(s[2] == '\\' || s[2] == '/')
 }
 
 const (

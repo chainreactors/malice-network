@@ -3,20 +3,91 @@ package rpc
 import (
 	"context"
 	"errors"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/server/internal/certutils"
+	"fmt"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/types"
+	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
+	"google.golang.org/protobuf/proto"
 	"os"
-	"path/filepath"
+	"path"
 )
 
+func resolveWebsite(name, listenerID string) (*models.Pipeline, error) {
+	if name == "" {
+		return nil, fmt.Errorf("website name required")
+	}
+
+	query := db.NewPipelineQuery().WhereName(name).WhereType(consts.WebsitePipeline)
+	if listenerID != "" {
+		query = query.WhereListenerID(listenerID)
+	}
+
+	websites, err := query.Find()
+	if err != nil {
+		return nil, err
+	}
+
+	switch len(websites) {
+	case 0:
+		return nil, types.ErrNotFoundPipeline
+	case 1:
+		return websites[0], nil
+	default:
+		return nil, fmt.Errorf("multiple websites named '%s' found across listeners, please specify listener_id", name)
+	}
+}
+
+func getWebsiteRuntime(name, listenerID string) (*models.Pipeline, *core.Job, error) {
+	website, err := resolveWebsite(name, listenerID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	job, err := core.Jobs.GetByListener(website.Name, website.ListenerId)
+	if err != nil {
+		if errors.Is(err, types.ErrNotFoundPipeline) {
+			return website, nil, nil
+		}
+		return nil, nil, err
+	}
+
+	return website, job, nil
+}
+
+func cloneWebsiteJob(job *core.Job, contents map[string]*clientpb.WebContent) *clientpb.Job {
+	if job == nil {
+		return nil
+	}
+	if job.Pipeline == nil || job.Pipeline.GetWeb() == nil {
+		return job.ToProtobuf()
+	}
+
+	pipelineCopy := proto.Clone(job.Pipeline).(*clientpb.Pipeline)
+	pipelineCopy.GetWeb().Contents = contents
+
+	return &clientpb.Job{
+		Id:       job.ID,
+		Name:     job.Name,
+		Pipeline: pipelineCopy,
+	}
+}
+
 func MapContents(webpipe *clientpb.Pipeline) error {
+	if webpipe == nil || webpipe.GetWeb() == nil {
+		return errors.New("website pipeline required")
+	}
 	web := webpipe.GetWeb()
-	contents, err := db.FindWebContentsByWebsite(webpipe.Name)
+	if web.Contents == nil {
+		web.Contents = make(map[string]*clientpb.WebContent)
+	}
+	contents, err := db.FindWebContentsByWebsiteAndListener(webpipe.Name, webpipe.ListenerId)
 	if err != nil {
 		return err
 	}
@@ -29,7 +100,14 @@ func MapContents(webpipe *clientpb.Pipeline) error {
 
 // ListWebContent - 列出网站的所有内容
 func (rpc *Server) ListWebContent(ctx context.Context, req *clientpb.Website) (*clientpb.WebContents, error) {
-	contents, err := db.FindWebContentsByWebsite(req.Name)
+	if req == nil {
+		return nil, types.ErrMissingRequestField
+	}
+	website, err := resolveWebsite(req.Name, req.ListenerId)
+	if err != nil {
+		return nil, err
+	}
+	contents, err := db.FindWebContentsByWebsiteAndListener(website.Name, website.ListenerId)
 	if err != nil {
 		return nil, err
 	}
@@ -43,29 +121,44 @@ func (rpc *Server) ListWebContent(ctx context.Context, req *clientpb.Website) (*
 
 // WebsiteAddContent - Add content to a website, the website is created if `name` does not exist
 func (rpc *Server) AddWebsiteContent(ctx context.Context, req *clientpb.Website) (*clientpb.WebContent, error) {
-	job, err := core.Jobs.Get(req.Name)
+	if req == nil {
+		return nil, types.ErrMissingRequestField
+	}
+	website, job, err := getWebsiteRuntime(req.Name, req.ListenerId)
 	if err != nil {
 		return nil, err
 	}
-	lns, err := core.Listeners.Get(job.Pipeline.ListenerId)
-	if err != nil {
-		return nil, err
+	req.ListenerId = website.ListenerId
+
+	var lns *core.Listener
+	if job != nil {
+		lns, err = core.Listeners.Get(website.ListenerId)
+		if err != nil {
+			return nil, err
+		}
 	}
 	var contentModel *models.WebsiteContent
 	if len(req.Contents) != 0 {
 		for _, content := range req.Contents {
+			content.WebsiteId = website.Name
+			content.ListenerId = website.ListenerId
 			content.Size = uint64(len(content.Content))
 			rpcLog.Infof("Add website content (%s) %s -> %s", content.File, content.Path, content.Type)
 			contentModel, err = db.AddContent(content)
 			if err != nil {
 				return nil, err
 			}
-			lns.PushCtrl(&clientpb.JobCtrl{
-				Ctrl:    consts.CtrlWebContentAdd,
-				Job:     job.ToProtobuf(),
-				Content: content,
-			})
+			if job != nil {
+				lns.PushCtrl(&clientpb.JobCtrl{
+					Ctrl:    consts.CtrlWebContentAdd,
+					Job:     job.ToProtobuf(),
+					Content: content,
+				})
+			}
 		}
+	}
+	if contentModel == nil {
+		return nil, errors.New("no content provided")
 	}
 
 	return contentModel.ToProtobuf(false), nil
@@ -73,42 +166,96 @@ func (rpc *Server) AddWebsiteContent(ctx context.Context, req *clientpb.Website)
 
 // WebsiteUpdateContent - Update specific content from a website
 func (rpc *Server) UpdateWebsiteContent(ctx context.Context, req *clientpb.WebContent) (*clientpb.WebContent, error) {
+	if req == nil {
+		return nil, types.ErrMissingRequestField
+	}
+	existingContent, err := db.FindWebContent(req.Id)
+	if err != nil {
+		return nil, err
+	}
+	if req.WebsiteId == "" {
+		req.WebsiteId = existingContent.PipelineID
+	}
+	if req.Path == "" {
+		req.Path = existingContent.Path
+	}
+	if req.Type == "" {
+		req.Type = existingContent.Type
+	}
+	if req.ContentType == "" {
+		req.ContentType = existingContent.ContentType
+	}
+	if req.ListenerId == "" {
+		req.ListenerId = existingContent.ListenerID
+	}
+	if req.ListenerId == "" && existingContent.Pipeline != nil {
+		req.ListenerId = existingContent.Pipeline.ListenerId
+	}
+
 	content, err := db.AddContent(req)
 	if err != nil {
 		return nil, err
 	}
 
-	job, err := core.Jobs.Get(req.WebsiteId)
+	website, job, err := getWebsiteRuntime(req.WebsiteId, req.ListenerId)
 	if err != nil {
 		return nil, err
 	}
-	lns, err := core.Listeners.Get(job.Pipeline.ListenerId)
-	if err != nil {
-		return nil, err
+	if job != nil {
+		lns, err := core.Listeners.Get(website.ListenerId)
+		if err != nil {
+			return nil, err
+		}
+		lns.PushCtrl(&clientpb.JobCtrl{
+			Ctrl:    consts.CtrlWebContentAdd,
+			Job:     job.ToProtobuf(),
+			Content: content.ToProtobuf(true),
+		})
 	}
-	lns.PushCtrl(&clientpb.JobCtrl{
-		Ctrl:    consts.CtrlWebContentAdd,
-		Job:     job.ToProtobuf(),
-		Content: content.ToProtobuf(true),
-	})
 
 	return content.ToProtobuf(false), nil
 }
 
 // WebsiteRemoveContent - Remove specific content from a website
 func (rpc *Server) RemoveWebsiteContent(ctx context.Context, req *clientpb.WebContent) (*clientpb.Empty, error) {
-	job, err := core.Jobs.Get(req.WebsiteId)
+	if req == nil {
+		return nil, types.ErrMissingRequestField
+	}
+	existingContent, err := db.FindWebContent(req.Id)
 	if err != nil {
 		return nil, err
 	}
-	lns, err := core.Listeners.Get(job.Pipeline.ListenerId)
+	if req.WebsiteId == "" {
+		req.WebsiteId = existingContent.PipelineID
+	}
+	if req.Path == "" {
+		req.Path = existingContent.Path
+	}
+	if req.ListenerId == "" {
+		req.ListenerId = existingContent.ListenerID
+	}
+	if req.ListenerId == "" && existingContent.Pipeline != nil {
+		req.ListenerId = existingContent.Pipeline.ListenerId
+	}
+
+	website, job, err := getWebsiteRuntime(req.WebsiteId, req.ListenerId)
 	if err != nil {
 		return nil, err
 	}
-	lns.PushCtrl(&clientpb.JobCtrl{
-		Ctrl: consts.CtrlWebContentRemove,
-		Job:  job.ToProtobuf(),
-	})
+	if job != nil {
+		lns, err := core.Listeners.Get(website.ListenerId)
+		if err != nil {
+			return nil, err
+		}
+		lns.PushCtrl(&clientpb.JobCtrl{
+			Ctrl: consts.CtrlWebContentRemove,
+			Job: cloneWebsiteJob(job, map[string]*clientpb.WebContent{
+				req.Path: {
+					Path: req.Path,
+				},
+			}),
+		})
+	}
 
 	err = db.RemoveContent(req.Id)
 	if err != nil {
@@ -118,25 +265,29 @@ func (rpc *Server) RemoveWebsiteContent(ctx context.Context, req *clientpb.WebCo
 }
 
 func (rpc *Server) RegisterWebsite(ctx context.Context, req *clientpb.Pipeline) (*clientpb.Empty, error) {
+	if req == nil || req.GetWeb() == nil {
+		return nil, types.ErrMissingRequestField
+	}
 	lns, err := core.Listeners.Get(req.ListenerId)
 	if err != nil {
 		return nil, err
 	}
 	req.Ip = lns.IP
 	pipelineModel := models.FromPipelinePb(req)
-	if pipelineModel.Tls.Enable && pipelineModel.Tls.Cert == "" && pipelineModel.Tls.Key == "" {
-		pipelineModel.Tls.Cert, pipelineModel.Tls.Key, err = certutils.GenerateTlsCert(req.Name, req.ListenerId)
-		if err != nil {
-			return nil, err
-		}
-	}
 	_, err = db.SavePipeline(pipelineModel)
 	if err != nil {
 		return nil, err
 	}
-	_ = os.Mkdir(filepath.Join(configs.WebsitePath, req.Name), os.ModePerm)
+	websiteDir, err := fileutils.SafeJoin(configs.WebsitePath, path.Join(req.ListenerId, req.Name))
+	if err != nil {
+		return nil, err
+	}
+	if err := os.MkdirAll(websiteDir, 0o700); err != nil {
+		return nil, err
+	}
 	for _, content := range req.GetWeb().Contents {
 		content.WebsiteId = req.Name
+		content.ListenerId = req.ListenerId
 		_, err = db.AddContent(content)
 		if err != nil {
 			return nil, err
@@ -147,11 +298,30 @@ func (rpc *Server) RegisterWebsite(ctx context.Context, req *clientpb.Pipeline) 
 }
 
 func (rpc *Server) StartWebsite(ctx context.Context, req *clientpb.CtrlPipeline) (*clientpb.Empty, error) {
-	webpipe, err := db.FindWebsiteByName(req.Name)
+	if req == nil {
+		return nil, types.ErrMissingRequestField
+	}
+	listenerID, err := resolveListenerID(req)
 	if err != nil {
 		return nil, err
 	}
 
+	webpipe, err := resolveWebsite(req.Name, listenerID)
+	if err != nil {
+		return nil, err
+	}
+	if req.CertName != "" {
+		_, err := db.FindCertificate(req.CertName)
+		if err != nil {
+			return nil, err
+		}
+		webpipe, err = db.UpdatePipelineCert(req.CertName, webpipe)
+		if err != nil {
+			return nil, err
+		}
+	} else if req.Pipeline != nil && req.Pipeline.Tls != nil {
+		webpipe.Tls.Enable = req.Pipeline.Tls.Enable
+	}
 	listener, err := core.Listeners.Get(webpipe.ListenerId)
 	if err != nil {
 		return nil, err
@@ -167,77 +337,121 @@ func (rpc *Server) StartWebsite(ctx context.Context, req *clientpb.CtrlPipeline)
 		Pipeline: webpb,
 		Name:     webpipe.Name,
 	}
-	listener.PushCtrl(&clientpb.JobCtrl{
+	ctrlID := listener.PushCtrl(&clientpb.JobCtrl{
 		Ctrl: consts.CtrlWebsiteStart,
 		Job:  job.ToProtobuf(),
 	})
-	err = db.EnablePipeline(webpipe.Name)
-	if err != nil {
+
+	status := listener.WaitCtrl(ctrlID)
+	if err := waitForCtrlStatus("start website", req.Name, status); err != nil {
+		_ = db.DisablePipelineByListener(webpipe.Name, webpipe.ListenerId)
 		return nil, err
 	}
 
+	err = db.EnablePipelineByListener(webpipe.Name, webpipe.ListenerId)
+	if err != nil {
+		return nil, err
+	}
+	core.Jobs.AddPipeline(webpb)
+
+	artifacts, err := db.GetValidArtifacts()
+	if err != nil {
+		logs.Log.Errorf("failed to find artifact: %s", err)
+		return &clientpb.Empty{}, nil
+	}
+	for _, artifact := range artifacts {
+		content, err := db.AddAmountWebContent(artifact.Name, webpb.Name, webpb.ListenerId)
+		if err != nil {
+			return nil, err
+		}
+		listener.PushCtrl(&clientpb.JobCtrl{
+			Ctrl: consts.CtrlWebContentAddArtifact,
+			Job: &clientpb.Job{
+				Pipeline: webpb,
+			},
+			Content: content,
+		})
+		logs.Log.Infof("artifact %s amounts at %s", artifact.Name, path.Join(webpb.URL(), output.Encode(artifact.Name)))
+	}
 	return &clientpb.Empty{}, nil
 }
 
 func (rpc *Server) StopWebsite(ctx context.Context, req *clientpb.CtrlPipeline) (*clientpb.Empty, error) {
-	job, err := core.Jobs.Get(req.Name)
+	listenerID, err := resolveListenerID(req)
 	if err != nil {
 		return nil, err
 	}
 
-	err = db.DisablePipeline(job.Pipeline.Name)
-	listener, err := core.Listeners.Get(job.Pipeline.ListenerId)
+	website, job, err := getWebsiteRuntime(req.Name, listenerID)
 	if err != nil {
 		return nil, err
 	}
-	listener.PushCtrl(&clientpb.JobCtrl{
-		Ctrl: consts.CtrlWebsiteStop,
-		Job:  job.ToProtobuf(),
-	})
-	listener.RemovePipeline(job.Pipeline)
+
+	listener, err := core.Listeners.Get(website.ListenerId)
 	if err != nil {
 		return nil, err
+	}
+
+	if job != nil {
+		ctrlID := listener.PushCtrl(&clientpb.JobCtrl{
+			Ctrl: consts.CtrlWebsiteStop,
+			Job:  job.ToProtobuf(),
+		})
+		status := listener.WaitCtrl(ctrlID)
+		if err := waitForCtrlStatus("stop website", req.Name, status); err != nil {
+			return nil, err
+		}
+	}
+
+	err = db.DisablePipelineByListener(website.Name, website.ListenerId)
+	if err != nil {
+		return nil, err
+	}
+	if job != nil {
+		listener.RemovePipeline(job.Pipeline)
 	}
 	return &clientpb.Empty{}, nil
 }
 
 func (rpc *Server) ListWebsites(ctx context.Context, req *clientpb.Listener) (*clientpb.Pipelines, error) {
-	var websites []*clientpb.Pipeline
-	pipelines, err := db.ListWebsite(req.Id)
+	modelPipelines, err := db.ListWebsitesByListener(req.Id)
 	if err != nil {
 		return nil, err
 	}
-	for _, pipeline := range pipelines {
-		websites = append(websites, pipeline.ToProtobuf())
-	}
-	return &clientpb.Pipelines{Pipelines: websites}, nil
+	return modelPipelines.ToProtobuf(), nil
 }
 
 func (rpc *Server) DeleteWebsite(ctx context.Context, req *clientpb.CtrlPipeline) (*clientpb.Empty, error) {
-	pipelineDB, err := db.FindPipeline(req.Name)
+	listenerID, err := resolveListenerID(req)
 	if err != nil {
 		return nil, err
 	}
-	pipeline := pipelineDB.ToProtobuf()
-	listener, err := core.Listeners.Get(pipeline.ListenerId)
+
+	website, job, err := getWebsiteRuntime(req.Name, listenerID)
 	if err != nil {
 		return nil, err
 	}
-	listener.RemovePipeline(pipeline)
-	err = db.DeleteWebsite(req.Name)
+	listener, err := core.Listeners.Get(website.ListenerId)
+	if err != nil {
+		return nil, err
+	}
+
+	if job != nil {
+		ctrlID := listener.PushCtrl(&clientpb.JobCtrl{
+			Ctrl: consts.CtrlWebsiteStop,
+			Job:  job.ToProtobuf(),
+		})
+		status := listener.WaitCtrl(ctrlID)
+		if err := waitForCtrlStatus("delete website", req.Name, status); err != nil {
+			return nil, err
+		}
+		listener.RemovePipeline(job.Pipeline)
+	}
+
+	err = db.DeleteWebsiteByListener(website.Name, website.ListenerId)
 	if err != nil && !errors.Is(err, db.ErrRecordNotFound) {
 		return nil, err
 	}
-
-	job, err := core.Jobs.Get(req.Name)
-	if err != nil {
-		return nil, err
-	}
-
-	listener.PushCtrl(&clientpb.JobCtrl{
-		Ctrl: consts.CtrlWebsiteStop,
-		Job:  job.ToProtobuf(),
-	})
 
 	return &clientpb.Empty{}, nil
 }

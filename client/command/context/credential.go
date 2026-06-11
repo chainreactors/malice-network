@@ -1,34 +1,50 @@
 package context
 
 import (
+	"fmt"
+	"github.com/chainreactors/IoM-go/client"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
 
-	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/tui"
 )
 
-func GetCredentialsCmd(cmd *cobra.Command, con *repl.Console) error {
+func GetCredentialsCmd(cmd *cobra.Command, con *core.Console) error {
 	credentials, err := GetCredentials(con)
 	if err != nil {
 		return err
 	}
 
+	// Map for deduplication: key = "type:username:password", value = first occurrence context
+	seen := make(map[string]*clientpb.Context)
 	var rowEntries []table.Row
+
 	for _, ctx := range credentials {
 		cred, err := output.ToContext[*output.CredentialContext](ctx)
 		if err != nil {
 			return err
 		}
 
+		// Create deduplication key
+		dedupKey := fmt.Sprintf("%s:%s:%s:%s", cred.CredentialType, cred.Target, cred.Params["username"], cred.Params["password"])
+
+		// Check if we've already seen this combination
+		if _, exists := seen[dedupKey]; exists {
+			continue // Skip duplicate
+		}
+
+		// Mark as seen
+		seen[dedupKey] = ctx
+
 		row := table.NewRow(table.RowData{
 			"ID":       ctx.Id,
-			"Session":  ctx.Session.SessionId,
+			"Session":  getSessionID(ctx.Session),
 			"Task":     getTaskId(ctx.Task),
+			"Target":   cred.Target,
 			"Type":     cred.CredentialType,
 			"Username": cred.Params["username"],
 			"Password": cred.Params["password"],
@@ -37,12 +53,13 @@ func GetCredentialsCmd(cmd *cobra.Command, con *repl.Console) error {
 	}
 
 	tableModel := tui.NewTable([]table.Column{
-		table.NewColumn("ID", "ID", 36),
-		table.NewColumn("Session", "Session", 16),
-		table.NewColumn("Task", "Task", 8),
-		table.NewColumn("Type", "Type", 12),
-		table.NewColumn("Username", "Username", 20),
-		table.NewColumn("Password", "Password", 20),
+		table.NewFlexColumn("ID", "ID", 1),
+		table.NewColumn("Session", "Session", 10),
+		table.NewColumn("Task", "Task", 6),
+		table.NewFlexColumn("Target", "Target", 2),
+		table.NewColumn("Type", "Type", 10),
+		table.NewColumn("Username", "Username", 15),
+		table.NewFlexColumn("Password", "Password", 2),
 	}, true)
 
 	tableModel.SetRows(rowEntries)
@@ -50,7 +67,7 @@ func GetCredentialsCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func GetCredentials(con *repl.Console) ([]*clientpb.Context, error) {
+func GetCredentials(con *core.Console) ([]*clientpb.Context, error) {
 	contexts, err := GetContextsByType(con, consts.ContextCredential)
 	if err != nil {
 		return nil, err
@@ -58,7 +75,11 @@ func GetCredentials(con *repl.Console) ([]*clientpb.Context, error) {
 	return contexts.Contexts, nil
 }
 
-func AddCredential(con *repl.Console, sess *core.Session, task *clientpb.Task, credType string, params map[string]string) (bool, error) {
+func AddCredential(con *core.Console, sess *client.Session, task *clientpb.Task, credType string, params map[string]string) (bool, error) {
+	if err := requireContextTask(sess, task); err != nil {
+		return false, err
+	}
+
 	_, err := con.Rpc.AddCredential(con.Context(), &clientpb.Context{
 		Session: sess.Session,
 		Task:    task,
@@ -71,8 +92,8 @@ func AddCredential(con *repl.Console, sess *core.Session, task *clientpb.Task, c
 	return true, nil
 }
 
-func RegisterCredential(con *repl.Console) {
-	con.RegisterServerFunc("credentials", func(con *repl.Console) ([]*output.CredentialContext, error) {
+func RegisterCredential(con *core.Console) {
+	con.RegisterServerFunc("credentials", func(con *core.Console) ([]*output.CredentialContext, error) {
 		ctxs, err := GetCredentials(con)
 		if err != nil {
 			return nil, err

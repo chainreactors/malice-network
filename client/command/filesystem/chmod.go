@@ -1,16 +1,16 @@
 package filesystem
 
 import (
+	"github.com/chainreactors/IoM-go/client"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/spf13/cobra"
 )
 
-func ChmodCmd(cmd *cobra.Command, con *repl.Console) error {
+func ChmodCmd(cmd *cobra.Command, con *core.Console) error {
 	mode := cmd.Flags().Arg(0)
 	path := cmd.Flags().Arg(1)
 
@@ -19,11 +19,11 @@ func ChmodCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	con.GetInteractive().Console(task, "chmod "+path+" "+mode)
+	con.GetInteractive().Console(task, string(*con.App.Shell().Line()))
 	return err
 }
 
-func Chmod(rpc clientrpc.MaliceRPCClient, session *core.Session, path, mode string) (*clientpb.Task, error) {
+func Chmod(rpc clientrpc.MaliceRPCClient, session *client.Session, path, mode string) (*clientpb.Task, error) {
 	task, err := rpc.Chmod(session.Context(), &implantpb.Request{
 		Name: consts.ModuleChmod,
 		Args: []string{path, mode},

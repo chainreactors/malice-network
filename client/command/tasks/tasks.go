@@ -1,39 +1,53 @@
 package tasks
 
 import (
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"fmt"
+	"os"
+	"strconv"
+
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
-	"strconv"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
-func GetTasksCmd(cmd *cobra.Command, con *repl.Console) error {
-	err := con.UpdateTasks(con.GetInteractive())
+func GetTasksCmd(cmd *cobra.Command, con *core.Console) error {
+	session := con.GetInteractive()
+	if session == nil {
+		return fmt.Errorf("session is nil")
+	}
+
+	isAll, _ := cmd.Flags().GetBool("all")
+	tasks, err := con.Rpc.GetTasks(session.Context(), &clientpb.TaskRequest{
+		SessionId: session.SessionId,
+		All:       isAll,
+	})
 	if err != nil {
 		return err
 	}
-	isAll, _ := cmd.Flags().GetBool("all")
-	tasks := con.GetInteractive().Tasks.GetTasks()
-	if 0 < len(tasks) {
-		printTasks(tasks, con, isAll)
+	session.Tasks = &clientpb.Tasks{Tasks: tasks.GetTasks()}
+	if 0 < len(session.Tasks.GetTasks()) {
+		printTasks(session.Tasks.GetTasks(), con, isAll)
 	} else {
 		con.Log.Info("No tasks\n")
 	}
 	return nil
 }
 
-func printTasks(tasks []*clientpb.Task, con *repl.Console, isAll bool) {
+func printTasks(tasks []*clientpb.Task, con *core.Console, isAll bool) {
 	var rowEntries []table.Row
 	var row table.Row
 	tableModel := tui.NewTable([]table.Column{
 		table.NewColumn("ID", "ID", 4),
-		table.NewColumn("Type", "Type", 20),
+		table.NewFlexColumn("Type", "Type", 1),
 		table.NewColumn("Status", "Status", 15),
-		table.NewColumn("cur", "cur", 5),
-		table.NewColumn("total", "total", 5),
-		table.NewColumn("callby", "callby", 10),
+		table.NewColumn("cur", "Cur", 5),
+		table.NewColumn("total", "Total", 5),
+		table.NewColumn("callby", "Call By", 10),
 		//table.NewColumn("timeout", "timeout", 8),
 	}, true)
 	for _, task := range tasks {
@@ -64,20 +78,118 @@ func printTasks(tasks []*clientpb.Task, con *repl.Console, isAll bool) {
 	con.Log.Console(tableModel.View())
 }
 
-//	func TasksCmd(ctx *grumble.Context, con *console.Console) {
-//		err := con.UpdateTasks(con.GetInteractive())
-//		if err != nil {
-//			console.Log.Errorf("Error updating tasks: %v", err)
-//			return
-//		}
-//		sid := con.GetInteractive().SessionId
-//		Tasks, err := con.Rpc.GetTaskFiles(con.ActiveTarget.Context(), con.GetInteractive())
-//		if err != nil {
-//			con.SessionLog(sid).Errorf("Error getting tasks: %v", err)
-//		}
-//		if 0 < len(Tasks.Tasks) {
-//			PrintTasks(Tasks.Tasks, con)
-//		} else {
-//			console.Log.Info("No sessions")
-//		}
+// fetchTaskByIDs 根据逗号分隔的任务ID字符串获取任务详情
+func fetchTaskByID(idStr string, con *core.Console) (*clientpb.TaskContexts, error) {
+
+	taskId, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		return nil, fmt.Errorf("invalid task ID %q: %w", idStr, err)
+	}
+	task := &clientpb.Task{
+		SessionId: con.GetInteractive().SessionId,
+		TaskId:    uint32(taskId),
+		Need:      -1,
+	}
+	tasksContext, err := con.Rpc.GetAllTaskContent(con.GetInteractive().Context(), task)
+
+	return tasksContext, err
+}
+
+func TaskFetchCmd(cmd *cobra.Command, con *core.Console) error {
+	taskId := cmd.Flags().Arg(0)
+	toFile, _ := cmd.Flags().GetBool("file")
+	outputPath, _ := cmd.Flags().GetString("output")
+
+	tasksContext, err := fetchTaskByID(taskId, con)
+	if err != nil {
+		// 检查是否是 NotFound 错误
+		if status.Code(err) == codes.NotFound {
+			// 尝试从任务列表中查找
+			taskIdNum, _ := strconv.ParseUint(taskId, 10, 32)
+			if task := findTaskInList(con, uint32(taskIdNum)); task != nil {
+				if !task.Finished {
+					return fmt.Errorf("task %s is still running, no output available yet (progress: %d/%d)",
+						taskId, task.Cur, task.Total)
+				}
+			}
+		}
+		return err
+	}
+
+	sess := con.GetInteractive()
+
+	// 如果需要输出到文件
+	if toFile || outputPath != "" {
+		if outputPath == "" {
+			outputPath = fmt.Sprintf("task_%s.txt", taskId)
+		}
+
+		var rendered []byte
+		for _, spite := range tasksContext.Spites {
+			eachTask := &clientpb.TaskContext{
+				Task:    tasksContext.Task,
+				Session: tasksContext.Session,
+				Spite:   spite,
+			}
+			text, err := core.RenderTaskOutput(eachTask)
+			if err != nil {
+				return fmt.Errorf("failed to render task output: %w", err)
+			}
+			rendered = append(rendered, []byte(text+"\n")...)
+		}
+
+		if err := os.WriteFile(outputPath, rendered, 0644); err != nil {
+			return fmt.Errorf("failed to write file: %w", err)
+		}
+
+		con.Log.Infof("Task output saved to: %s\n", outputPath)
+		return nil
+	}
+
+	// 默认输出到控制台
+	for _, spite := range tasksContext.Spites {
+		eachTask := &clientpb.TaskContext{
+			Task:    tasksContext.Task,
+			Session: tasksContext.Session,
+			Spite:   spite,
+		}
+		core.HandlerTask(sess, sess.Log, eachTask, nil, consts.CalleeCMD, true)
+	}
+
+	return nil
+}
+
+func findTaskInList(con *core.Console, taskId uint32) *clientpb.Task {
+	session := con.GetInteractive()
+	tasks, err := con.Rpc.GetTasks(session.Context(), &clientpb.TaskRequest{
+		SessionId: session.SessionId,
+		All:       true,
+	})
+	if err != nil {
+		return nil
+	}
+	for _, task := range tasks.GetTasks() {
+		if task.TaskId == taskId {
+			return task
+		}
+	}
+	return nil
+}
+
+//func TasksCmd(ctx *grumble.Context, con *console.Console) {
+//	err := con.UpdateTasks(con.GetInteractive())
+//	if err != nil {
+//		console.Log.Errorf("Error updating tasks: %v", err)
+//		return
 //	}
+//	sid := con.GetInteractive().SessionId
+//	Tasks, err := con.Rpc.GetTaskFiles(con.ActiveTarget.Context(), con.GetInteractive())
+//	if err != nil {
+//		con.SessionLog(sid).Errorf("Error getting tasks: %v", err)
+//	}
+//	if 0 < len(Tasks.Tasks) {
+//		PrintTasks(Tasks.Tasks, con)
+//	} else {
+//		console.Log.Info("No sessions")
+//	}
+//}

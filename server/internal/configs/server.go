@@ -4,41 +4,45 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/utils/configutil"
+	config "github.com/gookit/config/v2"
+	yamlDriver "github.com/gookit/config/v2/yaml"
 	"gopkg.in/yaml.v3"
 	"io"
 	insecureRand "math/rand"
 	"os"
-	"path"
+	"path/filepath"
 	"time"
 )
 
 var (
 	ServerConfigFileName        = "config.yaml"
-	ServerRootPath              = path.Join(GetWorkDir(), ".malice")
+	ServerRootPath              = filepath.Join(GetWorkDir(), ".malice")
 	CurrentServerConfigFilename = "config.yaml"
-	ContextPath                 = path.Join(ServerRootPath, "context")
-	LogPath                     = path.Join(ServerRootPath, "log")
-	CertsPath                   = path.Join(ServerRootPath, "certs")
-	ListenerPath                = path.Join(ServerRootPath, "listener")
-	TempPath                    = path.Join(ServerRootPath, "temp")
-	PluginPath                  = path.Join(ServerRootPath, "plugins")
-	AuditPath                   = path.Join(ServerRootPath, "audit")
+	ContextPath                 = filepath.Join(ServerRootPath, "context")
+	LogPath                     = filepath.Join(ServerRootPath, "log")
+	CertsPath                   = filepath.Join(ServerRootPath, "certs")
+	ListenerPath                = filepath.Join(ServerRootPath, "listener")
+	TempPath                    = filepath.Join(ServerRootPath, "temp")
+	PluginPath                  = filepath.Join(ServerRootPath, "plugins")
+	AuditPath                   = filepath.Join(ServerRootPath, "audit")
 	ErrNoConfig                 = errors.New("no config found")
-	WebsitePath                 = path.Join(ServerRootPath, "web")
+	WebsitePath                 = filepath.Join(ServerRootPath, "web")
+	ProfilePath                 = filepath.Join(ServerRootPath, "profile")
 	// variables for implant build
-	BuildPath       = path.Join(GetWorkDir(), "..", "malefic", "build")
-	BinPath         = path.Join(ServerRootPath, "bin")
-	SourceCodePath  = path.Join(BuildPath, "src")
-	TargetPath      = path.Join(SourceCodePath, "target")
-	CargoCachePath  = path.Join(BuildPath, "cache")
-	BuildOutputPath = path.Join(BuildPath, "output")
+	MaleficRoot     = filepath.Join(GetWorkDir(), "malefic")
+	BinPath         = filepath.Join(ServerRootPath, "bin")
+	SourceCodePath  = filepath.Join(MaleficRoot, "source_code")
+	ResourcePath    = filepath.Join(SourceCodePath, "resources")
+	TargetPath      = filepath.Join(SourceCodePath, "target")
+	CargoCachePath  = filepath.Join(MaleficRoot, "cache")
+	BuildOutputPath = filepath.Join(MaleficRoot, "output")
 )
 
 func NewFileLog(filename string) *logs.Logger {
 	logger := logs.NewLogger(logs.InfoLevel)
-	logger.SetFile(path.Join(LogPath, fmt.Sprintf("%s.log", filename)))
+	logger.SetFile(filepath.Join(LogPath, fmt.Sprintf("%s.log", filename)))
 	logger.SetOutput(io.Discard)
 	logger.Init()
 	return logger
@@ -46,21 +50,37 @@ func NewFileLog(filename string) *logs.Logger {
 
 func NewDebugLog(filename string) *logs.Logger {
 	logger := logs.NewLogger(logs.DebugLevel)
-	logger.SetFile(path.Join(LogPath, fmt.Sprintf("%s.log", filename)))
+	logger.SetFile(filepath.Join(LogPath, fmt.Sprintf("%s.log", filename)))
 	logger.Init()
 	return logger
 }
 
+// UpdateMaleficRoot overrides the default malefic project root and all derived paths.
+func UpdateMaleficRoot(path string) {
+	MaleficRoot = path
+	SourceCodePath = filepath.Join(MaleficRoot, "source_code")
+	ResourcePath = filepath.Join(SourceCodePath, "resources")
+	TargetPath = filepath.Join(SourceCodePath, "target")
+	CargoCachePath = filepath.Join(MaleficRoot, "cache")
+	BuildOutputPath = filepath.Join(MaleficRoot, "output")
+}
+
 type ServerConfig struct {
-	Enable       bool          `config:"enable" default:"true"`
-	GRPCPort     uint16        `config:"grpc_port" default:"5004"`
-	GRPCHost     string        `config:"grpc_host" default:"0.0.0.0"`
-	IP           string        `config:"ip" default:""`
-	DaemonConfig bool          `config:"daemon" default:"false"`
-	LogConfig    *LogConfig    `config:"log"`
-	MiscConfig   *MiscConfig   `config:"config"`
-	NotifyConfig *NotifyConfig `config:"notify"`
-	GithubConfig *GithubConfig `config:"github"`
+	Enable         bool            `config:"enable" default:"true" yaml:"enable"`
+	GRPCPort       uint16          `config:"grpc_port" default:"5004" yaml:"grpc_port"`
+	GRPCHost       string          `config:"grpc_host" default:"0.0.0.0" yaml:"grpc_host"`
+	IP             string          `config:"ip" default:"" yaml:"ip"`
+	DaemonConfig   bool            `config:"daemon" default:"false" yaml:"daemon"`
+	EncryptionKey  string          `config:"encryption_key" default:"maliceofinternal" yaml:"encryption_key"`
+	SourceCodeRoot string          `config:"source_code_root" default:"" yaml:"source_code_root"`
+	LogConfig      *LogConfig      `config:"log" yaml:"log"`
+	MiscConfig     *MiscConfig     `config:"config" yaml:"config"`
+	NotifyConfig   *NotifyConfig   `config:"notify" yaml:"notify"`
+	GithubConfig   *GithubConfig   `config:"github" yaml:"github"`
+	SaasConfig     *SaasConfig     `config:"saas" yaml:"saas"`
+	AcmeConfig     *AcmeConfig     `config:"acme" yaml:"acme"`
+	LLMConfig      *LLMConfig      `config:"llm" yaml:"llm"`
+	DatabaseConfig *DatabaseConfig `config:"database" yaml:"database"`
 }
 
 func (c *ServerConfig) Address() string {
@@ -90,25 +110,39 @@ func GetRandomID() string {
 
 // LogConfig - Server logging config
 type LogConfig struct {
-	Level int `json:"level" default:"20" config:"level"`
+	Level int `json:"level" default:"20" config:"level" yaml:"level"`
 	//GRPCUnaryPayloads  bool `json:"grpc_unary_payloads"`
 	//GRPCStreamPayloads bool `json:"grpc_stream_payloads"`
 	//TLSKeyLogger       bool `json:"tls_key_logger"`
 }
 
 type MiscConfig struct {
-	PacketLength int    `config:"packet_length" default:"4194304"`
-	Certificate  string `config:"cert" default:""`
-	PrivateKey   string `config:"key" default:""`
+	PacketLength int    `config:"packet_length" default:"4194304" yaml:"packet_length"`
+	Certificate  string `config:"certificate" default:"" yaml:"certificate"`
+	PrivateKey   string `config:"certificate_key" default:"" yaml:"certificate_key"`
 }
 
 func LoadMiscConfig() ([]byte, []byte, error) {
 	var opt ServerConfig
-	// load config
-	err := configutil.LoadConfig(ServerConfigFileName, &opt)
+	cfg := config.New("misc-config-loader")
+	cfg.WithOptions(func(opt *config.Options) {
+		opt.DecoderConfig.TagName = "config"
+		opt.ParseDefault = true
+	})
+	cfg.AddDriver(yamlDriver.Driver)
+
+	err := cfg.LoadFiles(ServerConfigFileName)
 	if err != nil {
 		logs.Log.Errorf("Failed to load config: %s", err)
 		return nil, nil, err
+	}
+	err = cfg.MapStruct("server", &opt)
+	if err != nil {
+		logs.Log.Errorf("Failed to map server config: %s", err)
+		return nil, nil, err
+	}
+	if opt.MiscConfig == nil {
+		return nil, nil, ErrNoConfig
 	}
 	if opt.MiscConfig.Certificate != "" && opt.MiscConfig.PrivateKey != "" {
 		return []byte(opt.MiscConfig.Certificate), []byte(opt.MiscConfig.PrivateKey), nil
@@ -118,38 +152,97 @@ func LoadMiscConfig() ([]byte, []byte, error) {
 }
 
 type NotifyConfig struct {
-	Enable     bool              `config:"enable" default:"true"`
-	Telegram   *TelegramConfig   `config:"telegram"`
-	DingTalk   *DingTalkConfig   `config:"dingtalk"`
-	Lark       *LarkConfig       `config:"lark"`
-	ServerChan *ServerChanConfig `config:"serverchan"`
+	Enable     bool              `config:"enable" default:"true" yaml:"enable"`
+	Telegram   *TelegramConfig   `config:"telegram" yaml:"telegram"`
+	DingTalk   *DingTalkConfig   `config:"dingtalk" yaml:"dingtalk"`
+	Lark       *LarkConfig       `config:"lark" yaml:"lark"`
+	ServerChan *ServerChanConfig `config:"serverchan" yaml:"serverchan"`
+	PushPlus   *PushPlusConfig   `config:"pushplus" yaml:"pushplus"`
 }
 
 type TelegramConfig struct {
-	Enable bool   `config:"enable" default:"false"`
-	APIKey string `config:"api_key"`
-	ChatID int64  `config:"chat_id"`
+	Enable bool   `config:"enable" default:"false" yaml:"enable"`
+	APIKey string `config:"api_key" yaml:"api_key"`
+	ChatID int64  `config:"chat_id" yaml:"chat_id"`
 }
 
 type DingTalkConfig struct {
-	Enable bool   `config:"enable" default:"false"`
-	Secret string `config:"secret"`
-	Token  string `config:"token"`
+	Enable bool   `config:"enable" default:"false" yaml:"enable"`
+	Secret string `config:"secret" yaml:"secret"`
+	Token  string `config:"token" yaml:"token"`
 }
 
 type LarkConfig struct {
-	Enable     bool   `config:"enable" default:"false"`
-	WebHookUrl string `config:"webhook_url"`
+	Enable     bool   `config:"enable" default:"false" yaml:"enable"`
+	WebHookUrl string `config:"webhook_url" yaml:"webhook_url"`
+	Secret     string `config:"secret" yaml:"secret"`
 }
 
 type ServerChanConfig struct {
-	Enable bool   `config:"enable" default:"false"`
-	URL    string `config:"url"`
+	Enable bool   `config:"enable" default:"false" yaml:"enable"`
+	URL    string `config:"url" yaml:"url"`
+}
+
+type PushPlusConfig struct {
+	Enable  bool   `config:"enable" default:"false" yaml:"enable"`
+	Token   string `config:"token" yaml:"token"`
+	Topic   string `config:"topic" yaml:"topic"`
+	Channel string `config:"channel" yaml:"channel"`
 }
 
 type GithubConfig struct {
-	Repo     string `config:"repo" default:"malefic"`
-	Owner    string `config:"owner" default:""`
-	Token    string `config:"token" default:""`
-	Workflow string `config:"workflow" default:"generate.yml"`
+	Repo     string `config:"repo" default:"malefic" yaml:"repo"`
+	Owner    string `config:"owner" default:"" yaml:"owner"`
+	Token    string `config:"token" default:"" yaml:"token"`
+	Workflow string `config:"workflow" default:"generate.yaml" yaml:"workflow"`
+}
+
+func (g *GithubConfig) ToProtobuf() *clientpb.GithubActionBuildConfig {
+	return &clientpb.GithubActionBuildConfig{
+		Owner:      g.Owner,
+		Repo:       g.Repo,
+		Token:      g.Token,
+		WorkflowId: g.Workflow,
+	}
+}
+
+type SaasConfig struct {
+	Enable bool   `config:"enable" yaml:"enable"`
+	Url    string `config:"url" default:"" yaml:"url"`
+	Token  string `config:"token" default:"" yaml:"token"`
+}
+
+type AcmeConfig struct {
+	Email       string            `config:"email" yaml:"email"`
+	CAUrl       string            `config:"ca_url" default:"https://acme-v02.api.letsencrypt.org/directory" yaml:"ca_url"`
+	Provider    string            `config:"provider" yaml:"provider"`
+	Credentials map[string]string `config:"credentials" yaml:"credentials"`
+}
+
+type LLMConfig struct {
+	DefaultProvider string                        `config:"default_provider" default:"openai" yaml:"default_provider"`
+	Endpoint        string                        `config:"endpoint" default:"" yaml:"endpoint"`
+	APIKey          string                        `config:"api_key" default:"" yaml:"api_key"`
+	ProxyURL        string                        `config:"proxy_url" default:"" yaml:"proxy_url"`
+	Timeout         int                           `config:"timeout" default:"120" yaml:"timeout"`
+	Providers       map[string]*LLMProviderConfig `config:"providers" yaml:"providers"`
+}
+
+type LLMProviderConfig struct {
+	Endpoint string `config:"endpoint" default:"" yaml:"endpoint"`
+	APIKey   string `config:"api_key" default:"" yaml:"api_key"`
+	ProxyURL string `config:"proxy_url" default:"" yaml:"proxy_url"`
+	Timeout  int    `config:"timeout" default:"0" yaml:"timeout"`
+}
+
+func (a *AcmeConfig) ToProtobuf() *clientpb.AcmeConfig {
+	if a == nil {
+		return &clientpb.AcmeConfig{}
+	}
+	return &clientpb.AcmeConfig{
+		Email:       a.Email,
+		CaUrl:       a.CAUrl,
+		Provider:    a.Provider,
+		Credentials: a.Credentials,
+	}
 }

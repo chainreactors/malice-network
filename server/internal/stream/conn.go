@@ -25,6 +25,7 @@ type CryptoConn struct {
 	net.Conn
 	io.ReadWriteCloser
 	Cryptor
+	readBuf []byte
 }
 
 func (sc *CryptoConn) Write(data []byte) (int, error) {
@@ -36,34 +37,42 @@ func (sc *CryptoConn) Write(data []byte) (int, error) {
 	return sc.ReadWriteCloser.Write(encryptedData)
 }
 
-// Read 方法从底层连接读取数据并解密
 func (sc *CryptoConn) Read(data []byte) (int, error) {
+	// 1. If there is cached decrypted data from a previous over-read, serve it first
+	if len(sc.readBuf) > 0 {
+		n := copy(data, sc.readBuf)
+		sc.readBuf = sc.readBuf[n:]
+		return n, nil
+	}
+
+	// 2. Read new encrypted data from underlying connection and decrypt
 	encryptedData := make([]byte, 1024)
 	n, err := sc.ReadWriteCloser.Read(encryptedData)
 	if n == 0 {
 		return 0, err
 	}
 
-	// 解密读取到的数据
 	decryptedData, err := sc.decrypt(encryptedData[:n])
 	if err != nil {
 		return 0, err
 	}
 
-	copy(data, decryptedData)
-	return len(decryptedData), nil
+	// 3. Return only the amount the caller requested, cache any overflow
+	copied := copy(data, decryptedData)
+	if copied < len(decryptedData) {
+		sc.readBuf = append(sc.readBuf[:0], decryptedData[copied:]...)
+	}
+	return copied, nil
 }
 
 func (sc *CryptoConn) Close() error {
 	return sc.ReadWriteCloser.Close()
 }
 
-// 加密数据
 func (sc *CryptoConn) encrypt(data []byte) ([]byte, error) {
 	reader := bytes.NewReader(data)
 	writer := &bytes.Buffer{}
 
-	// 使用加密器加密数据
 	err := sc.Cryptor.Encrypt(reader, writer)
 	if err != nil {
 		return nil, err

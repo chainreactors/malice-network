@@ -2,14 +2,14 @@ package configs
 
 import (
 	"crypto/x509/pkix"
-	"encoding/json"
 	"fmt"
 	"os"
 
-	"github.com/chainreactors/malice-network/helper/certs"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/types"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/implanttypes"
+	"github.com/chainreactors/malice-network/helper/utils/configutil"
+
 	cryptostream "github.com/chainreactors/malice-network/server/internal/stream"
 	"golang.org/x/exp/slices"
 )
@@ -17,109 +17,110 @@ import (
 var ListenerConfigFileName = "listener.yaml"
 
 type ListenerConfig struct {
-	Enable bool   `config:"enable" default:"true"`
-	Name   string `config:"name" default:"listener"`
-	Auth   string `config:"auth" default:"listener.auth"`
+	Enable bool   `config:"enable" default:"true" yaml:"enable"`
+	Name   string `config:"name" default:"listener" yaml:"name"`
+	Auth   string `config:"auth" default:"listener.auth" yaml:"auth"`
 	//Server             string                `config:"server" default:"127.0.0.1"`
-	IP                 string                `config:"ip"`
-	TcpPipelines       []*TcpPipelineConfig  `config:"tcp" `
-	BindPipelineConfig []*BindPipelineConfig `config:"bind"`
-	HttpPipelines      []*HttpPipelineConfig `config:"http"`
-	Websites           []*WebsiteConfig      `config:"website"`
-	REMs               []*REMConfig          `config:"rem"`
+	IP                 string                `config:"ip" yaml:"ip"`
+	TcpPipelines       []*TcpPipelineConfig  `config:"tcp" yaml:"tcp"`
+	BindPipelineConfig []*BindPipelineConfig `config:"bind" yaml:"bind"`
+	HttpPipelines      []*HttpPipelineConfig `config:"http" yaml:"http"`
+	Websites           []*WebsiteConfig      `config:"website" yaml:"website"`
+	REMs               []*REMConfig          `config:"rem" yaml:"rem"`
+	AutoBuildConfig    *AutoBuildConfig      `config:"auto_build" yaml:"auto_build"`
 }
 
 type TcpPipelineConfig struct {
-	Enable           bool              `config:"enable" default:"true"`
-	Name             string            `config:"name" default:"tcp"`
-	Host             string            `config:"host" default:"0.0.0.0"`
-	Port             uint16            `config:"port" default:"5001"`
-	Parser           string            `config:"parser" default:"malefic"`
-	AutoBuildConfig  *AutoBuildConfig  `config:"auto_build"`
-	TlsConfig        *TlsConfig        `config:"tls"`
-	EncryptionConfig *EncryptionConfig `config:"encryption"`
+	Enable           bool                           `config:"enable" default:"true" yaml:"enable"`
+	Name             string                         `config:"name" default:"tcp" yaml:"name"`
+	Host             string                         `config:"host" default:"0.0.0.0" yaml:"host"`
+	Port             uint16                         `config:"port" default:"5001" yaml:"port"`
+	Parser           string                         `config:"parser" default:"malefic" yaml:"parser"`
+	TlsConfig        *TlsConfig                     `config:"tls" yaml:"tls"`
+	EncryptionConfig implanttypes.EncryptionsConfig `config:"encryption" yaml:"encryption"`
+	SecureConfig     *implanttypes.SecureConfig     `config:"secure" yaml:"secure"` // Age 密码学安全配置
+	PacketLength     int                            `config:"packet_length" yaml:"packet_length"`
 }
 
 type AutoBuildConfig struct {
-	Target         []string `config:"target" default:""`
-	BeaconPipeline string   `config:"beacon_pipeline" default:""`
+	Enable     bool     `config:"enable" default:"false" yaml:"enable"`
+	BuildPulse bool     `config:"build_pulse" default:"false" yaml:"build_pulse"`
+	Target     []string `config:"target" default:"" yaml:"target"`
+	Pipeline   []string `config:"pipeline" default:"" yaml:"pipeline"`
 }
 
 func (tcp *TcpPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, error) {
-	tls, err := tcp.TlsConfig.ReadCert()
+	tls, err := tlsToProtobuf(tcp.TlsConfig)
 	if err != nil {
 		return nil, err
 	}
-	if tcp.AutoBuildConfig == nil {
-		tcp.AutoBuildConfig = &AutoBuildConfig{}
-	}
 	return &clientpb.Pipeline{
-		Name:           tcp.Name,
-		ListenerId:     lisId,
-		Enable:         tcp.Enable,
-		Parser:         tcp.Parser,
-		Target:         tcp.AutoBuildConfig.Target,
-		BeaconPipeline: tcp.AutoBuildConfig.BeaconPipeline,
+		Name:         tcp.Name,
+		ListenerId:   lisId,
+		Enable:       tcp.Enable,
+		Parser:       tcp.Parser,
+		Type:         consts.TCPPipeline,
+		PacketLength: uint32(tcp.PacketLength),
 		Body: &clientpb.Pipeline_Tcp{
 			Tcp: &clientpb.TCPPipeline{
 				Host: tcp.Host,
 				Port: uint32(tcp.Port),
 			},
 		},
-		Tls:        tls.ToProtobuf(),
+		Tls:        tls,
 		Encryption: tcp.EncryptionConfig.ToProtobuf(),
+		Secure:     tcp.SecureConfig.ToProtobuf(),
 	}, nil
 }
 
 type BindPipelineConfig struct {
-	Enable           bool              `config:"enable" default:"true"`
-	Name             string            `config:"name" default:"bind"`
-	TlsConfig        *TlsConfig        `config:"tls"`
-	EncryptionConfig *EncryptionConfig `config:"encryption"`
+	Enable           bool                           `config:"enable" default:"true" yaml:"enable"`
+	Name             string                         `config:"name" default:"bind" yaml:"name"`
+	TlsConfig        *TlsConfig                     `config:"tls" yaml:"tls"`
+	EncryptionConfig implanttypes.EncryptionsConfig `config:"encryption" yaml:"encryption"`
+	PacketLength     int                            `config:"packet_length" yaml:"packet_length"`
 }
 
 func (pipeline *BindPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, error) {
-	tls, err := pipeline.TlsConfig.ReadCert()
+	tls, err := tlsToProtobuf(pipeline.TlsConfig)
 	if err != nil {
 		return nil, err
 	}
 	return &clientpb.Pipeline{
-		Name:       pipeline.Name,
-		Enable:     pipeline.Enable,
-		ListenerId: lisId,
-		Parser:     consts.ImplantMalefic,
+		Name:         pipeline.Name,
+		Enable:       pipeline.Enable,
+		ListenerId:   lisId,
+		Parser:       consts.ImplantMalefic,
+		PacketLength: uint32(pipeline.PacketLength),
 		Body: &clientpb.Pipeline_Bind{
 			Bind: &clientpb.BindPipeline{},
 		},
-		Tls:        tls.ToProtobuf(),
+		Tls:        tls,
 		Encryption: pipeline.EncryptionConfig.ToProtobuf(),
 	}, nil
 }
 
 type HttpPipelineConfig struct {
-	Enable           bool                `config:"enable" default:"true"`
-	Name             string              `config:"name" default:"http"`
-	Host             string              `config:"host" default:"0.0.0.0"`
-	Port             uint16              `config:"port" default:"8080"`
-	Parser           string              `config:"parser" default:"malefic"`
-	AutoBuildConfig  *AutoBuildConfig    `config:"auto_build"`
-	TlsConfig        *TlsConfig          `config:"tls"`
-	EncryptionConfig *EncryptionConfig   `config:"encryption"`
-	Headers          map[string][]string `config:"headers"`
-	ErrorPage        string              `config:"error_page"`
-	BodyPrefix       string              `config:"body_prefix"`
-	BodySuffix       string              `config:"body_suffix"`
+	Enable           bool                           `config:"enable" default:"true" yaml:"enable"`
+	Name             string                         `config:"name" default:"http" yaml:"name"`
+	Host             string                         `config:"host" default:"0.0.0.0" yaml:"host"`
+	Port             uint16                         `config:"port" default:"8080" yaml:"port"`
+	Parser           string                         `config:"parser" default:"malefic" yaml:"parser"`
+	TlsConfig        *TlsConfig                     `config:"tls" yaml:"tls"`
+	EncryptionConfig implanttypes.EncryptionsConfig `config:"encryption" yaml:"encryption"`
+	SecureConfig     *implanttypes.SecureConfig     `config:"secure" yaml:"secure"` // Age 密码学安全配置
+	Headers          map[string][]string            `config:"headers" yaml:"headers"`
+	ErrorPage        string                         `config:"error_page" yaml:"error_page"`
+	BodyPrefix       string                         `config:"body_prefix" yaml:"body_prefix"`
+	BodySuffix       string                         `config:"body_suffix" yaml:"body_suffix"`
+	PacketLength     int                            `config:"packet_length" yaml:"packet_length"`
 }
 
 func (http *HttpPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, error) {
-	tls, err := http.TlsConfig.ReadCert()
+	tls, err := tlsToProtobuf(http.TlsConfig)
 	if err != nil {
 		return nil, err
 	}
-	if http.AutoBuildConfig == nil {
-		http.AutoBuildConfig = &AutoBuildConfig{}
-	}
-
 	// 如果指定了错误页面，读取文件内容
 	var errorPageContent string
 	if http.ErrorPage != "" {
@@ -131,69 +132,129 @@ func (http *HttpPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, er
 	}
 
 	// 序列化额外参数
-	params := types.PipelineParams{
+	params := &implanttypes.PipelineParams{
 		Headers:    http.Headers,
 		ErrorPage:  errorPageContent,
 		BodyPrefix: http.BodyPrefix,
 		BodySuffix: http.BodySuffix,
 	}
-	paramsJson, err := json.Marshal(params)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal pipeline params: %v", err)
-	}
 
 	return &clientpb.Pipeline{
-		Name:           http.Name,
-		ListenerId:     lisId,
-		Enable:         http.Enable,
-		Parser:         http.Parser,
-		Target:         http.AutoBuildConfig.Target,
-		BeaconPipeline: http.AutoBuildConfig.BeaconPipeline,
+		Name:         http.Name,
+		ListenerId:   lisId,
+		Enable:       http.Enable,
+		Parser:       http.Parser,
+		Type:         consts.HTTPPipeline,
+		PacketLength: uint32(http.PacketLength),
 		Body: &clientpb.Pipeline_Http{
 			Http: &clientpb.HTTPPipeline{
 				Host:   http.Host,
 				Port:   uint32(http.Port),
-				Params: string(paramsJson),
+				Params: params.String(),
 			},
 		},
-		Tls:        tls.ToProtobuf(),
+		Tls:        tls,
 		Encryption: http.EncryptionConfig.ToProtobuf(),
+		Secure:     http.SecureConfig.ToProtobuf(),
 	}, nil
 }
 
 type REMConfig struct {
-	Enable  bool   `config:"enable" default:"false"`
-	Name    string `config:"name" default:"default-rem"`
-	Console string `config:"console" default:"tcp://0.0.0.0"`
+	Enable  bool   `config:"enable" default:"false" yaml:"enable"`
+	Name    string `config:"name" default:"default-rem" yaml:"name"`
+	Console string `config:"console" default:"" yaml:"console"`
+	Link    string `config:"link" default:"" yaml:"link"`
 }
 
 func (r *REMConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, error) {
 	return &clientpb.Pipeline{
 		Name:       r.Name,
 		Enable:     r.Enable,
+		Type:       consts.RemPipeline,
 		ListenerId: lisId,
 		Body: &clientpb.Pipeline_Rem{
 			Rem: &clientpb.REM{
-				Console: r.Console,
+				Name:       r.Name,
+				ListenerId: lisId,
+				Console:    r.Console,
+				Link:       r.Link,
 			},
 		},
 	}, nil
 }
 
+func (l *ListenerConfig) ValidateREMNames() error {
+	if l == nil {
+		return nil
+	}
+	seen := make(map[string]string)
+	for _, rem := range l.REMs {
+		if rem == nil || !rem.Enable {
+			continue
+		}
+		if rem.Name == "" {
+			continue
+		}
+		if existingConsole, ok := seen[rem.Name]; ok {
+			return fmt.Errorf("duplicate REM pipeline name %q in listener %q (console %q conflicts with %q)", rem.Name, l.Name, rem.Console, existingConsole)
+		}
+		seen[rem.Name] = rem.Console
+	}
+	return nil
+}
+
+func SyncREMConfigFromPipeline(pipeline *clientpb.Pipeline) error {
+	if pipeline == nil || pipeline.GetRem() == nil {
+		return nil
+	}
+	listenerConfig := GetListenerConfig()
+	if listenerConfig == nil {
+		return nil
+	}
+	if listenerConfig.Name != "" && pipeline.ListenerId != "" && listenerConfig.Name != pipeline.ListenerId {
+		return nil
+	}
+	updated := false
+	for _, rem := range listenerConfig.REMs {
+		if rem == nil || rem.Name != pipeline.Name {
+			continue
+		}
+		pbRem := pipeline.GetRem()
+		if pbRem.Console != "" && rem.Console != pbRem.Console {
+			rem.Console = pbRem.Console
+			updated = true
+		}
+		if pbRem.Link != "" && rem.Link != pbRem.Link {
+			rem.Link = pbRem.Link
+			updated = true
+		}
+		if pbRem.GetName() != "" && rem.Name != pbRem.GetName() {
+			rem.Name = pbRem.GetName()
+			updated = true
+		}
+		break
+	}
+	if !updated {
+		return nil
+	}
+	return configutil.SetStructByTag("listeners", listenerConfig, "config")
+}
+
 type WebsiteConfig struct {
-	Enable      bool          `config:"enable" default:"false"`
-	RootPath    string        `config:"root" default:"."`
-	WebsiteName string        `config:"name" default:"web"`
-	Port        uint16        `config:"port" default:"443"`
-	WebContents []*WebContent `config:"content" default:""`
-	TlsConfig   *TlsConfig    `config:"tls" `
+	Enable      bool          `config:"enable" default:"false" yaml:"enable"`
+	RootPath    string        `config:"root" default:"." yaml:"root"`
+	WebsiteName string        `config:"name" default:"web" yaml:"name"`
+	Port        uint16        `config:"port" default:"443" yaml:"port"`
+	Auth        string        `config:"auth" default:"" yaml:"auth"` // website-level default auth "user:pass"
+	WebContents []*WebContent `config:"content" default:"" yaml:"content"`
+	TlsConfig   *TlsConfig    `config:"tls" yaml:"tls"`
 }
 
 type WebContent struct {
-	File string `config:"file"`
-	Path string `config:"path"`
-	Type string `config:"type" default:"raw"`
-	//EncryptionConfig *EncryptionConfig `config:"encryption"`
+	File string `config:"file" yaml:"file"`
+	Path string `config:"path" yaml:"path"`
+	Type string `config:"type" default:"raw" yaml:"type"`
+	Auth string `config:"auth" default:"" yaml:"auth"` // per-path auth "user:pass", "none" = skip
 }
 
 func (content *WebContent) ToProtobuf() (*clientpb.WebContent, error) {
@@ -216,71 +277,30 @@ func (content *WebContent) ToProtobuf() (*clientpb.WebContent, error) {
 	}, nil
 }
 
-type CertConfig struct {
-	Cert   string `yaml:"cert"`
-	CA     string `yaml:"ca"`
-	Key    string `yaml:"key"`
-	Enable bool   `yaml:"enable"`
-}
-
-func (t *CertConfig) ToProtobuf() *clientpb.TLS {
-	return &clientpb.TLS{
-		Cert:   t.Cert,
-		Key:    t.Key,
-		Enable: t.Enable,
-	}
-}
-
 type TlsConfig struct {
-	Enable   bool   `config:"enable"`
-	Name     string `config:"name"`
-	CN       string `config:"CN"`
-	O        string `config:"O"`
-	C        string `config:"C"`
-	L        string `config:"L"`
-	OU       string `config:"OU"`
-	ST       string `config:"ST"`
-	Validity string `config:"validity"`
-	CertFile string `config:"cert_file"`
-	KeyFile  string `config:"key_file"`
-	CAFile   string `config:"ca_file"`
-}
-
-func (t *TlsConfig) ReadCert() (*CertConfig, error) {
-	if t == nil {
-		return &CertConfig{Enable: false}, nil
-	}
-	var err error
-	if t.CertFile == "" || t.KeyFile == "" || t.CAFile == "" {
-		return &CertConfig{
-			Cert:   "",
-			Key:    "",
-			CA:     "",
-			Enable: t.Enable,
-		}, nil
-	}
-	cert, err := os.ReadFile(t.CertFile)
-	if err != nil {
-		return nil, err
-	}
-	key, err := os.ReadFile(t.KeyFile)
-	if err != nil {
-		return nil, err
-	}
-	ca, err := os.ReadFile(t.CAFile)
-	if err != nil {
-		return nil, err
-	}
-	return &CertConfig{
-		Cert:   string(cert),
-		Key:    string(key),
-		CA:     string(ca),
-		Enable: t.Enable,
-	}, nil
+	Enable   bool   `config:"enable" yaml:"enable"`
+	MTLS     bool   `config:"mtls" yaml:"mtls"`
+	CertFile string `config:"cert_file" yaml:"cert_file"`
+	KeyFile  string `config:"key_file" yaml:"key_file"`
+	CAFile   string `config:"ca_file" yaml:"ca_file"`
+	//Acme     bool   `config:"acme"`
+	//Domain   string `config:"domain"`
+	//Name     string `config:"name"`
+	CN string `config:"CN" yaml:"CN"`
+	O  string `config:"O" yaml:"O"`
+	C  string `config:"C" yaml:"C"`
+	L  string `config:"L" yaml:"L"`
+	OU string `config:"OU" yaml:"OU"`
+	ST string `config:"ST" yaml:"ST"`
+	//Validity string `config:"validity"`
 }
 
 func (t *TlsConfig) ToPkix() *pkix.Name {
+	if t.CN == "" && t.O == "" && t.C == "" && t.L == "" && t.OU == "" && t.ST == "" {
+		return nil
+	}
 	return &pkix.Name{
+		CommonName:         t.CN,
 		Organization:       []string{t.O},
 		Country:            []string{t.C},
 		Locality:           []string{t.L},
@@ -289,45 +309,69 @@ func (t *TlsConfig) ToPkix() *pkix.Name {
 	}
 }
 
-func GenerateTlsConfig(name string) TlsConfig {
-	subject := certs.RandomSubject(name)
-	return TlsConfig{
-		Name: name,
-		CN:   subject.CommonName,
-		O:    JoinStringSlice(subject.Organization),
-		C:    JoinStringSlice(subject.Country),
-		L:    JoinStringSlice(subject.Locality),
-		OU:   JoinStringSlice(subject.OrganizationalUnit),
-		ST:   JoinStringSlice(subject.Province),
+func (t *TlsConfig) ReadCert() (*implanttypes.TlsConfig, error) {
+	// 处理nil情况
+	if t == nil {
+		return &implanttypes.TlsConfig{Enable: false}, nil
 	}
-}
-
-type EncryptionConfig struct {
-	Enable bool   `config:"enable"`
-	Type   string `config:"type"`
-	Key    string `config:"key"`
-}
-
-func NewCrypto(e *clientpb.Encryption) (cryptostream.Cryptor, error) {
-	if !e.Enable {
-		return cryptostream.NewCryptor(consts.CryptorRAW, nil, nil)
+	// 创建基础TLS配置
+	tls := &implanttypes.TlsConfig{
+		Enable:  t.Enable,
+		MTLS:    t.MTLS,
+		Subject: t.ToPkix(),
 	}
-	iv := slices.Clone([]byte(e.Key))
-	slices.Reverse(iv)
-	return cryptostream.NewCryptor(e.Type, []byte(e.Key), cryptostream.PKCS7Pad(iv, 16))
-}
-
-func (e *EncryptionConfig) ToProtobuf() *clientpb.Encryption {
-	if e == nil {
-		return &clientpb.Encryption{
-			Enable: false,
+	// 如果没有证书文件，直接返回基础配置
+	if t.CertFile == "" || t.KeyFile == "" {
+		return tls, nil
+	}
+	// 读取证书文件
+	cert, err := os.ReadFile(t.CertFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read cert file: %s", err)
+	}
+	key, err := os.ReadFile(t.KeyFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read key file: %s", err)
+	}
+	// 设置证书配置
+	tls.Cert = &implanttypes.CertConfig{
+		Cert: string(cert),
+		Key:  string(key),
+	}
+	// 读取CA证书（如果存在）
+	if t.CAFile != "" {
+		caCert, err := os.ReadFile(t.CAFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read CA file: %s", err)
+		}
+		tls.CA = &implanttypes.CertConfig{
+			Cert: string(caCert),
 		}
 	}
-	return &clientpb.Encryption{
-		Type:   e.Type,
-		Key:    e.Key,
-		Enable: e.Enable,
+	return tls, nil
+}
+
+func tlsToProtobuf(config *TlsConfig) (*clientpb.TLS, error) {
+	tls, err := config.ReadCert()
+	if err != nil {
+		return nil, err
 	}
+	return tls.ToProtobuf(), nil
+}
+
+func NewCrypto(es []*clientpb.Encryption) ([]cryptostream.Cryptor, error) {
+	var cryptos []cryptostream.Cryptor
+	for _, e := range es {
+		iv := slices.Clone([]byte(e.Key))
+		slices.Reverse(iv)
+		c, err := cryptostream.NewCryptor(e.Type, []byte(e.Key), cryptostream.PKCS7Pad(iv, 16))
+		if err != nil {
+			return nil, err
+		}
+		cryptos = append(cryptos, c)
+	}
+
+	return cryptos, nil
 }
 
 // JoinStringSlice Helper function to join string slices

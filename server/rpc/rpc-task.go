@@ -2,14 +2,205 @@ package rpc
 
 import (
 	"context"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/errs"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/types"
+	"errors"
+	"fmt"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/types"
+	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
+	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
+	"google.golang.org/protobuf/proto"
+	"os"
+	"path/filepath"
+	"regexp"
+	"sort"
+	"strconv"
+	"time"
 )
+
+var taskFileNamePattern = regexp.MustCompile(`^(\d+)_(\d+)$`)
+
+type taskSpiteEntry struct {
+	Index int
+	Spite *implantpb.Spite
+}
+
+var bindWaitPingInterval = time.Second
+
+func readTaskSpitesFromDisk(sessionID string, taskID uint32) ([]taskSpiteEntry, error) {
+	taskDir, err := fileutils.SafeJoin(configs.ContextPath, filepath.Join(sessionID, consts.TaskPath))
+	if err != nil {
+		return nil, err
+	}
+
+	files, err := os.ReadDir(taskDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	entries := make([]taskSpiteEntry, 0)
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+
+		matches := taskFileNamePattern.FindStringSubmatch(file.Name())
+		if matches == nil {
+			continue
+		}
+
+		fileTaskID, err := strconv.ParseUint(matches[1], 10, 32)
+		if err != nil || uint32(fileTaskID) != taskID {
+			continue
+		}
+
+		index, err := strconv.Atoi(matches[2])
+		if err != nil {
+			continue
+		}
+
+		taskPath := filepath.Join(taskDir, file.Name())
+		content, err := os.ReadFile(taskPath)
+		if err != nil {
+			logs.Log.Warnf("failed to read task file %s: %v", taskPath, err)
+			continue
+		}
+
+		spite := &implantpb.Spite{}
+		if err = proto.Unmarshal(content, spite); err != nil {
+			logs.Log.Warnf("failed to unmarshal task file %s: %v", taskPath, err)
+			continue
+		}
+
+		entries = append(entries, taskSpiteEntry{Index: index, Spite: spite})
+	}
+
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].Index < entries[j].Index
+	})
+
+	return entries, nil
+}
+
+func getTaskContextFromDisk(sess *core.Session, task *core.Task, index int32) (*clientpb.TaskContext, error) {
+	entries, err := readTaskSpitesFromDisk(sess.ID, task.Id)
+	if err != nil {
+		return nil, err
+	}
+	if len(entries) == 0 {
+		return nil, types.ErrNotFoundTaskContent
+	}
+
+	var spite *implantpb.Spite
+	if index == -1 {
+		spite = entries[len(entries)-1].Spite
+	} else {
+		for _, entry := range entries {
+			if entry.Index == int(index) {
+				spite = entry.Spite
+				break
+			}
+		}
+	}
+
+	if spite == nil {
+		return nil, types.ErrNotFoundTaskContent
+	}
+
+	return &clientpb.TaskContext{
+		Task:    task.ToProtobuf(),
+		Session: sess.ToProtobufLite(),
+		Spite:   spite,
+	}, nil
+}
+
+func getAllTaskContextsFromDisk(sess *core.Session, task *core.Task) (*clientpb.TaskContexts, error) {
+	entries, err := readTaskSpitesFromDisk(sess.ID, task.Id)
+	if err != nil {
+		return nil, err
+	}
+	if len(entries) == 0 {
+		return nil, types.ErrNotFoundTaskContent
+	}
+
+	spites := make([]*implantpb.Spite, 0, len(entries))
+	for _, entry := range entries {
+		spites = append(spites, entry.Spite)
+	}
+
+	return &clientpb.TaskContexts{
+		Task:    task.ToProtobuf(),
+		Session: sess.ToProtobufLite(),
+		Spites:  spites,
+	}, nil
+}
+
+// getTaskContextFromDB fetches task context from DB + disk when session is not in memory.
+func getTaskContextFromDB(sessionID string, taskID uint32, index int32) (*clientpb.TaskContext, error) {
+	dbSess, err := db.FindSession(sessionID)
+	if err != nil || dbSess == nil {
+		return nil, types.ErrNotFoundSession
+	}
+	dbTask, err := db.GetTaskBySessionAndSeq(sessionID, taskID)
+	if err != nil {
+		return nil, types.ErrNotFoundTask
+	}
+	entries, err := readTaskSpitesFromDisk(sessionID, dbTask.Seq)
+	if err != nil || len(entries) == 0 {
+		return nil, types.ErrNotFoundTaskContent
+	}
+	var spite *implantpb.Spite
+	if index == -1 {
+		spite = entries[len(entries)-1].Spite
+	} else {
+		for _, e := range entries {
+			if e.Index == int(index) {
+				spite = e.Spite
+				break
+			}
+		}
+	}
+	if spite == nil {
+		return nil, types.ErrNotFoundTaskContent
+	}
+	return &clientpb.TaskContext{
+		Task:    dbTask.ToProtobuf(),
+		Session: dbSess.ToProtobuf(),
+		Spite:   spite,
+	}, nil
+}
+
+// getAllTaskContextFromDB fetches all task contexts from DB + disk when session is not in memory.
+func getAllTaskContextFromDB(sessionID string, taskID uint32) (*clientpb.TaskContexts, error) {
+	dbSess, err := db.FindSession(sessionID)
+	if err != nil || dbSess == nil {
+		return nil, types.ErrNotFoundSession
+	}
+	dbTask, err := db.GetTaskBySessionAndSeq(sessionID, taskID)
+	if err != nil {
+		return nil, types.ErrNotFoundTask
+	}
+	entries, err := readTaskSpitesFromDisk(sessionID, dbTask.Seq)
+	if err != nil || len(entries) == 0 {
+		return nil, types.ErrNotFoundTaskContent
+	}
+	spites := make([]*implantpb.Spite, 0, len(entries))
+	for _, e := range entries {
+		spites = append(spites, e.Spite)
+	}
+	return &clientpb.TaskContexts{
+		Task:    dbTask.ToProtobuf(),
+		Session: dbSess.ToProtobuf(),
+		Spites:  spites,
+	}, nil
+}
 
 func getTaskContext(sess *core.Session, task *core.Task, index int32) (*clientpb.TaskContext, error) {
 	var msg *implantpb.Spite
@@ -27,83 +218,140 @@ func getTaskContext(sess *core.Session, task *core.Task, index int32) (*clientpb
 			Spite:   msg,
 		}, nil
 	}
-	return nil, errs.ErrNotFoundTaskContent
+	return nil, types.ErrNotFoundTaskContent
 }
 
 func (rpc *Server) GetTasks(ctx context.Context, req *clientpb.TaskRequest) (*clientpb.Tasks, error) {
+	if req == nil {
+		return nil, types.ErrMissingSessionRequestField
+	}
+	if req.SessionId == "" {
+		return nil, types.ErrInvalidSessionID
+	}
 	if req.All {
-		tasks, err := db.GetTasksByID(req.SessionId)
+		modelTasks, err := db.ListTasksBySession(req.SessionId)
 		if err != nil {
 			return nil, err
 		}
-		return tasks, err
+		return modelTasks.ToProtobuf(), nil
 	} else {
 		sess, err := core.Sessions.Get(req.SessionId)
 		if err != nil {
-			return nil, errs.ErrNotFoundSession
+			// Fallback to DB when session is not in memory (e.g., dead session)
+			modelTasks, dbErr := db.ListTasksBySession(req.SessionId)
+			if dbErr != nil {
+				return nil, types.ErrNotFoundSession
+			}
+			return modelTasks.ToProtobuf(), nil
 		}
 		return sess.Tasks.ToProtobuf(), nil
 	}
 }
 
+// tryGetContent tries to find task content from cache first, then from disk.
+func tryGetContent(sess *core.Session, task *core.Task, index int32) (*clientpb.TaskContext, error) {
+	content, err := getTaskContext(sess, task, index)
+	if err == nil || !errors.Is(err, types.ErrNotFoundTaskContent) {
+		return content, err
+	}
+	return getTaskContextFromDisk(sess, task, index)
+}
+
 func (rpc *Server) GetTaskContent(ctx context.Context, req *clientpb.Task) (*clientpb.TaskContext, error) {
+	if req == nil {
+		return nil, types.ErrMissingSessionRequestField
+	}
+	if req.SessionId == "" {
+		return nil, types.ErrInvalidSessionID
+	}
 	sess, err := core.Sessions.Get(req.SessionId)
 	if err != nil {
-		return nil, errs.ErrNotFoundSession
+		return getTaskContextFromDB(req.SessionId, req.TaskId, req.Need)
 	}
-	task := sess.Tasks.Get(req.TaskId)
+	task := sess.Tasks.GetOrRecover(sess, req.TaskId)
 	if task == nil {
-		return nil, errs.ErrNotFoundTask
+		return nil, types.ErrNotFoundTask
 	}
 
-	return getTaskContext(sess, task, req.Need)
+	return tryGetContent(sess, task, req.Need)
 }
 
 func (rpc *Server) WaitTaskContent(ctx context.Context, req *clientpb.Task) (*clientpb.TaskContext, error) {
+	if req == nil {
+		return nil, types.ErrMissingSessionRequestField
+	}
+	if req.SessionId == "" {
+		return nil, types.ErrInvalidSessionID
+	}
 	sess, err := core.Sessions.Get(req.SessionId)
 	if err != nil {
-		return nil, errs.ErrNotFoundSession
+		// Session not in memory (dead), try DB+disk directly
+		return getTaskContextFromDB(req.SessionId, req.TaskId, req.Need)
 	}
-	task := sess.Tasks.Get(req.TaskId)
+	task := sess.Tasks.GetOrRecover(sess, req.TaskId)
 	if task == nil {
-		return nil, errs.ErrNotFoundTask
+		return nil, types.ErrNotFoundTask
 	}
 
-	if int(req.Need) > task.Total {
-		return nil, errs.ErrTaskIndexExceed
-	}
-
-	content, err := getTaskContext(sess, task, req.Need)
-	if err == nil {
-		return content, nil
+	_, total := task.Progress()
+	if req.Need >= 0 && total >= 0 && int(req.Need) >= total {
+		return nil, types.ErrTaskIndexExceed
 	}
 
 	for {
+		if content, err := tryGetContent(sess, task, req.Need); err == nil {
+			return content, nil
+		} else if !errors.Is(err, types.ErrNotFoundTaskContent) {
+			return nil, err
+		}
+
 		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
 		case _, ok := <-task.DoneCh:
-			if !ok {
-				return nil, errs.ErrNotFoundTaskContent
-			}
-			content, err = getTaskContext(sess, task, req.Need)
-			if err != nil {
+			if ok {
 				continue
 			}
-			return content, nil
+		case <-task.Ctx.Done():
 		}
+
+		// Final attempt after signal
+		if content, err := tryGetContent(sess, task, req.Need); err == nil {
+			return content, nil
+		} else if !errors.Is(err, types.ErrNotFoundTaskContent) {
+			return nil, err
+		}
+
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+		return nil, types.ErrNotFoundTaskContent
 	}
 }
 
 func (rpc *Server) WaitTaskFinish(ctx context.Context, req *clientpb.Task) (*clientpb.TaskContext, error) {
+	if req == nil {
+		return nil, types.ErrMissingSessionRequestField
+	}
+	if req.SessionId == "" {
+		return nil, types.ErrInvalidSessionID
+	}
 	sess, err := core.Sessions.Get(req.SessionId)
 	if err != nil {
-		return nil, errs.ErrNotFoundSession
+		// Session not in memory (dead), try DB+disk directly
+		return getTaskContextFromDB(req.SessionId, req.TaskId, -1)
 	}
-	task := sess.Tasks.Get(req.TaskId)
+	task := sess.Tasks.GetOrRecover(sess, req.TaskId)
 	if task == nil {
-		return nil, errs.ErrNotFoundTask
+		return nil, types.ErrNotFoundTask
 	}
 
+	stopBindWaitPing := startBindWaitPing(ctx, sess, task)
+	defer stopBindWaitPing()
+
 	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
 	case <-task.Ctx.Done():
 		msg, ok := sess.GetLastMessage(int(task.Id))
 		if ok {
@@ -113,18 +361,60 @@ func (rpc *Server) WaitTaskFinish(ctx context.Context, req *clientpb.Task) (*cli
 				Spite:   msg,
 			}, nil
 		}
+
+		content, err := getTaskContextFromDisk(sess, task, -1)
+		if err == nil {
+			return content, nil
+		}
+		if !errors.Is(err, types.ErrNotFoundTaskContent) {
+			return nil, err
+		}
 	}
-	return nil, errs.ErrNotFoundTaskContent
+	return nil, types.ErrNotFoundTaskContent
+}
+
+func startBindWaitPing(ctx context.Context, sess *core.Session, task *core.Task) context.CancelFunc {
+	if sess == nil || task == nil || sess.Type != consts.BindPipeline {
+		return func() {}
+	}
+	pingCtx, cancel := context.WithCancel(ctx)
+	label := fmt.Sprintf("bind-wait-ping:%s:%d", sess.ID, task.Id)
+	core.GoGuarded(label, func() error {
+		ticker := time.NewTicker(bindWaitPingInterval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-pingCtx.Done():
+				return nil
+			case <-task.Ctx.Done():
+				return nil
+			case <-ticker.C:
+				if bindPollingRunning(sess.ID) {
+					continue
+				}
+				if err := sendBindPing(sess); err != nil {
+					logs.Log.Debugf("bind wait ping failed for session %s task %d: %v", sess.ID, task.Id, err)
+				}
+			}
+		}
+	}, core.LogGuardedError(label))
+	return cancel
 }
 
 func (rpc *Server) GetAllTaskContent(ctx context.Context, req *clientpb.Task) (*clientpb.TaskContexts, error) {
+	if req == nil {
+		return nil, types.ErrMissingSessionRequestField
+	}
+	if req.SessionId == "" {
+		return nil, types.ErrInvalidSessionID
+	}
 	sess, err := core.Sessions.Get(req.SessionId)
 	if err != nil {
-		return nil, errs.ErrNotFoundSession
+		return getAllTaskContextFromDB(req.SessionId, req.TaskId)
 	}
-	task := sess.Tasks.Get(req.TaskId)
+	task := sess.Tasks.GetOrRecover(sess, req.TaskId)
 	if task == nil {
-		return nil, errs.ErrNotFoundTask
+		return nil, types.ErrNotFoundTask
 	}
 	msgs, ok := sess.GetMessages(int(task.Id))
 	if ok {
@@ -134,7 +424,15 @@ func (rpc *Server) GetAllTaskContent(ctx context.Context, req *clientpb.Task) (*
 			Spites:  msgs,
 		}, nil
 	}
-	return nil, errs.ErrNotFoundTask
+
+	contexts, err := getAllTaskContextsFromDisk(sess, task)
+	if err == nil {
+		return contexts, nil
+	}
+	if errors.Is(err, types.ErrNotFoundTaskContent) {
+		return nil, types.ErrNotFoundTask
+	}
+	return nil, fmt.Errorf("load task content from disk: %w", err)
 }
 
 func (rpc *Server) GetFiles(ctx context.Context, req *clientpb.Session) (*clientpb.Files, error) {
@@ -152,9 +450,9 @@ func (rpc *Server) CancelTask(ctx context.Context, req *implantpb.TaskCtrl) (*cl
 	if err != nil {
 		return nil, err
 	}
-	task := sess.Tasks.Get(req.TaskId)
+	task := sess.Tasks.GetOrRecover(sess, req.TaskId)
 	if task == nil {
-		return nil, errs.ErrNotFoundTask
+		return nil, types.ErrNotFoundTask
 	}
 
 	greq, err := newGenericRequest(ctx, req)
@@ -166,29 +464,15 @@ func (rpc *Server) CancelTask(ctx context.Context, req *implantpb.TaskCtrl) (*cl
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgEmpty, func(spite *implantpb.Spite) {
-		core.EventBroker.Publish(core.Event{
-			EventType: consts.EventTask,
-			Op:        consts.CtrlTaskCancel,
-			Task:      task.ToProtobuf(),
-		})
+	greq.HandlerResponse(ch, types.MsgEmpty, func(spite *implantpb.Spite) {
+		task.CancelTask(spite, "")
 	})
 
 	return greq.Task.ToProtobuf(), nil
 }
 
 func (rpc *Server) ListTasks(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-
-	go greq.HandlerResponse(ch, types.MsgTasks)
-	return greq.Task.ToProtobuf(), nil
+	return rpc.AssertAndHandle(ctx, req, consts.ModuleListTask, types.MsgTasks)
 }
 
 func (rpc *Server) QueryTask(ctx context.Context, req *implantpb.TaskCtrl) (*clientpb.Task, error) {
@@ -201,6 +485,6 @@ func (rpc *Server) QueryTask(ctx context.Context, req *implantpb.TaskCtrl) (*cli
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgTask)
+	greq.HandlerResponse(ch, types.MsgTask)
 	return greq.Task.ToProtobuf(), nil
 }

@@ -1,18 +1,18 @@
 package third
 
 import (
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/client/core"
 	"strings"
 
-	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
+	"github.com/chainreactors/IoM-go/client"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
 )
 
-func CurlCmd(cmd *cobra.Command, con *repl.Console) error {
+func CurlCmd(cmd *cobra.Command, con *core.Console) error {
 	url := cmd.Flags().Arg(0)
 	method, _ := cmd.Flags().GetString("method")
 	timeout, _ := cmd.Flags().GetInt("timeout")
@@ -31,12 +31,11 @@ func CurlCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-
-	session.Console(task, "curl "+url)
+	session.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 
-func Curl(rpc clientrpc.MaliceRPCClient, sess *core.Session, url string, method string, timeout int32, body []byte, headers map[string]string) (*clientpb.Task, error) {
+func Curl(rpc clientrpc.MaliceRPCClient, sess *client.Session, url string, method string, timeout int32, body []byte, headers map[string]string) (*clientpb.Task, error) {
 	task, err := rpc.Curl(sess.Context(), &implantpb.CurlRequest{
 		Url:     url,
 		Method:  method,
@@ -50,12 +49,12 @@ func Curl(rpc clientrpc.MaliceRPCClient, sess *core.Session, url string, method 
 	return task, nil
 }
 
-func RegisterCurlFunc(con *repl.Console) {
+func RegisterCurlFunc(con *core.Console) {
 	con.RegisterImplantFunc(
 		"curl",
 		Curl,
 		"bcurl",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, url string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *client.Session, url string) (*clientpb.Task, error) {
 			return Curl(rpc, sess, url, "GET", 30, nil, nil)
 		},
 		output.ParseBinaryResponse,

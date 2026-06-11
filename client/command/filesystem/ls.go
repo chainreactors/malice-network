@@ -2,14 +2,14 @@ package filesystem
 
 import (
 	"fmt"
+	"github.com/chainreactors/IoM-go/client"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
+	"github.com/chainreactors/IoM-go/types"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
-	"github.com/chainreactors/malice-network/helper/utils/handler"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
@@ -19,7 +19,7 @@ import (
 	"time"
 )
 
-func LsCmd(cmd *cobra.Command, con *repl.Console) error {
+func LsCmd(cmd *cobra.Command, con *core.Console) error {
 	path := cmd.Flags().Arg(0)
 	if path == "" {
 		path = "./"
@@ -29,11 +29,11 @@ func LsCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	session.Console(task, path)
+	session.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 
-func Ls(rpc clientrpc.MaliceRPCClient, session *core.Session, path string) (*clientpb.Task, error) {
+func Ls(rpc clientrpc.MaliceRPCClient, session *client.Session, path string) (*clientpb.Task, error) {
 	task, err := rpc.Ls(session.Context(), &implantpb.Request{
 		Name:  consts.ModuleLs,
 		Input: path,
@@ -44,14 +44,14 @@ func Ls(rpc clientrpc.MaliceRPCClient, session *core.Session, path string) (*cli
 	return task, err
 }
 
-func RegisterLsFunc(con *repl.Console) {
+func RegisterLsFunc(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleLs,
 		Ls,
 		"bls",
 		Ls,
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
-			err := handler.HandleMaleficError(ctx.Spite)
+			err := types.HandleMaleficError(ctx.Spite)
 			if err != nil {
 				return "", err
 			}
@@ -79,15 +79,11 @@ func RegisterLsFunc(con *repl.Console) {
 			var rowEntries []table.Row
 			var row table.Row
 			tableModel := tui.NewTable([]table.Column{
-				table.NewColumn("Name", "Name", 25),
+				table.NewFlexColumn("Name", "Name", 2),
 				table.NewColumn("Size", "Size", 10),
 				table.NewColumn("Mode", "Mode", 10),
 				table.NewColumn("Time", "Time", 16),
-				table.NewColumn("Link", "Link", 15),
-				//{Title: "name", Width: 25},
-				//{Title: "size", Width: 10},
-				//{Title: "mod", Width: 16},
-				//{Title: "link", Width: 15},
+				table.NewFlexColumn("Link", "Link", 1),
 			}, true)
 			for _, f := range resp.GetFiles() {
 				var size string

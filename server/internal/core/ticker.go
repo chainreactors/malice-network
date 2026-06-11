@@ -35,6 +35,11 @@ func (t *Ticker) Remove(id cron.EntryID) {
 	t.cron.Remove(id)
 }
 
+// AddCronFunc adds a cron-expression scheduled function (e.g. "0 0 * * *" for daily midnight).
+func (t *Ticker) AddCronFunc(spec string, cmd func()) (cron.EntryID, error) {
+	return t.cron.AddFunc(spec, cmd)
+}
+
 func (t *Ticker) RemoveAll() {
 	t.cron.Stop()
 }

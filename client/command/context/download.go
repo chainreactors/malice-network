@@ -2,18 +2,18 @@ package context
 
 import (
 	"fmt"
+	"github.com/chainreactors/IoM-go/client"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 
-	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
 )
 
-func GetDownloadsCmd(cmd *cobra.Command, con *repl.Console) error {
+func GetDownloadsCmd(cmd *cobra.Command, con *core.Console) error {
 	downloads, err := GetDownloads(con)
 	if err != nil {
 		return err
@@ -28,7 +28,7 @@ func GetDownloadsCmd(cmd *cobra.Command, con *repl.Console) error {
 
 		row := table.NewRow(table.RowData{
 			"ID":      ctx.Id,
-			"Session": ctx.Session.SessionId,
+			"Session": getSessionID(ctx.Session),
 			"Task":    getTaskId(ctx.Task),
 			"Name":    download.Name,
 			"Path":    download.FilePath,
@@ -38,11 +38,11 @@ func GetDownloadsCmd(cmd *cobra.Command, con *repl.Console) error {
 	}
 
 	tableModel := tui.NewTable([]table.Column{
-		table.NewColumn("ID", "ID", 36),
-		table.NewColumn("Session", "Session", 16),
-		table.NewColumn("Task", "Task", 8),
+		table.NewFlexColumn("ID", "ID", 1),
+		table.NewColumn("Session", "Session", 10),
+		table.NewColumn("Task", "Task", 6),
 		table.NewColumn("Name", "Name", 20),
-		table.NewColumn("Path", "Path", 40),
+		table.NewFlexColumn("Path", "Path", 2),
 		table.NewColumn("Size", "Size", 12),
 	}, true)
 
@@ -51,7 +51,7 @@ func GetDownloadsCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func GetDownloads(con *repl.Console) ([]*clientpb.Context, error) {
+func GetDownloads(con *core.Console) ([]*clientpb.Context, error) {
 	contexts, err := GetContextsByType(con, consts.ContextDownload)
 	if err != nil {
 		return nil, err
@@ -59,7 +59,14 @@ func GetDownloads(con *repl.Console) ([]*clientpb.Context, error) {
 	return contexts.Contexts, nil
 }
 
-func AddDownload(con *repl.Console, sess *core.Session, task *clientpb.Task, fileDesc *output.FileDescriptor) (bool, error) {
+func AddDownload(con *core.Console, sess *client.Session, task *clientpb.Task, fileDesc *output.FileDescriptor) (bool, error) {
+	if sess == nil || sess.Session == nil {
+		return false, fmt.Errorf("session is required")
+	}
+	if task == nil {
+		return false, fmt.Errorf("task is required")
+	}
+
 	_, err := con.Rpc.AddDownload(con.Context(), &clientpb.Context{
 		Session: sess.Session,
 		Task:    task,
@@ -72,8 +79,8 @@ func AddDownload(con *repl.Console, sess *core.Session, task *clientpb.Task, fil
 	return true, nil
 }
 
-func RegisterDownload(con *repl.Console) {
-	con.RegisterServerFunc("downloads", func(con *repl.Console) ([]*output.DownloadContext, error) {
+func RegisterDownload(con *core.Console) {
+	con.RegisterServerFunc("downloads", func(con *core.Console) ([]*output.DownloadContext, error) {
 		downloads, err := GetDownloads(con)
 		if err != nil {
 			return nil, err

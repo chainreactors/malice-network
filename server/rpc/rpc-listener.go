@@ -3,13 +3,18 @@ package rpc
 import (
 	"context"
 	"fmt"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/proto/services/listenerrpc"
+	"github.com/chainreactors/IoM-go/types"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/server/internal/core"
+	"github.com/chainreactors/malice-network/server/internal/db"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
-	"sync"
+	"io"
 	"time"
 )
 
@@ -18,21 +23,33 @@ func (rpc *Server) GetListeners(ctx context.Context, req *clientpb.Empty) (*clie
 }
 
 func (rpc *Server) RegisterListener(ctx context.Context, req *clientpb.RegisterListener) (*clientpb.Empty, error) {
-	//ip := getRemoteIp(ctx)
-	core.Listeners.Add(&core.Listener{
-		Name:      req.Name,
-		IP:        req.Host,
-		Active:    true,
-		Pipelines: make(map[string]*clientpb.Pipeline),
-		Ctrl:      make(chan *clientpb.JobCtrl),
-		CtrlJob:   &sync.Map{},
-	})
+	if req == nil || req.Name == "" {
+		return nil, types.ErrMissingRequestField
+	}
+	// Idempotent: if a listener with this name already exists (e.g. reconnect after crash),
+	// fully clean up the old state before creating the fresh instance.
+	if old, err := core.Listeners.Get(req.Name); err == nil {
+		if old.Active() {
+			return nil, status.Errorf(codes.AlreadyExists,
+				"listener %q is already active, use a different name or stop the existing one first", req.Name)
+		}
+		for _, pipe := range old.AllPipelines() {
+			pipelinesCh.Delete(pipe.Name)
+		}
+		// Use Stop + Map.Delete instead of Remove to avoid event publishing
+		// which could block or panic during concurrent cleanup.
+		_ = core.Listeners.Stop(req.Name)
+		core.Listeners.Map.Delete(req.Name)
+		logs.Log.Warnf("server - listener_reregister name=%s state=old_cleaned", req.Name)
+	}
+
+	core.Listeners.Add(core.NewListener(req.Name, req.Host))
 	core.EventBroker.Notify(core.Event{
 		EventType: consts.EventListener,
 		Op:        consts.CtrlListenerStart,
 		Message:   fmt.Sprintf("Listener %s started at %s", req.Name, req.Host),
 	})
-	logs.Log.Importantf("[server] %s register listener: %s", req.Host, req.Name)
+	logs.Log.Importantf("server - register_listener host=%s name=%s", req.Host, req.Name)
 	return &clientpb.Empty{}, nil
 }
 
@@ -42,31 +59,57 @@ func (rpc *Server) SpiteStream(stream listenerrpc.ListenerRPC_SpiteStreamServer)
 		logs.Log.Error(err.Error())
 		return err
 	}
-	pipelinesCh[pipelineID] = stream
+	pipelinesCh.Store(pipelineID, stream)
+	defer func() {
+		pipelinesCh.Delete(pipelineID)
+		logs.Log.Warnf("pipeline %s SpiteStream disconnected, cleaned from pipelinesCh", pipelineID)
+	}()
 
 	for {
 		msg, err := stream.Recv()
 		if err != nil {
-			logs.Log.Error("pipeline stream exit!")
+			logs.Log.Errorf("pipeline %s stream exit: %v", pipelineID, err)
 			return err
 		}
 
 		sess, err := core.Sessions.Get(msg.SessionId)
 		if err != nil {
-			logs.Log.Warnf("session %s not found", msg.SessionId)
-			continue
+			// Session not in memory — try to recover from DB since the implant
+			// is actively sending data, meaning it's still alive.
+			dbSess, dbErr := db.FindSession(msg.SessionId)
+			if dbErr != nil || dbSess == nil {
+				logs.Log.Warnf("session %s not found in memory or DB", msg.SessionId)
+				continue
+			}
+			sess, err = core.RecoverSession(dbSess)
+			if err != nil {
+				logs.Log.Warnf("session %s recovery failed: %v", msg.SessionId, err)
+				continue
+			}
+			core.Sessions.Add(sess)
+			logs.Log.Importantf("session %s recovered from DB via SpiteStream", msg.SessionId)
+		}
+		sess.SetLastCheckin(time.Now().Unix())
+		if sess.MarkAlive() {
+			if err := sess.Save(); err != nil {
+				logs.Log.Errorf("save session %s reborn state failed: %s", sess.ID, err.Error())
+			}
+			sess.Publish(consts.CtrlSessionReborn, fmt.Sprintf("session %s from %s reborn at %s", sess.Abstract(), sess.Target, sess.PipelineID), true, true)
 		}
 
 		if size := proto.Size(msg.Spite); size <= 1000 {
-			logs.Log.Debugf("[server.%s] receive spite %s from %s, %v", sess.ID, msg.Spite.Name, msg.ListenerId, msg.Spite)
+			logs.Log.Debugf("server.%s - receive_spite session=%s name=%s listener=%s spite=%v", sess.ID, sess.ID, msg.Spite.Name, msg.ListenerId, msg.Spite)
 		} else {
-			logs.Log.Debugf("[server.%s] receive spite %s from %s, %d bytes", sess.ID, msg.Spite.Name, msg.ListenerId, size)
+			logs.Log.Debugf("server.%s - receive_spite session=%s name=%s listener=%s bytes=%d", sess.ID, sess.ID, msg.Spite.Name, msg.ListenerId, size)
 		}
 
-		if ch, ok := sess.GetResp(msg.TaskId); ok {
-			go func() {
-				ch <- msg.Spite
-			}()
+		ch, ok := sess.GetResp(msg.TaskId)
+		if !ok {
+			logs.Log.Warnf("response channel missing for session %s task %d", msg.SessionId, msg.TaskId)
+			continue
+		}
+		if err := deliverSpiteResponse(ch, msg.Spite); err != nil {
+			logs.Log.Warnf("deliver spite response failed for session %s task %d: %v", msg.SessionId, msg.TaskId, err)
 		}
 	}
 }
@@ -101,54 +144,135 @@ func (rpc *Server) JobStream(stream listenerrpc.ListenerRPC_JobStreamServer) err
 	if err != nil {
 		return err
 	}
-	go func() {
+	ctx, cancel := context.WithCancel(stream.Context())
+	defer cancel()
+	defer func() {
+		// Listener disconnected — full cleanup.
+		// Clean up associated SpiteStream entries from pipelinesCh.
+		for _, pipe := range lns.AllPipelines() {
+			pipelinesCh.Delete(pipe.Name)
+		}
+		// Fully remove listener + pipelines + jobs.
+		// Use Stop (which doesn't publish events) + delete from map directly,
+		// because Remove publishes an event and the broker may not be available
+		// during shutdown.
+		if err := core.Listeners.Stop(listenerID); err != nil {
+			logs.Log.Debugf("listener %s stop during cleanup: %v", listenerID, err)
+		}
+		core.Listeners.Map.Delete(listenerID)
+		logs.Log.Warnf("listener %s JobStream disconnected, fully cleaned", listenerID)
+	}()
+
+	recvMsgCh := make(chan *clientpb.JobStatus)
+	sendErrCh := core.GoGuarded("listener-job-stream-send:"+listenerID, func() error {
 		for {
 			select {
-			case msg := <-lns.Ctrl:
+			case <-ctx.Done():
+				return nil
+			case msg, ok := <-lns.Ctrl:
+				if !ok {
+					return nil
+				}
 				lns.CtrlJob.Store(msg.Id, nil)
-				err := stream.Send(msg)
-				if err != nil {
-					logs.Log.Errorf("send job ctrl faild %v", err)
-					return
+				if err := stream.Send(msg); err != nil {
+					lns.CtrlJob.Delete(msg.Id)
+					return fmt.Errorf("send job ctrl failed: %w", err)
 				}
 			}
 		}
+	}, core.LogGuardedError("listener-job-stream-send:"+listenerID))
+	recvErrCh := core.GoGuarded("listener-job-stream-recv:"+listenerID, func() error {
+		defer close(recvMsgCh)
+		for {
+			msg, err := stream.Recv()
+			if err != nil {
+				if err == io.EOF {
+					return nil
+				}
+				return err
+			}
+			select {
+			case <-ctx.Done():
+				return nil
+			case recvMsgCh <- msg:
+			}
+		}
+	}, core.LogGuardedError("listener-job-stream-recv:"+listenerID))
+
+	var pendingRecvCh <-chan *clientpb.JobStatus = recvMsgCh
+	var pendingSendErrCh <-chan error = sendErrCh
+	var pendingRecvErrCh <-chan error = recvErrCh
+
+	for pendingRecvCh != nil || pendingSendErrCh != nil || pendingRecvErrCh != nil {
+		select {
+		case msg, ok := <-pendingRecvCh:
+			if !ok {
+				cancel()
+				pendingRecvCh = nil
+				continue
+			}
+			handleJobStatus(lns, msg)
+		case err, ok := <-pendingSendErrCh:
+			pendingSendErrCh = nil
+			cancel()
+			if ok && err != nil {
+				return err
+			}
+		case err, ok := <-pendingRecvErrCh:
+			pendingRecvErrCh = nil
+			cancel()
+			if ok && err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func handleJobStatus(lns *core.Listener, msg *clientpb.JobStatus) {
+	if _, ok := lns.CtrlJob.Load(msg.CtrlId); ok {
+		lns.CtrlJob.Store(msg.CtrlId, msg)
+		core.GoGuarded("listener-job-status-cleanup", func() error {
+			time.Sleep(1 * time.Second)
+			lns.CtrlJob.Delete(msg.CtrlId)
+			return nil
+		}, core.LogGuardedError("listener-job-status-cleanup"))
+	}
+	if msg.Ctrl == consts.CtrlPipelineSync {
+		return
+	}
+	if msg.Status == consts.CtrlStatusSuccess {
+		core.EventBroker.Publish(core.Event{
+			EventType: consts.EventJob,
+			Op:        msg.Ctrl,
+			IsNotify:  true,
+			Job:       msg.Job,
+			Important: true,
+		})
+		return
+	}
+	core.EventBroker.Publish(core.Event{
+		EventType: consts.EventJob,
+		Op:        msg.Ctrl,
+		Err:       fmt.Sprintf("%s faild,status %d,  %s", msg.Job.Name, msg.Status, msg.Error),
+		IsNotify:  true,
+		Important: true,
+	})
+}
+
+func deliverSpiteResponse(ch chan *implantpb.Spite, spite *implantpb.Spite) (err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			err = core.RecoverError("listener-spite-response", recovered)
+		}
 	}()
 
-	for {
-		msg, err := stream.Recv()
-		if err != nil {
-			return err
-		}
-		_, ok := lns.CtrlJob.Load(msg.CtrlId)
-		if ok {
-			lns.CtrlJob.Store(msg.CtrlId, msg)
-			go func() {
-				time.Sleep(1 * time.Second)
-				lns.CtrlJob.Delete(msg.CtrlId)
-			}()
-		}
-		if msg.Ctrl == consts.CtrlPipelineSync {
-			continue
-		}
-		if msg.Status == consts.CtrlStatusSuccess {
-			core.EventBroker.Publish(core.Event{
-				EventType: consts.EventJob,
-				Op:        msg.Ctrl,
-				IsNotify:  true,
-				Job:       msg.Job,
-				Important: true,
-			})
-		} else {
-			core.EventBroker.Publish(core.Event{
-				EventType: consts.EventJob,
-				Op:        msg.Ctrl,
-				Err:       fmt.Sprintf("%s faild,status %d,  %s", msg.Job.Name, msg.Status, msg.Error),
-				IsNotify:  true,
-				Important: true,
-			})
-		}
-
+	select {
+	case ch <- spite:
+		return nil
+	default:
+		return fmt.Errorf("response channel full")
 	}
 }
 

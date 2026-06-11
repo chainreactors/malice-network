@@ -2,10 +2,10 @@ package rpc
 
 import (
 	"context"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"strconv"
@@ -28,7 +28,7 @@ func (rpc *Server) Events(_ *clientpb.Empty, stream clientrpc.MaliceRPC_EventsSe
 			pb := event.ToProtobuf()
 			err := stream.Send(pb)
 			if err != nil {
-				logs.Log.Warnf(err.Error())
+				logs.Log.Warnf("%s", err.Error())
 				return err
 			}
 		}

@@ -1,20 +1,19 @@
 package core
 
 import (
-	"context"
+	"errors"
 	"fmt"
-	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/server/internal/configs"
-	"github.com/nikoksr/notify"
-	"github.com/nikoksr/notify/service/dingding"
-	"github.com/nikoksr/notify/service/http"
-	"github.com/nikoksr/notify/service/lark"
-	"github.com/nikoksr/notify/service/telegram"
-	"net/url"
 	"sync"
+	"sync/atomic"
+	"time"
+
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/server/internal/configs"
+	inotify "github.com/chainreactors/malice-network/server/internal/notify"
+	"github.com/chainreactors/tui"
 )
 
 const (
@@ -22,96 +21,148 @@ const (
 	eventBufSize = 25
 )
 
+var (
+	ErrEventBrokerUnavailable = errors.New("event broker unavailable")
+	ErrEventBrokerQueueFull   = errors.New("event broker queue full")
+	eventBrokerRestartBackoff = 200 * time.Millisecond
+)
+
+// format produces plain-text structured messages (no ANSI colors).
+// Coloring is the responsibility of each consumer (CLI, GUI, MCP, etc.).
 func (event *Event) format() string {
+	clientName := ""
+	if event.Client != nil {
+		clientName = event.Client.Name
+	}
+
 	switch event.EventType {
 	case consts.EventClient:
 		if event.Op == consts.CtrlClientJoin {
-			return fmt.Sprintf("%s has joined the game", event.Client.Name)
+			return fmt.Sprintf("%s has joined the game", clientName)
 		} else if event.Op == consts.CtrlClientLeft {
-			return fmt.Sprintf("%s left the game", event.Client.Name)
+			return fmt.Sprintf("%s left the game", clientName)
 		}
 	case consts.EventBroadcast:
-		return fmt.Sprintf("%s : %s  %s", event.Client.Name, event.Message, event.Err)
+		msg := fmt.Sprintf("%s : %s", clientName, event.Message)
+		if event.Err != "" {
+			msg += "  " + event.Err
+		}
+		return msg
 	case consts.EventNotify:
-		return fmt.Sprintf("%s notified: %s %s", event.Client.Name, event.Message, event.Err)
+		msg := fmt.Sprintf("%s notified: %s", clientName, event.Message)
+		if event.Err != "" {
+			msg += " " + event.Err
+		}
+		return msg
 	case consts.EventListener:
-		return fmt.Sprintf("[%s] %s: %s %s", event.EventType, event.Op, event.Message, event.Err)
+		msg := fmt.Sprintf("[%s] %s: %s", event.EventType, event.Op, event.Message)
+		if event.Err != "" {
+			msg += " " + event.Err
+		}
+		return msg
 	case consts.EventWebsite:
-		return fmt.Sprintf("[%s] %s: %s %s", event.EventType, event.Op, event.Message, event.Err)
+		msg := fmt.Sprintf("[%s] %s: %s", event.EventType, event.Op, event.Message)
+		if event.Err != "" {
+			msg += " " + event.Err
+		}
+		return msg
 	case consts.EventBuild:
+		return fmt.Sprintf("[%s] %s", event.EventType, event.Message)
+	case consts.EventCert:
 		return fmt.Sprintf("[%s] %s", event.EventType, event.Message)
 	case consts.EventPivot:
 		return fmt.Sprintf("[%s] %s: %s", event.EventType, event.Op, event.Message)
 	case consts.EventContext:
 		return fmt.Sprintf("[%s] %s: %s", event.EventType, event.Op, event.Message)
 	case consts.EventSession:
-		sid := event.Session.SessionId
+		sid := "unknown-session"
+		if event.Session != nil && event.Session.SessionId != "" {
+			sid = event.Session.SessionId
+		}
+		taskID := uint32(0)
+		taskType := "unknown-task"
+		if event.Task != nil {
+			taskID = event.Task.TaskId
+			if event.Task.Type != "" {
+				taskType = event.Task.Type
+			}
+		}
 		switch event.Op {
 		case consts.CtrlSessionRegister:
-			return logs.GreenBold(fmt.Sprintf("[%s]: %s", consts.CtrlSessionRegister, event.Message))
+			return fmt.Sprintf("[%s] %s", consts.CtrlSessionRegister, event.Message)
+		case consts.CtrlSessionDead:
+			return fmt.Sprintf("[%s] %s", consts.CtrlSessionDead, event.Message)
+		case consts.CtrlSessionReborn:
+			return fmt.Sprintf("[%s] %s", consts.CtrlSessionReborn, event.Message)
+		case consts.CtrlSessionInit:
+			return fmt.Sprintf("[%s] %s", consts.CtrlSessionInit, event.Message)
 		case consts.CtrlSessionTask:
-			return logs.GreenBold(fmt.Sprintf("[%s.%d] run task %s: %s", sid, event.Task.TaskId, event.Task.Type, event.Message))
+			return fmt.Sprintf("[%s.%d] run task %s: %s",
+				sid, taskID, taskType, event.Message)
 		case consts.CtrlSessionError:
-			return logs.GreenBold(fmt.Sprintf("[%s] task: %d error: %s", sid, event.Task.TaskId, event.Err))
+			return fmt.Sprintf("[%s] task: %d error: %s",
+				sid, taskID, event.Err)
 		case consts.CtrlSessionLog:
-			return fmt.Sprintf("[%s] log: \n%s", sid, event.Message)
+			return fmt.Sprintf("[%s] log:\n%s", sid, event.Message)
+		case consts.CtrlSessionCheckin:
+			return ""
 		}
 	case consts.EventJob:
 		if event.Err != "" {
 			return fmt.Sprintf("[%s] %s: %s", event.EventType, event.Op, event.Err)
 		}
 		pipeline := event.Job.GetPipeline()
+		if pipeline == nil {
+			return fmt.Sprintf("[%s] %s: %s", event.EventType, event.Op, event.Message)
+		}
+		kvView := func(pipeType string) string {
+			return fmt.Sprintf("[%s] %s: %s \n%s", event.EventType, event.Op, pipeType,
+				tui.NewOrderedKVTable(pipeline.KVMap()).View())
+		}
 		switch pipeline.Body.(type) {
 		case *clientpb.Pipeline_Tcp:
-			return fmt.Sprintf("[%s] %s: tcp %s on %s %s:%d", event.EventType, event.Op,
-				pipeline.Name, pipeline.ListenerId, pipeline.Ip, pipeline.GetTcp().Port)
+			return kvView("tcp")
 		case *clientpb.Pipeline_Bind:
-			return fmt.Sprintf("[%s] %s: bind %s on %s %s", event.EventType, event.Op,
-				pipeline.Name, pipeline.ListenerId, pipeline.Ip)
+			return kvView("bind")
 		case *clientpb.Pipeline_Http:
-			return fmt.Sprintf("[%s] %s: http %s on %s %s:%d", event.EventType, event.Op,
-				pipeline.Name, pipeline.ListenerId, pipeline.Ip, pipeline.GetHttp().Port)
+			if event.Op == consts.CtrlAcme {
+				return fmt.Sprintf("[%s] %s: cert %s create success", event.EventType, event.Op,
+					pipeline.Tls.Domain)
+			}
+			return kvView("http")
 		case *clientpb.Pipeline_Rem:
 			if event.Op == consts.CtrlRemAgentLog {
 				return ""
 			}
-			return fmt.Sprintf("[%s] %s: rem %s on %s %s:%d", event.EventType, event.Op,
-				pipeline.Name, pipeline.ListenerId, pipeline.Ip, pipeline.GetRem().Port)
+			return kvView("rem")
 		case *clientpb.Pipeline_Web:
-			//if event.Op == consts.CtrlWebContentAdd {
-			//	var root = "/"
-			//	if pipeline.GetWeb().Root != "/" {
-			//		root = pipeline.GetWeb().Root
-			//	}
-			//	var result string
-			//	for _, content := range pipeline.GetWeb().Contents {
-			//		result += fmt.Sprintf("[%s] %s: web %s on %s %d, routePath is http://%s:%d%s%s\n",
-			//			event.EventType, event.Op, pipeline.ListenerId, pipeline.Name, pipeline.GetWeb().Port,
-			//			pipeline.Ip, pipeline.GetWeb().Port, root, content.Path)
-			//	}
-			//	return strings.TrimSuffix(result, "\n")
-			//}
-			if pipeline.Tls.Enable {
-				return fmt.Sprintf("[%s] %s: web %s on %s %d, routePath is https://%s:%d%s", event.EventType, event.Op,
-					pipeline.ListenerId, pipeline.Name, pipeline.GetWeb().Port,
-					pipeline.Ip, pipeline.GetWeb().Port, pipeline.GetWeb().Root)
-			} else {
-				return fmt.Sprintf("[%s] %s: web %s on %s %d, routePath is http://%s:%d%s", event.EventType, event.Op,
-					pipeline.ListenerId, pipeline.Name, pipeline.GetWeb().Port,
-					pipeline.Ip, pipeline.GetWeb().Port, pipeline.GetWeb().Root)
+			baseURL := pipeline.URL()
+			if event.Op == consts.CtrlWebContentAddArtifact {
+				if cont := event.Job.FirstContent(); cont != nil {
+					return fmt.Sprintf("[%s] %s: artifact %s amount at %s", event.EventType, event.Op,
+						cont.Id, baseURL+cont.Path)
+				}
+			} else if event.Op == consts.CtrlWebContentAdd {
+				if cont := event.Job.FirstContent(); cont != nil {
+					return fmt.Sprintf("[%s] %s: content add success, path: %s",
+						event.EventType, event.Op, baseURL+cont.Path)
+				}
 			}
-
+			return kvView("web")
+		case *clientpb.Pipeline_Custom:
+			return kvView(pipeline.Type)
 		}
 	}
 	return event.Message
 }
 
 type Event struct {
-	Session *clientpb.Session
-	Job     *clientpb.Job
-	Client  *clientpb.Client
-	Task    *clientpb.Task
-	Spite   *implantpb.Spite
+	Session  *clientpb.Session
+	Job      *clientpb.Job
+	Client   *clientpb.Client
+	Task     *clientpb.Task
+	Spite    *implantpb.Spite
+	Listener *clientpb.Listener
 
 	Important bool
 	EventType string
@@ -125,7 +176,9 @@ type Event struct {
 func (event *Event) String() string {
 	var id string
 
-	if event.Job != nil {
+	if event.Listener != nil {
+		id = fmt.Sprintf("Listener %s", event.Listener.Id)
+	} else if event.Job != nil {
 		id = fmt.Sprintf("Job %d %s", event.Job.Id, event.Job.Name)
 	} else if event.Task != nil {
 		id = fmt.Sprintf("Task %s %d", event.Task.SessionId, event.Task.TaskId)
@@ -147,6 +200,7 @@ func (event *Event) ToProtobuf() *clientpb.Event {
 		Client:    event.Client,
 		Task:      event.Task,
 		Spite:     event.Spite,
+		Listener:  event.Listener,
 		Type:      event.EventType,
 		Op:        event.Op,
 		Formatted: event.format(),
@@ -162,38 +216,87 @@ type eventBroker struct {
 	subscribe   chan chan Event
 	unsubscribe chan chan Event
 	send        chan Event
-	notifier    Notifier
+	notifier    inotify.Notifier
 
 	lock  *sync.Mutex
 	cache *RingCache
+
+	alive     atomic.Bool
+	managed   atomic.Bool
+	startOnce sync.Once
 }
 
-func (broker *eventBroker) Start() {
+func (broker *eventBroker) run() error {
+	broker.alive.Store(true)
 	subscribers := map[chan Event]struct{}{}
+	defer func() {
+		broker.alive.Store(false)
+		for sub := range subscribers {
+			func(ch chan Event) {
+				defer func() {
+					_ = recover()
+				}()
+				close(ch)
+			}(sub)
+		}
+	}()
 	for {
 		select {
 		case <-broker.stop:
-			for sub := range subscribers {
-				close(sub)
-			}
-			return
+			return nil
 		case sub := <-broker.subscribe:
 			subscribers[sub] = struct{}{}
 		case sub := <-broker.unsubscribe:
 			delete(subscribers, sub)
 		case event := <-broker.publish:
 			if event.Important {
-				logs.Log.Infof("[event.%s] %s", event.EventType, event.String())
+				logs.Log.Infof("event.%s - %s", event.EventType, event.String())
 			} else if event.EventType != consts.EventHeartbeat {
-				logs.Log.Debugf("[event.%s] %s", event.EventType, event.String())
+				logs.Log.Debugf("event.%s - %s", event.EventType, event.String())
 			}
 			broker.lock.Lock()
 			for sub := range subscribers {
-				sub <- event
+				if err := broker.dispatch(sub, event); err != nil {
+					delete(subscribers, sub)
+					logs.Log.Warnf("drop broken event subscriber: %s", ErrorText(err))
+				}
 			}
 			broker.lock.Unlock()
 		}
 	}
+}
+
+func (broker *eventBroker) dispatch(sub chan Event, event Event) (err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			err = RecoverError("event-dispatch", recovered)
+		}
+	}()
+	select {
+	case sub <- event:
+	default:
+		// channel full, drop event; subscriber may catch up later
+	}
+	return nil
+}
+
+func (broker *eventBroker) Start() {
+	broker.startOnce.Do(func() {
+		broker.managed.Store(true)
+		go func() {
+			for {
+				err := RunGuarded("event-broker", broker.run, LogGuardedError("event-broker"))
+				if err == nil {
+					return
+				}
+				select {
+				case <-broker.stop:
+					return
+				case <-time.After(eventBrokerRestartBackoff):
+				}
+			}
+		}()
+	})
 }
 
 // Stop - Close the broker channel
@@ -216,13 +319,33 @@ func (broker *eventBroker) Unsubscribe(events chan Event) {
 
 // Publish - Push a message to all subscribers
 func (broker *eventBroker) Publish(event Event) {
+	if broker == nil {
+		return
+	}
+	if err := broker.TryPublish(event); err != nil && event.EventType != consts.EventHeartbeat {
+		logs.Log.Errorf("event publish failed [%s.%s]: %s", event.EventType, event.Op, err)
+	}
+}
+
+func (broker *eventBroker) TryPublish(event Event) error {
+	if broker == nil {
+		return ErrEventBrokerUnavailable
+	}
 	if event.Important {
 		broker.cache.Add(&event)
 	}
-	broker.publish <- event
+	if broker.managed.Load() && !broker.alive.Load() {
+		return ErrEventBrokerUnavailable
+	}
+	select {
+	case broker.publish <- event:
+	default:
+		return ErrEventBrokerQueueFull
+	}
 	if event.IsNotify {
 		broker.Notify(event)
 	}
+	return nil
 }
 
 func (broker *eventBroker) GetAll() []*Event {
@@ -236,7 +359,13 @@ func (broker *eventBroker) GetAll() []*Event {
 
 // Notify - Notify all third-patry services
 func (broker *eventBroker) Notify(event Event) {
-	go broker.notifier.Send(&event)
+	if broker == nil {
+		return
+	}
+	GoGuarded("event-notify", func() error {
+		broker.notifier.Send(event.EventType, event.Op, event.Message)
+		return nil
+	}, LogGuardedError("event-notify"))
 }
 
 func NewBroker() *eventBroker {
@@ -246,13 +375,11 @@ func NewBroker() *eventBroker {
 		subscribe:   make(chan chan Event, eventBufSize),
 		unsubscribe: make(chan chan Event, eventBufSize),
 		send:        make(chan Event, eventBufSize),
-		notifier: Notifier{notify: notify.New(),
-			enable: false,
-		},
-		cache: NewMessageCache(eventBufSize),
-		lock:  &sync.Mutex{},
+		notifier:    inotify.NewNotifier(),
+		cache:       NewMessageCache(eventBufSize),
+		lock:        &sync.Mutex{},
 	}
-	go broker.Start()
+	broker.Start()
 	ticker := GlobalTicker
 
 	publishHeartbeat := func(interval string) {
@@ -285,62 +412,6 @@ var (
 	EventBroker *eventBroker
 )
 
-type Notifier struct {
-	notify *notify.Notify
-	enable bool
-}
-
 func (broker *eventBroker) InitService(config *configs.NotifyConfig) error {
-	if config == nil || !config.Enable {
-		return nil
-	}
-	broker.notifier.enable = true
-	if config.Telegram != nil && config.Telegram.Enable {
-		tg, err := telegram.New(config.Telegram.APIKey)
-		if err != nil {
-			return err
-		}
-		tg.SetParseMode(telegram.ModeMarkdown)
-		tg.AddReceivers(config.Telegram.ChatID)
-		broker.notifier.notify.UseServices(tg)
-	}
-	if config.DingTalk != nil && config.DingTalk.Enable {
-		dt := dingding.New(&dingding.Config{
-			Token:  config.DingTalk.Token,
-			Secret: config.DingTalk.Secret,
-		})
-		broker.notifier.notify.UseServices(dt)
-	}
-	if config.Lark != nil && config.Lark.Enable {
-		lark := lark.NewWebhookService(config.Lark.WebHookUrl)
-		broker.notifier.notify.UseServices(lark)
-	}
-	if config.ServerChan != nil && config.ServerChan.Enable {
-		sc := http.New()
-		sc.AddReceivers(&http.Webhook{
-			URL:         config.ServerChan.URL,
-			Method:      "POST",
-			ContentType: "application/x-www-form-urlencoded",
-			BuildPayload: func(subject, message string) (payload any) {
-				data := url.Values{}
-				data.Set("subject", subject)
-				data.Set("message", message)
-				return data.Encode()
-			},
-		})
-		broker.notifier.notify.UseServices(sc)
-	}
-	return nil
-}
-
-func (n *Notifier) Send(event *Event) {
-	if !n.enable {
-		return
-	}
-	title := fmt.Sprintf("[%s] %s", event.EventType, event.Op)
-	err := n.notify.Send(context.Background(), title, event.Message)
-	if err != nil {
-		logs.Log.Errorf("Failed to send notification: %s", err)
-	}
-	return
+	return broker.notifier.InitService(config)
 }

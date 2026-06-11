@@ -3,24 +3,28 @@ package generic
 import (
 	"errors"
 	"fmt"
-	"github.com/kballard/go-shellquote"
 	"os"
 	"os/exec"
+
+	"github.com/chainreactors/IoM-go/client"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
+	"github.com/chainreactors/IoM-go/types"
+	"github.com/chainreactors/malice-network/client/core"
+	"github.com/kballard/go-shellquote"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/carapace-sh/carapace"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/intermediate"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/mals"
 )
 
-func Commands(con *repl.Console) []*cobra.Command {
+func Commands(con *core.Console) []*cobra.Command {
 	loginCmd := &cobra.Command{
 		Use:   consts.CommandLogin,
 		Short: "Login to server",
@@ -32,9 +36,8 @@ func Commands(con *repl.Console) []*cobra.Command {
 	versionCmd := &cobra.Command{
 		Use:   consts.CommandVersion,
 		Short: "show server version",
-		Run: func(cmd *cobra.Command, args []string) {
-			VersionCmd(cmd, con)
-			return
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return VersionCmd(cmd, con)
 		},
 	}
 
@@ -52,8 +55,8 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Use:   consts.CommandBroadcast + " [message]",
 		Short: "Broadcast a message to all clients",
 		Args:  cobra.MinimumNArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			BroadcastCmd(cmd, con)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return BroadcastCmd(cmd, con)
 		},
 	}
 
@@ -112,10 +115,22 @@ pivot
 		f.BoolP("all", "a", false, "list all pivot agents")
 	})
 
-	return []*cobra.Command{loginCmd, versionCmd, exitCmd, broadcastCmd, cmdCmd, pivotCmd}
+	licenseInfoCmd := &cobra.Command{
+		Use:   consts.CommandLicense,
+		Short: "show server license info",
+		Long:  "show server license info",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return GetLicenseCmd(cmd, con)
+		},
+		Example: `~~~
+license
+~~~`,
+	}
+
+	return []*cobra.Command{loginCmd, versionCmd, exitCmd, broadcastCmd, cmdCmd, pivotCmd, licenseInfoCmd, StatusCommand(con)}
 }
 
-func Log(con *repl.Console, sess *core.Session, msg string, notify bool) (bool, error) {
+func Log(con *core.Console, sess *client.Session, msg string, notify bool) (bool, error) {
 	_, err := con.Rpc.SessionEvent(sess.Context(), &clientpb.Event{
 		Type:    consts.EventSession,
 		Op:      consts.CtrlSessionLog,
@@ -136,10 +151,81 @@ func Log(con *repl.Console, sess *core.Session, msg string, notify bool) (bool, 
 	return true, nil
 }
 
-func Register(con *repl.Console) {
-	con.RegisterServerFunc("run", repl.RunCommand, nil)
+// ExecuteModule executes a dynamically constructed module request via the ExecuteModule RPC.
+func ExecuteModule(rpc clientrpc.MaliceRPCClient, sess *client.Session, spite *implantpb.Spite, expect string) (*clientpb.Task, error) {
+	if spite == nil {
+		return nil, errors.New("spite required")
+	}
+	return rpc.ExecuteModule(sess.Context(), &implantpb.ExecuteModuleRequest{
+		Spite:  spite,
+		Expect: expect,
+	})
+}
 
-	con.RegisterServerFunc("async_run", func(con *repl.Console, cmdline interface{}) (bool, error) {
+func Register(con *core.Console) {
+	// execute_request: send a Body::Request to any dynamically loaded implant module
+	con.RegisterImplantFunc(
+		"execute_request",
+		func(rpc clientrpc.MaliceRPCClient, sess *client.Session, moduleName string, args []string) (*clientpb.Task, error) {
+			return rpc.ExecuteModule(sess.Context(), &implantpb.ExecuteModuleRequest{
+				Spite: &implantpb.Spite{
+					Name: moduleName,
+					Body: &implantpb.Spite_Request{
+						Request: &implantpb.Request{
+							Name: moduleName,
+							Args: args,
+						},
+					},
+				},
+				Expect: "response",
+			})
+		},
+		"",
+		nil,
+		func(ctx *clientpb.TaskContext) (interface{}, error) {
+			if ctx == nil || ctx.Spite == nil {
+				return nil, fmt.Errorf("no response")
+			}
+			resp := ctx.Spite.GetResponse()
+			if resp != nil {
+				con.Log.Infof("%s\n", resp.GetOutput())
+				return resp.GetOutput(), nil
+			}
+			return nil, fmt.Errorf("no response")
+		},
+		nil,
+	)
+
+	con.AddCommandFuncHelper(
+		"execute_request",
+		"execute_request",
+		`execute_request(active(), "module_name", {"arg1", "key=value"})`,
+		[]string{
+			"session: special session",
+			"module_name: target module name",
+			"args: string array of arguments",
+		},
+		[]string{"task"})
+
+	con.RegisterServerFunc("console", func(con *core.Console) *core.Console {
+		return con
+	}, nil)
+
+	con.RegisterServerFunc("sessions", func(con *core.Console) map[string]*client.Session {
+		return con.Sessions
+	}, nil)
+
+	con.RegisterServerFunc("listeners", func(con *core.Console) map[string]*clientpb.Listener {
+		return con.Listeners
+	}, nil)
+
+	con.RegisterServerFunc("pipelines", func(con *core.Console) map[string]*clientpb.Pipeline {
+		return con.Pipelines
+	}, nil)
+
+	con.RegisterServerFunc("run", core.RunCommand, nil)
+
+	con.RegisterServerFunc("async_run", func(con *core.Console, cmdline interface{}) (bool, error) {
 		var args []string
 		var err error
 		switch c := cmdline.(type) {
@@ -159,7 +245,7 @@ func Register(con *repl.Console) {
 		return true, nil
 	}, nil)
 
-	con.RegisterServerFunc(consts.CommandBroadcast, func(con *repl.Console, msg string) (bool, error) {
+	con.RegisterServerFunc(consts.CommandBroadcast, func(con *core.Console, msg string) (bool, error) {
 		return Broadcast(con, &clientpb.Event{
 			Type:    consts.EventBroadcast,
 			Client:  con.Client,
@@ -167,7 +253,7 @@ func Register(con *repl.Console) {
 		})
 	}, nil)
 
-	con.RegisterServerFunc(consts.CommandNotify, func(con *repl.Console, msg string) (bool, error) {
+	con.RegisterServerFunc(consts.CommandNotify, func(con *core.Console, msg string) (bool, error) {
 		return Notify(con, &clientpb.Event{
 			Type:    consts.EventNotify,
 			Client:  con.Client,
@@ -175,67 +261,43 @@ func Register(con *repl.Console) {
 		})
 	}, nil)
 
-	con.RegisterServerFunc("callback_log", func(con *repl.Console, sess *core.Session, notify bool) intermediate.BuiltinCallback {
+	con.RegisterServerFunc("callback_log", func(con *core.Console, sess *client.Session, notify bool) intermediate.BuiltinCallback {
 		return func(content interface{}) (interface{}, error) {
 			return Log(con, sess, fmt.Sprintf("%v", content), notify)
 		}
 	}, nil)
 
-	con.RegisterServerFunc("log", func(con *repl.Console, sess *core.Session, msg string, notify bool) (bool, error) {
+	con.RegisterServerFunc("log", func(con *core.Console, sess *client.Session, msg string, notify bool) (bool, error) {
 		return Log(con, sess, msg, notify)
 	}, nil)
 
-	con.RegisterServerFunc("blog", func(con *repl.Console, sess *core.Session, msg string) (bool, error) {
+	con.RegisterServerFunc("blog", func(con *core.Console, sess *client.Session, msg string) (bool, error) {
 		return Log(con, sess, msg, false)
 	}, nil)
 
-	con.RegisterServerFunc("barch", func(con *repl.Console, sess *core.Session) (string, error) {
-		return sess.Os.Arch, nil
+	// ExecuteModule - execute a dynamically constructed module request
+	con.RegisterImplantFunc(
+		"execute_module",
+		ExecuteModule,
+		"",
+		nil,
+		nil,
+		nil)
+
+	con.AddCommandFuncHelper(
+		"execute_module",
+		"execute_module",
+		"execute_module(active(), spite, \"expect_type\")",
+		[]string{
+			"session: special session",
+			"spite: the spite request to execute",
+			"expect: expected response type name",
+		},
+		[]string{"task"})
+
+	// spite - build a Spite from a proto message body
+	con.RegisterServerFunc("spite", func(con *core.Console, body proto.Message) (*implantpb.Spite, error) {
+		return types.BuildSpite(&implantpb.Spite{}, body)
 	}, nil)
 
-	con.RegisterServerFunc("active", func(con *repl.Console) (*core.Session, error) {
-		return con.GetInteractive().Clone(consts.CalleeMal), nil
-	}, &mals.Helper{
-		Short:   "get current session",
-		Output:  []string{"sess"},
-		Example: "active()",
-	})
-
-	con.RegisterServerFunc("is64", func(con *repl.Console, sess *core.Session) (bool, error) {
-		return sess.Os.Arch == "x64", nil
-	}, nil)
-
-	con.RegisterServerFunc("isactive", func(con *repl.Console, sess *core.Session) (bool, error) {
-		return sess.IsAlive, nil
-	}, nil)
-
-	con.RegisterServerFunc("isadmin", func(con *repl.Console, sess *core.Session) (bool, error) {
-		return sess.IsPrivilege, nil
-	}, nil)
-
-	con.RegisterServerFunc("isbeacon", func(con *repl.Console, sess *core.Session) (bool, error) {
-		return sess.Type == consts.CommandBuildBeacon, nil
-	}, nil)
-
-	con.RegisterServerFunc("bdata", func(con *repl.Console, sess *core.Session) (map[string]interface{}, error) {
-		if sess == nil {
-			return nil, errors.New("session is nil")
-		}
-		return sess.Data.Any, nil
-	}, &mals.Helper{
-		Short:   "get session custom data",
-		Output:  []string{"map[string]interface{}"},
-		Example: "bdata(active())",
-	})
-	con.RegisterServerFunc("data", func(con *repl.Console, sess *core.Session) (map[string]interface{}, error) {
-		if sess == nil {
-			return nil, errors.New("session is nil")
-		}
-
-		return sess.Data.Data(), nil
-	}, &mals.Helper{
-		Short:   "get session data",
-		Output:  []string{"map[string]interface{}"},
-		Example: "data(active())",
-	})
 }

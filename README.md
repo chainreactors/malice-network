@@ -1,77 +1,104 @@
 # Malice Network
 
-blog posts:
+Malice Network 是 Internet of Malice（IoM）项目中的控制平面仓库，包含 `server`、`client` 和 `listener`。项目文档位于 `docs/` 目录。
+
+## Blog Posts
 
 - [v0.0.1 next generation C2 project](https://chainreactors.github.io/wiki/blog/2024/08/16/%E4%B8%80%E4%B8%8B%E4%BB%A3c2%E8%AE%A1%E5%88%92-----internal-of-malice/)
 - [v0.0.2 the Real Beginning](https://chainreactors.github.io/wiki/blog/2024/09/23/IoM_v0.0.2/)
 - [v0.0.3 RedTeam Infra&C2 framework](https://chainreactors.github.io/wiki/blog/2024/11/20/IoM_v0.0.3/)
 - [v0.0.4 Bootstrapping](https://chainreactors.github.io/wiki/blog/2025/01/02/IoM_v0.0.4/)
-- [v0.1.0 代替CobaltStrike的最后四块碎片](https://chainreactors.github.io/wiki/blog/2025/04/14/IoM_v0.1.0/)
+- [v0.1.0 代替 Cobalt Strike 的最后四块碎片](https://chainreactors.github.io/wiki/blog/2025/04/14/IoM_v0.1.0/)
 
-## wiki
+## Docs
 
-see: https://chainreactors.github.io/wiki/IoM/
+- 架构概览: [docs/architecture.md](docs/architecture.md)
+- 快速开始: [docs/getting-started.md](docs/getting-started.md)
+- Listener 与 Pipeline: [docs/server/listeners.md](docs/server/listeners.md)
+- 构建与 Profile: [docs/server/build.md](docs/server/build.md)
+- Client 命令总览: [docs/client/commands.md](docs/client/commands.md)
+- MAL 插件开发: [docs/development/mal/](docs/development/mal/)
+- Implant 说明: [docs/implant/overview.md](docs/implant/overview.md)
+- 路线图: [docs/roadmap.md](docs/roadmap.md)
+- 部署指南: [docs/deployment.md](docs/deployment.md)
+- 后渗透操作: [docs/post-exploitation.md](docs/post-exploitation.md)
 
-implant: https://github.com/chainreactors/malefic
+## References
 
-protocol: https://github.com/chainreactors/proto
-
-## Roadmap
-
-https://chainreactors.github.io/wiki/IoM/roadmap/
+- Releases: <https://github.com/chainreactors/malice-network/releases/latest>
+- Implant repo: <https://github.com/chainreactors/malefic>
+- 自定义 Listener / LLM Bridge: [docs/custom-pipeline-guide.md](docs/custom-pipeline-guide.md)
 
 ## Showcases
 
-### GUI
-<summary>session</summary>
-<img src="https://github.com/chainreactors/wiki/blob/master/docs/IoM/assets/session_gui.jpg"/>
+### Web UI
 
-<summary>pipeline</summary>
-<img src="https://github.com/chainreactors/wiki/blob/master/docs/IoM/assets/pipeline_gui.png"/>
+<summary>Dashboard</summary>
+<img src="docs/assets/showcase/webui/dashboard.png"/>
 
-<summary>website</summary>
-<img src="https://github.com/chainreactors/wiki/blob/master/docs/IoM/assets/website_gui.png"/>
+<summary>Sessions</summary>
+<img src="docs/assets/showcase/webui/sessions.png"/>
 
-<summary>artifact</summary>
-<img src="https://github.com/chainreactors/wiki/blob/master/docs/IoM/assets/artifact_gui.png"/>
+<summary>Listeners</summary>
+<img src="docs/assets/showcase/webui/listeners.png"/>
 
-<summary>third party</summary>
-<img src="https://github.com/chainreactors/wiki/blob/master/docs/IoM/assets/third_party_gui.png"/>
+<summary>Interactive</summary>
+<img src="docs/assets/showcase/webui/interactive.png"/>
 
-<summary>use session</summary>
-<img src="https://github.com/chainreactors/wiki/blob/master/docs/IoM/assets/use_session_gui.png"/>
+<summary>Artifacts</summary>
+<img src="docs/assets/showcase/webui/artifacts.png"/>
 
-<summary>task</summary>
-<img src="https://github.com/chainreactors/wiki/blob/master/docs/IoM/assets/task_gui.png"/>
+<summary>Settings</summary>
+<img src="docs/assets/showcase/webui/settings.png"/>
 
-<summary>netstat</summary>
-<img src="https://github.com/chainreactors/wiki/blob/master/docs/IoM/assets/netstat_gui.png"/>
+### VSCode GUI
 
-<summary>services</summary>
-<img src="https://github.com/chainreactors/wiki/blob/master/docs/IoM/assets/services_gui.png"/>
+<summary>Session</summary>
+<img src="docs/assets/showcase/vscode/session_gui.jpg"/>
 
-------
+<summary>Pipeline</summary>
+<img src="docs/assets/showcase/vscode/pipeline_gui.png"/>
+
+<summary>Website</summary>
+<img src="docs/assets/showcase/vscode/website_gui.png"/>
+
+<summary>Artifact</summary>
+<img src="docs/assets/showcase/vscode/artifact_gui.png"/>
+
+<summary>Third Party</summary>
+<img src="docs/assets/showcase/vscode/third_party_gui.png"/>
+
+<summary>Use Session</summary>
+<img src="docs/assets/showcase/vscode/use_session_gui.png"/>
+
+<summary>Task</summary>
+<img src="docs/assets/showcase/vscode/task_gui.png"/>
+
+<summary>Netstat</summary>
+<img src="docs/assets/showcase/vscode/netstat_gui.png"/>
+
+<summary>Services</summary>
+<img src="docs/assets/showcase/vscode/services_gui.png"/>
 
 ### TUI
 
-<summary>console</summary>
-<img src="https://github.com/chainreactors/wiki/blob/master/docs/IoM/assets/completion.gif"/>
+<summary>Console</summary>
+<img src="docs/assets/showcase/tui/completion.gif"/>
 
-<summary>login</summary>
-<img src="https://github.com/chainreactors/wiki/blob/master/docs/IoM/assets/login.gif"/>
+<summary>Login</summary>
+<img src="docs/assets/showcase/tui/login.gif"/>
 
-<summary>tcp</summary>
-<img src="https://github.com/chainreactors/wiki/blob/master/docs/IoM/assets/tcp.gif"/>
+<summary>TCP</summary>
+<img src="docs/assets/showcase/tui/tcp.gif"/>
 
-<summary>website</summary>
-<img src="https://github.com/chainreactors/wiki/blob/master/docs/IoM/assets/website.gif"/>
+<summary>Website</summary>
+<img src="docs/assets/showcase/tui/website.gif"/>
 
-<summary>execute_exe</summary>
-<img src="https://github.com/chainreactors/wiki/blob/master/docs/IoM/assets/execute_exe.gif"/>
+<summary>Execute EXE</summary>
+<img src="docs/assets/showcase/tui/execute_exe.gif"/>
 
-<summary>load_addon</summary>
-<img src="https://github.com/chainreactors/wiki/blob/master/docs/IoM/assets/load_addon.gif"/>
+<summary>Load Addon</summary>
+<img src="docs/assets/showcase/tui/load_addon.gif"/>
 
-<summary>armory</summary>
-<img src="https://github.com/chainreactors/wiki/blob/master/docs/IoM/assets/armory.gif"/>
-
+<summary>Armory</summary>
+<img src="docs/assets/showcase/tui/armory.gif"/>

@@ -1,15 +1,15 @@
 package filesystem
 
 import (
+	"github.com/chainreactors/IoM-go/client"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/spf13/cobra"
 )
 
-func ChownCmd(cmd *cobra.Command, con *repl.Console) error {
+func ChownCmd(cmd *cobra.Command, con *core.Console) error {
 	uid := cmd.Flags().Arg(0)
 	path := cmd.Flags().Arg(1)
 
@@ -21,11 +21,11 @@ func ChownCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	session.Console(task, "chown "+path+" "+uid)
+	session.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 
-func Chown(rpc clientrpc.MaliceRPCClient, session *core.Session, path, uid, gid string, recursive bool) (*clientpb.Task, error) {
+func Chown(rpc clientrpc.MaliceRPCClient, session *client.Session, path, uid, gid string, recursive bool) (*clientpb.Task, error) {
 	task, err := rpc.Chown(session.Context(), &implantpb.ChownRequest{
 		Path:      path,
 		Uid:       uid,

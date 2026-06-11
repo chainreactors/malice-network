@@ -2,30 +2,29 @@ package exec
 
 import (
 	"fmt"
+	"github.com/chainreactors/IoM-go/client"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/intermediate"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
 )
 
-func ExecuteBofCmd(cmd *cobra.Command, con *repl.Console) error {
+func ExecuteBofCmd(cmd *cobra.Command, con *core.Console) error {
 	path, args, output, _ := common.ParseBinaryFlags(cmd)
 	task, err := ExecBof(con.Rpc, con.GetInteractive(), path, args, output)
 	if err != nil {
 		return err
 	}
-	con.GetInteractive().Console(task, path)
-	return nil
+	return common.HandleTaskOutput(cmd, con, task)
 }
 
-func ExecBof(rpc clientrpc.MaliceRPCClient, sess *core.Session, bofPath string, args []string, out bool) (*clientpb.Task, error) {
+func ExecBof(rpc clientrpc.MaliceRPCClient, sess *client.Session, bofPath string, args []string, out bool) (*clientpb.Task, error) {
 	binary, err := output.NewExecutable(consts.ModuleExecuteBof, bofPath, args, sess.Os.Arch, out, nil)
 	if err != nil {
 		return nil, err
@@ -37,12 +36,12 @@ func ExecBof(rpc clientrpc.MaliceRPCClient, sess *core.Session, bofPath string, 
 	return task, nil
 }
 
-func RegisterBofFunc(con *repl.Console) {
+func RegisterBofFunc(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleExecuteBof,
 		ExecBof,
 		"binline_execute",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, args string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *client.Session, path string, args string) (*clientpb.Task, error) {
 			cmdline, err := shellquote.Split(args)
 			if err != nil {
 				return nil, err
@@ -76,7 +75,7 @@ func RegisterBofFunc(con *repl.Console) {
 		},
 		[]string{"task"})
 
-	con.RegisterServerFunc("callback_bof", func(con *repl.Console, sess *core.Session) (intermediate.BuiltinCallback, error) {
+	con.RegisterServerFunc("callback_bof", func(con *core.Console, sess *client.Session) (intermediate.BuiltinCallback, error) {
 		return func(content interface{}) (interface{}, error) {
 			resps, ok := content.(pe.BOFResponses)
 			if !ok {

@@ -1,52 +1,42 @@
 package website
 
 import (
+	"github.com/chainreactors/malice-network/client/core"
 	"strconv"
 
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/cryptography"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
 )
 
 // NewWebsiteCmd - 创建新的网站
-func NewWebsiteCmd(cmd *cobra.Command, con *repl.Console) error {
+func NewWebsiteCmd(cmd *cobra.Command, con *core.Console) error {
 	name := cmd.Flags().Arg(0)
 	root, _ := cmd.Flags().GetString("root")
-	listenerID, host, port := common.ParsePipelineFlags(cmd)
+	auth, _ := cmd.Flags().GetString("auth")
+	listenerID, _, host, port := common.ParsePipelineFlags(cmd)
 	if port == 0 {
 		port = cryptography.RandomInRange(10240, 65535)
 	}
-	useTls, _ := cmd.Flags().GetBool("tls")
-	certPath, _ := cmd.Flags().GetString("cert_path")
-	keyPath, _ := cmd.Flags().GetString("key_path")
-	return NewWebsite(con, name, root, host, port, useTls, certPath, keyPath, listenerID)
+	tls, certName, err := common.ParseTLSFlags(cmd)
+	if err != nil {
+		return err
+	}
+	return NewWebsite(con, name, root, host, port, listenerID, certName, tls, auth)
 }
 
 // NewWebsite
-func NewWebsite(con *repl.Console, websiteName, root, host string, port uint32, useTls bool, certPath, keyPath, listenerId string) error {
-	var cert, key string
+func NewWebsite(con *core.Console, websiteName, root, host string, port uint32, listenerId, certName string, tls *clientpb.TLS, auth ...string) error {
 	var err error
-	if certPath != "" && keyPath != "" {
-		cert, err = cryptography.ProcessPEM(certPath)
-		if err != nil {
-			return err
-		}
-		key, err = cryptography.ProcessPEM(keyPath)
-		if err != nil {
-			return err
-		}
-	}
-	tls := &clientpb.TLS{
-		Enable: useTls,
-		Cert:   cert,
-		Key:    key,
-	}
 	if root == "" {
 		root = "/"
+	}
+	websiteAuth := ""
+	if len(auth) > 0 {
+		websiteAuth = auth[0]
 	}
 	host = "0.0.0.0"
 	req := &clientpb.Pipeline{
@@ -54,12 +44,14 @@ func NewWebsite(con *repl.Console, websiteName, root, host string, port uint32, 
 		ListenerId: listenerId,
 		Enable:     false,
 		Tls:        tls,
-		Ip:         host, // this has not taken effect yet
+		CertName:   certName,
+		Ip:         host,
 		Body: &clientpb.Pipeline_Web{
 			Web: &clientpb.Website{
 				Name:     websiteName,
 				Root:     root,
 				Port:     port,
+				Auth:     websiteAuth,
 				Contents: make(map[string]*clientpb.WebContent),
 			},
 		},
@@ -72,6 +64,7 @@ func NewWebsite(con *repl.Console, websiteName, root, host string, port uint32, 
 	_, err = con.Rpc.StartWebsite(con.Context(), &clientpb.CtrlPipeline{
 		Name:       websiteName,
 		ListenerId: listenerId,
+		Pipeline:   req,
 	})
 	if err != nil {
 		return err
@@ -81,15 +74,35 @@ func NewWebsite(con *repl.Console, websiteName, root, host string, port uint32, 
 }
 
 // StartWebsitePipelineCmd
-func StartWebsitePipelineCmd(cmd *cobra.Command, con *repl.Console) error {
+func StartWebsitePipelineCmd(cmd *cobra.Command, con *core.Console) error {
 	websiteName := cmd.Flags().Arg(0)
-	return StartWebsite(con, websiteName)
+	certName, _ := cmd.Flags().GetString("cert-name")
+	listenerID, _ := cmd.Flags().GetString("listener")
+	return startWebsite(con, websiteName, certName, listenerID)
 }
 
-func StartWebsite(con *repl.Console, websiteName string) error {
+func StartWebsite(con *core.Console, websiteName, certName string) error {
+	return startWebsite(con, websiteName, certName, "")
+}
+
+func startWebsite(con *core.Console, websiteName, certName, listenerID string) error {
+	pipelineName, resolvedListenerID, cached := resolveWebsiteTarget(con, websiteName)
+	if listenerID == "" {
+		listenerID = resolvedListenerID
+	}
+	if cached {
+		_, err := con.Rpc.StopWebsite(con.Context(), &clientpb.CtrlPipeline{
+			Name:       pipelineName,
+			ListenerId: listenerID,
+		})
+		if err != nil {
+			return err
+		}
+	}
 	_, err := con.Rpc.StartWebsite(con.Context(), &clientpb.CtrlPipeline{
-		Name:       websiteName,
-		ListenerId: "",
+		Name:       pipelineName,
+		ListenerId: listenerID,
+		CertName:   certName,
 	})
 	if err != nil {
 		return err
@@ -97,16 +110,25 @@ func StartWebsite(con *repl.Console, websiteName string) error {
 	return nil
 }
 
-func StopWebsitePipelineCmd(cmd *cobra.Command, con *repl.Console) error {
+func StopWebsitePipelineCmd(cmd *cobra.Command, con *core.Console) error {
 	name := cmd.Flags().Arg(0)
-	return StopWebsite(con, name)
+	listenerID, _ := cmd.Flags().GetString("listener")
+	return stopWebsite(con, name, listenerID)
 }
 
 // StopWebsite
-func StopWebsite(con *repl.Console, name string) error {
+func StopWebsite(con *core.Console, name string) error {
+	return stopWebsite(con, name, "")
+}
+
+func stopWebsite(con *core.Console, name, listenerID string) error {
+	pipelineName, resolvedListenerID, _ := resolveWebsiteTarget(con, name)
+	if listenerID == "" {
+		listenerID = resolvedListenerID
+	}
 	_, err := con.Rpc.StopWebsite(con.Context(), &clientpb.CtrlPipeline{
-		Name:       name,
-		ListenerId: "",
+		Name:       pipelineName,
+		ListenerId: listenerID,
 	})
 	if err != nil {
 		return err
@@ -114,7 +136,7 @@ func StopWebsite(con *repl.Console, name string) error {
 	return nil
 }
 
-func ListWebsitesCmd(cmd *cobra.Command, con *repl.Console) error {
+func ListWebsitesCmd(cmd *cobra.Command, con *core.Console) error {
 	listenerID := cmd.Flags().Arg(0)
 	websites, err := con.Rpc.ListWebsites(con.Context(), &clientpb.Listener{
 		Id: listenerID,
@@ -125,9 +147,9 @@ func ListWebsitesCmd(cmd *cobra.Command, con *repl.Console) error {
 	var rowEntries []table.Row
 	var row table.Row
 	tableModel := tui.NewTable([]table.Column{
-		table.NewColumn("Name", "Name", 20),
+		table.NewFlexColumn("Name", "Name", 1),
 		table.NewColumn("Port", "Port", 7),
-		table.NewColumn("RootPath", "RootPath", 15),
+		table.NewFlexColumn("RootPath", "Root Path", 1),
 		table.NewColumn("Enable", "Enable", 7),
 	}, true)
 	if len(websites.Pipelines) == 0 {

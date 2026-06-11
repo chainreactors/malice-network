@@ -2,14 +2,15 @@ package core
 
 import (
 	"fmt"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"google.golang.org/protobuf/proto"
 	"io"
 	"math"
 	"os"
+	"sort"
 	"sync"
 	"time"
 )
@@ -17,8 +18,7 @@ import (
 var CacheName = "cache.bin"
 
 type Cache struct {
-	items    map[string]*clientpb.SpiteCacheItem
-	mutex    sync.RWMutex
+	items    sync.Map // map[string]*clientpb.SpiteCacheItem
 	maxSize  int
 	duration time.Duration
 	savePath string
@@ -27,7 +27,6 @@ type Cache struct {
 // NewCache initializes a new cache with a specified size, duration, and save path
 func NewCache(savePath string) *Cache {
 	cache := &Cache{
-		items:    make(map[string]*clientpb.SpiteCacheItem),
 		maxSize:  1024,
 		duration: math.MaxInt64,
 		savePath: savePath,
@@ -46,55 +45,62 @@ func NewCache(savePath string) *Cache {
 
 // AddMessage adds a new item to the cache with TaskId and Index as part of the key
 func (c *Cache) AddMessage(spite *implantpb.Spite, index int) {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-
 	cacheKey := fmt.Sprintf("%d_%d", spite.TaskId, index)
-	c.items[cacheKey] = &clientpb.SpiteCacheItem{
+	c.items.Store(cacheKey, &clientpb.SpiteCacheItem{
 		Index:      int32(index),
 		Id:         cacheKey,
 		Spite:      spite,
 		Expiration: time.Now().Add(c.duration).Unix(),
-	}
-
-	c.trim()
+	})
 }
 
 // GetMessage retrieves a cache item by TaskId and Index
 func (c *Cache) GetMessage(taskID, index int) (*implantpb.Spite, bool) {
-	c.mutex.RLock()
-	defer c.mutex.RUnlock()
-
 	cacheKey := fmt.Sprintf("%d_%d", taskID, index)
-	item, found := c.items[cacheKey]
-	if found && time.Now().Unix() < item.Expiration {
+	value, found := c.items.Load(cacheKey)
+	if !found {
+		return nil, false
+	}
+	item := value.(*clientpb.SpiteCacheItem)
+	if time.Now().Unix() < item.Expiration {
 		return item.Spite, true
 	}
 	return nil, false
 }
 
 func (c *Cache) GetMessages(taskID int) ([]*implantpb.Spite, bool) {
-	c.mutex.RLock()
-	defer c.mutex.RUnlock()
+	type indexedSpite struct {
+		index int32
+		spite *implantpb.Spite
+	}
+	var items []indexedSpite
+	now := time.Now().Unix()
 
-	var messages []*implantpb.Spite
-	for _, item := range c.items {
-		if int(item.Spite.TaskId) == taskID && time.Now().Unix() < item.Expiration {
-			messages = append(messages, item.Spite)
+	c.items.Range(func(key, value interface{}) bool {
+		item := value.(*clientpb.SpiteCacheItem)
+		if int(item.Spite.TaskId) == taskID && now < item.Expiration {
+			items = append(items, indexedSpite{index: item.Index, spite: item.Spite})
 		}
-	}
-	if len(messages) > 0 {
-		return messages, true
+		return true
+	})
 
+	if len(items) == 0 {
+		return nil, false
 	}
-	return nil, false
+
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].index < items[j].index
+	})
+
+	messages := make([]*implantpb.Spite, len(items))
+	for i, item := range items {
+		messages[i] = item.spite
+	}
+	return messages, true
 }
 
 // Save serializes the cache items to a file using protobuf
 func (c *Cache) Save() error {
-	c.mutex.RLock()
-	defer c.mutex.RUnlock()
-
 	file, err := os.Create(c.savePath)
 	if err != nil {
 		return err
@@ -102,11 +108,14 @@ func (c *Cache) Save() error {
 	defer file.Close()
 
 	items := &clientpb.SpiteCache{
-		Items: make([]*clientpb.SpiteCacheItem, 0, len(c.items)),
+		Items: make([]*clientpb.SpiteCacheItem, 0),
 	}
-	for _, item := range c.items {
+	c.items.Range(func(key, value interface{}) bool {
+		item := value.(*clientpb.SpiteCacheItem)
 		items.Items = append(items.Items, item)
-	}
+		return true
+	})
+
 	data, err := proto.Marshal(items)
 	if err != nil {
 		return err
@@ -135,7 +144,7 @@ func (c *Cache) Load() error {
 	}
 
 	for _, item := range item.Items {
-		c.items[item.Id] = item
+		c.items.Store(item.Id, item)
 	}
 
 	return nil
@@ -143,52 +152,85 @@ func (c *Cache) Load() error {
 
 // trim removes expired items or items beyond max size
 func (c *Cache) trim() {
-	for k, v := range c.items {
-		if time.Now().Unix() > v.Expiration {
-			delete(c.items, k)
-		}
-	}
+	now := time.Now().Unix()
 
-	for len(c.items) > c.maxSize {
-		var oldestKey string
-		oldestTime := time.Now().Unix()
-		for k, v := range c.items {
-			if v.Expiration < oldestTime {
-				oldestTime = v.Expiration
-				oldestKey = k
-			}
+	// First pass: remove expired items
+	c.items.Range(func(key, value interface{}) bool {
+		item := value.(*clientpb.SpiteCacheItem)
+		if now > item.Expiration {
+			c.items.Delete(key)
 		}
-		delete(c.items, oldestKey)
+		return true
+	})
+
+	// Second pass: if still over maxSize, remove oldest items
+	count := 0
+	c.items.Range(func(key, value interface{}) bool {
+		count++
+		return true
+	})
+
+	if count > c.maxSize {
+		// Collect all items with their expiration times
+		type itemWithKey struct {
+			key        interface{}
+			expiration int64
+		}
+		var allItems []itemWithKey
+		c.items.Range(func(key, value interface{}) bool {
+			item := value.(*clientpb.SpiteCacheItem)
+			allItems = append(allItems, itemWithKey{
+				key:        key,
+				expiration: item.Expiration,
+			})
+			return true
+		})
+
+		// Sort by expiration (oldest first) and delete excess
+		toDelete := count - c.maxSize
+		for i := 0; i < len(allItems) && toDelete > 0; i++ {
+			oldestIdx := i
+			for j := i + 1; j < len(allItems); j++ {
+				if allItems[j].expiration < allItems[oldestIdx].expiration {
+					oldestIdx = j
+				}
+			}
+			if oldestIdx != i {
+				allItems[i], allItems[oldestIdx] = allItems[oldestIdx], allItems[i]
+			}
+			c.items.Delete(allItems[i].key)
+			toDelete--
+		}
 	}
 }
 
 // GetAll returns all items in the cache
 func (c *Cache) GetAll() map[string]*implantpb.Spite {
-	c.mutex.RLock()
-	defer c.mutex.RUnlock()
-
 	allItems := make(map[string]*implantpb.Spite)
-	for k, v := range c.items {
-		if time.Now().Unix() < v.Expiration {
-			allItems[k] = v.Spite
+	now := time.Now().Unix()
+	c.items.Range(func(key, value interface{}) bool {
+		item := value.(*clientpb.SpiteCacheItem)
+		if now < item.Expiration {
+			allItems[key.(string)] = item.Spite
 		}
-	}
+		return true
+	})
 	return allItems
 }
 
 func (c *Cache) GetLastMessage(taskID int) (*implantpb.Spite, bool) {
-	c.mutex.RLock()
-	defer c.mutex.RUnlock()
-
 	var lastSpite *implantpb.Spite
 	maxIndex := -1
+	now := time.Now().Unix()
 
-	for _, item := range c.items {
-		if int(item.Spite.TaskId) == taskID && int(item.Index) > maxIndex && time.Now().Unix() < item.Expiration {
+	c.items.Range(func(key, value interface{}) bool {
+		item := value.(*clientpb.SpiteCacheItem)
+		if int(item.Spite.TaskId) == taskID && int(item.Index) > maxIndex && now < item.Expiration {
 			maxIndex = int(item.Index)
 			lastSpite = item.Spite
 		}
-	}
+		return true
+	})
 
 	if lastSpite != nil {
 		return lastSpite, true
@@ -197,6 +239,7 @@ func (c *Cache) GetLastMessage(taskID int) (*implantpb.Spite, bool) {
 }
 
 type RingCache struct {
+	mu       sync.RWMutex
 	capacity int
 	messages []interface{}
 }
@@ -209,6 +252,8 @@ func NewMessageCache(capacity int) *RingCache {
 }
 
 func (mc *RingCache) Add(message interface{}) {
+	mc.mu.Lock()
+	defer mc.mu.Unlock()
 	if len(mc.messages) == mc.capacity {
 		mc.messages = mc.messages[1:]
 	}
@@ -217,10 +262,16 @@ func (mc *RingCache) Add(message interface{}) {
 }
 
 func (mc *RingCache) GetAll() []interface{} {
-	return mc.messages
+	mc.mu.RLock()
+	defer mc.mu.RUnlock()
+	all := make([]interface{}, len(mc.messages))
+	copy(all, mc.messages)
+	return all
 }
 
 func (mc *RingCache) GetLast() interface{} {
+	mc.mu.RLock()
+	defer mc.mu.RUnlock()
 	if len(mc.messages) == 0 {
 		return nil
 	}
@@ -229,11 +280,15 @@ func (mc *RingCache) GetLast() interface{} {
 
 // GetN 返回最后 N 条消息
 func (mc *RingCache) GetN(n int) []interface{} {
+	mc.mu.RLock()
+	defer mc.mu.RUnlock()
 	if n <= 0 {
 		return nil
 	}
 	if n > len(mc.messages) {
 		n = len(mc.messages)
 	}
-	return mc.messages[len(mc.messages)-n:]
+	items := make([]interface{}, n)
+	copy(items, mc.messages[len(mc.messages)-n:])
+	return items
 }

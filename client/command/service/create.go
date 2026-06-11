@@ -1,20 +1,19 @@
 package service
 
 import (
-	"fmt"
+	"github.com/chainreactors/IoM-go/client"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
 	"strings"
 )
 
 // ServiceCreateCmd creates a new service with the specified configuration.
-func ServiceCreateCmd(cmd *cobra.Command, con *repl.Console) error {
+func ServiceCreateCmd(cmd *cobra.Command, con *core.Console) error {
 	name, _ := cmd.Flags().GetString("name")
 	displayName, _ := cmd.Flags().GetString("display")
 	executablePath, _ := cmd.Flags().GetString("path")
@@ -28,11 +27,11 @@ func ServiceCreateCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	session.Console(task, fmt.Sprintf("create service: %s %s", name, executablePath))
+	session.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 
-func ServiceCreate(rpc clientrpc.MaliceRPCClient, session *core.Session, name, displayName, executablePath string, startType, errorControl, accountName string) (*clientpb.Task, error) {
+func ServiceCreate(rpc clientrpc.MaliceRPCClient, session *client.Session, name, displayName, executablePath string, startType, errorControl, accountName string) (*clientpb.Task, error) {
 	request := &implantpb.ServiceRequest{
 		Type: consts.ModuleServiceCreate,
 		Service: &implantpb.ServiceConfig{
@@ -77,7 +76,7 @@ func ServiceCreate(rpc clientrpc.MaliceRPCClient, session *core.Session, name, d
 }
 
 // RegisterServiceCreateFunc 注册 ServiceCreateCmd 到 Console
-func RegisterServiceCreateFunc(con *repl.Console) {
+func RegisterServiceCreateFunc(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleServiceCreate,
 		ServiceCreate,

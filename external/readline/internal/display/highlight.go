@@ -11,6 +11,8 @@ import (
 	"github.com/reeflective/readline/internal/core"
 )
 
+var rxColorEscape = regexp.MustCompile(`\x1b\[[0-9;]+m`)
+
 // highlightLine applies visual/selection highlighting to a line.
 // The provided line might already have been highlighted by a user-provided
 // highlighter: this function accounts for any embedded color sequences.
@@ -20,15 +22,18 @@ func (e *Engine) highlightLine(line []rune, selection core.Selection) string {
 	colors := e.getHighlights(line, sorted)
 
 	var highlighted string
+	var highlightedSb strings.Builder
 
 	// And apply highlighting before each rune.
 	for i, r := range line {
 		if highlight, found := colors[i]; found {
-			highlighted += string(highlight)
+			highlightedSb.WriteString(string(highlight))
 		}
 
-		highlighted += string(r)
+		highlightedSb.WriteRune(r)
 	}
+
+	highlighted += highlightedSb.String()
 
 	// Finally, highlight comments using a regex.
 	comment := strings.Trim(e.opts.GetString("comment-begin"), "\"")
@@ -102,8 +107,7 @@ func (e *Engine) getHighlights(line []rune, sorted []core.Selection) map[int][]r
 	// and keep the indexes so that we can skip those.
 	var colors [][]int
 
-	colorMatch := regexp.MustCompile(`\x1b\[[0-9;]+m`)
-	colors = colorMatch.FindAllStringIndex(string(line), -1)
+	colors = rxColorEscape.FindAllStringIndex(string(line), -1)
 
 	// marks that started highlighting, but not done yet.
 	regions := make([]core.Selection, 0)

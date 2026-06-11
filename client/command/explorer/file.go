@@ -2,19 +2,20 @@ package explorer
 
 import (
 	"fmt"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/tui"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
-	"path/filepath"
-	"strconv"
+"strconv"
 	"strings"
 	"time"
 )
 
-func fileExplorerCmd(cmd *cobra.Command, con *repl.Console) {
+func fileExplorerCmd(cmd *cobra.Command, con *core.Console) {
 	session := con.GetInteractive()
 	root := tui.TreeNode{
 		Name: "/",
@@ -28,9 +29,10 @@ func fileExplorerCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("load directory error: %v\n", err)
 		return
 	}
+	session.Console(task, string(*con.App.Shell().Line()))
 	fileChan := make(chan []*implantpb.FileInfo, 1)
-	con.AddCallback(task, func(msg *implantpb.Spite) {
-		resp := msg.GetLsResponse()
+	con.AddCallback(task, func(msg *clientpb.TaskContext) {
+		resp := msg.Spite.GetLsResponse()
 		fileChan <- resp.GetFiles()
 	})
 	select {
@@ -85,11 +87,11 @@ func fileExplorerCmd(cmd *cobra.Command, con *repl.Console) {
 			return
 		}
 		fileModel = fileModel.SetHeaderView(func(m *tui.TreeModel) string {
-			return fmt.Sprintf("Current Path: %s%s\n", root.Name, filepath.Join(m.Selected...))
+			return fmt.Sprintf("Current Path: %s%s\n", root.Name, fileutils.RemoteJoin(m.Selected...))
 		})
 		// Register custom action for 'enter' key
 		fileModel = fileModel.SetKeyBinding("enter", func(m *tui.TreeModel) (tea.Model, tea.Cmd) {
-			return fileEnterFunc(m, con)
+			return fileEnterFunc(cmd, m, con)
 		})
 		fileModel = fileModel.SetKeyBinding("backspace", backFunc)
 		fileModel = fileModel.SetKeyBinding("r", func(m *tui.TreeModel) (tea.Model, tea.Cmd) {
@@ -136,7 +138,7 @@ func padRight(str string, length int) string {
 	return fmt.Sprintf("%-*s", length, str)
 }
 
-func fileEnterFunc(m *tui.TreeModel, con *repl.Console) (tea.Model, tea.Cmd) {
+func fileEnterFunc(cmd *cobra.Command, m *tui.TreeModel, con *core.Console) (tea.Model, tea.Cmd) {
 	selectedNode := m.Tree.Children[m.Cursor]
 	session := con.GetInteractive()
 	if len(selectedNode.Children) > 0 {
@@ -148,18 +150,19 @@ func fileEnterFunc(m *tui.TreeModel, con *repl.Console) (tea.Model, tea.Cmd) {
 	if selectedNode.Info[0] == "false" {
 		return m, nil
 	}
-	path := filepath.Join(m.Selected...)
+	path := fileutils.RemoteJoin(m.Selected...)
 	task, err := con.Rpc.Ls(session.Clone(consts.CalleeExplorer).Context(), &implantpb.Request{
 		Name:  consts.ModuleLs,
-		Input: filepath.Join(m.Root.Name, path, selectedNode.Name),
+		Input: fileutils.RemoteJoin(m.Root.Name, path, selectedNode.Name),
 	})
+	session.Console(task, string(*con.App.Shell().Line()))
 	if err != nil {
 		con.Log.Errorf("load directory error: %v\n", err)
 		return m, nil
 	}
 	fileChan := make(chan []*implantpb.FileInfo, 1)
-	con.AddCallback(task, func(msg *implantpb.Spite) {
-		resp := msg.GetLsResponse()
+	con.AddCallback(task, func(msg *clientpb.TaskContext) {
+		resp := msg.Spite.GetLsResponse()
 		fileChan <- resp.GetFiles()
 	})
 	select {
@@ -204,7 +207,7 @@ func backFunc(m *tui.TreeModel) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func freshFunc(m *tui.TreeModel, con *repl.Console) (tea.Model, tea.Cmd) {
+func freshFunc(m *tui.TreeModel, con *core.Console) (tea.Model, tea.Cmd) {
 	selectedNode := m.Tree
 	selectedNode.Children = []*tui.TreeNode{}
 	session := con.GetInteractive()
@@ -217,8 +220,8 @@ func freshFunc(m *tui.TreeModel, con *repl.Console) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	fileChan := make(chan []*implantpb.FileInfo, 1)
-	con.AddCallback(task, func(msg *implantpb.Spite) {
-		resp := msg.GetLsResponse()
+	con.AddCallback(task, func(msg *clientpb.TaskContext) {
+		resp := msg.Spite.GetLsResponse()
 		fileChan <- resp.GetFiles()
 	})
 	select {

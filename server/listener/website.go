@@ -1,32 +1,40 @@
 package listener
 
 import (
+	"context"
 	"errors"
 	"fmt"
-	"github.com/chainreactors/malice-network/helper/utils/fileutils"
-	"github.com/chainreactors/malice-network/server/internal/configs"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/services/listenerrpc"
+	"github.com/chainreactors/malice-network/helper/utils/output"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
+	"sync"
 
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
+	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
+	"strings"
 )
 
 type Website struct {
-	port     int
-	server   *http.Server
-	rpc      listenerrpc.ListenerRPCClient
-	rootPath string
-	Name     string
-	Enable   bool
+	port        int
+	server      net.Listener
+	rpc         listenerrpc.ListenerRPCClient
+	rootPath    string
+	defaultAuth string // website-level default auth "user:pass"
+	Name        string
+	Enable      bool
+	CertName    string
 	*core.PipelineConfig
-	Content map[string]*clientpb.WebContent
+	mu       sync.RWMutex
+	Content  map[string]*clientpb.WebContent
+	Artifact map[string]*clientpb.WebContent
 }
 
 func StartWebsite(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline, content map[string]*clientpb.WebContent) (*Website, error) {
@@ -35,9 +43,12 @@ func StartWebsite(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline
 		Name:           pipeline.Name,
 		port:           int(websitePp.Port),
 		rootPath:       websitePp.Root,
+		defaultAuth:    websitePp.Auth,
 		rpc:            rpc,
-		PipelineConfig: core.FromProtobuf(pipeline),
+		CertName:       pipeline.CertName,
+		PipelineConfig: core.FromPipeline(pipeline),
 		Content:        make(map[string]*clientpb.WebContent),
+		Artifact:       make(map[string]*clientpb.WebContent),
 	}
 	for _, c := range content {
 		err := web.AddContent(c)
@@ -56,42 +67,67 @@ func (w *Website) ID() string {
 	return w.Name
 }
 
+// Addr returns the TCP address the website is listening on.
+// Returns nil if the server is not running.
+func (w *Website) Addr() *net.TCPAddr {
+	if w.server == nil {
+		return nil
+	}
+	return w.server.Addr().(*net.TCPAddr)
+}
+
 func (w *Website) Start() error {
 	mux := http.NewServeMux()
 	mux.HandleFunc(w.rootPath, w.websiteContentHandler)
-	if w.Tls != nil && w.Tls.Enable {
-		tlsConfig, err := certutils.WrapToTlsConfig(w.Tls)
+
+	ln, err := net.Listen("tcp", fmt.Sprintf(":%d", w.port))
+	if err != nil {
+		return err
+	}
+	// 如果启用了 TLS，使用 cmux 实现 TLS 和非 TLS 的端口复用
+	if w.TLSConfig != nil && w.TLSConfig.Enable && w.TLSConfig.Cert != nil {
+		err := w.startWithCmux(ln, mux)
 		if err != nil {
 			return err
 		}
-		w.server = &http.Server{Addr: fmt.Sprintf("0.0.0.0:%d", w.port),
-			TLSConfig: tlsConfig,
-			Handler:   mux,
-		}
-		go func() {
-			if err = w.server.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
-				logs.Log.Errorf("HTTP Server failed to start: %v", err)
-			}
-		}()
 	} else {
-		w.server = &http.Server{Addr: fmt.Sprintf("0.0.0.0:%d", w.port),
-			Handler: mux,
-		}
-		go func() {
-			if err := w.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-				logs.Log.Errorf("HTTP Server failed to start: %v", err)
+		server := NewHTTPServer(mux)
+		w.server = ln
+		core.GoGuarded("website-serve:"+w.Name, func() error {
+			if err := serveHTTP(server, ln); err != nil && err != http.ErrServerClosed && !errors.Is(err, net.ErrClosed) {
+				return fmt.Errorf("website %s serve: %w", w.Name, err)
 			}
-		}()
+			return nil
+		}, core.LogGuardedError("website-serve:"+w.Name))
 	}
 
 	w.Enable = true
 	return nil
 }
 
+// startWithCmux 使用 cmux 实现 Website TLS 和非 TLS 的端口复用
+func (w *Website) startWithCmux(ln net.Listener, mux *http.ServeMux) error {
+	// 获取 TLS 配置
+	tlsConfig, err := certutils.GetTlsConfig(w.TLSConfig.Cert)
+	if err != nil {
+		return err
+	}
+
+	_, err = StartCmuxHTTPListener(ln, tlsConfig, mux, core.LogGuardedError("website-cmux:"+w.Name))
+	if err != nil {
+		return err
+	}
+
+	// 保存服务器引用用于关闭
+	w.server = ln
+
+	return nil
+}
+
 func (w *Website) Close() error {
 	if w.server != nil {
 		logs.Log.Importantf("Stopping server")
-		err := w.server.Shutdown(nil)
+		err := w.server.Close()
 		if err != nil {
 			return err
 		}
@@ -107,7 +143,9 @@ func (w *Website) ToProtobuf() *clientpb.Pipeline {
 		Name:       w.Name,
 		Enable:     w.Enable,
 		ListenerId: w.ListenerID,
+		Parser:     w.Parser,
 		Type:       consts.WebsitePipeline,
+		CertName:   w.CertName,
 		Body: &clientpb.Pipeline_Web{
 			Web: &clientpb.Website{
 				Name:       w.Name,
@@ -116,41 +154,141 @@ func (w *Website) ToProtobuf() *clientpb.Pipeline {
 				Root:       w.rootPath,
 			},
 		},
-		Tls: w.Tls.ToProtobuf(),
+		Tls:        w.TLSConfig.ToProtobuf(),
+		Encryption: w.Encryption.ToProtobuf(),
+		Secure:     w.SecureConfig.ToProtobuf(),
 	}
 	return p
 }
 
 func (w *Website) websiteContentHandler(resp http.ResponseWriter, req *http.Request) {
 	contentPath := strings.TrimPrefix(req.URL.Path, w.rootPath)
-	content, ok := w.Content[strings.Trim(contentPath, "/")]
-	if !ok {
-		logs.Log.Debugf("%s Failed to get content ", req.URL)
-		return
+	parts := strings.SplitN(contentPath, "/", 2)
+	var artifactName string
+	var formatted string
+	artifactName = parts[0]
+	if len(parts) == 2 {
+		formatted = parts[1]
+	}
+	w.mu.RLock()
+	_, ok := w.Artifact[artifactName]
+	w.mu.RUnlock()
+	if ok {
+		name, err := output.Decode(artifactName)
+		if err != nil {
+			logs.Log.Errorf("failed to decode: %s", err)
+			return
+		}
+
+		format, _ := output.Decode(formatted)
+
+		artifact, err := w.rpc.FindArtifact(context.Background(), &clientpb.Artifact{
+			Name:   name,
+			Format: format,
+		})
+
+		if err != nil {
+			logs.Log.Errorf("failed to find artifact: %s", err)
+			return
+		}
+
+		if len(artifact.Bin) > 0 {
+			resp.Write(artifact.Bin)
+		}
+	} else {
+		w.mu.RLock()
+		content, ok := w.Content[strings.Trim(contentPath, "/")]
+		w.mu.RUnlock()
+		if !ok {
+			http.NotFound(resp, req)
+			return
+		}
+
+		// HTTP Basic Auth: per-path auth overrides website default.
+		// "none" explicitly skips auth even if website has a default.
+		if !w.checkAuth(content.Auth, resp, req) {
+			return
+		}
+
+		if content.ContentType != "" {
+			resp.Header().Set("Content-Type", content.ContentType)
+		}
+		resp.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate")
+		data, err := os.ReadFile(content.File)
+		if err != nil {
+			http.Error(resp, "internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		resp.Write(data)
+	}
+}
+
+// checkAuth validates HTTP Basic Auth for a request.
+// pathAuth is the per-path auth setting; if empty, falls back to website default.
+// "none" explicitly skips auth. Returns true if request is authorized, false if 401 was sent.
+func (w *Website) checkAuth(pathAuth string, resp http.ResponseWriter, req *http.Request) bool {
+	effectiveAuth := pathAuth
+	if effectiveAuth == "" {
+		effectiveAuth = w.defaultAuth
+	}
+	if effectiveAuth == "" || effectiveAuth == "none" {
+		return true
 	}
 
-	resp.Header().Add("Content-Type", content.ContentType)
-	resp.Header().Add("Cache-Control", "no-store, no-cache, must-revalidate")
-	data, err := os.ReadFile(content.File)
-	if err != nil {
-		return
+	wantUser, wantPass := parseAuth(effectiveAuth)
+	user, pass, ok := req.BasicAuth()
+	if !ok || user != wantUser || pass != wantPass {
+		resp.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
+		http.Error(resp, "Unauthorized", http.StatusUnauthorized)
+		return false
 	}
+	return true
+}
 
-	resp.Write(data)
+// parseAuth splits "user:pass" into username and password.
+func parseAuth(auth string) (string, string) {
+	if i := strings.IndexByte(auth, ':'); i >= 0 {
+		return auth[:i], auth[i+1:]
+	}
+	return auth, ""
 }
 
 func (w *Website) AddContent(content *clientpb.WebContent) error {
-	contentPath := filepath.Join(configs.WebsitePath, content.WebsiteId, content.Id)
+	if content == nil {
+		return errors.New("content is nil")
+	}
+	if content.WebsiteId == "" || content.Id == "" {
+		return errors.New("website_id and id are required")
+	}
+
+	websiteID, err := fileutils.SanitizeBasename(content.WebsiteId)
+	if err != nil {
+		return err
+	}
+	websiteRoot, err := fileutils.SafeJoin(configs.WebsitePath, websiteID)
+	if err != nil {
+		return err
+	}
+	contentPath, err := fileutils.SafeJoin(websiteRoot, content.Id)
+	if err != nil {
+		return err
+	}
 	if !fileutils.Exist(contentPath) {
-		err := os.WriteFile(contentPath, content.Content, 0644)
-		if err != nil {
+		if err := os.MkdirAll(filepath.Dir(contentPath), 0o700); err != nil {
+			return err
+		}
+		if err := os.WriteFile(contentPath, content.Content, 0o600); err != nil {
 			return err
 		}
 	}
+	w.mu.Lock()
 	w.Content[strings.Trim(content.Path, "/")] = &clientpb.WebContent{
 		Path:        content.Path,
 		File:        contentPath,
 		ContentType: content.ContentType,
+		Auth:        content.Auth,
 	}
+	w.mu.Unlock()
 	return nil
 }

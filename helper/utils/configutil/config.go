@@ -64,6 +64,99 @@ func InitDefaultConfig(cfg interface{}, indentLevel int) []byte {
 	return yamlStr.Bytes()
 }
 
+func SetStructByTag(prefix string, value interface{}, tagName string) error {
+	if tagName == "" {
+		tagName = "config"
+	}
+
+	v := reflect.ValueOf(value)
+	if !v.IsValid() {
+		return fmt.Errorf("invalid value")
+	}
+
+	for v.Kind() == reflect.Ptr || v.Kind() == reflect.Interface {
+		if v.IsNil() {
+			return config.Set(prefix, nil)
+		}
+		v = v.Elem()
+	}
+
+	if v.Kind() != reflect.Struct {
+		return fmt.Errorf("value must be struct or pointer to struct")
+	}
+
+	return setTaggedFields(prefix, v, tagName)
+}
+
+func setTaggedFields(prefix string, structVal reflect.Value, tagName string) error {
+	structType := structVal.Type()
+	for i := 0; i < structVal.NumField(); i++ {
+		fieldType := structType.Field(i)
+		if fieldType.PkgPath != "" {
+			continue
+		}
+
+		tagValue := strings.TrimSpace(fieldType.Tag.Get(tagName))
+		if tagValue == "" || tagValue == "-" {
+			continue
+		}
+		tagNamePart := strings.Split(tagValue, ",")[0]
+		if tagNamePart == "" || tagNamePart == "-" {
+			continue
+		}
+
+		fieldPath := tagNamePart
+		if prefix != "" {
+			fieldPath = prefix + "." + tagNamePart
+		}
+
+		if err := setTaggedValue(fieldPath, structVal.Field(i), tagName); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func setTaggedValue(path string, value reflect.Value, tagName string) error {
+	if !value.IsValid() {
+		return config.Set(path, nil)
+	}
+
+	switch value.Kind() {
+	case reflect.Ptr, reflect.Interface:
+		if value.IsNil() {
+			return config.Set(path, nil)
+		}
+		return setTaggedValue(path, value.Elem(), tagName)
+	case reflect.Struct:
+		if hasTaggedFields(value.Type(), tagName) {
+			return setTaggedFields(path, value, tagName)
+		}
+		return config.Set(path, value.Interface())
+	default:
+		return config.Set(path, value.Interface())
+	}
+}
+
+func hasTaggedFields(structType reflect.Type, tagName string) bool {
+	for i := 0; i < structType.NumField(); i++ {
+		fieldType := structType.Field(i)
+		if fieldType.PkgPath != "" {
+			continue
+		}
+		tagValue := strings.TrimSpace(fieldType.Tag.Get(tagName))
+		if tagValue == "" || tagValue == "-" {
+			continue
+		}
+		tagNamePart := strings.Split(tagValue, ",")[0]
+		if tagNamePart != "" && tagNamePart != "-" {
+			return true
+		}
+	}
+	return false
+}
+
 // zeroValue 根据字段类型和default标签的值，准备最终的值字符串
 func zeroValue(kind reflect.Kind, defaultVal string) string {
 	if defaultVal != "" {

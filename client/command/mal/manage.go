@@ -3,7 +3,8 @@ package mal
 import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/command/common"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/mals/m"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
@@ -44,10 +45,10 @@ func parseMalHTTPConfig(cmd *cobra.Command) m.MalHTTPConfig {
 	}
 }
 
-func MalCmd(cmd *cobra.Command, con *repl.Console) error {
+func MalCmd(cmd *cobra.Command, con *core.Console) error {
 	malHttpConfig := parseMalHTTPConfig(cmd)
 	//malIndex, _ := DefaultMalIndexParser(malHttpConfig)
-	malsJson, err := m.ParserMalYaml(m.DefaultMalRepoURL, filepath.Join(assets.GetConfigDir(), m.MalIndexFileName), malHttpConfig)
+	malsJson, err := m.ParserMalYaml(m.DefaultMalRepoURL, assets.GetConfigDir(), malHttpConfig)
 	if err != nil {
 		return err
 	}
@@ -62,16 +63,16 @@ func MalCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func printMals(maljson m.MalsYaml, malHttpConfig m.MalHTTPConfig, con *repl.Console) error {
+func printMals(maljson m.MalsYaml, malHttpConfig m.MalHTTPConfig, con *core.Console) error {
 	var rowEntries []table.Row
 	var row table.Row
 
 	tableModel := tui.NewTable([]table.Column{
 		table.NewColumn("Name", "Name", 25),
 		table.NewColumn("Version", "Version", 10),
-		table.NewColumn("Repo_url", "Repo_url", 50),
-		table.NewColumn("Help", "Help", 50),
-	}, false)
+		table.NewFlexColumn("Repo_url", "Repo URL", 1),
+		table.NewFlexColumn("Help", "Help", 1),
+	}, common.ShouldUseStaticOutput(con))
 	for _, mal := range maljson.Mals {
 		row = table.NewRow(
 			table.RowData{
@@ -82,43 +83,43 @@ func printMals(maljson m.MalsYaml, malHttpConfig m.MalHTTPConfig, con *repl.Cons
 			})
 		rowEntries = append(rowEntries, row)
 	}
-	newTable := tui.NewModel(tableModel, nil, false, false)
 
 	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
 	tableModel.SetHandle(func() {
-		InstallMal(tableModel, newTable.Buffer, malHttpConfig, con)
+		selectRow := tableModel.GetHighlightedRow()
+		if selectRow.Data == nil {
+			logs.Log.Infof("No row selected")
+			return
+		}
+		_, _ = InstallMal(selectRow.Data["Repo_url"].(string),
+			selectRow.Data["Name"].(string),
+			selectRow.Data["Version"].(string), tableModel.Buffer, malHttpConfig, con)
 	})
-	err := newTable.Run()
+	rendered, err := common.RunTable(con, tableModel)
 	if err != nil {
 		return err
+	}
+	if rendered {
+		return nil
 	}
 	tui.Reset()
 	return nil
 }
 
-func InstallMal(tableModel *tui.TableModel, writer io.Writer, malHttpConfig m.MalHTTPConfig, con *repl.Console) func() {
-	selectRow := tableModel.GetHighlightedRow()
-	if selectRow.Data == nil {
-		return func() {
-			con.Log.FErrorf(writer, "No row selected\n")
-			return
-		}
-	}
-	logs.Log.Infof("Installing mal: %s", selectRow.Data["Name"].(string))
+func InstallMal(repoUrl, name, version string, writer io.Writer, malHttpConfig m.MalHTTPConfig, con *core.Console) (bool, error) {
+	logs.Log.Infof("Installing mal: %s", name)
 	err := m.GithubMalPackageParser(
-		selectRow.Data["Repo_url"].(string),
-		selectRow.Data["Name"].(string),
-		selectRow.Data["Version"].(string),
+		repoUrl,
+		name,
+		version,
 		assets.GetMalsDir(),
 		malHttpConfig)
 	if err != nil {
-		return func() {
-			con.Log.FErrorf(writer, "Error installing mal: %s\n", err)
-		}
+		con.Log.FErrorf(writer, "Error installing mal: %s\n", err)
+		return false, err
 	}
-	tarGzPath := filepath.Join(assets.GetMalsDir(), selectRow.Data["Name"].(string)+".tar.gz")
-	InstallFromDir(tarGzPath, true, con)
-	return func() {
-	}
+	tarGzPath := filepath.Join(assets.GetMalsDir(), name+".tar.gz")
+	updated, err := InstallFromDir(tarGzPath, true, con, nil)
+	return updated, err
 }

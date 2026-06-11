@@ -2,8 +2,8 @@ package root
 
 import (
 	"errors"
-	"github.com/chainreactors/malice-network/helper/proto/client/rootpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
+	"github.com/chainreactors/IoM-go/proto/client/rootpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"google.golang.org/protobuf/proto"
 )
 

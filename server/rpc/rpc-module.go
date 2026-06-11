@@ -2,68 +2,124 @@ package rpc
 
 import (
 	"context"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/types"
+
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/types"
+	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/server/internal/core"
 )
 
-func (rpc *Server) ListModule(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
+func applyModulesResponse(sess *core.Session, spite *implantpb.Spite, appendOnly bool) {
+	if sess == nil || spite == nil {
+		return
 	}
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
+	modules := spite.GetModules()
+	if modules == nil {
+		return
 	}
-
-	go greq.HandlerResponse(ch, types.MsgListModule, func(spite *implantpb.Spite) {
-		if modules := spite.GetModules(); modules != nil {
-			sess, _ := getSession(ctx)
-			sess.Modules = modules.Modules
+	if appendOnly {
+		sess.Modules = append(sess.Modules, modules.Modules...)
+		if bundleMap := modules.GetBundleMap(); len(bundleMap) > 0 {
+			if sess.BundleMap == nil {
+				sess.BundleMap = make(map[string]string)
+			}
+			for k, v := range bundleMap {
+				sess.BundleMap[k] = v
+			}
 		}
+	} else {
+		sess.Modules = modules.Modules
+		sess.BundleMap = modules.GetBundleMap()
+	}
+	sess.SaveAndNotify("")
+}
+
+func (rpc *Server) ListModule(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+	if req == nil {
+		return nil, types.ErrMissingRequestField
+	}
+	return rpc.AssertAndHandleWithSession(ctx, req, consts.ModuleListModule, types.MsgListModule, func(greq *GenericRequest, spite *implantpb.Spite) {
+		applyModulesResponse(greq.Session, spite, false)
 	})
-	return greq.Task.ToProtobuf(), nil
 }
 
 func (rpc *Server) LoadModule(ctx context.Context, req *implantpb.LoadModule) (*clientpb.Task, error) {
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
+	if req == nil {
+		return nil, types.ErrMissingRequestField
 	}
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-
-	go greq.HandlerResponse(ch, types.MsgEmpty)
-	return greq.Task.ToProtobuf(), nil
+	return rpc.GenericInternalWithSession(ctx, req, types.MsgListModule, func(greq *GenericRequest, spite *implantpb.Spite) {
+		applyModulesResponse(greq.Session, spite, true)
+	})
 }
 
 func (rpc *Server) RefreshModule(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
+	if req == nil {
+		return nil, types.ErrMissingRequestField
 	}
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
+	return rpc.AssertAndHandleWithSession(ctx, req, consts.ModuleRefreshModule, types.MsgListModule, func(greq *GenericRequest, spite *implantpb.Spite) {
+		applyModulesResponse(greq.Session, spite, false)
+	})
+}
 
-	go greq.HandlerResponse(ch, types.MsgEmpty)
-	return greq.Task.ToProtobuf(), nil
+func (rpc *Server) UnloadModule(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+	if req == nil {
+		return nil, types.ErrMissingRequestField
+	}
+	return rpc.AssertAndHandleWithSession(ctx, req, consts.ModuleUnloadModule, types.MsgListModule, func(greq *GenericRequest, spite *implantpb.Spite) {
+		applyModulesResponse(greq.Session, spite, false)
+	})
 }
 
 func (rpc *Server) Clear(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
+	return rpc.AssertAndHandle(ctx, req, consts.ModuleClear, types.MsgEmpty)
+}
+
+// ExecuteModule passthrough for fully dynamic module execution.
+// For streaming modules (e.g. tapping/llm.observe), it uses a continuous
+// loop that keeps the task alive instead of finishing after one response.
+func (rpc *Server) ExecuteModule(ctx context.Context, req *implantpb.ExecuteModuleRequest) (*clientpb.Task, error) {
+	if req == nil || req.Spite == nil {
+		return nil, types.ErrMissingRequestField
 	}
 
-	go greq.HandlerResponse(ch, types.MsgEmpty)
-	return greq.Task.ToProtobuf(), nil
+	expect := types.MsgName(req.Expect)
+
+	// Streaming module: keep reading from the channel until context is cancelled.
+	if req.Spite.Name == "tapping" || req.Spite.Name == consts.ModuleChat {
+		greq, err := newGenericRequest(ctx, req.Spite)
+		if err != nil {
+			return nil, err
+		}
+		greq.Count = -1 // streaming mode, no auto-finish
+		out, err := rpc.GenericHandler(ctx, greq)
+		if err != nil {
+			return nil, err
+		}
+
+		runTaskHandler(greq.Task, func() error {
+			for {
+				resp, ok := recvSpite(greq.Task.Ctx, out)
+				if !ok {
+					return ErrTaskContextCancelled
+				}
+				if resp == nil {
+					return nil
+				}
+				err := types.AssertSpite(resp, expect)
+				if err != nil {
+					logs.Log.Warnf("ExecuteModule: unexpected message type, assert failed: %v", err)
+					continue
+				}
+				if err := greq.HandlerSpite(resp); err != nil {
+					return err
+				}
+			}
+		}, greq.Task.Close)
+
+		return greq.Task.ToProtobuf(), nil
+	}
+
+	return rpc.GenericInternal(ctx, req.Spite, expect)
 }

@@ -2,40 +2,43 @@ package taskschd
 
 import (
 	"fmt"
+
+	"github.com/chainreactors/IoM-go/client"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/spf13/cobra"
 )
 
 // TaskSchdQueryCmd queries the detailed configuration of a scheduled task by name.
-func TaskSchdQueryCmd(cmd *cobra.Command, con *repl.Console) error {
+func TaskSchdQueryCmd(cmd *cobra.Command, con *core.Console) error {
 	name := cmd.Flags().Arg(0)
 
 	session := con.GetInteractive()
-	task, err := TaskSchdQuery(con.Rpc, session, name)
+	taskFolder, _ := cmd.Flags().GetString("task_folder")
+	task, err := TaskSchdQuery(con.Rpc, session, name, taskFolder)
 	if err != nil {
 		return err
 	}
 
-	session.Console(task, fmt.Sprintf("query scheduled task: %s", name))
+	session.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 
-func TaskSchdQuery(rpc clientrpc.MaliceRPCClient, session *core.Session, name string) (*clientpb.Task, error) {
+func TaskSchdQuery(rpc clientrpc.MaliceRPCClient, session *client.Session, name, taskFolder string) (*clientpb.Task, error) {
 	request := &implantpb.TaskScheduleRequest{
 		Type: consts.ModuleTaskSchdQuery,
 		Taskschd: &implantpb.TaskSchedule{
 			Name: name,
+			Path: taskFolder,
 		},
 	}
 	return rpc.TaskSchdQuery(session.Context(), request)
 }
 
-func RegisterTaskSchdQueryFunc(con *repl.Console) {
+func RegisterTaskSchdQueryFunc(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleTaskSchdQuery,
 		TaskSchdQuery,
@@ -55,6 +58,7 @@ func RegisterTaskSchdQueryFunc(con *repl.Console) {
 		[]string{
 			"session: special session",
 			"name: name of the scheduled task",
+			"task_folder: task folder",
 		},
 		[]string{"task"})
 }

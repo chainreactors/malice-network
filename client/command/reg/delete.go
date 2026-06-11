@@ -1,20 +1,19 @@
 package reg
 
 import (
-	"fmt"
+	"github.com/chainreactors/IoM-go/client"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
 )
 
 // RegDeleteCmd deletes a registry key.
-func RegDeleteCmd(cmd *cobra.Command, con *repl.Console) error {
+func RegDeleteCmd(cmd *cobra.Command, con *core.Console) error {
 	path := cmd.Flags().Arg(0)
 	hive, path := FormatRegPath(path)
 	key := cmd.Flags().Arg(1)
@@ -24,11 +23,11 @@ func RegDeleteCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	session.Console(task, fmt.Sprintf("delete registry key: %s\\%s\\%s", hive, path, key))
+	session.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 
-func RegDelete(rpc clientrpc.MaliceRPCClient, session *core.Session, hive, path, key string) (*clientpb.Task, error) {
+func RegDelete(rpc clientrpc.MaliceRPCClient, session *client.Session, hive, path, key string) (*clientpb.Task, error) {
 	request := &implantpb.RegistryRequest{
 		Type: consts.ModuleRegDelete,
 		Registry: &implantpb.Registry{
@@ -40,7 +39,7 @@ func RegDelete(rpc clientrpc.MaliceRPCClient, session *core.Session, hive, path,
 	return rpc.RegDelete(session.Context(), request)
 }
 
-func RegisterRegDeleteFunc(con *repl.Console) {
+func RegisterRegDeleteFunc(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleRegDelete,
 		RegDelete,

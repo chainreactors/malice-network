@@ -1,15 +1,15 @@
 package listener
 
 import (
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
 	"strconv"
 )
 
-func ListenerCmd(cmd *cobra.Command, con *repl.Console) error {
+func ListenerCmd(cmd *cobra.Command, con *core.Console) error {
 	listeners, err := con.Rpc.GetListeners(con.Context(), &clientpb.Empty{})
 	if err != nil {
 		return err
@@ -18,12 +18,12 @@ func ListenerCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func printListeners(con *repl.Console, listeners *clientpb.Listeners) {
+func printListeners(con *core.Console, listeners *clientpb.Listeners) {
 	var rowEntries []table.Row
 	var row table.Row
 	tableModel := tui.NewTable([]table.Column{
 		table.NewColumn("ID", "ID", 10),
-		table.NewColumn("Addr", "Addr", 15),
+		table.NewFlexColumn("Addr", "Addr", 1),
 		table.NewColumn("Active", "Active", 7),
 	}, true)
 	for _, listener := range listeners.GetListeners() {

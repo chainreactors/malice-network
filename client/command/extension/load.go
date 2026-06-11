@@ -7,19 +7,20 @@ import (
 	"errors"
 	"fmt"
 	"github.com/carapace-sh/carapace"
+	"github.com/chainreactors/IoM-go/client"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/client/assets"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/chainreactors/mals"
-	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"golang.org/x/text/encoding/unicode"
@@ -112,7 +113,11 @@ func (e *ExtCommand) getFileForTarget(targetOS string, targetArch string) (strin
 	filePath := ""
 	for _, extFile := range e.Files {
 		if targetOS == extFile.OS && targetArch == extFile.Arch {
-			filePath = filepath.Join(assets.GetExtensionsDir(), e.CommandName, extFile.Path)
+			rootPath := e.Manifest.RootPath
+			if rootPath == "" && e.Manifest != nil {
+				rootPath = filepath.Join(assets.GetExtensionsDir(), e.Manifest.Name)
+			}
+			filePath = filepath.Join(rootPath, extFile.Path)
 			break
 		}
 	}
@@ -128,7 +133,7 @@ func (e *ExtCommand) getFileForTarget(targetOS string, targetArch string) (strin
 }
 
 // ExtensionLoadCmd - Load extension command
-func ExtensionLoadCmd(cmd *cobra.Command, con *repl.Console) {
+func ExtensionLoadCmd(cmd *cobra.Command, con *core.Console) {
 	dirPath := cmd.Flags().Arg(0)
 	manifest, err := LoadExtensionManifest(filepath.Join(dirPath, ManifestFileName))
 	if err != nil {
@@ -138,14 +143,13 @@ func ExtensionLoadCmd(cmd *cobra.Command, con *repl.Console) {
 	for _, extCmd := range manifest.ExtCommand {
 		if repl.CmdExist(con.ImplantMenu(), extCmd.CommandName) {
 			con.Log.Errorf("%s command already exists\n", extCmd.CommandName)
-			confirmModel := tui.NewConfirm(fmt.Sprintf("%s command already exists. Overwrite?", extCmd.CommandName))
-			newConfirm := tui.NewModel(confirmModel, nil, false, true)
-			err = newConfirm.Run()
+			var confirmed bool
+			confirmed, err = common.Confirm(cmd, con, fmt.Sprintf("%s command already exists. Overwrite?", extCmd.CommandName))
 			if err != nil {
 				con.Log.Errorf("Error running confirm model: %s\n", err)
 				return
 			}
-			if !confirmModel.Confirmed {
+			if !confirmed {
 				return
 			}
 		}
@@ -179,7 +183,7 @@ func ParseExtensionManifest(data []byte) (*ExtensionManifest, error) {
 	err := json.Unmarshal(data, &extManifest)
 	if err != nil || len(extManifest.ExtCommand) == 0 {
 		if err != nil {
-			core.Log.Errorf("extension load error: %s\n", err)
+			client.Log.Errorf("extension load error: %s\n", err)
 		}
 		oldmanifest := &ExtensionManifest_{}
 		err = json.Unmarshal(data, &oldmanifest)
@@ -196,7 +200,7 @@ func ParseExtensionManifest(data []byte) (*ExtensionManifest, error) {
 }
 
 // ExtensionRegisterCommand
-func ExtensionRegisterCommand(extCmd *ExtCommand, cmd *cobra.Command, con *repl.Console) {
+func ExtensionRegisterCommand(extCmd *ExtCommand, cmd *cobra.Command, con *core.Console) {
 	if errInvalidArgs := checkExtensionArgs(extCmd); errInvalidArgs != nil {
 		con.Log.Error(errInvalidArgs.Error())
 		return
@@ -270,7 +274,7 @@ func ExtensionRegisterCommand(extCmd *ExtCommand, cmd *cobra.Command, con *repl.
 	loadedExtensions[extCmd.CommandName] = &loadedExt{
 		Manifest: extCmd,
 		Command:  cmd,
-		Func: repl.WrapImplantFunc(con, func(rpc clientrpc.MaliceRPCClient, sess *core.Session, args []string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
+		Func: core.WrapImplantFunc(con, func(rpc clientrpc.MaliceRPCClient, sess *client.Session, args []string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 			return ExecuteExtension(rpc, sess, extensionCmd.Name(), args)
 		}, output.ParseBinaryResponse),
 	}
@@ -279,13 +283,12 @@ func ExtensionRegisterCommand(extCmd *ExtCommand, cmd *cobra.Command, con *repl.
 		con.Log.Errorf("Error getting profile: %s\n", err)
 		return
 	}
-	profile.AddExtension(extCmd.CommandName)
-	cmd.AddCommand(extensionCmd)
-	err = assets.SaveProfile(profile)
-	if err != nil {
-		con.Log.Errorf("Error saving profile: %s\n", err)
-		return
+	installName := extCmd.CommandName
+	if extCmd.Manifest != nil && extCmd.Manifest.Name != "" {
+		installName = extCmd.Manifest.Name
 	}
+	profile.AddExtension(installName)
+	cmd.AddCommand(extensionCmd)
 }
 
 //func loadExtension(goos string, goarch string, extcmd *ExtCommand, con *console.Console) error {
@@ -348,7 +351,7 @@ func ExtensionRegisterCommand(extCmd *ExtCommand, cmd *cobra.Command, con *repl.
 //	return fmt.Errorf("missing dependency %s", depName)
 //}
 
-func runExtensionCmd(cmd *cobra.Command, con *repl.Console) {
+func runExtensionCmd(cmd *cobra.Command, con *core.Console) {
 	session := con.GetInteractive()
 	args := cmd.Flags().Args()
 
@@ -357,10 +360,10 @@ func runExtensionCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Error executing extension: %s\n", err.Error())
 		return
 	}
-	session.Console(task, "execute extension: "+cmd.Name())
+	session.Console(task, string(*con.App.Shell().Line()))
 }
 
-func ExecuteExtension(rpc clientrpc.MaliceRPCClient, sess *core.Session, extName string, args []string) (*clientpb.Task, error) {
+func ExecuteExtension(rpc clientrpc.MaliceRPCClient, sess *client.Session, extName string, args []string) (*clientpb.Task, error) {
 	ext, ok := loadedExtensions[extName]
 	if !ok {
 		return nil, fmt.Errorf("no extension command found for `%s` command", extName)
@@ -400,6 +403,7 @@ func ExecuteExtension(rpc clientrpc.MaliceRPCClient, sess *core.Session, extName
 			Args:       extensionArgs,
 			Type:       ext.Manifest.DependsOn,
 			Output:     true,
+			Delay:      2000,
 		})
 	} else {
 		// Regular DLL
@@ -416,6 +420,7 @@ func ExecuteExtension(rpc clientrpc.MaliceRPCClient, sess *core.Session, extName
 			Type:       consts.ModuleExecuteDll,
 			Output:     true,
 			Sacrifice:  nil,
+			Delay:      2000,
 		})
 	}
 
@@ -534,7 +539,7 @@ func makeExtensionArgCompleter(extCmd *ExtCommand, _ *cobra.Command, comps *cara
 			usage += " (optional)"
 		}
 
-		actions = append(actions, action.Usage(usage))
+		actions = append(actions, action.Usage("%s", usage))
 	}
 
 	comps.PositionalCompletion(actions...)

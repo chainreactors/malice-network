@@ -1,23 +1,42 @@
 package parser
 
 import (
-	"bytes"
+	"errors"
 	"fmt"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/types"
 	"io"
+	"net"
 
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/errs"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/utils/peek"
 	"github.com/chainreactors/malice-network/server/internal/parser/malefic"
 	"github.com/chainreactors/malice-network/server/internal/parser/pulse"
 )
 
+// DetectProtocol 检测协议类型
+func DetectProtocol(data []byte) (*MessageParser, error) {
+	if len(data) == 0 {
+		return nil, errors.New("empty protocol data")
+	}
+	// Malefic 协议以 0xd1 开头
+	if data[0] == malefic.DefaultStartDelimiter {
+		return NewParser(consts.ImplantMalefic)
+	}
+
+	// Pulse 协议以 0x41 开头
+	if data[0] == pulse.DefaultStartDelimiter {
+		return NewParser(consts.ImplantPulse)
+	}
+
+	return nil, errors.New("unknown protocol")
+}
+
 // PacketParser packet parser, like malefic, beacon ...
 type PacketParser interface {
-	PeekHeader(conn *peek.Conn) (uint32, uint32, error)
-	ReadHeader(conn *peek.Conn) (uint32, uint32, error)
+	//PeekHeader(conn io.ReadWriteCloser) (uint32, uint32, error)
+	ReadHeader(conn io.ReadWriteCloser) (uint32, uint32, error)
 	Parse([]byte) (*implantpb.Spites, error)
 	Marshal(*implantpb.Spites, uint32) ([]byte, error)
 }
@@ -29,7 +48,7 @@ func NewParser(name string) (*MessageParser, error) {
 	case consts.ImplantPulse:
 		return &MessageParser{Implant: name, PacketParser: pulse.NewPulseParser()}, nil
 	default:
-		return nil, errs.ErrInvalidImplant
+		return nil, types.ErrInvalidImplant
 	}
 }
 
@@ -38,7 +57,29 @@ type MessageParser struct {
 	PacketParser
 }
 
-func (parser *MessageParser) ReadMessage(conn *peek.Conn, length uint32) (*implantpb.Spites, error) {
+// WithSecure 为 MessageParser 添加安全支持
+func (mp *MessageParser) WithSecure(keyPair *clientpb.KeyPair) {
+	switch mp.Implant {
+	case consts.ImplantMalefic:
+		if maleficParser, ok := mp.PacketParser.(*malefic.MaleficParser); ok {
+			maleficParser.WithSecure(keyPair)
+		}
+	default:
+
+	}
+}
+
+// WithMaxPacketLength sets a per-pipeline packet length limit on the parser.
+func (mp *MessageParser) WithMaxPacketLength(n uint32) {
+	if n == 0 {
+		return
+	}
+	if maleficParser, ok := mp.PacketParser.(*malefic.MaleficParser); ok {
+		maleficParser.MaxPacketLength = n
+	}
+}
+
+func (parser *MessageParser) ReadMessage(conn io.ReadWriteCloser, length uint32) (*implantpb.Spites, error) {
 	buf := make([]byte, length)
 	_, err := io.ReadFull(conn, buf)
 	if err != nil {
@@ -47,7 +88,7 @@ func (parser *MessageParser) ReadMessage(conn *peek.Conn, length uint32) (*impla
 	return parser.Parse(buf)
 }
 
-func (parser *MessageParser) ReadPacket(conn *peek.Conn) (uint32, *implantpb.Spites, error) {
+func (parser *MessageParser) ReadPacket(conn io.ReadWriteCloser) (uint32, *implantpb.Spites, error) {
 	sessionId, length, err := parser.ReadHeader(conn)
 	if err != nil {
 		return 0, nil, err
@@ -60,10 +101,10 @@ func (parser *MessageParser) ReadPacket(conn *peek.Conn) (uint32, *implantpb.Spi
 	}
 
 	msg, err := parser.Parse(buf)
-	return sessionId, msg, nil
+	return sessionId, msg, err
 }
 
-func (parser *MessageParser) WritePacket(conn *peek.Conn, msg *implantpb.Spites, sid uint32) error {
+func (parser *MessageParser) WritePacket(conn net.Conn, msg *implantpb.Spites, sid uint32) error {
 	bs, err := parser.Marshal(msg, sid)
 	if err != nil {
 		return err
@@ -83,11 +124,4 @@ func (parser *MessageParser) WritePacket(conn *peek.Conn, msg *implantpb.Spites,
 	}
 
 	return nil
-}
-
-func (p *MessageParser) PeekHeaderFromBytes(data []byte) (uint32, uint32, error) {
-	reader := bytes.NewReader(data)
-	rwc := peek.WrapReadWriteCloser(reader, io.Discard, nil)
-	conn := peek.WrapPeekConn(rwc)
-	return p.PeekHeader(conn)
 }

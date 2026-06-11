@@ -1,14 +1,17 @@
 package privilege
 
 import (
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/carapace-sh/carapace"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/malice-network/client/command/common"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
-func Commands(con *repl.Console) []*cobra.Command {
+func Commands(con *core.Console) []*cobra.Command {
 	runasCmd := &cobra.Command{
-		Use:   "runas --username [username] --domain [domain] --password [password] --program [program] --args [args] --show [show] --netonly",
+		Use:   "runas --username [username] --domain [domain] --password [password] --path [path] --args [args] --use-profile --use-env --netonly",
 		Short: "Run a program as another user",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return RunasCmd(cmd, con)
@@ -19,16 +22,23 @@ func Commands(con *repl.Console) []*cobra.Command {
 		},
 		Example: `Run a program as a different user:
   ~~~
-  sys runas --username admin --domain EXAMPLE --password admin123 --program /path/to/program --args "arg1 arg2"
+  runas --username admin --domain EXAMPLE --password admin123 --path /path/to/program --args "arg1 arg2" --use-profile --use-env
   ~~~`,
 	}
-	runasCmd.Flags().String("username", "", "Username to run as")
-	runasCmd.Flags().String("domain", "", "Domain of the user")
-	runasCmd.Flags().String("password", "", "User password")
-	runasCmd.Flags().String("program", "", "Path to the program to execute")
-	runasCmd.Flags().String("args", "", "Arguments for the program")
-	runasCmd.Flags().Int32("show", 1, "Window display mode (1: default)")
-	runasCmd.Flags().Bool("netonly", false, "Use network credentials only")
+
+	common.BindFlag(runasCmd, func(f *pflag.FlagSet) {
+		f.String("username", "", "Username to run as")
+		f.String("domain", "", "Domain of the user")
+		f.String("password", "", "User password")
+		f.String("path", "", "Path to the program to execute")
+		f.String("args", "", "Arguments for the program")
+		f.Bool("use-profile", false, "Load user profile")
+		f.Bool("use-env", false, "Use user environment")
+		f.Bool("netonly", false, "Use network credentials only")
+	})
+	common.BindFlagCompletions(runasCmd, func(comp carapace.ActionMap) {
+		comp["path"] = carapace.ActionFiles().Usage("path to the program to execute")
+	})
 
 	privsCmd := &cobra.Command{
 		Use:   "privs",
@@ -42,7 +52,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		},
 		Example: `List available privileges:
   ~~~
-  sys privs
+  privs
   ~~~`,
 	}
 
@@ -62,11 +72,28 @@ func Commands(con *repl.Console) []*cobra.Command {
   ~~~`,
 	}
 
-	return []*cobra.Command{runasCmd, privsCmd, getSystemCmd}
+	rev2selfCmd := &cobra.Command{
+		Use:   "rev2self",
+		Short: "Revert to the original token",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return Rev2selfCmd(cmd, con)
+		},
+		Annotations: map[string]string{
+			"depend": consts.ModuleRev2Self,
+			"ttp":    "T1134.002",
+		},
+		Example: `Revert to the original token:
+  ~~~
+  rev2self
+  ~~~`,
+	}
+
+	return []*cobra.Command{runasCmd, privsCmd, getSystemCmd, rev2selfCmd}
 }
 
-func Register(con *repl.Console) {
+func Register(con *core.Console) {
 	RegisterPrivsFunc(con)
 	RegisterGetSystemFunc(con)
 	RegisterRunasFunc(con)
+	RegisterRev2selfFunc(con)
 }

@@ -1,32 +1,41 @@
 package command
 
 import (
-	"github.com/chainreactors/malice-network/client/command/context"
-	"github.com/chainreactors/malice-network/client/command/website"
+	"github.com/carapace-sh/carapace"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/malice-network/client/command/ai"
+	"github.com/chainreactors/malice-network/client/command/audit"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/reeflective/console"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
-	"github.com/chainreactors/malice-network/client/command/action"
 	"github.com/chainreactors/malice-network/client/command/alias"
 	"github.com/chainreactors/malice-network/client/command/armory"
 	"github.com/chainreactors/malice-network/client/command/build"
+	"github.com/chainreactors/malice-network/client/command/cert"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/config"
+	"github.com/chainreactors/malice-network/client/command/context"
 	"github.com/chainreactors/malice-network/client/command/extension"
 	"github.com/chainreactors/malice-network/client/command/generic"
 	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/command/listener"
 	"github.com/chainreactors/malice-network/client/command/mal"
 	"github.com/chainreactors/malice-network/client/command/mutant"
+	"github.com/chainreactors/malice-network/client/command/pipeline"
 	"github.com/chainreactors/malice-network/client/command/sessions"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/client/command/website"
 )
+
+func shouldStartConsole(cmd *cobra.Command) bool {
+	return common.ShouldStartConsole(cmd)
+}
 
 func BindCommonCommands(bind BindFunc) {
 	bind(consts.GenericGroup,
-		generic.Commands)
+		generic.Commands,
+		ai.Commands)
 
 	bind(consts.ManageGroup,
 		sessions.Commands,
@@ -36,27 +45,33 @@ func BindCommonCommands(bind BindFunc) {
 		mal.Commands,
 		config.Commands,
 		context.Commands,
+		cert.Commands,
+		audit.Commands,
 	)
 
 	bind(consts.ListenerGroup,
 		listener.Commands,
 		website.Commands,
+		pipeline.Commands,
 	)
 
 	bind(consts.GeneratorGroup,
 		build.Commands,
-		action.Commands,
 		mutant.Commands,
 	)
 }
 
-func ConsoleRunnerCmd(con *repl.Console, cmd *cobra.Command) (pre, post func(cmd *cobra.Command, args []string) error) {
+func ConsoleRunnerCmd(con *core.Console, cmd *cobra.Command) (pre, post func(cmd *cobra.Command, args []string) error) {
 	common.Bind(cmd.Use, true, cmd, func(f *pflag.FlagSet) {
 		f.String("auth", "", "auth token")
 		f.Bool("console", false, "run console")
+		f.Bool("yes", false, "skip confirmation prompts")
 	})
 
 	pre = func(cmd *cobra.Command, args []string) error {
+		if err := common.ValidateExecutionModeFlags(cmd); err != nil {
+			return err
+		}
 		if cmd.Use == consts.CommandLogin || cmd.Use == consts.ClientMenu {
 			return nil
 		}
@@ -65,7 +80,13 @@ func ConsoleRunnerCmd(con *repl.Console, cmd *cobra.Command) (pre, post func(cmd
 
 	// Close the RPC connection once exiting
 	post = func(cmd *cobra.Command, _ []string) error {
-		if run, _ := cmd.Flags().GetBool("console"); run || cmd.Use == consts.CommandLogin {
+		if cmd == cmd.Root() {
+			return nil
+		}
+
+		if common.ShouldStartRuntime(cmd) {
+			restoreDaemon := con.WithDaemonExecution(common.ShouldStartDaemon(cmd))
+			defer restoreDaemon()
 			return con.Start(BindClientsCommands, BindImplantCommands)
 		}
 
@@ -75,7 +96,7 @@ func ConsoleRunnerCmd(con *repl.Console, cmd *cobra.Command) (pre, post func(cmd
 	return pre, post
 }
 
-func BindClientsCommands(con *repl.Console) console.Commands {
+func BindClientsCommands(con *core.Console) console.Commands {
 	clientCommands := func() *cobra.Command {
 		client := &cobra.Command{
 			Use:   "client",
@@ -84,8 +105,11 @@ func BindClientsCommands(con *repl.Console) console.Commands {
 				HiddenDefaultCmd: true,
 			},
 		}
+		common.Bind(client.Use, true, client, func(f *pflag.FlagSet) {
+			f.Bool("yes", false, "skip confirmation prompts")
+		})
 
-		bind := MakeBind(client, con)
+		bind := MakeBind(client, con, "golang")
 
 		BindCommonCommands(bind)
 
@@ -95,6 +119,9 @@ func BindClientsCommands(con *repl.Console) console.Commands {
 		client.SetHelpFunc(help.HelpFunc)
 		client.SetHelpCommandGroupID(consts.GenericGroup)
 
+		// Register carapace completion for root command (make PersistentFlags visible in subcommands)
+		carapace.Gen(client)
+
 		RegisterClientFunc(con)
 		RegisterImplantFunc(con)
 		return client
@@ -102,10 +129,9 @@ func BindClientsCommands(con *repl.Console) console.Commands {
 	return clientCommands
 }
 
-func RegisterClientFunc(con *repl.Console) {
+func RegisterClientFunc(con *core.Console) {
 	generic.Register(con)
 	build.Register(con)
-	action.Register(con)
 	mutant.Register(con)
 	context.Register(con)
 	common.Register(con)

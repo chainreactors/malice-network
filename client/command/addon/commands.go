@@ -3,10 +3,10 @@ package addon
 import (
 	"fmt"
 	"github.com/carapace-sh/carapace"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
@@ -15,7 +15,7 @@ import (
 	"strings"
 )
 
-func Commands(con *repl.Console) []*cobra.Command {
+func Commands(con *core.Console) []*cobra.Command {
 	listaddonCmd := &cobra.Command{
 		Use:   consts.ModuleListAddon + " [addon]",
 		Short: "List all addons",
@@ -24,7 +24,6 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return
 		},
 	}
-
 	loadaddonCmd := &cobra.Command{
 		Use:   consts.ModuleLoadAddon,
 		Short: "Load an addon",
@@ -87,7 +86,7 @@ execute_addon gogo -- -i 127.0.0.1 -p http
 	return []*cobra.Command{listaddonCmd, loadaddonCmd, execAddonCmd}
 }
 
-func Register(con *repl.Console) {
+func Register(con *core.Console) {
 	con.RegisterImplantFunc(consts.ModuleListAddon,
 		ListAddon,
 		"",
@@ -97,7 +96,6 @@ func Register(con *repl.Console) {
 			if len(exts.Addons) == 0 {
 				return "", fmt.Errorf("no addon found")
 			}
-			con.UpdateSession(content.Session.SessionId)
 			var s strings.Builder
 			s.WriteString("\n")
 			for _, ext := range exts.Addons {
@@ -113,12 +111,9 @@ func Register(con *repl.Console) {
 			var rowEntries []table.Row
 			var row table.Row
 			tableModel := tui.NewTable([]table.Column{
-				table.NewColumn("Name", "Name", 25),
+				table.NewFlexColumn("Name", "Name", 1),
 				table.NewColumn("Type", "Type", 10),
-				table.NewColumn("Depend", "Depend", 35),
-				//{Title: "Name", Width: 25},
-				//{Title: "Type", Width: 10},
-				//{Title: "Depend", Width: 35},
+				table.NewFlexColumn("Depend", "Depend", 2),
 			},
 				true)
 			for _, ext := range exts.Addons {
@@ -140,7 +135,6 @@ func Register(con *repl.Console) {
 		"",
 		nil,
 		func(content *clientpb.TaskContext) (interface{}, error) {
-			con.UpdateSession(content.Session.SessionId)
 			return "addon loaded", nil
 		}, nil)
 

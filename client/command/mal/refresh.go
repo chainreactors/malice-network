@@ -1,26 +1,46 @@
 package mal
 
 import (
-	"github.com/chainreactors/malice-network/client/core/plugin"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/malice-network/client/command/common"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/spf13/cobra"
 )
 
-func RefreshMalCmd(cmd *cobra.Command, con *repl.Console) error {
+func RefreshMalCmd(cmd *cobra.Command, con *core.Console) error {
+	manager, err := ensureMalManager(con)
+	if err != nil {
+		return err
+	}
+
 	implantCmd := con.ImplantMenu()
-	for _, c := range implantCmd.Commands() {
-		if c.GroupID == consts.MalGroup {
-			implantCmd.RemoveCommand(c)
+
+	common.RemoveCommandsByGroup(implantCmd, consts.MalGroup)
+
+	// 获取所有外部插件名称
+	externalPlugins := manager.GetAllExternalPlugins()
+	var pluginNames []string
+	for name := range externalPlugins {
+		pluginNames = append(pluginNames, name)
+	}
+
+	// 移除所有外部插件
+	for _, name := range pluginNames {
+		err := manager.RemoveExternalMal(name)
+		if err != nil {
+			con.Log.Warnf("Failed to remove plugin %s: %s\n", name, err)
 		}
 	}
 
-	for _, malName := range plugin.GetPluginManifest() {
-		_, err := LoadMalWithManifest(con, implantCmd, malName)
+	// 重新加载所有外部mal插件
+	for _, manifest := range manager.GetPluginManifests() {
+		err := LoadMalWithManifest(con, implantCmd, manifest)
 		if err != nil {
-			con.Log.Errorf("Failed to load mal: %s\n", err)
+			con.Log.Errorf("Failed to load mal %s: %s\n", manifest.Name, err)
 			continue
 		}
 	}
+
+	con.Log.Importantf("Successfully refreshed all mal plugins\n")
 	return nil
 }

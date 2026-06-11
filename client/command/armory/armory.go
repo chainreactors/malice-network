@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/alias"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/extension"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/cryptography/minisign"
 	"github.com/chainreactors/tui"
@@ -107,7 +109,7 @@ var (
 	defaultArmoryRemoved = false
 )
 
-func ArmoryCmd(cmd *cobra.Command, con *repl.Console) {
+func ArmoryCmd(cmd *cobra.Command, con *core.Console) {
 	armoriesConfig := getCurrentArmoryConfiguration()
 	if len(armoriesConfig) == 1 {
 		con.Log.Infof("Reading armory index ... \n")
@@ -301,8 +303,9 @@ func packageHashLookupByArmory(armoryPublicKey string) []string {
 			// Keep going
 			return true
 		}
-		//if cacheEntry.ArmoryConfig.PublicKey == armoryPublicKey {
-		result = append(result, cacheEntry.ID)
+		if cacheEntry.ArmoryConfig != nil && cacheEntry.ArmoryConfig.PublicKey == armoryPublicKey {
+			result = append(result, cacheEntry.ID)
+		}
 
 		return true
 	})
@@ -343,7 +346,7 @@ func bundlesInCache() []*ArmoryBundle {
 }
 
 // AliasExtensionOrBundleCompleter - Completer for alias, extension, and bundle names
-func AliasExtensionOrBundleCompleter(prefix string, args []string, con *repl.Console) []string {
+func AliasExtensionOrBundleCompleter(prefix string, args []string, con *core.Console) []string {
 	results := []string{}
 	aliases, exts := packageManifestsInCache()
 	bundles := bundlesInCache()
@@ -368,7 +371,7 @@ func AliasExtensionOrBundleCompleter(prefix string, args []string, con *repl.Con
 }
 
 // PrintArmoryPackages - Prints the armory packages
-func PrintArmoryPackages(aliases []*alias.AliasManifest, exts []*extension.ExtensionManifest, con *repl.Console,
+func PrintArmoryPackages(aliases []*alias.AliasManifest, exts []*extension.ExtensionManifest, con *core.Console,
 	clientConfig ArmoryHTTPConfig) {
 	var rowEntries []table.Row
 	var row table.Row
@@ -377,10 +380,10 @@ func PrintArmoryPackages(aliases []*alias.AliasManifest, exts []*extension.Exten
 		table.NewColumn("Armory", "Armory", 10),
 		table.NewColumn("Command Name", "Command Name", 15),
 		table.NewColumn("Version", "Version", 10),
-		table.NewColumn("Type", "Type", 15),
-		table.NewColumn("Help", "Help", 40),
-		table.NewColumn("URL", "URL", 40),
-	}, false)
+		table.NewColumn("Type", "Type", 10),
+		table.NewFlexColumn("Help", "Help", 2),
+		table.NewFlexColumn("URL", "URL", 2),
+	}, common.ShouldUseStaticOutput(con))
 
 	type pkgInfo struct {
 		Armory      string
@@ -432,18 +435,20 @@ func PrintArmoryPackages(aliases []*alias.AliasManifest, exts []*extension.Exten
 
 		rowEntries = append(rowEntries, row)
 	}
-	newTable := tui.NewModel(tableModel, nil, false, false)
 	tableModel.SetRows(rowEntries)
 	tableModel.SetMultiline()
-	tableModel.SetHandle(DownloadArmoryCallback(tableModel, newTable.Buffer, con, clientConfig))
-	err := newTable.Run()
+	tableModel.SetHandle(DownloadArmoryCallback(tableModel, tableModel.Buffer, con, clientConfig))
+	rendered, err := common.RunTable(con, tableModel)
 	if err != nil {
 		con.Log.Errorf("Failed to run table model: %s\n", err)
 		return
 	}
+	if rendered {
+		return
+	}
 }
 
-func DownloadArmoryCallback(tableModel *tui.TableModel, writer io.Writer, con *repl.Console, clientConfig ArmoryHTTPConfig) func() {
+func DownloadArmoryCallback(tableModel *tui.TableModel, writer io.Writer, con *core.Console, clientConfig ArmoryHTTPConfig) func() {
 	selected := tableModel.GetHighlightedRow()
 	if selected.Data == nil {
 		return func() {
@@ -452,7 +457,7 @@ func DownloadArmoryCallback(tableModel *tui.TableModel, writer io.Writer, con *r
 		}
 	}
 	armoryPK := getArmoryPublicKey(selected.Data["Armory"].(string))
-	err := installPackageByName(selected.Data["Command Name"].(string), armoryPK, false,
+	err := installPackageByName(nil, selected.Data["Command Name"].(string), armoryPK, false,
 		true, clientConfig, con)
 	if err == nil {
 		return func() {
@@ -483,14 +488,14 @@ func DownloadArmoryCallback(tableModel *tui.TableModel, writer io.Writer, con *r
 }
 
 // PrintArmoryBundles - Prints the armory bundles
-func PrintArmoryBundles(bundles []*ArmoryBundle, con *repl.Console) {
+func PrintArmoryBundles(bundles []*ArmoryBundle, con *core.Console) {
 	var rowEntries []table.Row
 	var row table.Row
 
 	tableModel := tui.NewTable([]table.Column{
-		table.NewColumn("Name", "Name", 20),
-		table.NewColumn("Contains", "Contains", 30),
-	}, true)
+		table.NewFlexColumn("Name", "Name", 1),
+		table.NewFlexColumn("Contains", "Contains", 3),
+	}, common.ShouldUseStaticOutput(con))
 	for _, bundle := range bundles {
 		if len(bundle.Packages) < 1 {
 			continue
@@ -518,8 +523,7 @@ func PrintArmoryBundles(bundles []*ArmoryBundle, con *repl.Console) {
 	}
 	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
-	newTable := tui.NewModel(tableModel, nil, false, false)
-	err := newTable.Run()
+	_, err := common.RunTable(con, tableModel)
 	if err != nil {
 		return
 	}
@@ -686,15 +690,12 @@ func makePackageCacheConsistent(index ArmoryIndex) {
 	cacheHashesForArmory := packageHashLookupByArmory(index.ArmoryConfig.PublicKey)
 	indexHashesForArmory := calculateHashesForIndex(index)
 
-	if len(cacheHashesForArmory) > len(indexHashesForArmory) {
-		// Then there are packages in the cache that do not exist in the armory
-		if len(indexHashesForArmory) == 0 {
-			packagesToRemove = cacheHashesForArmory
-		} else {
-			for _, packageHash := range indexHashesForArmory {
-				if !slices.Contains(cacheHashesForArmory, packageHash) {
-					packagesToRemove = append(packagesToRemove, packageHash)
-				}
+	if len(indexHashesForArmory) == 0 {
+		packagesToRemove = cacheHashesForArmory
+	} else {
+		for _, packageHash := range cacheHashesForArmory {
+			if !slices.Contains(indexHashesForArmory, packageHash) {
+				packagesToRemove = append(packagesToRemove, packageHash)
 			}
 		}
 	}
@@ -770,15 +771,22 @@ func fetchPackageSignature(wg *sync.WaitGroup, requestChannel chan struct{}, arm
 	}
 	if armoryPkg.IsAlias {
 		pkgCacheEntry.Alias, err = alias.ParseAliasManifest(manifestData)
-		pkgCacheEntry.Alias.ArmoryName = armoryConfig.Name
-		pkgCacheEntry.Alias.ArmoryPK = armoryConfig.PublicKey
 	} else {
 		pkgCacheEntry.Extension, err = extension.ParseExtensionManifest(manifestData)
-		pkgCacheEntry.Extension.ArmoryName = armoryConfig.Name
-		pkgCacheEntry.Extension.ArmoryPK = armoryConfig.PublicKey
 	}
 	if err != nil {
 		pkgCacheEntry.LastErr = fmt.Errorf("failed to parse trusted manifest in pkg signature: %s", err)
+		return
+	}
+	if armoryConfig != nil {
+		if pkgCacheEntry.Alias != nil {
+			pkgCacheEntry.Alias.ArmoryName = armoryConfig.Name
+			pkgCacheEntry.Alias.ArmoryPK = armoryConfig.PublicKey
+		}
+		if pkgCacheEntry.Extension != nil {
+			pkgCacheEntry.Extension.ArmoryName = armoryConfig.Name
+			pkgCacheEntry.Extension.ArmoryPK = armoryConfig.PublicKey
+		}
 	}
 }
 

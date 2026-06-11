@@ -2,20 +2,30 @@ package rem
 
 import (
 	"fmt"
+	"net"
+	"net/url"
+	"strconv"
+
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/cryptography"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/rem/agent"
 	rem "github.com/chainreactors/rem/protocol/core"
 	remrunner "github.com/chainreactors/rem/runner"
 	"github.com/chainreactors/rem/x/utils"
-	"net"
-	"net/url"
-	"strconv"
 )
 
 func init() {
 	utils.Log = logs.NewLogger(logs.InfoLevel)
+}
+
+func syncRemLoggerLevel() {
+	if utils.Log == nil {
+		utils.Log = logs.NewLogger(logs.InfoLevel)
+	}
+	if logs.Log != nil {
+		utils.Log.SetLevel(logs.Log.Level)
+	}
 }
 
 func ParseRemCmd(args []string) (*remrunner.Options, error) {
@@ -69,7 +79,7 @@ func (rem *RemConsole) ToProtobuf() map[string]*clientpb.REMAgent {
 		a := value.(*agent.Agent)
 		agents[a.ID] = &clientpb.REMAgent{
 			Id:     a.Name(),
-			Mod:    a.Mod,
+			InboundSide: a.InboundSide,
 			Local:  a.LocalURL.String(),
 			Remote: a.RemoteURL.String(),
 		}
@@ -82,23 +92,36 @@ func NewRemServer(conURL string, ip string) (*RemConsole, error) {
 	var option remrunner.Options
 	var args []string
 	if ip == "" {
-		args = []string{"rem", "-c", conURL}
+		args = []string{"-s", conURL}
 	} else {
-		args = []string{"rem", "-c", conURL, "-i", ip}
+		args = []string{"-s", conURL, "-i", ip}
 	}
 	err := option.ParseArgs(args)
 	if err != nil {
-		return nil, err
+		// Fallback to -c for old version
+		if ip == "" {
+			args = []string{"-c", conURL}
+		} else {
+			args = []string{"-c", conURL, "-i", ip}
+		}
+		err = option.ParseArgs(args)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if logs.Log != nil && logs.Log.Level <= logs.DebugLevel {
+		option.Debug = true
 	}
 
 	remRunner, err := option.Prepare()
 	if err != nil {
 		return nil, err
 	}
+	syncRemLoggerLevel()
 
 	if len(remRunner.ConsoleURLs) > 0 {
 		remRunner.URLs.ConsoleURL = remRunner.ConsoleURLs[0]
-
+		remRunner.URLs.ConsoleURL.SetHostname("0.0.0.0")
 	}
 	remRunner.Subscribe = fmt.Sprintf("http://0.0.0.0:%d", cryptography.RandomInRange(20000, 65500))
 	console, err := remrunner.NewConsole(remRunner, remRunner.URLs)
@@ -118,10 +141,14 @@ func NewRemClient(conURL string, args []string) (*RemConsole, error) {
 	if err != nil {
 		return nil, err
 	}
+	if logs.Log != nil && logs.Log.Level <= logs.DebugLevel {
+		option.Debug = true
+	}
 	remRunner, err := option.Prepare()
 	if err != nil {
 		return nil, err
 	}
+	syncRemLoggerLevel()
 	remRunner.URLs.ConsoleURL = u
 	console, err := remrunner.NewConsole(remRunner, remRunner.URLs)
 	if err != nil {

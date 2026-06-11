@@ -2,24 +2,24 @@ package exec
 
 import (
 	"errors"
+	"github.com/chainreactors/IoM-go/client"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"math"
 	"os"
 
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/spf13/cobra"
 )
 
-func ExecuteDLLSpawnCmd(cmd *cobra.Command, con *repl.Console) error {
+func ExecuteDLLSpawnCmd(cmd *cobra.Command, con *core.Console) error {
 	session := con.GetInteractive()
 	sac := common.ParseSacrificeFlags(cmd)
 	entrypoint, _ := cmd.Flags().GetString("entrypoint")
@@ -29,11 +29,10 @@ func ExecuteDLLSpawnCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	session.Console(task, path)
-	return nil
+	return common.HandleTaskOutput(cmd, con, task)
 }
 
-func ExecuteDLLSpawn(rpc clientrpc.MaliceRPCClient, sess *core.Session, dllPath string, entrypoint string, data string, binPath string, out bool, timeout uint32, arch string, process string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
+func ExecuteDLLSpawn(rpc clientrpc.MaliceRPCClient, sess *client.Session, dllPath string, entrypoint string, data string, binPath string, out bool, timeout uint32, arch string, process string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 	binary, err := output.NewBinaryData(consts.ModuleDllSpawn, dllPath, data, out, timeout, arch, process, sac)
 	if err != nil {
 		return nil, err
@@ -63,13 +62,13 @@ func ExecuteDLLSpawn(rpc clientrpc.MaliceRPCClient, sess *core.Session, dllPath 
 	return task, err
 }
 
-func RegisterDLLSpawnFunc(con *repl.Console) {
+func RegisterDLLSpawnFunc(con *core.Console) {
 
 	con.RegisterImplantFunc(
 		consts.ModuleDllSpawn,
 		ExecuteDLLSpawn,
 		"bdllspawn",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, ppid uint32, path string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *client.Session, ppid uint32, path string) (*clientpb.Task, error) {
 			sac, _ := intermediate.NewSacrificeProcessMessage(ppid, false, true, true, "")
 			return ExecuteDLLSpawn(rpc, sess, path, "", "", "", true, math.MaxUint32, sess.Os.Arch, "", sac)
 		},

@@ -2,17 +2,17 @@ package context
 
 import (
 	"fmt"
+	"github.com/chainreactors/IoM-go/client"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
 )
 
-func GetKeyloggersCmd(cmd *cobra.Command, con *repl.Console) error {
+func GetKeyloggersCmd(cmd *cobra.Command, con *core.Console) error {
 	keyloggers, err := GetKeyloggers(con)
 	if err != nil {
 		return err
@@ -27,7 +27,7 @@ func GetKeyloggersCmd(cmd *cobra.Command, con *repl.Console) error {
 
 		row := table.NewRow(table.RowData{
 			"ID":      ctx.Id,
-			"Session": ctx.Session.SessionId,
+			"Session": getSessionID(ctx.Session),
 			"Task":    getTaskId(ctx.Task),
 			"Name":    keylogger.Name,
 			"Path":    keylogger.FilePath,
@@ -37,11 +37,11 @@ func GetKeyloggersCmd(cmd *cobra.Command, con *repl.Console) error {
 	}
 
 	tableModel := tui.NewTable([]table.Column{
-		table.NewColumn("ID", "ID", 36),
-		table.NewColumn("Session", "Session", 16),
-		table.NewColumn("Task", "Task", 8),
+		table.NewFlexColumn("ID", "ID", 1),
+		table.NewColumn("Session", "Session", 10),
+		table.NewColumn("Task", "Task", 6),
 		table.NewColumn("Name", "Name", 20),
-		table.NewColumn("Path", "Path", 40),
+		table.NewFlexColumn("Path", "Path", 2),
 		table.NewColumn("Size", "Size", 12),
 	}, true)
 
@@ -50,7 +50,7 @@ func GetKeyloggersCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func GetKeyloggers(con *repl.Console) ([]*clientpb.Context, error) {
+func GetKeyloggers(con *core.Console) ([]*clientpb.Context, error) {
 	contexts, err := GetContextsByType(con, consts.ContextKeyLogger)
 	if err != nil {
 		return nil, err
@@ -58,12 +58,16 @@ func GetKeyloggers(con *repl.Console) ([]*clientpb.Context, error) {
 	return contexts.Contexts, nil
 }
 
-func AddKeylogger(con *repl.Console, sess *core.Session, task *clientpb.Task, data []byte) (bool, error) {
+func AddKeylogger(con *core.Console, sess *client.Session, task *clientpb.Task, data []byte) (bool, error) {
+	if err := requireContextTask(sess, task); err != nil {
+		return false, err
+	}
+
 	_, err := con.Rpc.AddKeylogger(con.Context(), &clientpb.Context{
 		Session: sess.Session,
 		Task:    task,
 		Type:    consts.ContextKeyLogger,
-		Value:   output.MarshalContext(&output.KeyLoggerContext{Content: data}),
+		Value:   data,
 	})
 	if err != nil {
 		return false, err
@@ -71,8 +75,8 @@ func AddKeylogger(con *repl.Console, sess *core.Session, task *clientpb.Task, da
 	return true, nil
 }
 
-func RegisterKeylogger(con *repl.Console) {
-	con.RegisterServerFunc("keyloggers", func(con *repl.Console) ([]*output.KeyLoggerContext, error) {
+func RegisterKeylogger(con *core.Console) {
+	con.RegisterServerFunc("keyloggers", func(con *core.Console) ([]*output.KeyLoggerContext, error) {
 		keyloggers, err := GetKeyloggers(con)
 		if err != nil {
 			return nil, err

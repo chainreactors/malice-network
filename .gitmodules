@@ -1,0 +1,16 @@
+[submodule "proto"]
+	path = proto
+	url = https://github.com/chainreactors/proto/
+[submodule "external/IoM-go"]
+	path = external/IoM-go
+	url = https://github.com/chainreactors/IoM-go
+[submodule "helper/intl/community/community"]
+	path = helper/intl/community/community
+	url = https://github.com/chainreactors/mal-intl
+[submodule "external/tui"]
+	path = external/tui
+	url = https://github.com/chainreactors/tui
+[submodule "external/rem"]
+	path = external/rem
+	url = https://github.com/chainreactors/rem
+	branch = master

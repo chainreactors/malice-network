@@ -3,7 +3,7 @@ package command
 import (
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/help"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/spf13/cobra"
 )
 
@@ -11,10 +11,10 @@ import (
 // name - The name of the flag set (can be empty).
 // cmd  - The command to which the flags should be bound.
 
-type BindFunc func(group string, cmds ...func(con *repl.Console) []*cobra.Command)
+type BindFunc func(group string, cmds ...func(con *core.Console) []*cobra.Command)
 
-func MakeBind(cmd *cobra.Command, con *repl.Console) BindFunc {
-	return func(group string, cmds ...func(con *repl.Console) []*cobra.Command) {
+func MakeBind(cmd *cobra.Command, con *core.Console, source string) BindFunc {
+	return func(group string, cmds ...func(con *core.Console) []*cobra.Command) {
 		found := false
 
 		// Ensure the given command group is available in the menu.
@@ -42,14 +42,15 @@ func MakeBind(cmd *cobra.Command, con *repl.Console) BindFunc {
 				}
 				c.GroupID = group
 				c.Annotations["menu"] = cmd.Name()
-				updateCommand(con, c, group)
+				c.Annotations["source"] = source
+				updateCommand(con, c, group, false)
 				cmd.AddCommand(c)
 			}
 		}
 	}
 }
 
-func updateCommand(con *repl.Console, c *cobra.Command, group string) {
+func updateCommand(con *core.Console, c *cobra.Command, group string, isSubCmd bool) {
 	c.SetHelpFunc(help.HelpFunc)
 	c.SetUsageFunc(help.UsageFunc)
 	if c.Annotations == nil {
@@ -57,7 +58,7 @@ func updateCommand(con *repl.Console, c *cobra.Command, group string) {
 	}
 	if c.Annotations["opsec"] != "" {
 		c.PreRunE = func(cmd *cobra.Command, args []string) error {
-			err := common.OpsecConfirm(cmd)
+			err := common.OpsecConfirm(cmd, con)
 			if err != nil {
 				return err
 			}
@@ -65,12 +66,16 @@ func updateCommand(con *repl.Console, c *cobra.Command, group string) {
 		}
 	}
 
-	con.CMDs[c.Name()] = c
+	// Only register top-level commands into CMDs to avoid subcommands
+	// overwriting top-level commands with the same Name() (e.g. "pipe upload" vs "upload")
+	if !isSubCmd {
+		con.CMDs[c.Name()] = c
+	}
 	if dep, ok := c.Annotations["depend"]; ok {
 		con.Helpers[dep] = c
 	}
 
 	for _, subCmd := range c.Commands() {
-		updateCommand(con, subCmd, group)
+		updateCommand(con, subCmd, group, true)
 	}
 }

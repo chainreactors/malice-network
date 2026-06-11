@@ -2,16 +2,22 @@ package core
 
 import (
 	"context"
-	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
+	"fmt"
 	"strconv"
+	"sync"
+	"sync/atomic"
 	"time"
+	"unsafe"
 
-	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
+	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/proto/services/listenerrpc"
+	types "github.com/chainreactors/IoM-go/types"
+
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/logs"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
-	"sync"
 )
 
 var (
@@ -25,6 +31,25 @@ type Message struct {
 	RawID      uint32
 	SessionID  string
 	RemoteAddr string
+}
+
+type forwardRPCClient interface {
+	Checkin(ctx context.Context, in *implantpb.Ping, opts ...grpc.CallOption) (*clientpb.Empty, error)
+	Register(ctx context.Context, in *clientpb.RegisterSession, opts ...grpc.CallOption) (*clientpb.Empty, error)
+}
+
+type forwardClient interface {
+	forwardRPCClient
+	SpiteStream(ctx context.Context, opts ...grpc.CallOption) (listenerrpc.ListenerRPC_SpiteStreamClient, error)
+}
+
+type forwardStream interface {
+	Send(*clientpb.SpiteResponse) error
+	Recv() (*clientpb.SpiteRequest, error)
+}
+
+var openForwardStream = func(rpc forwardClient, ctx context.Context) (forwardStream, error) {
+	return rpc.SpiteStream(ctx)
 }
 
 type forwarders struct {
@@ -43,16 +68,18 @@ func (f *forwarders) Get(id string) *Forward {
 	return fw.(*Forward)
 }
 
-func (f *forwarders) Remove(id string) {
+func (f *forwarders) Remove(id string) error {
 	fw := f.Get(id)
 	if fw == nil {
-		return
-	}
-	err := fw.Close()
-	if err != nil {
-		return
+		return nil
 	}
 	f.forwarders.Delete(id)
+	fw.shutdown()
+	err := fw.Close()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (f *forwarders) Send(id string, msg *Message) {
@@ -64,23 +91,25 @@ func (f *forwarders) Send(id string, msg *Message) {
 	fw.Add(msg)
 }
 
-func NewForward(rpc listenerrpc.ListenerRPCClient, pipeline Pipeline) (*Forward, error) {
+func NewForward(rpc forwardClient, pipeline Pipeline) (*Forward, error) {
 	var err error
 	forward := &Forward{
 		implantC:    make(chan *Message, 255),
 		ListenerRpc: rpc,
 		Pipeline:    pipeline,
 		ctx:         context.Background(),
+		done:        make(chan struct{}),
 	}
+	forward.alive.Store(true)
 
-	forward.Stream, err = forward.ListenerRpc.SpiteStream(metadata.NewOutgoingContext(context.Background(), metadata.Pairs(
+	forward.Stream, err = openForwardStream(rpc, metadata.NewOutgoingContext(context.Background(), metadata.Pairs(
 		"pipeline_id", pipeline.ID()),
 	))
 	if err != nil {
 		return nil, err
 	}
 
-	go forward.Handler()
+	GoGuarded("forward:"+pipeline.ID(), forward.Handler, forward.handleRuntimeError(), forward.shutdown)
 
 	return forward, nil
 }
@@ -91,15 +120,34 @@ type Forward struct {
 	count int
 	Pipeline
 	ListenerId string
-	Stream     listenerrpc.ListenerRPC_SpiteStreamClient
+	Stream     forwardStream
 	implantC   chan *Message // data from implant
 
-	ListenerRpc listenerrpc.ListenerRPCClient
+	ListenerRpc forwardRPCClient
+
+	alive     atomic.Bool
+	done      chan struct{}
+	closeOnce sync.Once
 }
 
 func (f *Forward) Add(msg *Message) {
-	f.implantC <- msg
-	f.count++
+	if !f.alive.Load() {
+		logs.Log.Warnf("forward %s is not alive, dropping message from %s", f.ID(), msg.SessionID)
+		return
+	}
+	select {
+	case f.implantC <- msg:
+		f.count++
+	case <-f.done:
+		logs.Log.Warnf("forward %s closed, dropping message from %s", f.ID(), msg.SessionID)
+	}
+}
+
+func (f *Forward) shutdown() {
+	f.alive.Store(false)
+	f.closeOnce.Do(func() {
+		close(f.done)
+	})
 }
 
 func (f *Forward) Count() int {
@@ -115,12 +163,23 @@ func (f *Forward) Context(sid string) context.Context {
 }
 
 // Handler is a loop that handles messages from implant
-func (f *Forward) Handler() {
+func (f *Forward) Handler() error {
 	for msg := range f.implantC {
 		for _, spite := range msg.Spites.Spites {
 			_, err := f.ListenerRpc.Checkin(f.Context(msg.SessionID), &implantpb.Ping{})
 			if err != nil {
-				logs.Log.Debug(err)
+				logs.Log.Warnf("forward %s checkin failed for session %s: %v", f.ID(), msg.SessionID, err)
+				spite, _ := types.BuildSpite(
+					&implantpb.Spite{
+						Name: types.MsgInit.String(),
+					},
+					&implantpb.Init{Data: (*[4]byte)(unsafe.Pointer(&msg.RawID))[:]})
+				err = Connections.Push(msg.SessionID, &clientpb.SpiteRequest{
+					Spite: spite,
+				})
+				if err != nil {
+					logs.Log.Errorf("forward %s init spite push failed for session %s: %v", f.ID(), msg.SessionID, err)
+				}
 			}
 			switch spite.Body.(type) {
 			case *implantpb.Spite_Register:
@@ -137,26 +196,33 @@ func (f *Forward) Handler() {
 					continue
 				}
 			case *implantpb.Spite_Ping:
-
+				continue
 			default:
 				if size := proto.Size(spite); size <= 1000 {
-					logs.Log.Debugf("[listener.%s] receive spite %s, %v", msg.SessionID, spite.Name, spite)
+					logs.Log.Debugf("listener.%s - receive_spite session=%s name=%s spite=%v", msg.SessionID, msg.SessionID, spite.Name, spite)
 				} else {
-					logs.Log.Debugf("[listener.%s] receive spite %s %d bytes", msg.SessionID, spite.Name, size)
+					logs.Log.Debugf("listener.%s - receive_spite session=%s name=%s bytes=%d", msg.SessionID, msg.SessionID, spite.Name, size)
 				}
-				spite := spite
-				go func() {
-					err := f.Stream.Send(&clientpb.SpiteResponse{
-						ListenerId: f.ID(),
-						SessionId:  msg.SessionID,
-						TaskId:     spite.TaskId,
-						Spite:      spite,
-					})
-					if err != nil {
-						return
-					}
-				}()
+				if err := f.Stream.Send(&clientpb.SpiteResponse{
+					ListenerId: f.ID(),
+					SessionId:  msg.SessionID,
+					TaskId:     spite.TaskId,
+					Spite:      spite,
+				}); err != nil {
+					return fmt.Errorf("forward %s send spite response: %w", f.ID(), err)
+				}
 			}
 		}
 	}
+	return nil
+}
+
+func (f *Forward) handleRuntimeError() GoErrorHandler {
+	label := "forward:" + f.ID()
+	return CombineErrorHandlers(
+		LogGuardedError(label),
+		func(err error) {
+			logs.Log.Errorf("[%s] runtime failure: %s", label, ErrorText(err))
+		},
+	)
 }

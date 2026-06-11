@@ -3,19 +3,52 @@ package generic
 import (
 	"errors"
 	"fmt"
+	"strings"
+
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/command/common"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
 )
 
-func LoginCmd(cmd *cobra.Command, con *repl.Console) error {
+func LoginCmd(cmd *cobra.Command, con *core.Console) error {
 	var err error
-	if filename := cmd.Flags().Arg(0); filename != "" {
-		return Login(con, filename)
-	} else if filename, _ := cmd.Flags().GetString("auth"); filename != "" {
-		return Login(con, filename)
+	quietFlag, _ := cmd.Flags().GetBool("quiet")
+	quiet := common.ShouldSuppressStartupOutput(cmd) || quietFlag
+	con.Quiet = quietFlag
+
+	// 处理 --mcp flag
+	mcpAddr, _ := cmd.Flags().GetString("mcp")
+	if mcpAddr != "" {
+		if !quiet {
+			con.Log.Importantf("MCP will start at %s after login", mcpAddr)
+		}
+		con.MCPAddr = mcpAddr
+	}
+
+	// 处理 --rpc flag
+	rpcAddr, _ := cmd.Flags().GetString("rpc")
+	if rpcAddr != "" {
+		if !quiet {
+			con.Log.Importantf("Local RPC will start at %s after login", rpcAddr)
+		}
+		con.RPCAddr = rpcAddr
+	}
+
+	// Prefer explicit --auth flag to avoid misinterpreting subcommand arguments
+	// (e.g. `build beacon`) as an auth file.
+	if filename, _ := cmd.Flags().GetString("auth"); filename != "" {
+		return loginWithMode(con, filename, quiet)
+	}
+
+	// Only check Arg(0) as auth file for root command or login command
+	// Avoid treating subcommand arguments (e.g., 'beacon' in 'build beacon') as auth file
+	if cmd.Parent() == nil || cmd.Use == "client" || cmd.Use == "login" {
+		if filename := cmd.Flags().Arg(0); strings.HasSuffix(filename, ".auth") {
+			return loginWithMode(con, filename, quiet)
+		}
 	}
 	files, err := assets.GetConfigs()
 	if err != nil {
@@ -28,8 +61,7 @@ func LoginCmd(cmd *cobra.Command, con *repl.Console) error {
 	// Create a model for the interactive list
 	m := tui.NewSelect(files)
 	m.Title = "Select User: "
-	newLogin := tui.NewModel(m, nil, false, false)
-	err = newLogin.Run()
+	err = m.Run()
 	if err != nil {
 		con.Log.Errorf("Error running interactive list: %s", err)
 		return err
@@ -38,18 +70,28 @@ func LoginCmd(cmd *cobra.Command, con *repl.Console) error {
 	// After the interactive list is completed, check the selected item
 	if m.Selected != "" {
 		tui.ClearLines(2)
-		return Login(con, m.Selected)
+		return loginWithMode(con, m.Selected, quiet)
 	} else {
 		return errors.New("no user selected")
 	}
 }
 
-func Login(con *repl.Console, authFile string) error {
+func loginWithMode(con *core.Console, authFile string, quiet bool) error {
+	if !quiet {
+		assets.PrintProfileSettings(con.MCPAddr, con.RPCAddr)
+	}
+
 	config, err := assets.LoadConfig(authFile)
 	if err != nil {
 		return err
 	}
-	err = repl.Login(con, config)
+
+	// Store the config path so the multiplexer can forward it to child processes.
+	con.ConfigPath = authFile
+
+	err = core.LoginWithOptions(con, config, core.LoginOptions{
+		SuppressStartupOutput: quiet,
+	})
 	if err != nil {
 		return err
 	}

@@ -1,20 +1,19 @@
 package pipe
 
 import (
-	"fmt"
+	"github.com/chainreactors/IoM-go/client"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
 )
 
 // PipeCloseCmd closes a named pipe.
-func PipeCloseCmd(cmd *cobra.Command, con *repl.Console) error {
+func PipeCloseCmd(cmd *cobra.Command, con *core.Console) error {
 	named_pipe := cmd.Flags().Arg(0)
 	session := con.GetInteractive()
 	task, err := PipeClose(con.Rpc, session, named_pipe)
@@ -22,11 +21,11 @@ func PipeCloseCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	session.Console(task, fmt.Sprintf("closed named pipe: %s", named_pipe))
+	session.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 
-func PipeClose(rpc clientrpc.MaliceRPCClient, session *core.Session, name string) (*clientpb.Task, error) {
+func PipeClose(rpc clientrpc.MaliceRPCClient, session *client.Session, name string) (*clientpb.Task, error) {
 	request := &implantpb.PipeRequest{
 		Type: consts.ModulePipeClose,
 		Pipe: &implantpb.Pipe{
@@ -36,7 +35,7 @@ func PipeClose(rpc clientrpc.MaliceRPCClient, session *core.Session, name string
 	return rpc.PipeClose(session.Context(), request)
 }
 
-func RegisterPipeCloseFunc(con *repl.Console) {
+func RegisterPipeCloseFunc(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModulePipeClose,
 		PipeClose,

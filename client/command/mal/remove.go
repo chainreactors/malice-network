@@ -3,27 +3,26 @@ package mal
 import (
 	"errors"
 	"fmt"
-	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/utils/fileutils"
-	"github.com/chainreactors/tui"
-	"github.com/spf13/cobra"
+	"github.com/chainreactors/malice-network/client/command/common"
+	"github.com/chainreactors/malice-network/client/core"
 	"os"
 	"path/filepath"
+
+	"github.com/chainreactors/malice-network/client/assets"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
+	"github.com/spf13/cobra"
 )
 
-func RemoveMalCmd(cmd *cobra.Command, con *repl.Console) error {
+func RemoveMalCmd(cmd *cobra.Command, con *core.Console) error {
 	name := cmd.Flags().Arg(0)
 	if name == "" {
 		return errors.New("mal name is required")
 	}
-	confirmModel := tui.NewConfirm(fmt.Sprintf("Remove '%s' extension?", name))
-	newConfirm := tui.NewModel(confirmModel, nil, false, true)
-	err := newConfirm.Run()
+	confirmed, err := common.Confirm(cmd, con, fmt.Sprintf("Remove '%s' mal?", name))
 	if err != nil {
 		return err
 	}
-	if !confirmModel.Confirmed {
+	if !confirmed {
 		return nil
 	}
 	err = RemoveMal(name, con)
@@ -33,24 +32,51 @@ func RemoveMalCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func RemoveMal(name string, con *repl.Console) error {
+func RemoveMal(name string, con *core.Console) error {
 	if name == "" {
-		return errors.New("command name is required")
+		return errors.New("mal name is required")
 	}
-	if plug, ok := loadedMals[name]; !ok {
-		return errors.New("mal not loaded")
+
+	manager, err := ensureMalManager(con)
+	if err != nil {
+		return err
+	}
+
+	if _, exists := manager.GetEmbedPlugin(name); exists {
+		return errors.New("cannot remove embedded mal")
+	}
+
+	plug, exists := manager.GetExternalPlugin(name)
+	if !exists {
+		return errors.New("mal not found")
+	}
+
+	implantMenu := con.ImplantMenu()
+	for _, cmd := range plug.Commands() {
+		implantMenu.RemoveCommand(cmd.Command)
+	}
+
+	err = manager.RemoveExternalMal(name)
+	if err != nil {
+		return err
+	}
+
+	// 从profile中移除mal记录
+	profile, err := assets.GetProfile()
+	if err != nil {
+		con.Log.Warnf("Failed to get profile: %s\n", err)
 	} else {
-		implantMenu := con.ImplantMenu()
-		for _, cmd := range plug.CMDs {
-			implantMenu.RemoveCommand(cmd)
+		profile.RemoveMal(name)
+	}
+
+	malPath := filepath.Join(assets.GetMalsDir(), name)
+	if _, err := os.Stat(malPath); !os.IsNotExist(err) {
+		err := fileutils.ForceRemoveAll(malPath)
+		if err != nil {
+			return err
 		}
 	}
 
-	extPath := filepath.Join(assets.GetExtensionsDir(), filepath.Base(name))
-	if _, err := os.Stat(extPath); os.IsNotExist(err) {
-		return nil
-	}
-	delete(loadedMals, name)
-	fileutils.ForceRemoveAll(extPath)
+	con.Log.Importantf("Successfully removed mal: %s\n", name)
 	return nil
 }

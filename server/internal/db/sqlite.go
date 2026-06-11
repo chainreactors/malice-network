@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -145,6 +146,128 @@ func (dialector Dialector) Migrator(db *gorm.DB) gorm.Migrator {
 	}}}
 }
 
+// HasTable checks table existence via sqlite_master instead of information_schema.
+func (m Migrator) HasTable(value interface{}) bool {
+	var count int64
+	m.RunWithValue(value, func(stmt *gorm.Statement) error {
+		return m.DB.Raw(
+			"SELECT count(*) FROM sqlite_master WHERE type='table' AND name=?",
+			stmt.Table,
+		).Row().Scan(&count)
+	})
+	return count > 0
+}
+
+// HasColumn checks column existence via PRAGMA table_info.
+func (m Migrator) HasColumn(value interface{}, field string) bool {
+	var count int64
+	m.RunWithValue(value, func(stmt *gorm.Statement) error {
+		name := field
+		if stmt.Schema != nil {
+			if f := stmt.Schema.LookUpField(field); f != nil {
+				name = f.DBName
+			}
+		}
+		return m.DB.Raw(
+			"SELECT count(*) FROM pragma_table_info(?) WHERE name=?",
+			stmt.Table, name,
+		).Row().Scan(&count)
+	})
+	return count > 0
+}
+
+// HasIndex checks index existence via PRAGMA index_list.
+func (m Migrator) HasIndex(value interface{}, name string) bool {
+	var count int64
+	m.RunWithValue(value, func(stmt *gorm.Statement) error {
+		if stmt.Schema != nil {
+			if idx := stmt.Schema.LookIndex(name); idx != nil {
+				name = idx.Name
+			}
+		}
+		return m.DB.Raw(
+			"SELECT count(*) FROM pragma_index_list(?) WHERE name=?",
+			stmt.Table, name,
+		).Row().Scan(&count)
+	})
+	return count > 0
+}
+
+// CurrentDatabase returns empty string for SQLite (single-database system).
+func (m Migrator) CurrentDatabase() (name string) {
+	return ""
+}
+
+// AlterColumn is a no-op for SQLite. SQLite does not support ALTER COLUMN;
+// the official GORM sqlite driver uses full table recreation, but for our
+// use-case schema-level column type changes are not expected at runtime.
+func (m Migrator) AlterColumn(value interface{}, field string) error {
+	return nil
+}
+
+// CreateConstraint is a no-op for SQLite. SQLite only supports foreign key
+// constraints defined at table creation time, not added via ALTER TABLE.
+func (m Migrator) CreateConstraint(value interface{}, name string) error {
+	return nil
+}
+
+// HasConstraint checks constraint existence via sqlite_master DDL parsing.
+func (m Migrator) HasConstraint(value interface{}, name string) bool {
+	var count int64
+	m.RunWithValue(value, func(stmt *gorm.Statement) error {
+		return m.DB.Raw(
+			"SELECT count(*) FROM sqlite_master WHERE type='table' AND name=? AND sql LIKE ?",
+			stmt.Table, "%"+name+"%",
+		).Row().Scan(&count)
+	})
+	return count > 0
+}
+
+// ColumnTypes returns column type information via pragma_table_info (table-valued function),
+// which supports parameterized queries and avoids SQL injection.
+func (m Migrator) ColumnTypes(value interface{}) ([]gorm.ColumnType, error) {
+	columnTypes := make([]gorm.ColumnType, 0)
+	err := m.RunWithValue(value, func(stmt *gorm.Statement) error {
+		var columns []struct {
+			Name    string  `gorm:"column:name"`
+			Type    string  `gorm:"column:type"`
+			NotNull int64   `gorm:"column:notnull"`
+			Dflt    *string `gorm:"column:dflt_value"`
+			Pk      int64   `gorm:"column:pk"`
+		}
+		if err := m.DB.Raw("SELECT * FROM pragma_table_info(?)", stmt.Table).Scan(&columns).Error; err != nil {
+			// fallback to default implementation
+			rows, err2 := m.DB.Session(&gorm.Session{}).Table(stmt.Table).Limit(1).Rows()
+			if err2 != nil {
+				return err2
+			}
+			defer rows.Close()
+			rawCols, err2 := rows.ColumnTypes()
+			if err2 != nil {
+				return err2
+			}
+			for _, c := range rawCols {
+				columnTypes = append(columnTypes, migrator.ColumnType{SQLColumnType: c})
+			}
+			return nil
+		}
+		for _, col := range columns {
+			nullable := col.NotNull == 0
+			isPrimary := col.Pk > 0
+			ct := sqliteColumnType{
+				name:         col.Name,
+				dataType:     col.Type,
+				nullable:     &nullable,
+				primaryKey:   &isPrimary,
+				defaultValue: col.Dflt,
+			}
+			columnTypes = append(columnTypes, ct)
+		}
+		return nil
+	})
+	return columnTypes, err
+}
+
 func (dialector Dialector) BindVarTo(writer clause.Writer, stmt *gorm.Statement, v interface{}) {
 	writer.WriteByte('?')
 }
@@ -226,3 +349,25 @@ func compareVersion(version1, version2 string) int {
 	}
 	return 0
 }
+
+// sqliteColumnType implements gorm.ColumnType for SQLite PRAGMA results.
+type sqliteColumnType struct {
+	name         string
+	dataType     string
+	nullable     *bool
+	primaryKey   *bool
+	defaultValue *string
+}
+
+func (c sqliteColumnType) Name() string                                   { return c.name }
+func (c sqliteColumnType) DatabaseTypeName() string                       { return c.dataType }
+func (c sqliteColumnType) ColumnType() (string, bool)                     { return c.dataType, true }
+func (c sqliteColumnType) PrimaryKey() (bool, bool)                       { if c.primaryKey != nil { return *c.primaryKey, true }; return false, false }
+func (c sqliteColumnType) AutoIncrement() (bool, bool)                    { return false, false }
+func (c sqliteColumnType) Length() (int64, bool)                          { return 0, false }
+func (c sqliteColumnType) DecimalSize() (int64, int64, bool)              { return 0, 0, false }
+func (c sqliteColumnType) Nullable() (bool, bool)                         { if c.nullable != nil { return *c.nullable, true }; return true, false }
+func (c sqliteColumnType) Unique() (bool, bool)                           { return false, false }
+func (c sqliteColumnType) ScanType() reflect.Type                         { return nil }
+func (c sqliteColumnType) Comment() (string, bool)                        { return "", false }
+func (c sqliteColumnType) DefaultValue() (string, bool)                   { if c.defaultValue != nil { return *c.defaultValue, true }; return "", false }

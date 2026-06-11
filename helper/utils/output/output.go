@@ -2,10 +2,11 @@ package output
 
 import (
 	"fmt"
-	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/intermediate"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"math"
@@ -47,10 +48,18 @@ func NewBinaryData(module string, path string, data string, output bool, timeout
 }
 
 func ParseStatus(ctx *clientpb.TaskContext) (interface{}, error) {
-	return intermediate.ParseStatus(ctx.Spite)
+	ok, err := intermediate.ParseStatus(ctx.Spite)
+	if err != nil {
+		return nil, err
+	}
+
+	return fmt.Sprintf("task: %d %t", ctx.Task.TaskId, ok), nil
 }
 
 func ParseResponse(ctx *clientpb.TaskContext) (interface{}, error) {
+	if ctx == nil || ctx.Spite == nil {
+		return nil, fmt.Errorf("no response")
+	}
 	resp := ctx.Spite.GetResponse()
 	if resp != nil {
 		return resp.GetOutput(), nil
@@ -59,15 +68,43 @@ func ParseResponse(ctx *clientpb.TaskContext) (interface{}, error) {
 }
 
 func ParseExecResponse(ctx *clientpb.TaskContext) (interface{}, error) {
-	resp := ctx.Spite.GetExecResponse()
-	if resp == nil || resp.Stdout != nil || resp.Stderr != nil {
-		return fmt.Sprintf("pid: %d\n%s\n%s", resp.Pid, resp.Stdout, tui.RedFg.Render(string(resp.Stderr))), nil
+	if ctx == nil || ctx.Spite == nil {
+		return nil, fmt.Errorf("no response")
 	}
-
-	return nil, fmt.Errorf("no response")
+	resp := ctx.Spite.GetExecResponse()
+	if resp == nil {
+		return nil, fmt.Errorf("no response")
+	}
+	var s strings.Builder
+	if resp.End == true {
+		duration := ""
+		if ctx.Task != nil && ctx.Task.FinishedAt > 0 && ctx.Task.CreatedAt > 0 {
+			dur := ctx.Task.FinishedAt - ctx.Task.CreatedAt
+			duration = fmt.Sprintf(", time: %ds", dur)
+		}
+		s.WriteString(fmt.Sprintf("pid: %d ,task: %d , exitcode: %d%s\n",
+			resp.Pid, ctx.Task.TaskId, resp.StatusCode, duration))
+	}
+	if resp.Stdout != nil || resp.Stderr != nil {
+		if resp.Stdout != nil {
+			s.WriteString(encoders.AutoDecode(resp.Stdout) + "\n")
+		}
+		if resp.Stderr != nil {
+			s.WriteString(encoders.AutoDecode(resp.Stderr))
+		}
+		return strings.TrimSpace(s.String()), nil
+	}
+	if resp.End {
+		return fmt.Sprintf("task %d end", ctx.Task.TaskId), nil
+	} else {
+		return nil, fmt.Errorf("no response")
+	}
 }
 
 func ParseArrayResponse(ctx *clientpb.TaskContext) (interface{}, error) {
+	if ctx == nil || ctx.Spite == nil || ctx.Spite.GetResponse() == nil {
+		return nil, fmt.Errorf("no response")
+	}
 	array := ctx.Spite.GetResponse().GetArray()
 	if array == nil {
 		return nil, fmt.Errorf("no response")
@@ -85,6 +122,9 @@ func FormatArrayResponse(ctx *clientpb.TaskContext) (string, error) {
 }
 
 func ParseKVResponse(ctx *clientpb.TaskContext) (interface{}, error) {
+	if ctx == nil || ctx.Spite == nil || ctx.Spite.GetResponse() == nil {
+		return nil, fmt.Errorf("no response")
+	}
 	set := ctx.Spite.GetResponse().GetKv()
 	if set == nil {
 		return nil, fmt.Errorf("no response")
@@ -99,8 +139,9 @@ func FormatKVResponse(ctx *clientpb.TaskContext) (string, error) {
 	}
 	var rowEntries []table.Row
 	var row table.Row
+
 	tableModel := tui.NewTable([]table.Column{
-		table.NewColumn("Key", "Key", 20),
+		table.NewColumn("Key", "Key", 30),
 		table.NewColumn("Value", "Value", 70),
 		//{Title: "Key", Width: 20},
 		//{Title: "Value", Width: 70},
@@ -121,4 +162,52 @@ func FormatKVResponse(ctx *clientpb.TaskContext) (string, error) {
 	tableModel.SetRows(rowEntries)
 	tableModel.Title = ctx.Task.Type
 	return tableModel.View(), nil
+}
+
+// ParseCommonBody returns the CommonBody attached to the spite, if any.
+func ParseCommonBody(ctx *clientpb.TaskContext) (interface{}, error) {
+	if ctx == nil || ctx.Spite == nil {
+		return nil, fmt.Errorf("no common body")
+	}
+	common := ctx.Spite.GetCommon()
+	if common == nil {
+		return nil, fmt.Errorf("no common body")
+	}
+	return common, nil
+}
+
+// FormatCommonBody renders CommonBody content as a readable string.
+func FormatCommonBody(ctx *clientpb.TaskContext) (string, error) {
+	if ctx == nil || ctx.Spite == nil {
+		return "", fmt.Errorf("no common body")
+	}
+	common := ctx.Spite.GetCommon()
+	if common == nil {
+		return "", fmt.Errorf("no common body")
+	}
+
+	var parts []string
+	if len(common.StringArray) > 0 {
+		parts = append(parts, strings.Join(common.StringArray, "\n"))
+	}
+	if len(common.U32Array) > 0 {
+		parts = append(parts, fmt.Sprintf("u32: %v", common.U32Array))
+	}
+	if len(common.U64Array) > 0 {
+		parts = append(parts, fmt.Sprintf("u64: %v", common.U64Array))
+	}
+	if len(common.BoolArray) > 0 {
+		parts = append(parts, fmt.Sprintf("bool: %v", common.BoolArray))
+	}
+	if len(common.BytesArray) > 0 {
+		sizes := make([]string, 0, len(common.BytesArray))
+		for _, b := range common.BytesArray {
+			sizes = append(sizes, fmt.Sprintf("%dB", len(b)))
+		}
+		parts = append(parts, fmt.Sprintf("bytes: %v", sizes))
+	}
+	if len(parts) == 0 {
+		return "common body empty", nil
+	}
+	return strings.Join(parts, "\n"), nil
 }

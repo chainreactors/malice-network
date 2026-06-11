@@ -1,8 +1,8 @@
 package website
 
 import (
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
@@ -10,41 +10,46 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 )
 
 // AddWebContentCmd - 添加网站内容
-func AddWebContentCmd(cmd *cobra.Command, con *repl.Console) error {
+func AddWebContentCmd(cmd *cobra.Command, con *core.Console) error {
 	filePath := cmd.Flags().Arg(0)
 	websiteName, _ := cmd.Flags().GetString("website")
 	webPath, _ := cmd.Flags().GetString("path")
 	contentType, _ := cmd.Flags().GetString("type")
+	auth, _ := cmd.Flags().GetString("auth")
 	if webPath == "" {
 		webPath = "/" + filepath.Base(filePath)
 	}
 
-	c, err := AddWebContent(con, filePath, webPath, websiteName, contentType)
+	_, err := AddWebContent(con, filePath, webPath, websiteName, contentType, auth)
 	if err != nil {
 		return err
 	}
-	con.Log.Importantf("Content added to website %s: %s -> %s\n", websiteName, filePath, c.Url)
 	return nil
 }
 
-func AddWebContent(con *repl.Console, localFile, webPath, webPipe, typ string) (*clientpb.WebContent, error) {
+func AddWebContent(con *core.Console, localFile, webPath, webPipe, typ, auth string) (*clientpb.WebContent, error) {
 	content, err := pe.Unpack(localFile)
 	if err != nil {
 		return nil, err
 	}
+	websiteName, listenerID, _ := resolveWebsiteTarget(con, webPipe)
 
 	website := &clientpb.Website{
-		Name: webPipe,
+		Name:       websiteName,
+		ListenerId: listenerID,
 		Contents: map[string]*clientpb.WebContent{
 			webPath: {
-				WebsiteId:   webPipe,
+				WebsiteId:   websiteName,
+				ListenerId:  listenerID,
 				File:        localFile,
 				Path:        webPath,
 				Content:     content,
 				ContentType: typ,
+				Auth:        auth,
 			},
 		},
 	}
@@ -56,8 +61,28 @@ func AddWebContent(con *repl.Console, localFile, webPath, webPipe, typ string) (
 	return c, nil
 }
 
+// AddWebContentDirect adds raw content bytes to a website without reading from disk.
+func AddWebContentDirect(con *core.Console, websiteName string, data []byte, webPath, contentType string) error {
+	resolvedWebsite, listenerID, _ := resolveWebsiteTarget(con, websiteName)
+	website := &clientpb.Website{
+		Name:       resolvedWebsite,
+		ListenerId: listenerID,
+		Contents: map[string]*clientpb.WebContent{
+			webPath: {
+				WebsiteId:   resolvedWebsite,
+				ListenerId:  listenerID,
+				Path:        webPath,
+				Content:     data,
+				ContentType: contentType,
+			},
+		},
+	}
+	_, err := con.Rpc.AddWebsiteContent(con.Context(), website)
+	return err
+}
+
 // UpdateWebContentCmd - 更新网站内容
-func UpdateWebContentCmd(cmd *cobra.Command, con *repl.Console) error {
+func UpdateWebContentCmd(cmd *cobra.Command, con *core.Console) error {
 	contentId := cmd.Flags().Arg(0)
 	filePath := cmd.Flags().Arg(1)
 	websiteName, _ := cmd.Flags().GetString("website")
@@ -71,15 +96,17 @@ func UpdateWebContentCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func UpdateWebContent(con *repl.Console, contentId, localFile, webPipe, typ string) (*clientpb.WebContent, error) {
+func UpdateWebContent(con *core.Console, contentId, localFile, webPipe, typ string) (*clientpb.WebContent, error) {
 	content, err := os.ReadFile(localFile)
 	if err != nil {
 		return nil, err
 	}
+	websiteName, listenerID, _ := resolveWebsiteTarget(con, webPipe)
 
 	website := &clientpb.WebContent{
 		Id:          contentId,
-		WebsiteId:   webPipe,
+		WebsiteId:   websiteName,
+		ListenerId:  listenerID,
 		File:        localFile,
 		Content:     content,
 		ContentType: typ,
@@ -92,7 +119,7 @@ func UpdateWebContent(con *repl.Console, contentId, localFile, webPipe, typ stri
 }
 
 // RemoveWebContentCmd - 删除网站内容
-func RemoveWebContentCmd(cmd *cobra.Command, con *repl.Console) error {
+func RemoveWebContentCmd(cmd *cobra.Command, con *core.Console) error {
 	contentId := cmd.Flags().Arg(0)
 
 	_, err := RemoveWebContent(con, contentId)
@@ -104,7 +131,7 @@ func RemoveWebContentCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func RemoveWebContent(con *repl.Console, contentId string) (bool, error) {
+func RemoveWebContent(con *core.Console, contentId string) (bool, error) {
 	webContent := &clientpb.WebContent{
 		Id: contentId,
 	}
@@ -118,11 +145,13 @@ func RemoveWebContent(con *repl.Console, contentId string) (bool, error) {
 }
 
 // ListWebContentCmd - 列出网站内容
-func ListWebContentCmd(cmd *cobra.Command, con *repl.Console) error {
+func ListWebContentCmd(cmd *cobra.Command, con *core.Console) error {
 	websiteName := cmd.Flags().Arg(0)
+	resolvedWebsite, listenerID, _ := resolveWebsiteTarget(con, websiteName)
 
 	website := &clientpb.Website{
-		Name: websiteName,
+		Name:       resolvedWebsite,
+		ListenerId: listenerID,
 	}
 
 	contents, err := con.Rpc.ListWebContent(con.Context(), website)
@@ -138,11 +167,11 @@ func ListWebContentCmd(cmd *cobra.Command, con *repl.Console) error {
 	var rowEntries []table.Row
 	tableModel := tui.NewTable([]table.Column{
 		table.NewColumn("ID", "ID", 8),
-		table.NewColumn("WebsiteName", "WebsiteName", 15),
-		table.NewColumn("ListenerID", "ListenerID", 15),
-		table.NewColumn("Path", "Path", 20),
+		table.NewColumn("WebsiteName", "Website Name", 15),
+		table.NewColumn("ListenerID", "Listener ID", 15),
+		table.NewFlexColumn("Path", "Path", 1),
 		table.NewColumn("Size", "Size", 8),
-		table.NewColumn("ContentType", "ContentType", 30),
+		table.NewFlexColumn("ContentType", "Content Type", 1),
 	}, true)
 
 	for _, content := range contents.Contents {
@@ -161,4 +190,18 @@ func ListWebContentCmd(cmd *cobra.Command, con *repl.Console) error {
 	tableModel.SetRows(rowEntries)
 	con.Log.Console(tableModel.View())
 	return nil
+}
+
+func resolveWebsiteTarget(con *core.Console, key string) (string, string, bool) {
+	if con != nil && con.Pipelines != nil {
+		if pipeline, ok := con.Pipelines[key]; ok && pipeline != nil {
+			if pipeline.GetWeb() != nil {
+				return pipeline.Name, pipeline.ListenerId, true
+			}
+		}
+	}
+	if listenerID, name, ok := strings.Cut(key, ":"); ok && listenerID != "" && name != "" {
+		return name, listenerID, false
+	}
+	return key, "", false
 }

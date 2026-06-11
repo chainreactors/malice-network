@@ -1,7 +1,7 @@
 package models
 
 import (
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"gorm.io/gorm"
 	"time"
 )
@@ -14,11 +14,13 @@ type Task struct {
 	Seq         uint32
 	Type        string
 	SessionID   string
-	Session     Session `gorm:"foreignKey:SessionID"`
+	Session     Session `gorm:"foreignKey:SessionID;references:SessionID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 	Cur         int
 	Total       int
 	Description string
 	ClientName  string
+	FinishTime  time.Time
+	LastTime    time.Time
 }
 
 func (t *Task) BeforeCreate(tx *gorm.DB) (err error) {
@@ -30,11 +32,20 @@ func (t *Task) BeforeCreate(tx *gorm.DB) (err error) {
 }
 
 func (t *Task) UpdateCur(db *gorm.DB, newCur int) error {
-	return db.Model(t).Update("cur", newCur).Error
+	t.LastTime = time.Now()
+	return db.Model(t).Updates(map[string]interface{}{
+		"cur":       newCur,
+		"last_time": t.LastTime,
+	}).Error
 }
 
 func (t *Task) UpdateTotal(db *gorm.DB, newTotal int) error {
 	return db.Model(t).Update("total", newTotal).Error
+}
+
+func (t *Task) UpdateFinish(db *gorm.DB) error {
+	t.FinishTime = time.Now()
+	return db.Save(t).Error
 }
 
 func (t *Task) ToProtobuf() *clientpb.Task {
@@ -50,6 +61,8 @@ func (t *Task) ToProtobuf() *clientpb.Task {
 		Description: t.Description,
 		Callby:      t.ClientName,
 		Timeout:     time.Now().After(t.Deadline),
-		Finished:    t.Cur == t.Total,
+		Finished:    !t.FinishTime.IsZero() || t.Cur == t.Total,
+		CreatedAt:   t.Created.Unix(),
+		FinishedAt:  t.FinishTime.Unix(),
 	}
 }

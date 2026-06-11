@@ -2,16 +2,16 @@ package third
 
 import (
 	"github.com/carapace-sh/carapace"
+	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
-func Commands(con *repl.Console) []*cobra.Command {
+func Commands(con *core.Console) []*cobra.Command {
 	curlCmd := &cobra.Command{
-		Use:   consts.ModuleCurl + " [url]",
+		Use:   consts.ModuleRequest + " [url]",
 		Short: "Send HTTP request",
 		Long:  "Send HTTP request to specified URL",
 		Args:  cobra.ExactArgs(1),
@@ -19,14 +19,14 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return CurlCmd(cmd, con)
 		},
 		Annotations: map[string]string{
-			"depend": consts.ModuleCurl,
+			"depend": consts.ModuleRequest,
 		},
 		Example: `~~~
-curl http://example.com
+request http://example.com
 
-curl -X POST -d "data" http://example.com
+request -X POST -d "data" http://example.com
 
-curl -H "Host: example.com" -H "User-Agent: custom" http://example.com
+request -H "Host: example.com" -H "User-Agent: custom" http://example.com
 ~~~`,
 	}
 
@@ -43,6 +43,7 @@ curl -H "Host: example.com" -H "User-Agent: custom" http://example.com
 	return []*cobra.Command{curlCmd}
 }
 
-func Register(con *repl.Console) {
+func Register(con *core.Console) {
 	RegisterCurlFunc(con)
+	RegisterFFmpegCmdFunc(con)
 }

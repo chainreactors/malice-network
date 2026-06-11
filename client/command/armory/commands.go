@@ -2,18 +2,22 @@ package armory
 
 import (
 	"github.com/carapace-sh/carapace"
+	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
-func Commands(con *repl.Console) []*cobra.Command {
+func Commands(con *core.Console) []*cobra.Command {
 	armoryCmd := &cobra.Command{
 		Use:   consts.CommandArmory,
 		Short: "Automatically download and install extensions/aliases",
 		Long:  "See Docs at https://sliver.sh/docs?name=Armory",
+		Annotations: map[string]string{
+			"thirdParty": "true",
+			"static":     "true",
+		},
 		Run: func(cmd *cobra.Command, args []string) {
 			ArmoryCmd(cmd, con)
 		},
@@ -66,6 +70,10 @@ armory install rubeus
 		Short: "Search for armory packages",
 		Long:  "See Docs at https://sliver.sh/docs?name=Armory",
 		Args:  cobra.ExactArgs(1),
+		Annotations: map[string]string{
+			"thirdParty": "true",
+			"static":     "true",
+		},
 		Run: func(cmd *cobra.Command, args []string) {
 			ArmorySearchCmd(cmd, con)
 		},

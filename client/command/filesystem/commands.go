@@ -1,16 +1,20 @@
 package filesystem
 
 import (
+	"fmt"
 	"github.com/carapace-sh/carapace"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/types"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"strings"
 )
 
-func Commands(con *repl.Console) []*cobra.Command {
+func Commands(con *core.Console) []*cobra.Command {
 	pwdCmd := &cobra.Command{
 		Use:   consts.ModulePwd,
 		Short: "Print working directory",
@@ -162,6 +166,25 @@ mkdir /tmp
 	common.BindArgCompletions(mkdirCmd, nil,
 		carapace.ActionValues().Usage("mkdir path"))
 
+	touchCmd := &cobra.Command{
+		Use:   consts.ModuleTouch + " [path]",
+		Short: "Touch file",
+		Long:  "create an empty file or update file timestamps in implant",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return TouchCmd(cmd, con)
+		},
+		Annotations: map[string]string{
+			"depend": consts.ModuleTouch,
+		},
+		Example: `~~~
+touch /tmp/file.txt
+~~~`,
+	}
+
+	common.BindArgCompletions(touchCmd, nil,
+		carapace.ActionValues().Usage("touch file path"))
+
 	mvCmd := &cobra.Command{
 		Use:   consts.ModuleMv + " [source] [target]",
 		Short: "Move file",
@@ -201,6 +224,20 @@ rm /tmp/file.txt
 	common.BindArgCompletions(rmCmd, nil,
 		carapace.ActionValues().Usage("rm file name"))
 
+	enumDriverCmd := &cobra.Command{
+		Use:   consts.ModuleEnumDrivers,
+		Short: "Enum Drivers",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return EnumDriverCmd(cmd, con)
+		},
+		Annotations: map[string]string{
+			"depend": consts.ModuleEnumDrivers,
+		},
+		Example: `~~~
+enum_drivers
+~~~`,
+	}
+
 	return []*cobra.Command{
 		pwdCmd,
 		catCmd,
@@ -209,13 +246,15 @@ rm /tmp/file.txt
 		chownCmd,
 		cpCmd,
 		lsCmd,
+		enumDriverCmd,
 		mkdirCmd,
+		touchCmd,
 		mvCmd,
 		rmCmd,
 	}
 }
 
-func Register(con *repl.Console) {
+func Register(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleCd,
 		Cd,
@@ -239,7 +278,7 @@ func Register(con *repl.Console) {
 		Cat,
 		"bcat",
 		Cat,
-		output.ParseResponse,
+		output.ParseBinaryResponse,
 		nil)
 
 	con.AddCommandFuncHelper(
@@ -330,6 +369,24 @@ func Register(con *repl.Console) {
 		[]string{"task"})
 
 	con.RegisterImplantFunc(
+		consts.ModuleTouch,
+		Touch,
+		"btouch",
+		Touch,
+		output.ParseStatus,
+		nil)
+
+	con.AddCommandFuncHelper(
+		consts.ModuleTouch,
+		consts.ModuleTouch,
+		consts.ModuleTouch+`(active(),"/tmp/file.txt")`,
+		[]string{
+			"session: special session",
+			"path: file path",
+		},
+		[]string{"task"})
+
+	con.RegisterImplantFunc(
 		consts.ModuleMv,
 		Mv,
 		"bmv",
@@ -381,6 +438,70 @@ func Register(con *repl.Console) {
 		[]string{
 			"session: special session",
 			"fileName: file to remove",
+		},
+		[]string{"task"})
+
+	con.RegisterImplantFunc(
+		consts.ModuleEnumDrivers,
+		EnumDriver,
+		"benum_drivers",
+		EnumDriver,
+		func(ctx *clientpb.TaskContext) (interface{}, error) {
+			err := types.HandleMaleficError(ctx.Spite)
+			if err != nil {
+				return "", err
+			}
+			resp := ctx.Spite.GetEnumDriversResponse()
+			var driverDetails []string
+			if len(resp.Drives) == 0 {
+				con.Log.Infof("No Driver")
+				return "", nil
+			}
+			for _, driver := range resp.GetDrives() {
+				driverStr := fmt.Sprintf("%s|%s",
+					driver.Path,
+					driver.DriveType,
+				)
+				driverDetails = append(driverDetails, driverStr)
+			}
+			return strings.Join(driverDetails, ","), nil
+		},
+		func(content *clientpb.TaskContext) (string, error) {
+			err := types.HandleMaleficError(content.Spite)
+			if err != nil {
+				return "", err
+			}
+			resp := content.Spite.GetEnumDriversResponse()
+			var driverDetails []string
+			if len(resp.Drives) == 0 {
+				con.Log.Infof("No Driver")
+				return "", nil
+			}
+			for _, driver := range resp.GetDrives() {
+				driverStr := fmt.Sprintf("%s --> %s",
+					driver.Path,
+					driver.DriveType,
+				)
+				driverDetails = append(driverDetails, driverStr)
+			}
+			return strings.Join(driverDetails, "\n"), nil
+		})
+
+	con.AddCommandFuncHelper(
+		consts.ModuleEnumDrivers,
+		consts.ModuleEnumDrivers,
+		consts.ModuleEnumDrivers+"(active())",
+		[]string{
+			"session: special session",
+		},
+		[]string{"task"})
+
+	con.AddCommandFuncHelper(
+		"benum_drivers",
+		"benum_drivers",
+		"benum_drivers(active())",
+		[]string{
+			"session: special session",
 		},
 		[]string{"task"})
 

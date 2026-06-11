@@ -15,8 +15,6 @@ import (
 func Display(eng *Engine, maxRows int) {
 	eng.usedY = 0
 
-	defer fmt.Print(term.ClearScreenBelow)
-
 	// The completion engine might be inactive but still having
 	// a non-empty list of completions. This is on purpose, as
 	// sometimes it's better to keep completions printed for a
@@ -108,12 +106,12 @@ func (e *Engine) highlightDisplay(grp *group, val Candidate, pad, col int, selec
 		return padSpace(pad)
 	}
 
-	reset := color.Fmt(val.Style)
+	style := color.Fmt(val.Style)
 	candidate, padded := grp.trimDisplay(val, pad, col)
 
 	if e.IsearchRegex != nil && e.isearchBuf.Len() > 0 && !selected {
 		match := e.IsearchRegex.FindString(candidate)
-		match = color.Fmt(color.Bg+"244") + match + color.Reset + reset
+		match = color.Fmt(color.Bg+"244") + match + color.Reset + style
 		candidate = e.IsearchRegex.ReplaceAllLiteralString(candidate, match)
 	}
 
@@ -130,12 +128,12 @@ func (e *Engine) highlightDisplay(grp *group, val Candidate, pad, col int, selec
 		// Highlight the prefix if any and configured for it.
 		if e.config.GetBool("colored-completion-prefix") && e.prefix != "" {
 			if prefixMatch, err := regexp.Compile("^" + e.prefix); err == nil {
-				prefixColored := color.Bold + color.FgBlue + e.prefix + color.BoldReset + color.FgDefault + reset
+				prefixColored := color.Bold + color.FgBlue + e.prefix + color.BoldReset + color.FgDefault + style
 				candidate = prefixMatch.ReplaceAllString(candidate, prefixColored)
 			}
 		}
 
-		candidate = reset + candidate + color.Reset
+		candidate = style + candidate + color.Reset
 	}
 
 	return candidate + padded

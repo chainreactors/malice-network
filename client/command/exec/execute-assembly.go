@@ -1,31 +1,30 @@
 package exec
 
 import (
+	"github.com/chainreactors/IoM-go/client"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/intermediate"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
 )
 
-func ExecuteAssemblyCmd(cmd *cobra.Command, con *repl.Console) error {
+func ExecuteAssemblyCmd(cmd *cobra.Command, con *core.Console) error {
 	session := con.GetInteractive()
 	path, args, output, _ := common.ParseBinaryFlags(cmd)
 	task, err := ExecuteAssembly(con.Rpc, session, path, args, output, common.ParseCLRFlags(cmd), common.ParseSacrificeFlags(cmd))
 	if err != nil {
 		return err
 	}
-	con.GetInteractive().Console(task, path)
-	return nil
+	return common.HandleTaskOutput(cmd, con, task)
 }
 
-func ExecuteAssembly(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, args []string, out bool, param map[string]string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
+func ExecuteAssembly(rpc clientrpc.MaliceRPCClient, sess *client.Session, path string, args []string, out bool, param map[string]string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 	binary, err := output.NewExecutable(consts.ModuleExecuteAssembly, path, args, sess.Os.Arch, out, sac)
 	if err != nil {
 		return nil, err
@@ -38,7 +37,7 @@ func ExecuteAssembly(rpc clientrpc.MaliceRPCClient, sess *core.Session, path str
 	return task, nil
 }
 
-func InlineAssemblyCmd(cmd *cobra.Command, con *repl.Console) error {
+func InlineAssemblyCmd(cmd *cobra.Command, con *core.Console) error {
 	session := con.GetInteractive()
 	path, args, output, _ := common.ParseBinaryFlags(cmd)
 	clrparam := common.ParseCLRFlags(cmd)
@@ -46,11 +45,10 @@ func InlineAssemblyCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	con.GetInteractive().Console(task, path)
-	return nil
+	return common.HandleTaskOutput(cmd, con, task)
 }
 
-func InlineAssembly(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, args []string, out bool, param map[string]string) (*clientpb.Task, error) {
+func InlineAssembly(rpc clientrpc.MaliceRPCClient, sess *client.Session, path string, args []string, out bool, param map[string]string) (*clientpb.Task, error) {
 	binary, err := output.NewExecutable(consts.ModuleExecuteAssembly, path, args, sess.Os.Arch, out, nil)
 	if err != nil {
 		return nil, err
@@ -63,12 +61,12 @@ func InlineAssembly(rpc clientrpc.MaliceRPCClient, sess *core.Session, path stri
 	return task, nil
 }
 
-func RegisterAssemblyFunc(con *repl.Console) {
+func RegisterAssemblyFunc(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleExecuteAssembly,
 		ExecuteAssembly,
 		"bexecute_assembly",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path, args string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *client.Session, path, args string) (*clientpb.Task, error) {
 			cmdline, err := shellquote.Split(args)
 			if err != nil {
 				return nil, err
@@ -81,13 +79,14 @@ func RegisterAssemblyFunc(con *repl.Console) {
 	con.AddCommandFuncHelper(
 		consts.ModuleExecuteAssembly,
 		consts.ModuleExecuteAssembly,
-		consts.ModuleExecuteAssembly+`(active(),"sharp.exe",{}, true, new_bypass_all())`,
+		consts.ModuleExecuteAssembly+`(active(),"sharp.exe",{}, true, new_bypass_all(), new_sacrifice(1234,false,true,true,""))`,
 		[]string{
 			"sessions",
 			"path",
 			"args",
 			"output",
 			"param, bypass amsi,wldp,etw",
+			"sac, sacrifice process",
 		},
 		[]string{"task"})
 

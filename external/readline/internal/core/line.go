@@ -2,10 +2,9 @@ package core
 
 import (
 	"fmt"
-	"regexp"
+	"slices"
 	"strings"
 	"unicode"
-	"unicode/utf8"
 
 	"github.com/reeflective/readline/inputrc"
 	"github.com/reeflective/readline/internal/color"
@@ -32,33 +31,20 @@ func (l *Line) Set(chars ...rune) {
 // If the position is either negative or greater than the
 // length of the line, nothing is inserted.
 func (l *Line) Insert(pos int, chars ...rune) {
-	for {
-		// I don't really understand why `0` is creeping in at the
-		// end of the array but it only happens with unicode characters.
-		if len(chars) > 1 && chars[len(chars)-1] == 0 {
-			chars = chars[:len(chars)-1]
-			continue
-		}
-
-		break
+	// I don't really understand why `0` is creeping in at the
+	// end of the array but it only happens with unicode characters.
+	end := len(chars)
+	for end > 0 && chars[end-1] == 0 {
+		end--
 	}
+	chars = chars[:end]
 
 	// Invalid position cancels the insertion
 	if pos < 0 || pos > l.Len() {
 		return
 	}
 
-	switch {
-	case l.Len() == 0:
-		*l = chars
-	case pos < l.Len():
-		forward := string((*l)[pos:])
-		cut := string(append((*l)[:pos], chars...))
-		cut += forward
-		*l = []rune(cut)
-	case pos == l.Len():
-		*l = append(*l, chars...)
-	}
+	*l = slices.Insert([]rune(*l), pos, chars...)
 }
 
 // InsertBetween inserts one or more runes into the line, between the specified
@@ -71,17 +57,12 @@ func (l *Line) InsertBetween(bpos, epos int, chars ...rune) {
 		return
 	}
 
-	switch {
-	case epos == -1:
+	switch epos {
+	case -1:
 		l.Insert(bpos, chars...)
-	case epos == l.Len():
-		cut := string((*l)[:bpos]) + string(chars)
-		*l = []rune(cut)
 	default:
-		forward := string((*l)[epos:])
-		cut := string(append((*l)[:bpos], chars...))
-		cut += forward
-		*l = []rune(cut)
+		*l = slices.Delete([]rune(*l), bpos, epos)
+		l.Insert(bpos, chars...)
 	}
 }
 
@@ -96,13 +77,9 @@ func (l *Line) Cut(bpos, epos int) {
 
 	switch epos {
 	case -1:
-		cut := string((*l)[:bpos])
-		*l = []rune(cut)
+		*l = slices.Delete([]rune(*l), bpos, l.Len())
 	default:
-		forward := string((*l)[epos:])
-		cut := string((*l)[:bpos])
-		cut += forward
-		*l = []rune(cut)
+		*l = slices.Delete([]rune(*l), bpos, epos)
 	}
 }
 
@@ -113,24 +90,20 @@ func (l *Line) CutRune(pos int) {
 		return
 	}
 
-	switch {
-	case pos == 0:
-		*l = (*l)[1:]
-	case pos == l.Len():
-		*l = (*l)[:pos-1]
+	switch pos {
+	case l.Len():
+		*l = slices.Delete([]rune(*l), pos-1, pos)
 	default:
-		forward := string((*l)[pos+1:])
-		cut := string((*l)[:pos])
-		cut += forward
-		*l = []rune(cut)
+		*l = slices.Delete([]rune(*l), pos, pos+1)
 	}
+
 }
 
-// Len returns the length of the line, as given by ut8.RuneCount.
-// This should NOT confused with the length of the line in terms of
+// Len returns the length of the line.
+// This should NOT be confused with the length of the line in terms of
 // how many terminal columns its printed representation will take.
 func (l *Line) Len() int {
-	return utf8.RuneCountInString(string(*l))
+	return len(*l)
 }
 
 // SelectWord returns the begin and end index positions of a word
@@ -145,35 +118,33 @@ func (l *Line) SelectWord(pos int) (bpos, epos int) {
 		pos--
 	}
 
-	wordRgx := regexp.MustCompile("[0-9a-zA-Z_]")
 	bpos, epos = pos, pos
 
-	if match := wordRgx.MatchString(string((*l)[pos])); !match {
-		wordRgx = regexp.MustCompile(`\s`)
+	isInWord := isAlphaNumUnderscore
+	if !isAlphaNumUnderscore((*l)[pos]) {
+		isInWord = unicode.IsSpace
 	}
 
 	// To first space found backward
-	for ; bpos >= 0; bpos-- {
-		if match := wordRgx.MatchString(string((*l)[bpos])); !match {
-			break
-		}
+	for bpos > 0 && isInWord((*l)[bpos-1]) {
+		bpos--
 	}
 
 	// And to first space found forward
-	for ; epos < l.Len(); epos++ {
-		if match := wordRgx.MatchString(string((*l)[epos])); !match {
-			break
-		}
-	}
-
-	bpos++
-
-	// Ending position must be greater than 0
-	if epos > 0 {
-		epos--
+	for epos < l.Len()-1 && isInWord((*l)[epos+1]) {
+		epos++
 	}
 
 	return bpos, epos
+}
+
+// isAlphaNumUnderscore returns true if r is in the character
+// class `[0-9a-zA-Z_]`.
+func isAlphaNumUnderscore(r rune) bool {
+	return (r >= '0' && r <= '9') ||
+		(r >= 'a' && r <= 'z') ||
+		(r >= 'A' && r <= 'Z') ||
+		r == '_'
 }
 
 // SelectBlankWord returns the begin and end index positions
@@ -188,35 +159,23 @@ func (l *Line) SelectBlankWord(pos int) (bpos, epos int) {
 		pos--
 	}
 
-	blankWordRgx := regexp.MustCompile(`[^\s]`)
-
 	bpos, epos = pos, pos
 
-	if match := blankWordRgx.MatchString(string((*l)[pos])); !match {
-		blankWordRgx = regexp.MustCompile(`\s`)
+	isInWord := func(r rune) bool {
+		return !unicode.IsSpace(r)
+	}
+	if unicode.IsSpace((*l)[pos]) {
+		isInWord = unicode.IsSpace
 	}
 
 	// To first space found backward
-	for ; bpos >= 0; bpos-- {
-		escaped := bpos > 0 && (*l)[bpos-1] == '\\'
-		if match := blankWordRgx.MatchString(string((*l)[bpos])); !match && !escaped {
-			break
-		}
+	for bpos > 0 && isInWord((*l)[bpos-1]) {
+		bpos--
 	}
 
 	// And to first space found forward
-	for ; epos < l.Len(); epos++ {
-		escaped := epos > 0 && (*l)[epos-1] == '\\'
-		if match := blankWordRgx.MatchString(string((*l)[epos])); !match && !escaped {
-			break
-		}
-	}
-
-	bpos++
-
-	// Ending position must be greater than 0
-	if epos > 0 {
-		epos--
+	for epos < l.Len()-1 && isInWord((*l)[epos+1]) {
+		epos++
 	}
 
 	return bpos, epos
@@ -319,33 +278,38 @@ func (l *Line) SurroundQuotes(single bool, pos int) (bpos, epos int) {
 // Params:
 // @indent -    Used to align all lines (except the first) together on a single column.
 func DisplayLine(l *Line, indent int) {
-	lines := strings.Split(string(*l), "\n")
+	var builtLine strings.Builder
+	var lineLen int
 
-	if strings.HasSuffix(string(*l), "\n") {
-		lines = append(lines, "")
-	}
-
-	for num, line := range lines {
-		// Don't let any visual selection go further than length.
-		line += color.BgDefault
-
-		// Clear everything before each line, except the first.
-		if num > 0 {
-			term.MoveCursorForwards(indent)
-			line = term.ClearLineBefore + line
-		}
-
-		// Clear everything after each line, except the last.
-		if num < len(lines)-1 {
-			if len(line)+indent < term.GetWidth() {
-				line += term.ClearLineAfter
+	for _, r := range *l {
+		if r == '\n' {
+			builtLine.WriteString(color.BgDefault)
+			if lineLen < term.GetWidth() {
+				builtLine.WriteString(term.ClearLineAfter)
 			}
+			builtLine.WriteString(term.NewlineReturn)
+			builtLine.WriteString(fmt.Sprintf("\x1b[%dC", indent)) // Equivalent of term.MoveCursorForwards
+			builtLine.WriteString(term.ClearLineBefore)
 
-			line += term.NewlineReturn
+			lineLen = 0
+		} else {
+			builtLine.WriteRune(r)
+			lineLen++
 		}
 
-		fmt.Print(line)
 	}
+
+	if l.Len() > 0 && (*l)[l.Len()-1] == '\n' {
+		builtLine.WriteString(color.BgDefault)
+		builtLine.WriteString(term.ClearLineAfter)
+		builtLine.WriteString(term.NewlineReturn)
+		builtLine.WriteString(fmt.Sprintf("\x1b[%dC", indent)) // Equivalent of term.MoveCursorForwards
+		builtLine.WriteString(term.ClearLineBefore)
+	}
+
+	builtLine.WriteString(color.BgDefault)
+
+	fmt.Print(builtLine.String())
 }
 
 // CoordinatesLine returns the number of real terminal lines on which the input line spans, considering
@@ -356,29 +320,39 @@ func DisplayLine(l *Line, indent int) {
 // Returns:
 // @x - The number of columns, starting from the terminal left, to the end of the last line.
 // @y - The number of actual lines on which the line spans, accounting for line wrap.
-func CoordinatesLine(l *Line, indent int) (x, y int) {
-	line := string(*l)
-	lines := strings.Split(line, "\n")
-	usedY, usedX := 0, 0
+func CoordinatesLine(l *Line, indent int) (int, int) {
+	var usedY, usedX, lineStart, lineIdx int
 
-	for i, line := range lines {
-		x, y := strutil.LineSpan([]rune(line), i, indent)
-		usedY += y
-		usedX = x
+	for i, r := range *l {
+		if r == '\n' {
+			_, y := strutil.LineSpan((*l)[lineStart:i], lineIdx, indent)
+			usedY += y
+
+			lineStart = i + 1
+			lineIdx++
+		}
 	}
+
+	// Last line
+	x, y := strutil.LineSpan((*l)[lineStart:], lineIdx, indent)
+	usedY += y
+	usedX = x
 
 	return usedX, usedY
 }
 
 // Lines returns the number of real lines in the input buffer.
 // If there are no newlines, the result is 0, otherwise it's
-// the number of lines - 1.
+// the number of newlines - 1.
 func (l *Line) Lines() int {
-	line := string(*l)
-	nl := regexp.MustCompile(string(inputrc.Newline))
-	lines := nl.FindAllStringIndex(line, -1)
+	var count int
+	for _, r := range *l {
+		if r == inputrc.Newline {
+			count++
+		}
+	}
 
-	return len(lines)
+	return count
 }
 
 // Forward returns the offset to the beginning of the next
@@ -681,11 +655,17 @@ func closeToken(idx, count, cpos, match int, pos map[int]int, line []rune, split
 
 // newlines gives the indexes of all newline characters in the line.
 func (l *Line) newlines() [][]int {
-	line := string(*l)
-	line += string(inputrc.Newline)
-	nl := regexp.MustCompile(string(inputrc.Newline))
+	var indices [][]int
 
-	return nl.FindAllStringIndex(line, -1)
+	for i, r := range *l {
+		if r == inputrc.Newline {
+			indices = append(indices, []int{i, i + 1})
+		}
+	}
+
+	indices = append(indices, []int{l.Len(), l.Len() + 1})
+
+	return indices
 }
 
 // returns bpos, epos ordered and true if either is valid.

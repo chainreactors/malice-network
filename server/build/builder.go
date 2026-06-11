@@ -1,0 +1,169 @@
+package build
+
+import (
+	"errors"
+	"fmt"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	errs "github.com/chainreactors/IoM-go/types"
+
+	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/implanttypes"
+	"github.com/chainreactors/malice-network/server/internal/core"
+	"github.com/chainreactors/malice-network/server/internal/db"
+)
+
+var (
+	ERRORSRDI    = errors.New("srdi error")
+	ERROROBJCOPY = errors.New("objcopy error")
+)
+
+// Builder
+type Builder interface {
+	Generate() (*clientpb.Artifact, error)
+
+	Execute() error
+
+	Collect() (string, string, error)
+}
+
+func validateBuildOptions(req *clientpb.BuildConfig) error {
+	target, ok := consts.GetBuildTarget(req.Target)
+	if !ok {
+		return errs.ErrInvalidateTarget
+	}
+
+	switch req.BuildType {
+	case consts.CommandBuildModules, consts.CommandBuild3rdModules:
+		if target.OS != consts.Windows {
+			return errors.New("modules build only supports Windows targets")
+		}
+		if req.OutputType != "lib" {
+			return errors.New("modules build requires library output")
+		}
+	case consts.CommandBuildPrelude:
+		if req.OutputType == "lib" {
+			return errors.New("prelude build does not support --lib")
+		}
+		if req.OutputType == "shellcode" {
+			return errors.New("prelude build does not support --shellcode")
+		}
+	case consts.CommandBuildPulse:
+		if target.OS != consts.Windows {
+			return errors.New("pulse build only supports Windows targets")
+		}
+		// pulse supports: executable (default), lib, shellcode
+	}
+	return nil
+}
+
+func NewBuilder(req *clientpb.BuildConfig) (Builder, error) {
+	if err := validateBuildOptions(req); err != nil {
+		return nil, err
+	}
+	//malefic_config := types.LoadProfileFromContent(req.MaleficConfig)
+	//if req.BuildType == consts.CommandBuildPulse {
+	//	if malefic_config.Pulse.Flags.ArtifactID == 0 {
+	//		profile, err := db.GetProfile(req.ProfileName)
+	//		if err != nil {
+	//			return nil, err
+	//		}
+	//		req.ArtifactId = profile.Pulse.Flags.ArtifactID
+	//	}
+	//
+	//	if len(req.ParamsBytes) > 0 {
+	//		var newParams types.ProfileParams
+	//		err := json.Unmarshal(req.ParamsBytes, &newParams)
+	//		if err != nil {
+	//			return nil, err
+	//		}
+	//		newParams.OriginBeaconID = req.ArtifactId
+	//		req.ParamsBytes = []byte(newParams.String())
+	//	}
+	//}
+	var builder Builder
+	switch req.Source {
+	case consts.ArtifactFromGithubAction:
+		builder = NewActionBuilder(req)
+	case consts.ArtifactFromDocker:
+		builder = NewDockerBuilder(req)
+	case consts.ArtifactFromSaas:
+		builder = NewSaasBuilder(req)
+	case consts.ArtifactFromPatch:
+		builder = NewPatchBuilder(req)
+	default:
+		return nil, errors.New("failed to create builder")
+	}
+
+	return builder, nil
+}
+
+type BuilderState struct {
+	ID     uint32 // Artifact.ID
+	Status string // 状态
+}
+
+const maxDockerBuildConcurrency = 1
+
+var (
+	// 用信号量控制最大并发数
+	dockerBuildSemaphore = make(chan struct{}, maxDockerBuildConcurrency)
+)
+
+func SendBuildMsg(artifact *clientpb.Artifact, status string, params []byte, err error) {
+	if core.EventBroker == nil {
+		return
+	}
+	event := core.Event{
+		EventType: consts.EventBuild,
+		IsNotify:  false,
+		Important: true,
+	}
+	if status == consts.BuildStatusCompleted {
+		event.Message = fmt.Sprintf("Artifact completed %s (type: %s, target: %s, source: %s)", artifact.Name, artifact.Type, artifact.Target, artifact.Source)
+		if len(params) > 0 {
+			profileParams, err := implanttypes.UnmarshalProfileParams(params)
+			if err != nil {
+				logs.Log.Errorf("failed to unmarshal profile params: %v", err)
+				return
+			}
+			if profileParams.AutoDownload {
+				event.Op = consts.CtrlArtifactDownload
+				event.Job = &clientpb.Job{Name: artifact.Name}
+			}
+		}
+	} else if status == consts.BuildStatusFailure {
+		event.Message = fmt.Sprintf("Artifact failed %s (type: %s, target: %s, source: %s): %v", artifact.Name, artifact.Type, artifact.Target, artifact.Source, err)
+	} else {
+		return
+	}
+	core.EventBroker.Publish(event)
+}
+
+func AmountArtifact(artifactName string) error {
+	var result []*clientpb.Pipeline
+	core.Listeners.Range(func(key, value any) bool {
+		lns := value.(*core.Listener)
+		for _, pipeline := range lns.AllPipelines() {
+			if pipeline.Type == "website" {
+				result = append(result, pipeline)
+			}
+		}
+		return true
+	})
+	for _, pipe := range result {
+		content, err := db.AddAmountWebContent(artifactName, pipe.Name, pipe.ListenerId)
+		if err != nil {
+			return err
+		}
+		lns, _ := core.Listeners.Get(pipe.ListenerId)
+		lns.PushCtrl(&clientpb.JobCtrl{
+			Ctrl: consts.CtrlWebContentAddArtifact,
+			Job: &clientpb.Job{
+				Pipeline: pipe,
+			},
+			Content: content,
+		})
+	}
+	return nil
+}

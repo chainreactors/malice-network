@@ -1,22 +1,26 @@
 package basic
 
 import (
+	"errors"
+
+	"github.com/carapace-sh/carapace"
+	"github.com/chainreactors/IoM-go/client"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/intermediate"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/output"
+	"github.com/chainreactors/mals"
 	"github.com/chainreactors/rem/x/utils"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
-func Commands(con *repl.Console) []*cobra.Command {
+func Commands(con *core.Console) []*cobra.Command {
 	sleepCmd := &cobra.Command{
-		Use:   consts.ModuleSleep + " [interval/second]",
+		Use:   consts.ModuleSleep + " [expression]",
 		Short: "change implant sleep config",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -38,7 +42,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 
 	getCmd := &cobra.Command{
 		Use:   consts.ModulePing,
-		Short: "get bind implant response",
+		Short: "send one bind ping",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return GetCmd(cmd, con)
 		},
@@ -48,7 +52,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	}
 
 	waitCmd := &cobra.Command{
-		Use:   consts.CommandWait + " [task_id1] [task_id2]",
+		Use:   consts.CommandWait,
 		Short: "wait for task to finish",
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -57,16 +61,20 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Annotations: map[string]string{
 			"implant": consts.ImplantMaleficBind,
 		},
+		Example: `Wait task content.
+~~~
+wait 59
+~~~
+`,
 	}
-	common.BindFlag(waitCmd, func(f *pflag.FlagSet) {
-		f.Int("interval", 1, "interval")
-	})
+	common.BindArgCompletions(waitCmd, nil, carapace.ActionValues().Usage("task ID"))
+
 	taskComp := common.SessionTaskCompleter(con)
 	common.BindArgCompletions(waitCmd, &taskComp)
 
 	pollingCmd := &cobra.Command{
-		Use:   consts.CommandPolling,
-		Short: "polling task status",
+		Use:   consts.CommandPolling + " [start|stop|status]",
+		Short: "manage bind polling",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return PollingCmd(cmd, con)
 		},
@@ -74,9 +82,29 @@ func Commands(con *repl.Console) []*cobra.Command {
 			"implant": consts.ImplantMaleficBind,
 		},
 	}
-	common.BindFlag(pollingCmd, func(f *pflag.FlagSet) {
-		f.Int("interval", 1, "interval")
-	})
+	pollingCmd.PersistentFlags().Int("interval", 1, "interval in seconds")
+	pollingStartCmd := &cobra.Command{
+		Use:   "start",
+		Short: "start bind polling",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return PollingStartCmd(cmd, con)
+		},
+	}
+	pollingStopCmd := &cobra.Command{
+		Use:   "stop",
+		Short: "stop bind polling",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return PollingStopCmd(cmd, con)
+		},
+	}
+	pollingStatusCmd := &cobra.Command{
+		Use:   "status",
+		Short: "show bind polling status",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return PollingStatusCmd(cmd, con)
+		},
+	}
+	pollingCmd.AddCommand(pollingStartCmd, pollingStopCmd, pollingStatusCmd)
 
 	recoverCmd := &cobra.Command{
 		Use:   consts.CommandRecover,
@@ -98,22 +126,66 @@ func Commands(con *repl.Console) []*cobra.Command {
 	}
 
 	infoCommand := &cobra.Command{
-		Use:   "info",
-		Short: "show session info",
-		Long:  "Displays the specified session info.",
+		Use:           "info [session]",
+		Short:         "show session info",
+		Long:          "Displays the specified session info. If no session ID is provided, shows info of the current active session.",
+		Args:          cobra.MaximumNArgs(1),
+		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return SessionInfoCmd(cmd, con)
 		},
+		Example: `~~~
+// Show current session info
+info
+
+// Show specific session info by ID prefix
+info b1ab9056
+~~~`,
 	}
-	return []*cobra.Command{sleepCmd, suicideCmd, getCmd, waitCmd, pollingCmd, initCmd, recoverCmd, infoCommand}
+
+	common.BindArgCompletions(infoCommand, nil, common.SessionIDCompleter(con))
+
+	switchCmd := &cobra.Command{
+		Use:   consts.ModuleSwitch,
+		Short: "switch session",
+		Long:  "Switch session to another server pipeline by pipeline id",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return SwitchCmd(cmd, con)
+		},
+	}
+
+	common.BindFlag(switchCmd, func(f *pflag.FlagSet) {
+		f.StringP("pipeline", "p", "", "target pipeline id")
+	})
+
+	common.BindFlagCompletions(switchCmd, func(comp carapace.ActionMap) {
+		comp["pipeline"] = common.AllPipelineCompleter(con)
+	})
+
+	keepaliveCmd := &cobra.Command{
+		Use:   consts.ModuleKeepalive + " [enable/disable]",
+		Short: "toggle duplex keepalive mode",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return KeepaliveCmd(cmd, con)
+		},
+	}
+	common.BindArgCompletions(keepaliveCmd, nil,
+		carapace.ActionValues(
+			"enable",
+			"disable",
+		).Usage("keepalive state"))
+
+	return []*cobra.Command{sleepCmd, suicideCmd, getCmd, waitCmd, pollingCmd, initCmd, recoverCmd, infoCommand, switchCmd, keepaliveCmd}
 }
 
-func Register(con *repl.Console) {
+func Register(con *core.Console) {
 	con.RegisterImplantFunc(consts.ModuleSleep,
 		Sleep,
 		"bsleep",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, interval uint64) (*clientpb.Task, error) {
-			return Sleep(rpc, sess, interval, sess.Timer.Jitter)
+		func(rpc clientrpc.MaliceRPCClient, sess *client.Session, expression string, jitter uint64) (*clientpb.Task, error) {
+
+			return Sleep(rpc, sess, expression, sess.Timer.Jitter)
 		},
 		output.ParseStatus,
 		nil,
@@ -123,17 +195,32 @@ func Register(con *repl.Console) {
 		`sleep(active(), 10, 0.5)`,
 		[]string{
 			"sess:special session",
-			"interval:time interval, in seconds",
+			"cron:cron expression",
 			"jitter:jitter, percentage of interval",
 		}, []string{"task"})
 
 	con.AddCommandFuncHelper(
 		"bsleep",
 		"bsleep",
-		`sleep(active(), 10)`,
+		`bsleep(active(), 10, 0.5)`,
 		[]string{
 			"sess:special session",
 			"interval:time interval, in seconds",
+			"jitter:jitter, percentage of interval",
+		}, []string{"task"})
+
+	con.RegisterImplantFunc(consts.ModuleKeepalive,
+		Keepalive,
+		"", nil,
+		output.ParseStatus,
+		nil,
+	)
+
+	con.AddCommandFuncHelper(consts.ModuleKeepalive, consts.ModuleKeepalive,
+		`keepalive(active(), true)`,
+		[]string{
+			"sess:special session",
+			"enable:enable or disable keepalive (true/false)",
 		}, []string{"task"})
 
 	con.RegisterImplantFunc(consts.ModuleSuicide,
@@ -156,15 +243,77 @@ func Register(con *repl.Console) {
 			"sess:special session",
 		}, []string{"task"})
 
-	intermediate.RegisterFunction("with_value", func(session *core.Session, key, val string) (*core.Session, error) {
+	intermediate.RegisterFunction("with_value", func(session *client.Session, key, val string) (*client.Session, error) {
 		return session.WithValue(key, val)
 	})
 
-	intermediate.RegisterFunction("with_values", func(session *core.Session, kv []string) (*core.Session, error) {
+	intermediate.RegisterFunction("with_values", func(session *client.Session, kv []string) (*client.Session, error) {
 		return session.WithValue(kv...)
 	})
 
-	intermediate.RegisterFunction("with_context", func(session *core.Session, typ string) (*core.Session, error) {
+	intermediate.RegisterFunction("with_context", func(session *client.Session, typ string) (*client.Session, error) {
 		return session.WithValue("nonce", utils.RandomString(8), "context", typ)
+	})
+
+	intermediate.RegisterFunction("with_context_id", func(session *client.Session, id string) (*client.Session, error) {
+		return session.WithValue("context-id", id)
+	})
+
+	intermediate.RegisterFunction("with_context_name", func(session *client.Session, name string) (*client.Session, error) {
+		return session.WithValue("context-name", name)
+	})
+
+	intermediate.RegisterFunction("with_context_kind", func(session *client.Session, kind string) (*client.Session, error) {
+		return session.WithValue("context-kind", kind)
+	})
+
+	con.RegisterServerFunc("barch", func(con *core.Console, sess *client.Session) (string, error) {
+		return sess.Os.Arch, nil
+	}, nil)
+
+	con.RegisterServerFunc("active", func(con *core.Console) (*client.Session, error) {
+		return con.GetInteractive().Clone(consts.CalleeMal), nil
+	}, &mals.Helper{
+		Short:   "get current session",
+		Output:  []string{"sess"},
+		Example: "active()",
+	})
+
+	con.RegisterServerFunc("is64", func(con *core.Console, sess *client.Session) (bool, error) {
+		return sess.Os.Arch == "x64", nil
+	}, nil)
+
+	con.RegisterServerFunc("isactive", func(con *core.Console, sess *client.Session) (bool, error) {
+		return sess.IsAlive, nil
+	}, nil)
+
+	con.RegisterServerFunc("isadmin", func(con *core.Console, sess *client.Session) (bool, error) {
+		return sess.IsPrivilege, nil
+	}, nil)
+
+	con.RegisterServerFunc("isbeacon", func(con *core.Console, sess *client.Session) (bool, error) {
+		return sess.Type == consts.CommandBuildBeacon, nil
+	}, nil)
+
+	con.RegisterServerFunc("bdata", func(con *core.Console, sess *client.Session) (map[string]interface{}, error) {
+		if sess == nil {
+			return nil, errors.New("session is nil")
+		}
+		return sess.Data.Any, nil
+	}, &mals.Helper{
+		Short:   "get session custom data",
+		Output:  []string{"map[string]interface{}"},
+		Example: "bdata(active())",
+	})
+	con.RegisterServerFunc("data", func(con *core.Console, sess *client.Session) (map[string]interface{}, error) {
+		if sess == nil {
+			return nil, errors.New("session is nil")
+		}
+
+		return sess.Data.Data(), nil
+	}, &mals.Helper{
+		Short:   "get session data",
+		Output:  []string{"map[string]interface{}"},
+		Example: "data(active())",
 	})
 }

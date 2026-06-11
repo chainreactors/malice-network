@@ -2,12 +2,12 @@ package reg
 
 import (
 	"fmt"
+	"github.com/chainreactors/IoM-go/client"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
@@ -15,7 +15,7 @@ import (
 )
 
 // RegListKeyCmd lists the keys under a specific registry path.
-func RegListKeyCmd(cmd *cobra.Command, con *repl.Console) error {
+func RegListKeyCmd(cmd *cobra.Command, con *core.Console) error {
 	path := cmd.Flags().Arg(0)
 	hive, path := FormatRegPath(path)
 	session := con.GetInteractive()
@@ -24,11 +24,11 @@ func RegListKeyCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	session.Console(task, fmt.Sprintf("list registry keys under: %s\\%s", hive, path))
+	session.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 
-func RegListKey(rpc clientrpc.MaliceRPCClient, session *core.Session, hive, path string) (*clientpb.Task, error) {
+func RegListKey(rpc clientrpc.MaliceRPCClient, session *client.Session, hive, path string) (*clientpb.Task, error) {
 	request := &implantpb.RegistryRequest{
 		Type: consts.ModuleRegListKey,
 		Registry: &implantpb.Registry{
@@ -39,7 +39,7 @@ func RegListKey(rpc clientrpc.MaliceRPCClient, session *core.Session, hive, path
 	return rpc.RegListKey(session.Context(), request)
 }
 
-func RegisterRegListFunc(con *repl.Console) {
+func RegisterRegListFunc(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleRegListKey,
 		RegListKey,
@@ -52,7 +52,7 @@ func RegisterRegListFunc(con *repl.Console) {
 		consts.ModuleRegListValue,
 		RegListValue,
 		"breq_query",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, key, arch string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *client.Session, key, arch string) (*clientpb.Task, error) {
 			hive, path := FormatRegPath(key)
 			return RegListValue(rpc, sess, hive, path)
 		},
@@ -80,7 +80,7 @@ func RegisterRegListFunc(con *repl.Console) {
 }
 
 // RegListValueCmd lists the values under a specific registry path.
-func RegListValueCmd(cmd *cobra.Command, con *repl.Console) error {
+func RegListValueCmd(cmd *cobra.Command, con *core.Console) error {
 	path := cmd.Flags().Arg(0)
 	hive, path := FormatRegPath(path)
 	session := con.GetInteractive()
@@ -89,11 +89,11 @@ func RegListValueCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	session.Console(task, fmt.Sprintf("list registry values under: %s\\%s", hive, path))
+	session.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 
-func RegListValue(rpc clientrpc.MaliceRPCClient, session *core.Session, hive, path string) (*clientpb.Task, error) {
+func RegListValue(rpc clientrpc.MaliceRPCClient, session *client.Session, hive, path string) (*clientpb.Task, error) {
 	request := &implantpb.RegistryRequest{
 		Type: consts.ModuleRegListValue,
 		Registry: &implantpb.Registry{

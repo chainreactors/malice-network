@@ -2,182 +2,183 @@ package build
 
 import (
 	"errors"
+	"fmt"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/types"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/spf13/cobra"
-	"os"
-	"strconv"
-	"strings"
 )
 
-func BeaconCmd(cmd *cobra.Command, con *repl.Console) error {
-	name, address, buildTarget, modules, ca, interval, jitter, _ := common.ParseGenerateFlags(cmd)
-	if buildTarget == "" {
-		return errors.New("require build target")
+func CheckSource(con *core.Console, buildConfig *clientpb.BuildConfig) (string, error) {
+	if buildConfig == nil {
+		buildConfig = &clientpb.BuildConfig{}
 	}
-	go func() {
-		params := &types.ProfileParams{
-			Interval: interval,
-			Jitter:   jitter,
-		}
-		_, err := con.Rpc.Build(con.Context(), &clientpb.Generate{
-			ProfileName: name,
-			Address:     address,
-			Type:        consts.CommandBuildBeacon,
-			Target:      buildTarget,
-			Modules:     modules,
-			Ca:          ca,
-			Params:      params.String(),
-			Srdi:        true,
-		})
-		if err != nil {
-			con.Log.Errorf("Build beacon failed: %v", err)
-			return
-		}
-	}()
-	return nil
-}
+	source := buildConfig.Source
+	if source == consts.ArtifactFromPatch {
+		return source, nil
+	}
+	if source != consts.ArtifactFromGithubAction &&
+		source != consts.ArtifactFromDocker &&
+		source != consts.ArtifactFromSaas &&
+		source != "" {
+		return source, errors.New("source '" + source + "' is invalid")
+	}
 
-func BindCmd(cmd *cobra.Command, con *repl.Console) error {
-	name, address, buildTarget, modules, ca, interval, jitter, _ := common.ParseGenerateFlags(cmd)
-	if buildTarget == "" {
-		return errors.New("require build target")
-	}
-	go func() {
-		params := &types.ProfileParams{
-			Interval: interval,
-			Jitter:   jitter,
-		}
-		_, err := con.Rpc.Build(con.Context(), &clientpb.Generate{
-			ProfileName: name,
-			Address:     address,
-			Type:        consts.CommandBuildBind,
-			Target:      buildTarget,
-			Modules:     modules,
-			Ca:          ca,
-			Params:      params.String(),
-			Srdi:        true,
-		})
-		if err != nil {
-			con.Log.Errorf("Build bind failed: %v", err)
-			return
-		}
-	}()
-	return nil
-}
-
-func PreludeCmd(cmd *cobra.Command, con *repl.Console) error {
-	name, address, buildTarget, modules, ca, _, _, _ := common.ParseGenerateFlags(cmd)
-	if buildTarget == "" {
-		return errors.New("require build target")
-	}
-	autorunPath, _ := cmd.Flags().GetString("autorun")
-	if autorunPath == "" {
-		return errors.New("require autorun.yaml path")
-	}
-	file, err := os.ReadFile(autorunPath)
+	resp, err := con.Rpc.CheckSource(con.Context(), buildConfig)
 	if err != nil {
-		return err
+		return "", err
 	}
-	go func() {
-		_, err := con.Rpc.Build(con.Context(), &clientpb.Generate{
-			ProfileName: name,
-			Address:     address,
-			Type:        consts.CommandBuildPrelude,
-			Target:      buildTarget,
-			Modules:     modules,
-			Ca:          ca,
-			Srdi:        true,
-			Bin:         file,
-		})
-		if err != nil {
-			con.Log.Errorf("Build prelude failed: %v\n", err)
-			return
-		}
-	}()
-	return nil
+	return resp.Source, nil
 }
 
-func ModulesCmd(cmd *cobra.Command, con *repl.Console) error {
-	name, address, buildTarget, modules, _, _, _, srdi := common.ParseGenerateFlags(cmd)
-	if len(modules) == 0 {
-		modules = []string{"full"}
+// parseBasicConfig
+func parseBasicConfig(cmd *cobra.Command, con *core.Console) (*clientpb.BuildConfig, error) {
+	// init
+	buildConfig := common.ParseGenerateFlags(cmd)
+
+	if buildConfig.Target == "" {
+		return nil, errors.New("require build target")
 	}
-	if buildTarget == "" {
-		return errors.New("require build target")
-	}
-	go func() {
-		_, err := BuildModules(con, name, address, buildTarget, modules, srdi)
-		if err != nil {
-			con.Log.Errorf("Build modules failed: %v", err)
-			return
-		}
-	}()
-	return nil
+
+	return buildConfig, nil
 }
 
-func PulseCmd(cmd *cobra.Command, con *repl.Console) error {
-	profile, _ := cmd.Flags().GetString("profile")
-	address, _ := cmd.Flags().GetString("address")
-	buildTarget, _ := cmd.Flags().GetString("target")
-	artifactId, _ := cmd.Flags().GetUint32("artifact-id")
-	if !strings.Contains(buildTarget, "windows") {
-		con.Log.Warn("pulse only support windows target\n")
+func parseSourceConfig(cmd *cobra.Command, con *core.Console, buildConfig *clientpb.BuildConfig) (*clientpb.BuildConfig, error) {
+	source, _ := cmd.Flags().GetString("source")
+	buildConfig.Source = source
+	comment, _ := cmd.Flags().GetString("comment")
+	if comment != "" {
+		buildConfig.Comment = comment
+	}
+	// use github action
+	actionConfig := resolveGithubActionConfig(cmd)
+	if actionConfig != nil {
+		buildConfig.SourceConfig = &clientpb.BuildConfig_GithubAction{
+			GithubAction: actionConfig,
+		}
+	}
+	source, err := CheckSource(con, buildConfig)
+	if err != nil {
+		return nil, err
+	}
+	buildConfig.Source = source
+	return buildConfig, nil
+}
+
+func resolveGithubActionConfig(cmd *cobra.Command) *clientpb.GithubActionBuildConfig {
+	actionConfig := common.ParseGithubFlags(cmd)
+	if actionConfig != nil {
+		return actionConfig
+	}
+
+	settings, err := assets.LoadSettings()
+	if err != nil || settings == nil || settings.Github == nil {
 		return nil
 	}
-	go func() {
-		_, err := con.Rpc.Build(con.Context(), &clientpb.Generate{
-			ProfileName: profile,
-			Address:     address,
-			Target:      buildTarget,
-			Type:        consts.CommandBuildPulse,
-			Srdi:        true,
-			ArtifactId:  artifactId,
-		})
-		if err != nil {
-			con.Log.Errorf("Build loader failed: %v", err)
-			return
-		}
-	}()
+
+	return settings.Github.ToProtobuf()
+}
+
+// ExecuteBuild executes the build logic.
+func ExecuteBuild(con *core.Console, buildConfig *clientpb.BuildConfig) error {
+	artifact, err := con.Rpc.Build(con.Context(), buildConfig)
+	if err != nil {
+		return fmt.Errorf("build %s failed: %w", buildConfig.BuildType, err)
+	}
+	con.Log.Infof("Build started: %s (type: %s, target: %s, source: %s)\n",
+		artifact.Name, artifact.Type, artifact.Target, artifact.Source)
 	return nil
 }
 
-func BuildLogCmd(cmd *cobra.Command, con *repl.Console) error {
-	id := cmd.Flags().Arg(0)
-	buildID, err := strconv.ParseUint(id, 10, 32)
+func BindCmd(cmd *cobra.Command, con *core.Console) error {
+	buildConfig, err := prepareBuildConfig(cmd, con, consts.CommandBuildBind)
 	if err != nil {
 		return err
 	}
+
+	return ExecuteBuild(con, buildConfig)
+}
+
+// parseOutputType parses --lib and --shellcode flags and sets buildConfig.OutputType.
+func parseOutputType(cmd *cobra.Command, buildConfig *clientpb.BuildConfig) error {
+	libFlag, _ := cmd.Flags().GetBool("lib")
+	shellcodeFlag := false
+	if cmd.Flags().Lookup("shellcode") != nil {
+		shellcodeFlag, _ = cmd.Flags().GetBool("shellcode")
+	}
+	return ValidateOutputType(buildConfig, libFlag, cmd.Flags().Changed("lib"), shellcodeFlag)
+}
+
+// ValidateOutputType validates output type flags and sets buildConfig.OutputType.
+// OutputType values: "" (executable, default), "lib" (dll/so/dylib), "shellcode" (raw .bin, pulse only)
+func ValidateOutputType(buildConfig *clientpb.BuildConfig, libFlag bool, libFlagChanged bool, shellcodeFlag bool) error {
+	target, ok := consts.GetBuildTarget(buildConfig.Target)
+	if !ok {
+		return errors.New("invalid target: " + buildConfig.Target)
+	}
+
+	if libFlag && shellcodeFlag {
+		return errors.New("--lib and --shellcode are mutually exclusive")
+	}
+
+	switch buildConfig.BuildType {
+	case consts.CommandBuildModules, consts.CommandBuild3rdModules:
+		if libFlagChanged && !libFlag {
+			return errors.New("modules build requires --lib")
+		}
+		if target.OS != consts.Windows {
+			return errors.New("modules build only supports Windows targets")
+		}
+		buildConfig.OutputType = "lib"
+	case consts.CommandBuildPrelude:
+		if libFlag {
+			return errors.New("prelude build does not support --lib")
+		}
+		if shellcodeFlag {
+			return errors.New("prelude build does not support --shellcode")
+		}
+		buildConfig.OutputType = ""
+	case consts.CommandBuildPulse:
+		if target.OS != consts.Windows {
+			return errors.New("pulse build only supports Windows targets")
+		}
+		if shellcodeFlag {
+			buildConfig.OutputType = "shellcode"
+		} else if libFlag {
+			buildConfig.OutputType = "lib"
+		} else {
+			buildConfig.OutputType = ""
+		}
+	default:
+		// beacon/bind allow exe and lib
+		if shellcodeFlag {
+			return errors.New(buildConfig.BuildType + " build does not support --shellcode")
+		}
+		if libFlag {
+			buildConfig.OutputType = "lib"
+		} else {
+			buildConfig.OutputType = ""
+		}
+	}
+	return nil
+}
+
+func BuildLogCmd(cmd *cobra.Command, con *core.Console) error {
+	name := cmd.Flags().Arg(0)
 	num, _ := cmd.Flags().GetInt("limit")
-	builder, err := con.Rpc.BuildLog(con.Context(), &clientpb.Builder{
-		Id:  uint32(buildID),
-		Num: uint32(num),
+	builder, err := con.Rpc.BuildLog(con.Context(), &clientpb.Artifact{
+		Name:   name,
+		LogNum: uint32(num),
 	})
 	if err != nil {
 		return err
 	}
 	if len(builder.Log) == 0 {
-		con.Log.Infof("No log for %s", id)
+		con.Log.Infof("No logs found for build name %s\n", name)
 		return nil
 	}
 	con.Log.Console(string(builder.Log))
 	return nil
-}
-
-func BuildModules(con *repl.Console, name, address, buildTarget string, modules []string, srdi bool) (bool, error) {
-	_, err := con.Rpc.Build(con.Context(), &clientpb.Generate{
-		ProfileName: name,
-		Address:     address,
-		Target:      buildTarget,
-		Type:        consts.CommandBuildModules,
-		Modules:     modules,
-		Srdi:        srdi,
-	})
-	if err != nil {
-		return false, err
-	}
-	return true, nil
 }

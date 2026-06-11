@@ -3,14 +3,14 @@ package armory
 import (
 	"github.com/chainreactors/malice-network/client/command/alias"
 	"github.com/chainreactors/malice-network/client/command/extension"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
 	"regexp"
 )
 
 // ArmorySearchCmd - Search for packages by name
-func ArmorySearchCmd(cmd *cobra.Command, con *repl.Console) {
+func ArmorySearchCmd(cmd *cobra.Command, con *core.Console) {
 	con.Log.Infof("Refreshing package cache ... \n")
 	clientConfig := parseArmoryHTTPConfig(cmd)
 	refresh(clientConfig)

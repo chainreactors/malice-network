@@ -1,16 +1,19 @@
 package listener
 
 import (
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"fmt"
+	"strconv"
+	"strings"
+
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
-	"strconv"
 )
 
-func ListPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
+func ListPipelineCmd(cmd *cobra.Command, con *core.Console) error {
 	listenerID := cmd.Flags().Arg(0)
 	pipelines, err := con.Rpc.ListPipelines(con.Context(), &clientpb.Listener{
 		Id: listenerID,
@@ -23,19 +26,22 @@ func ListPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 		return nil
 	}
 	var rowEntries []table.Row
-	var row table.Row
 	tableModel := tui.NewTable([]table.Column{
-		table.NewColumn("Name", "Name", 20),
+		table.NewFlexColumn("Name", "Name", 1),
 		table.NewColumn("Enable", "Enable", 7),
-		table.NewColumn("Type", "Type", 10),
-		table.NewColumn("ListenerID", "ListenerID", 15),
-		table.NewColumn("Address", "Address", 20),
-		table.NewColumn("Parser", "Parser", 10),
-		table.NewColumn("Encryption", "Encryption", 10),
-		table.NewColumn("TLS", "TLS", 10),
+		table.NewColumn("Type", "Type", 6),
+		table.NewColumn("ListenerID", "Listener ID", 11),
+		table.NewFlexColumn("Address", "Address", 1),
+		table.NewColumn("Parser", "Parser", 7),
+		table.NewColumn("Encryption", "Encryption", 12),
+		table.NewColumn("TLS", "TLS", 6),
 	}, true)
 	for _, pipeline := range pipelines.GetPipelines() {
+		if pipeline == nil || pipeline.Body == nil {
+			continue
+		}
 		newRow := table.RowData{}
+		var schema string
 		if pipeline.Enable {
 			newRow["Enable"] = tui.GreenFg.Render(strconv.FormatBool(pipeline.Enable))
 		} else {
@@ -46,38 +52,90 @@ func ListPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 		} else if pipeline.Tls != nil {
 			newRow["TLS"] = tui.RedFg.Render(strconv.FormatBool(pipeline.Tls.Enable))
 		}
-		if pipeline.Encryption != nil && pipeline.Encryption.Enable {
-			newRow["Encryption"] = pipeline.Encryption.Type
-		} else if pipeline.Encryption != nil {
+		if pipeline.Encryption != nil {
+			encryption := make([]string, 0, len(pipeline.Encryption))
+			for _, enc := range pipeline.Encryption {
+				encryption = append(encryption, fmt.Sprintf("%s/%s", enc.Type, enc.Key))
+			}
+			newRow["Encryption"] = strings.Join(encryption, ",")
+		} else {
 			newRow["Encryption"] = "raw"
 		}
 		switch body := pipeline.Body.(type) {
+		case *clientpb.Pipeline_Http:
+			newRow["Name"] = pipeline.Name
+			newRow["Type"] = consts.HTTPPipeline
+			newRow["ListenerID"] = pipeline.ListenerId
+			if pipeline.Tls != nil && pipeline.Tls.Enable {
+				schema = "https://"
+			} else {
+				schema = "http://"
+			}
+			newRow["Address"] = schema + pipeline.Ip + ":" + strconv.Itoa(int(body.Http.Port))
+			newRow["Parser"] = pipeline.Parser
 		case *clientpb.Pipeline_Tcp:
 			newRow["Name"] = pipeline.Name
 			newRow["Type"] = consts.TCPPipeline
 			newRow["ListenerID"] = pipeline.ListenerId
-			newRow["Address"] = pipeline.Ip + ":" + strconv.Itoa(int(body.Tcp.Port))
+			if pipeline.Tls != nil && pipeline.Tls.Enable {
+				schema = "tcp+tls://"
+			} else {
+				schema = "tcp://"
+			}
+			newRow["Address"] = schema + pipeline.Ip + ":" + strconv.Itoa(int(body.Tcp.Port))
 			newRow["Parser"] = pipeline.Parser
-			row = table.NewRow(newRow)
+		case *clientpb.Pipeline_Rem:
+			newRow["Name"] = pipeline.Name
+			newRow["Type"] = consts.RemPipeline
+			newRow["ListenerID"] = pipeline.ListenerId
+			newRow["Parser"] = pipeline.Parser
 		case *clientpb.Pipeline_Bind:
 			newRow["Name"] = pipeline.Name
 			newRow["Type"] = consts.BindPipeline
 			newRow["ListenerID"] = pipeline.ListenerId
 			newRow["Parser"] = pipeline.Parser
-			row = table.NewRow(newRow)
+		case *clientpb.Pipeline_Custom:
+			newRow["Name"] = pipeline.Name
+			newRow["Type"] = pipeline.Type
+			newRow["ListenerID"] = pipeline.ListenerId
+			if body.Custom.Host != "" {
+				addr := body.Custom.Host
+				if body.Custom.Port > 0 {
+					addr += ":" + strconv.Itoa(int(body.Custom.Port))
+				}
+				newRow["Address"] = addr
+			}
+			newRow["Parser"] = pipeline.Parser
+		default:
+			newRow["Name"] = pipeline.Name
+			newRow["Type"] = pipeline.Type
+			newRow["ListenerID"] = pipeline.ListenerId
 		}
-
-		rowEntries = append(rowEntries, row)
+		rowEntries = append(rowEntries, table.NewRow(newRow))
 	}
 	tableModel.SetRows(rowEntries)
 	con.Log.Console(tableModel.View())
 	return nil
 }
 
-func StartPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
+func StartPipelineCmd(cmd *cobra.Command, con *core.Console) error {
 	name := cmd.Flags().Arg(0)
+	pipelineName, listenerID, cached := resolvePipelineCtrlTarget(con, name)
+
+	if p, ok := con.Pipelines[name]; cached && ok && p.Enable {
+		_, err := con.Rpc.StopPipeline(con.Context(), &clientpb.CtrlPipeline{
+			Name:       pipelineName,
+			ListenerId: listenerID,
+		})
+		if err != nil {
+			return err
+		}
+	}
+	certName, _ := cmd.Flags().GetString("cert-name")
 	_, err := con.Rpc.StartPipeline(con.Context(), &clientpb.CtrlPipeline{
-		Name: name,
+		Name:       pipelineName,
+		ListenerId: listenerID,
+		CertName:   certName,
 	})
 	if err != nil {
 		return err
@@ -85,10 +143,12 @@ func StartPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func StopPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
+func StopPipelineCmd(cmd *cobra.Command, con *core.Console) error {
 	name := cmd.Flags().Arg(0)
+	pipelineName, listenerID, _ := resolvePipelineCtrlTarget(con, name)
 	_, err := con.Rpc.StopPipeline(con.Context(), &clientpb.CtrlPipeline{
-		Name: name,
+		Name:       pipelineName,
+		ListenerId: listenerID,
 	})
 	if err != nil {
 		return err
@@ -96,13 +156,26 @@ func StopPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func DeletePipelineCmd(cmd *cobra.Command, con *repl.Console) error {
+func DeletePipelineCmd(cmd *cobra.Command, con *core.Console) error {
 	name := cmd.Flags().Arg(0)
+	pipelineName, listenerID, _ := resolvePipelineCtrlTarget(con, name)
 	_, err := con.Rpc.DeletePipeline(con.Context(), &clientpb.CtrlPipeline{
-		Name: name,
+		Name:       pipelineName,
+		ListenerId: listenerID,
 	})
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+func resolvePipelineCtrlTarget(con *core.Console, key string) (string, string, bool) {
+	if con == nil || con.Pipelines == nil {
+		return key, "", false
+	}
+	pipeline, ok := con.Pipelines[key]
+	if !ok || pipeline == nil {
+		return key, "", false
+	}
+	return pipeline.Name, pipeline.ListenerId, true
 }

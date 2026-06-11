@@ -2,13 +2,13 @@ package exec
 
 import (
 	"errors"
+	"github.com/chainreactors/IoM-go/client"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/kballard/go-shellquote"
@@ -17,18 +17,17 @@ import (
 )
 
 // ExecuteExeCmd - Execute PE on sacrifice process
-func ExecuteExeCmd(cmd *cobra.Command, con *repl.Console) error {
+func ExecuteExeCmd(cmd *cobra.Command, con *core.Console) error {
 	path, args, output, timeout, arch, process := common.ParseFullBinaryFlags(cmd)
 	sac := common.ParseSacrificeFlags(cmd)
 	task, err := ExecExe(con.Rpc, con.GetInteractive(), path, args, output, timeout, arch, process, sac)
 	if err != nil {
 		return err
 	}
-	con.GetInteractive().Console(task, path)
-	return nil
+	return common.HandleTaskOutput(cmd, con, task)
 }
 
-func ExecExe(rpc clientrpc.MaliceRPCClient, sess *core.Session, pePath string,
+func ExecExe(rpc clientrpc.MaliceRPCClient, sess *client.Session, pePath string,
 	args []string, out bool, timeout uint32, arch string,
 	process string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 	if arch == "" {
@@ -49,18 +48,17 @@ func ExecExe(rpc clientrpc.MaliceRPCClient, sess *core.Session, pePath string,
 }
 
 // InlineExeCmd - Execute PE in current process
-func InlineExeCmd(cmd *cobra.Command, con *repl.Console) error {
+func InlineExeCmd(cmd *cobra.Command, con *core.Console) error {
 	session := con.GetInteractive()
 	path, args, output, timeout, arch, process := common.ParseFullBinaryFlags(cmd)
 	task, err := InlineExe(con.Rpc, session, path, args, output, timeout, arch, process)
 	if err != nil {
 		return err
 	}
-	session.Console(task, path)
-	return nil
+	return common.HandleTaskOutput(cmd, con, task)
 }
 
-func InlineExe(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, args []string,
+func InlineExe(rpc clientrpc.MaliceRPCClient, sess *client.Session, path string, args []string,
 	out bool, timeout uint32, arch string, process string) (*clientpb.Task, error) {
 	if arch == "" {
 		arch = sess.Os.Arch
@@ -79,12 +77,12 @@ func InlineExe(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, a
 	return task, nil
 }
 
-func RegisterExeFunc(con *repl.Console) {
+func RegisterExeFunc(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleAliasInlineExe,
 		InlineExe,
 		"binline_exe",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, args string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *client.Session, path string, args string) (*clientpb.Task, error) {
 			param, err := shellquote.Split(args)
 			if err != nil {
 				return nil, err
@@ -113,7 +111,7 @@ func RegisterExeFunc(con *repl.Console) {
 		consts.ModuleExecuteExe,
 		ExecExe,
 		"bexecute_exe",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, args string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *client.Session, path string, args string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 			cmdline, err := shellquote.Split(args)
 			if err != nil {
 				return nil, err
@@ -126,7 +124,7 @@ func RegisterExeFunc(con *repl.Console) {
 	con.AddCommandFuncHelper(
 		consts.ModuleExecuteExe,
 		consts.ModuleExecuteExe,
-		consts.ModuleExecuteExe+`(active(),"/path/to/gogo.exe",{"-i","127.0.0.1"},true,60,"","",new_sacrifice(1234,false,true,true,"argue"))`,
+		consts.ModuleExecuteExe+`(active(),"/path/to/gogo.exe",{"-i","127.0.0.1"},true,60,"","",new_sacrifice(1234,false,true,true,""))`,
 		[]string{
 			"session: special session",
 			"pePath: PE file",

@@ -2,33 +2,35 @@ package generic
 
 import (
 	"fmt"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
 )
 
-func ListPivotCmd(cmd *cobra.Command, con *repl.Console) error {
+func ListPivotCmd(cmd *cobra.Command, con *core.Console) error {
 	all, _ := cmd.Flags().GetBool("all")
-	agents, err := ListPivot(con)
+	pivots, err := con.Rpc.GetContexts(con.Context(), &clientpb.Context{
+		Type: consts.ContextPivoting,
+	})
 	if err != nil {
 		return err
 	}
 
-	if len(agents) == 0 {
+	if len(pivots.Contexts) == 0 {
 		logs.Log.Info("No pivots\n")
 		return nil
 	}
 
-	PrintPivots(agents, con, all)
+	PrintPivots(pivots.Contexts, con, all)
 	return nil
 }
 
-func ListPivot(con *repl.Console) ([]*output.PivotingContext, error) {
+func ListPivot(con *core.Console) ([]*output.PivotingContext, error) {
 	pivots, err := con.Rpc.GetContexts(con.Context(), &clientpb.Context{
 		Type: consts.ContextPivoting,
 	})
@@ -39,18 +41,29 @@ func ListPivot(con *repl.Console) ([]*output.PivotingContext, error) {
 	return ctxs, nil
 }
 
-func PrintPivots(pivots []*output.PivotingContext, con *repl.Console, all bool) {
+func PrintPivots(contexts []*clientpb.Context, con *core.Console, all bool) {
 	var rowEntries []table.Row
-	for _, pivot := range pivots {
+	for _, ctx := range contexts {
+		pivot, err := output.ToContext[*output.PivotingContext](ctx)
+		if err != nil {
+			continue
+		}
+
+		sessionID := ""
+		if ctx.Session != nil {
+			sessionID = ctx.Session.SessionId
+		}
+
 		row := table.NewRow(
 			table.RowData{
+				"Session":    sessionID,
 				"Enable":     fmt.Sprintf("%t", pivot.Enable),
 				"Listener":   pivot.Listener,
 				"Pipeline":   pivot.Pipeline,
 				"RemAgentID": pivot.RemAgentID,
 				"LocalURL":   pivot.LocalURL,
 				"RemoteURL":  pivot.RemoteURL,
-				"Mod":        pivot.Mod,
+				"InboundSide": pivot.InboundSide,
 			})
 		if all || pivot.Enable {
 			rowEntries = append(rowEntries, row)
@@ -58,20 +71,17 @@ func PrintPivots(pivots []*output.PivotingContext, con *repl.Console, all bool) 
 	}
 
 	tableModel := tui.NewTable([]table.Column{
+		table.NewColumn("Session", "Session", 10),
 		table.NewColumn("Enable", "Enable", 6),
 		table.NewColumn("Listener", "Listener", 10),
 		table.NewColumn("Pipeline", "Pipeline", 10),
-		table.NewColumn("RemAgentID", "RemAgentID", 10),
-		table.NewColumn("LocalURL", "LocalURL", 50),
-		table.NewColumn("RemoteURL", "RemoteURL", 50),
-		table.NewColumn("Mod", "Mod", 10),
+		table.NewColumn("RemAgentID", "Rem Agent ID", 10),
+		table.NewFlexColumn("LocalURL", "Local URL", 1),
+		table.NewFlexColumn("RemoteURL", "Remote URL", 1),
+		table.NewColumn("InboundSide", "Inbound", 10),
 	}, true)
 
-	newTable := tui.NewModel(tableModel, nil, false, false)
+	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
-	err := newTable.Run()
-	if err != nil {
-		con.Log.Errorf("Error running table: %v", err)
-	}
-	tui.Reset()
+	con.Log.Console(tableModel.View())
 }

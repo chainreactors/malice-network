@@ -37,7 +37,23 @@ func (rl *Shell) completeWord() {
 
 	// This completion function should attempt to insert the first
 	// valid completion found, without printing the actual list.
-	if !rl.completer.IsActive() {
+	//
+	// When autocomplete is enabled, the completion engine can be "active" without
+	// being in the MenuSelect keymap. In that state, navigating candidates with
+	// arrows/Tab is confusing because the first <Tab> won't go through the normal
+	// menu-select initialization path (and won't honor menu-complete-display-prefix).
+	//
+	// Promote the current autocomplete suggestions into a real MenuSelect session.
+	if rl.Config.GetBool("autocomplete") &&
+		rl.completer.IsActive() &&
+		rl.Keymap.Local() != keymap.MenuSelect &&
+		rl.Keymap.Local() != keymap.Isearch {
+		rl.startMenuComplete(rl.commandCompletion)
+
+		if rl.Config.GetBool("menu-complete-display-prefix") {
+			return
+		}
+	} else if !rl.completer.IsActive() {
 		rl.startMenuComplete(rl.commandCompletion)
 
 		if rl.Config.GetBool("menu-complete-display-prefix") {
@@ -83,7 +99,17 @@ func (rl *Shell) menuComplete() {
 
 	// No completions are being printed yet, so simply generate the completions
 	// as if we just request them without immediately selecting a candidate.
-	if !rl.completer.IsActive() {
+	if rl.Config.GetBool("autocomplete") &&
+		rl.completer.IsActive() &&
+		rl.Keymap.Local() != keymap.MenuSelect &&
+		rl.Keymap.Local() != keymap.Isearch {
+		rl.startMenuComplete(rl.commandCompletion)
+
+		// Immediately select only if not asked to display first.
+		if rl.Config.GetBool("menu-complete-display-prefix") {
+			return
+		}
+	} else if !rl.completer.IsActive() {
 		rl.startMenuComplete(rl.commandCompletion)
 
 		// Immediately select only if not asked to display first.
@@ -114,8 +140,12 @@ func (rl *Shell) deleteCharOrList() {
 func (rl *Shell) menuCompleteBackward() {
 	rl.History.SkipSave()
 
-	// We don't do anything when not already completing.
-	if !rl.completer.IsActive() {
+	if rl.Config.GetBool("autocomplete") &&
+		rl.completer.IsActive() &&
+		rl.Keymap.Local() != keymap.MenuSelect &&
+		rl.Keymap.Local() != keymap.Isearch {
+		rl.startMenuComplete(rl.commandCompletion)
+	} else if !rl.completer.IsActive() {
 		rl.startMenuComplete(rl.commandCompletion)
 	}
 

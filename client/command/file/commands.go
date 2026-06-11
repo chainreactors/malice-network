@@ -2,22 +2,22 @@ package file
 
 import (
 	"fmt"
+	"github.com/chainreactors/IoM-go/client"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"path/filepath"
 
 	"github.com/carapace-sh/carapace"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
-func Commands(con *repl.Console) []*cobra.Command {
+func Commands(con *core.Console) []*cobra.Command {
 	downloadCmd := &cobra.Command{
 		Use:   consts.ModuleDownload + " [implant_file]",
 		Short: "Download file",
@@ -37,6 +37,10 @@ download ./file.txt
 	common.BindArgCompletions(downloadCmd, nil,
 		carapace.ActionValues().Usage("file name"),
 		carapace.ActionValues().Usage("download file source path"))
+
+	common.BindFlag(downloadCmd, func(f *pflag.FlagSet) {
+		f.BoolP("dir", "r", false, "download dir")
+	})
 
 	uploadCmd := &cobra.Command{
 		Use:   consts.ModuleUpload + " [local] [remote]",
@@ -69,7 +73,7 @@ upload ./file.txt /tmp/file.txt
 	}
 }
 
-func Register(con *repl.Console) {
+func Register(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleDownload,
 		Download,
@@ -89,6 +93,7 @@ func Register(con *repl.Console) {
 		[]string{
 			"session: special session",
 			"path: file path",
+			"id_dir: download_dir",
 		},
 		[]string{"task"})
 
@@ -96,7 +101,7 @@ func Register(con *repl.Console) {
 		consts.ModuleUpload,
 		Upload,
 		"bupload",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *client.Session, path string) (*clientpb.Task, error) {
 			return Upload(rpc, sess, path, filepath.Base(path), "0644", false)
 		},
 		output.ParseStatus,
@@ -106,7 +111,7 @@ func Register(con *repl.Console) {
 		"uploadraw",
 		UploadRaw,
 		"buploadraw",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, data, target_path string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *client.Session, data, target_path string) (*clientpb.Task, error) {
 			return UploadRaw(rpc, sess, data, target_path, "0644", false)
 		},
 		output.ParseStatus,

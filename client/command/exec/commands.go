@@ -2,43 +2,93 @@ package exec
 
 import (
 	"github.com/carapace-sh/carapace"
+	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
-func Commands(con *repl.Console) []*cobra.Command {
-	execCmd := &cobra.Command{
-		Use:   consts.ModuleExecution + " [cmdline]",
+func Commands(con *core.Console) []*cobra.Command {
+	runCmd := &cobra.Command{
+		Use:   consts.ModuleAliasRun + " [cmdline]",
+		Short: "run commands",
+		Long:  `Exec local executable file, return output`,
+		Args:  cobra.MinimumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return RunCmd(cmd, con)
+		},
+		Annotations: map[string]string{
+			"depend": consts.ModuleExecute,
+		},
+		Example: `Execute the executable file without any '-' arguments.
+~~~
+run whoami
+~~~
+run the executable file with '-' arguments, you need add "--" before the arguments
+~~~
+run gogo.exe -- -i 127.0.0.1 -p http
+~~~
+`,
+	}
+	common.BindArgCompletions(runCmd, nil,
+		carapace.ActionValues().Usage("command to execute"),
+		carapace.ActionValues().Usage("arguments to the command"),
+	)
+	common.BindOutputFlags(runCmd)
+
+	executeCmd := &cobra.Command{
+		Use:   consts.ModuleAliasExecute + " [cmdline]",
 		Short: "Execute commands",
-		Long:  `Exec implant local executable file`,
+		Long:  `Exec local executable file, without output`,
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ExecuteCmd(cmd, con)
 		},
 		Annotations: map[string]string{
-			"depend": consts.ModuleExecution,
+			"depend": consts.ModuleExecute,
 		},
 		Example: `Execute the executable file without any '-' arguments.
 ~~~
-exec whoami
+execute whoami
 ~~~
-Execute the executable file with '-' arguments, you need add "--" before the arguments
+execute the executable file with '-' arguments, you need add "--" before the arguments
 ~~~
-exec gogo.exe -- -i 127.0.0.1 -p http
+execute gogo.exe -- -i 127.0.0.1 -p http
 ~~~
 `,
 	}
-	common.BindArgCompletions(execCmd, nil,
+	common.BindArgCompletions(executeCmd, nil,
 		carapace.ActionValues().Usage("command to execute"),
+	)
+	common.BindOutputFlags(executeCmd)
+
+	shellCmd := &cobra.Command{
+		Use:     consts.ModuleAliasShell + " [cmdline]",
+		Short:   "Execute cmd",
+		Long:    `equal: exec cmd /c "[cmdline]"`,
+		Args:    cobra.MinimumNArgs(1),
+		Aliases: []string{"exec"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return ShellCmd(cmd, con)
+		},
+		Annotations: map[string]string{
+			"depend": consts.ModuleExecute,
+		},
+	}
+
+	common.BindArgCompletions(shellCmd, nil,
+		carapace.ActionValues().Usage("cmd to execute"),
 		carapace.ActionValues().Usage("arguments to the command"),
 	)
 
-	common.BindFlag(execCmd, func(f *pflag.FlagSet) {
+	common.BindFlag(shellCmd, func(f *pflag.FlagSet) {
 		f.BoolP("quiet", "q", false, "disable output")
+		f.StringP("shell", "s", "", "custom shell path (e.g. /bin/bash, /bin/ash)")
+		f.BoolP("realtime", "r", true, "stream output in realtime")
 	})
+	common.BindOutputFlags(shellCmd)
+
 	execLocalCmd := &cobra.Command{
 		Use:   consts.ModuleExecuteLocal + " [local_exe]",
 		Short: "Execute local PE on sacrifice process",
@@ -63,6 +113,7 @@ execute_local local_exe --ppid 1234 --block_dll --etw --argue "argue"
 		f.StringP("process", "n", "", "custom process path")
 		f.BoolP("output", "o", false, "disable output")
 	})
+	common.BindOutputFlags(execLocalCmd)
 
 	inlineLocalCmd := &cobra.Command{
 		Use:   consts.ModuleInlineLocal + " [local_exe]",
@@ -84,33 +135,11 @@ inline_local whoami
 ~~~`,
 	}
 
-	common.BindFlag(execLocalCmd, common.SacrificeFlagSet, func(f *pflag.FlagSet) {
+	common.BindFlag(inlineLocalCmd, common.SacrificeFlagSet, func(f *pflag.FlagSet) {
 		f.StringP("process", "n", "", "custom process path")
-		f.BoolP("quiet", "q", false, "disable output")
+		f.BoolP("output", "o", false, "disable output")
 	})
-
-	shellCmd := &cobra.Command{
-		Use:   consts.ModuleAliasShell + " [cmdline]",
-		Short: "Execute cmd",
-		Long:  `equal: exec cmd /c "[cmdline]"`,
-		Args:  cobra.MinimumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return ShellCmd(cmd, con)
-		},
-		Annotations: map[string]string{
-			"depend": consts.ModuleExecution,
-			"os":     "windows",
-		},
-	}
-
-	common.BindArgCompletions(shellCmd, nil,
-		carapace.ActionValues().Usage("cmd to execute"),
-		carapace.ActionValues().Usage("arguments to the command"),
-	)
-
-	common.BindFlag(shellCmd, func(f *pflag.FlagSet) {
-		f.BoolP("quiet", "q", false, "disable output")
-	})
+	common.BindOutputFlags(inlineLocalCmd)
 
 	powershellCmd := &cobra.Command{
 		Use:   consts.ModuleAliasPowershell + " [cmdline]",
@@ -121,7 +150,7 @@ inline_local whoami
 			return PowershellCmd(cmd, con)
 		},
 		Annotations: map[string]string{
-			"depend": consts.ModuleExecution,
+			"depend": consts.ModuleExecute,
 			"os":     "windows",
 		},
 		Example: `execute powershell command:
@@ -138,6 +167,7 @@ powershell dir
 	common.BindFlag(powershellCmd, func(f *pflag.FlagSet) {
 		f.BoolP("quiet", "q", false, "disable output")
 	})
+	common.BindOutputFlags(powershellCmd)
 
 	execAssemblyCmd := &cobra.Command{
 		Use:   consts.ModuleExecuteAssembly + " [file]",
@@ -153,7 +183,7 @@ Load CLR assembly in sacrifice process (with donut)
 			"depend": consts.ModuleExecuteShellcode,
 		},
 		Example: `~~~
-execute-assembly potato.exe "whoami" 
+execute_assembly potato.exe "whoami" 
 ~~~
 `,
 	}
@@ -163,6 +193,7 @@ execute-assembly potato.exe "whoami"
 		carapace.ActionValues().Usage("arguments to pass to the assembly args"))
 
 	common.BindFlag(execAssemblyCmd, common.SacrificeFlagSet, common.CLRFlagSet)
+	common.BindOutputFlags(execAssemblyCmd)
 
 	inlineAssemblyCmd := &cobra.Command{
 		Use:   consts.ModuleInlineAssembly + " [file]",
@@ -174,11 +205,11 @@ if return 0x80004005, please use --amsi bypass.`,
 		Example: `
 inline execute a .NET assembly
 ~~~
-inline-assembly --amsi potato.exe "whoami" 
+inline_assembly --amsi potato.exe "whoami" 
 ~~~
 Execute a .NET assembly with "-" arguments, you need add "--" before the arguments
 ~~~
-inline-assembly --amsi potato.exe -- cmd /c whoami
+inline_assembly --amsi potato.exe -- cmd /c whoami
 ~~~
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -194,6 +225,7 @@ inline-assembly --amsi potato.exe -- cmd /c whoami
 		carapace.ActionValues().Usage("arguments to pass to the assembly args"))
 
 	common.BindFlag(inlineAssemblyCmd, common.CLRFlagSet)
+	common.BindOutputFlags(inlineAssemblyCmd)
 
 	execShellcodeCmd := &cobra.Command{
 		Use:   consts.ModuleExecuteShellcode + " [shellcode_file]",
@@ -220,6 +252,7 @@ execute_shellcode example.bin
 		carapace.ActionValues().Usage("arguments to pass to the assembly entrypoint"))
 
 	common.BindFlag(execShellcodeCmd, common.ExecuteFlagSet, common.SacrificeFlagSet)
+	common.BindOutputFlags(execShellcodeCmd)
 
 	inlineShellcodeCmd := &cobra.Command{
 		Use:   consts.ModuleAliasInlineShellcode + " [shellcode_file]",
@@ -247,6 +280,7 @@ inline_shellcode example.bin
 	common.BindArgCompletions(inlineShellcodeCmd, nil,
 		carapace.ActionFiles().Usage("path the shellcode file"))
 	common.BindFlag(inlineShellcodeCmd, common.ExecuteFlagSet)
+	common.BindOutputFlags(inlineShellcodeCmd)
 
 	execDLLCmd := &cobra.Command{
 		Use:   consts.ModuleExecuteDll + " [dll]",
@@ -282,6 +316,7 @@ execute_dll example.dll -e entrypoint -- arg1 arg2
 		f.StringP("entrypoint", "e", "", "custom entrypoint")
 		f.StringP("binPath", "", "", "custom process path")
 	})
+	common.BindOutputFlags(execDLLCmd)
 
 	common.BindFlagCompletions(execDLLCmd, func(comp carapace.ActionMap) {
 		comp["binPath"] = carapace.ActionFiles()
@@ -312,6 +347,7 @@ dllspawn example.dll
 		f.StringP("entrypoint", "e", "", "custom entrypoint")
 		f.StringP("binPath", "", "", "custom process path")
 	})
+	common.BindOutputFlags(execDLLSpawnCmd)
 
 	common.BindFlagCompletions(execDLLSpawnCmd, func(comp carapace.ActionMap) {
 		comp["binPath"] = carapace.ActionFiles()
@@ -349,6 +385,7 @@ inline_dll example.dll -e RunFunction -- arg1 arg2
 	common.BindFlag(inlineDLLCmd, common.ExecuteFlagSet, func(f *pflag.FlagSet) {
 		f.StringP("entrypoint", "e", "", "entrypoint")
 	})
+	common.BindOutputFlags(inlineDLLCmd)
 
 	execExeCmd := &cobra.Command{
 		Use:   consts.ModuleExecuteExe + " [exe]",
@@ -373,6 +410,7 @@ execute_exe gogo.exe -- -i 123.123.123.123 -p top2
 		carapace.ActionValues().Usage("arguments to pass to the assembly entrypoint"))
 
 	common.BindFlag(execExeCmd, common.ExecuteFlagSet, common.SacrificeFlagSet)
+	common.BindOutputFlags(execExeCmd)
 
 	inlinePECmd := &cobra.Command{
 		Use:   consts.ModuleAliasInlineExe + " [exe]",
@@ -399,6 +437,7 @@ inline_exe hackbrowserdata.exe -- -h
 `,
 	}
 	common.BindFlag(inlinePECmd, common.ExecuteFlagSet)
+	common.BindOutputFlags(inlinePECmd)
 	common.BindArgCompletions(inlinePECmd, nil,
 		carapace.ActionFiles().Usage("path the PE file"))
 
@@ -434,6 +473,7 @@ bof dir.x64.o -- wstr:"C:\\Windows\\System32"
 	common.BindArgCompletions(execBofCmd, nil,
 		carapace.ActionFiles().Usage("path the BOF file"),
 		carapace.ActionValues().Usage("arguments to pass to the assembly entrypoint"))
+	common.BindOutputFlags(execBofCmd)
 
 	powerpickCmd := &cobra.Command{
 		Use:   consts.ModulePowerpick + " [args]",
@@ -461,9 +501,11 @@ powerpick -s powerview.ps1 -- Get-NetUser
 	common.BindFlagCompletions(powerpickCmd, func(comp carapace.ActionMap) {
 		comp["script"] = carapace.ActionFiles()
 	})
+	common.BindOutputFlags(powerpickCmd)
 
 	return []*cobra.Command{
-		execCmd,
+		runCmd,
+		executeCmd,
 		execLocalCmd,
 		inlineLocalCmd,
 		shellCmd,
@@ -482,11 +524,10 @@ powerpick -s powerview.ps1 -- Get-NetUser
 	}
 }
 
-func Register(con *repl.Console) {
+func Register(con *core.Console) {
 	RegisterExecuteFunc(con)
 	RegisterExecuteLocalFunc(con)
 	RegisterPowershellFunc(con)
-	RegisterShellFunc(con)
 	RegisterAssemblyFunc(con)
 	RegisterShellcodeFunc(con)
 	RegisterDLLFunc(con)

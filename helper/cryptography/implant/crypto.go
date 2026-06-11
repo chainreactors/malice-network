@@ -8,8 +8,8 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"io"
-	"os"
 	"strings"
 	"sync"
 
@@ -29,7 +29,6 @@ var (
 
 	gzipWriterPools = &sync.Pool{}
 
-	ageMsgPrefix        = []byte("age-encryption.org/v1\n-> X25519 ")
 	agePublicKeyPrefix  = "age1"
 	agePrivateKeyPrefix = "AGE-SECRET-KEY-1"
 )
@@ -69,7 +68,7 @@ func AgeEncrypt(recipientPublicKey string, plaintext []byte) ([]byte, error) {
 	if err := stream.Close(); err != nil {
 		return nil, err
 	}
-	return bytes.TrimPrefix(buf.Bytes(), ageMsgPrefix), nil
+	return buf.Bytes(), nil
 }
 
 // AgeDecrypt - Decrypt using Curve 25519 + ChaCha20Poly1305
@@ -84,7 +83,7 @@ func AgeDecrypt(recipientPrivateKey string, ciphertext []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	buf := bytes.NewBuffer(append(ageMsgPrefix, ciphertext...))
+	buf := bytes.NewBuffer(ciphertext)
 	stream, err := age.Decrypt(buf, identity)
 	if err != nil {
 		return nil, err
@@ -225,13 +224,16 @@ func RootOnlyVerifyCertificate(caCertPEM string, rawCerts [][]byte, _ [][]*x509.
 		// {{if .Config.Debug}}
 		log.Printf("Failed to parse root certificate")
 		// {{end}}
-		os.Exit(3)
+		return fmt.Errorf("failed to parse root certificate")
+	}
+	if len(rawCerts) == 0 {
+		return fmt.Errorf("no peer certificate provided")
 	}
 
 	cert, err := x509.ParseCertificate(rawCerts[0]) // We should only get one cert
 	if err != nil {
 		// {{if .Config.Debug}}
-		log.Printf("Failed to parse certificate: " + err.Error())
+		log.Printf("Failed to parse certificate: %s", err.Error())
 		// {{end}}
 		return err
 	}
@@ -244,7 +246,7 @@ func RootOnlyVerifyCertificate(caCertPEM string, rawCerts [][]byte, _ [][]*x509.
 	}
 	if _, err := cert.Verify(options); err != nil {
 		// {{if .Config.Debug}}
-		log.Printf("Failed to verify certificate: " + err.Error())
+		log.Printf("Failed to verify certificate: %s", err.Error())
 		// {{end}}
 		return err
 	}

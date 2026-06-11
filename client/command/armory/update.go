@@ -2,8 +2,10 @@ package armory
 
 import (
 	"fmt"
+	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/alias"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/extension"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
@@ -36,7 +38,7 @@ type UpdateIdentifier struct {
 }
 
 // ArmoryUpdateCmd - Update all installed extensions/aliases
-func ArmoryUpdateCmd(cmd *cobra.Command, con *repl.Console) {
+func ArmoryUpdateCmd(cmd *cobra.Command, con *core.Console) {
 	var selectedUpdates []UpdateIdentifier
 	var err error
 
@@ -63,10 +65,10 @@ func ArmoryUpdateCmd(cmd *cobra.Command, con *repl.Console) {
 	// Display a table of results
 	if len(aliasUpdates) > 0 || len(extUpdates) > 0 {
 		updateKeys := sortUpdateIdentifiers(aliasUpdates, extUpdates)
-		displayAvailableUpdates(updateKeys, aliasUpdates, extUpdates)
-		selectedUpdates, err = getUpdatesFromUser(updateKeys)
+		displayAvailableUpdates(con, updateKeys, aliasUpdates, extUpdates)
+		selectedUpdates, err = getUpdatesFromUser(con, updateKeys)
 		if err != nil {
-			con.Log.Errorf(err.Error() + "\n")
+			con.Log.Errorf("%s\n", err.Error())
 			return
 		}
 		if len(selectedUpdates) == 0 {
@@ -84,12 +86,12 @@ func ArmoryUpdateCmd(cmd *cobra.Command, con *repl.Console) {
 			if !ok {
 				continue
 			}
-			updatePackage, err := getPackageForCommand(update.Name, armoryPK, aliasVersionInfo.NewVersion)
+			updatePackage, err := getPackageForCommand(con, update.Name, armoryPK, aliasVersionInfo.NewVersion)
 			if err != nil {
 				con.Log.Errorf("Could not get update package for alias %s: %s\n", update.Name, err)
 				continue
 			}
-			err = installAliasPackage(updatePackage, false, clientConfig, con)
+			err = installAliasPackage(cmd, updatePackage, false, clientConfig, con)
 			if err != nil {
 				con.Log.Errorf("Failed to update %s: %s\n", update.Name, err)
 			}
@@ -98,12 +100,12 @@ func ArmoryUpdateCmd(cmd *cobra.Command, con *repl.Console) {
 			if !ok {
 				continue
 			}
-			updatedPackage, err := getPackageForCommand(update.Name, armoryPK, extVersionInfo.NewVersion)
+			updatedPackage, err := getPackageForCommand(con, update.Name, armoryPK, extVersionInfo.NewVersion)
 			if err != nil {
 				con.Log.Errorf("Could not get update package for extension %s: %s\n", update.Name, err)
 				continue
 			}
-			err = installExtensionPackage(updatedPackage, false, clientConfig, con)
+			err = installExtensionPackage(cmd, updatedPackage, false, clientConfig, con)
 			if err != nil {
 				con.Log.Errorf("Failed to update %s: %s\n", update.Name, err)
 			}
@@ -199,7 +201,7 @@ func sortUpdateIdentifiers(aliasUpdates, extensionUpdates map[string]VersionInfo
 	return result
 }
 
-func displayAvailableUpdates(updateKeys []UpdateIdentifier,
+func displayAvailableUpdates(con *core.Console, updateKeys []UpdateIdentifier,
 	aliasUpdates, extensionUpdates map[string]VersionInformation) {
 	var (
 		aliasSuffix     string
@@ -210,10 +212,10 @@ func displayAvailableUpdates(updateKeys []UpdateIdentifier,
 	)
 
 	tableModel := tui.NewTable([]table.Column{
-		table.NewColumn("Package Name", "Package Name", 20),
+		table.NewFlexColumn("Package Name", "Package Name", 1),
 		table.NewColumn("Package Type", "Package Type", 15),
 		table.NewColumn("Installed Version", "Installed Version", 20),
-		table.NewColumn("Available Version", "Available Version", 20),
+		table.NewFlexColumn("Available Version", "Available Version", 1),
 	}, true)
 
 	tableModel.Title = fmt.Sprintf(title, len(aliasUpdates), aliasSuffix, len(extensionUpdates), extensionSuffix)
@@ -259,15 +261,19 @@ func displayAvailableUpdates(updateKeys []UpdateIdentifier,
 	}
 	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
-	newTable := tui.NewModel(tableModel, nil, false, false)
-	err := newTable.Run()
+	_, err := common.RunTable(con, tableModel)
 	if err != nil {
 		return
 	}
 }
 
-func getUpdatesFromUser(updateKeys []UpdateIdentifier) (chosenUpdates []UpdateIdentifier, selectionError error) {
+func getUpdatesFromUser(con *core.Console, updateKeys []UpdateIdentifier) (chosenUpdates []UpdateIdentifier, selectionError error) {
 	chosenUpdates = []UpdateIdentifier{}
+
+	if common.ShouldUseStaticOutput(con) {
+		selectionError = fmt.Errorf("armory update selection requires an interactive terminal")
+		return
+	}
 
 	var updateResponse string
 	title := fmt.Sprintf("You can apply all, none, or some updates.\nTo apply some updates, " +
@@ -277,10 +283,9 @@ func getUpdatesFromUser(updateKeys []UpdateIdentifier) (chosenUpdates []UpdateId
 	inputModel.SetHandler(func() {
 		updateResponse = inputModel.TextInput.Value()
 	})
-	newInput := tui.NewModel(inputModel, nil, false, true)
-	err := newInput.Run()
+	err := inputModel.Run()
 	if err != nil {
-		core.Log.Errorf("failed to get user input: %s", err)
+		client.Log.Errorf("failed to get user input: %s", err)
 		return
 	}
 	updateResponse = strings.ToLower(updateResponse)

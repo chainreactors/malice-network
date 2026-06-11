@@ -1,8 +1,7 @@
 package pivot
 
 import (
-	"fmt"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/third/rem"
 	"github.com/spf13/cobra"
@@ -10,7 +9,7 @@ import (
 	"strconv"
 )
 
-func ForwardCmd(cmd *cobra.Command, con *repl.Console) error {
+func ForwardCmd(cmd *cobra.Command, con *core.Console) error {
 	pid := cmd.Flags().Arg(0)
 	port, _ := cmd.Flags().GetString("port")
 	if port == "" {
@@ -33,11 +32,11 @@ func ForwardCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	sess.Console(task, fmt.Sprintf("pivoting portforward on %s:%s", con.Pipelines[pid].Ip, port))
+	sess.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 
-func ReversePortForwardCmd(cmd *cobra.Command, con *repl.Console) error {
+func ReversePortForwardCmd(cmd *cobra.Command, con *core.Console) error {
 	pid := cmd.Flags().Arg(0)
 	port, _ := cmd.Flags().GetString("port")
 	if port == "" {
@@ -60,6 +59,6 @@ func ReversePortForwardCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	sess.Console(task, fmt.Sprintf("pivoting portforward on %s:%s", con.Pipelines[pid].Ip, port))
+	sess.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }

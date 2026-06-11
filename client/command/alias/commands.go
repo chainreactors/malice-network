@@ -2,15 +2,15 @@ package alias
 
 import (
 	"github.com/carapace-sh/carapace"
+	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
 )
 
-func Commands(con *repl.Console) []*cobra.Command {
+func Commands(con *core.Console) []*cobra.Command {
 	aliasCmd := &cobra.Command{
 		Use:   consts.CommandAlias,
 		Short: "manage aliases",
@@ -72,7 +72,7 @@ It is a directory containing any number of files, with a mandatory manifest.json
 
 Each command will have the --process flag defined, which allows you to specify the process to inject into. The following default values are set:
 	
-	- Windows: c:\windows\system32\notepad.exe 
+	- Windows: c:\windows\system32\svchost.exe 
 	- Linux: /bin/bash 
 	- Mac OS X: /Applications/Safari.app/Contents/MacOS/SafariForWebKitDevelopment
 `,
@@ -86,6 +86,10 @@ Each command will have the --process flag defined, which allows you to specify t
 		Use:   consts.CommandAliasList,
 		Short: "List all aliases",
 		Long:  "See Docs at https://sliver.sh/docs?name=Aliases%20and%20Extensions",
+		Annotations: map[string]string{
+			"thirdParty": "true",
+			"static":     "true",
+		},
 		Run: func(cmd *cobra.Command, args []string) {
 			AliasesCmd(cmd, con)
 			return
@@ -160,8 +164,8 @@ alias remove rubeus
 
 }
 
-func Register(con *repl.Console) {
+func Register(con *core.Console) {
 	for name, aliasPkg := range loadedAliases {
-		intermediate.RegisterInternalFunc(intermediate.ArmoryPackage, name, aliasPkg.Func, repl.WrapClientCallback(output.ParseBinaryResponse))
+		intermediate.RegisterInternalFunc(intermediate.ArmoryPackage, name, aliasPkg.Func, core.WrapClientCallback(output.ParseBinaryResponse))
 	}
 }

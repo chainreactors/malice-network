@@ -1,0 +1,65 @@
+package pipeline
+
+import (
+	"fmt"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/client/command/common"
+	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/malice-network/helper/cryptography"
+	"github.com/spf13/cobra"
+)
+
+func NewBindPipelineCmd(cmd *cobra.Command, con *core.Console) error {
+	listenerID, _, _, _ := common.ParsePipelineFlags(cmd)
+	if listenerID == "" {
+		return fmt.Errorf("listener id is required")
+	}
+	name := cmd.Flags().Arg(0)
+	if name == "" {
+		name = fmt.Sprintf("bind_%s_%d", listenerID, cryptography.RandomInRange(10240, 65535))
+	}
+
+	tls, certName, err := common.ParseTLSFlags(cmd)
+	if err != nil {
+		return err
+	}
+	parser, encryption := common.ParseEncryptionFlags(cmd)
+	if parser == "default" {
+		parser = consts.ImplantMalefic
+	}
+	if len(encryption) == 0 || encryption[0].Type == "" && encryption[0].Key == "" {
+		encryption = []*clientpb.Encryption{{Type: consts.CryptorAES, Key: "maliceofinternal"}}
+	} else if encryption[0].Type == "" || encryption[0].Key == "" {
+		return fmt.Errorf("bind pipeline encryption requires both --encryption-type and --encryption-key")
+	}
+	pipeline := &clientpb.Pipeline{
+		Encryption: encryption,
+		Tls:        tls,
+		Name:       name,
+		ListenerId: listenerID,
+		CertName:   certName,
+		Enable:     false,
+		Parser:     parser,
+		Body: &clientpb.Pipeline_Bind{
+			Bind: &clientpb.BindPipeline{
+				Name: name,
+			},
+		},
+	}
+	_, err = con.Rpc.RegisterPipeline(con.Context(), pipeline)
+	if err != nil {
+		return err
+	}
+
+	con.Log.Importantf("Bind Pipeline %s regsiter\n", name)
+	_, err = con.Rpc.StartPipeline(con.Context(), &clientpb.CtrlPipeline{
+		Name:       name,
+		ListenerId: listenerID,
+		Pipeline:   pipeline,
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}

@@ -1,7 +1,9 @@
 package certs
 
 import (
+	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/pem"
 	"fmt"
 	insecureRand "math/rand"
 	"strings"
@@ -320,4 +322,81 @@ func randomOrganization() []string {
 	}
 
 	return []string{orgName}
+}
+
+// ExtractCertificateSubject - 从证书PEM中提取subject信息
+func ExtractCertificateSubject(certPEM string) (*pkix.Name, error) {
+	if certPEM == "" {
+		return nil, nil
+	}
+
+	block, _ := pem.Decode([]byte(certPEM))
+	if block == nil {
+		return nil, fmt.Errorf("failed to parse certificate PEM")
+	}
+
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse certificate: %v", err)
+	}
+
+	subject := &pkix.Name{
+		CommonName: cert.Subject.CommonName,
+	}
+
+	// 提取组织信息
+	if len(cert.Subject.Organization) > 0 {
+		subject.Organization = cert.Subject.Organization
+	} else {
+		subject.Organization = []string{""}
+	}
+
+	// 提取国家信息
+	if len(cert.Subject.Country) > 0 {
+		subject.Country = cert.Subject.Country
+	} else {
+		subject.Country = []string{""}
+	}
+
+	// 提取地区信息
+	if len(cert.Subject.Locality) > 0 {
+		subject.Locality = cert.Subject.Locality
+	} else {
+		subject.Locality = []string{""}
+	}
+
+	// 提取组织单位信息
+	if len(cert.Subject.OrganizationalUnit) > 0 {
+		subject.OrganizationalUnit = cert.Subject.OrganizationalUnit
+	} else {
+		subject.OrganizationalUnit = []string{""}
+	}
+
+	// 提取省份信息
+	if len(cert.Subject.StreetAddress) > 0 {
+		subject.StreetAddress = cert.Subject.StreetAddress
+	} else {
+		subject.StreetAddress = []string{""}
+	}
+
+	return subject, nil
+}
+
+func FormatSubject(name, certType, certPEM string) (string, error) {
+	subject, err := ExtractCertificateSubject(certPEM)
+	if err != nil {
+		return "", nil
+	}
+	ouStr := ""
+	if len(subject.OrganizationalUnit) > 0 {
+		ouStr = subject.OrganizationalUnit[0]
+	}
+	stStr := ""
+	if len(subject.Province) > 0 {
+		stStr = subject.Province[0]
+	}
+	msg := fmt.Sprintf("cert %s (type: %s) generate success, CN: %s, O: %s, C: %s, L: %s, OU: %s, ST: %s",
+		name, certType, subject.CommonName, subject.Organization[0], subject.Country[0], subject.Locality[0],
+		ouStr, stStr)
+	return msg, nil
 }

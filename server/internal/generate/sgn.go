@@ -17,12 +17,17 @@ var (
 	ErrFailedToEncode = errors.New("failed to encode shellcode")
 )
 
+const (
+	defaultSGNIterations     = 1
+	defaultSGNMaxObfuscation = 20
+)
+
 // SGNConfig - Configuration for sgn
 type SGNConfig struct {
 	AppDir string
 
 	Architecture   string // Binary architecture (32/64) (default 32)
-	Asci           bool   // Generates a full ASCI printable payload (takes very long time to bruteforce)
+	Asci           bool   // Generates a full ASCII printable payload (takes very long time to bruteforce)
 	BadChars       []byte // Don't use specified bad characters given in hex format (\x00\x01\x02...)
 	Iterations     int    // Number of times to encode the binary (increases overall size) (default 1)
 	MaxObfuscation int    // Maximum number of bytes for obfuscation (default 20)
@@ -75,8 +80,12 @@ func EncodeShellcode(shellcode []byte, arch string, iterations int, badChars []b
 		logs.Log.Error(err.Error())
 		return nil, ErrFailedToEncode
 	}
-	_, err = inputFile.Write(shellcode)
-	if err != nil {
+	if _, err = inputFile.Write(shellcode); err != nil {
+		inputFile.Close()
+		logs.Log.Error(err.Error())
+		return nil, ErrFailedToEncode
+	}
+	if err = inputFile.Close(); err != nil {
 		logs.Log.Error(err.Error())
 		return nil, ErrFailedToEncode
 	}
@@ -121,62 +130,52 @@ func EncodeShellcode(shellcode []byte, arch string, iterations int, badChars []b
 func configToArgs(config SGNConfig) []string {
 	args := []string{}
 
-	// CPU Architecture
-	if config.Architecture == "386" || config.Architecture == "32" {
-		args = append(args, "-a", "32")
-	} else {
-		args = append(args, "-a", "64")
-	}
+	args = append(args, "--input", config.Input)
+	args = append(args, "--out", config.Output)
+	args = append(args, "--arch", normalizeSGNArchitecture(config.Architecture))
+	args = append(args, "--enc", fmt.Sprintf("%d", normalizePositiveInt(config.Iterations, defaultSGNIterations)))
+	args = append(args, "--max", fmt.Sprintf("%d", normalizePositiveInt(config.MaxObfuscation, defaultSGNMaxObfuscation)))
 
-	// Iterations
-	if 1 < config.Iterations {
-		args = append(args, "-c", fmt.Sprintf("%d", config.Iterations))
-	} else {
-		args = append(args, "-c", "1")
-	}
-
-	// Max obfuscation
-	if 0 < config.MaxObfuscation {
-		args = append(args, "-max", fmt.Sprintf("%d", config.MaxObfuscation))
-	} else {
-		args = append(args, "-max", "20")
-	}
-
-	// Safe
 	if config.Safe {
-		args = append(args, "-safe")
+		args = append(args, "--safe")
 	}
 
-	// Plain decoder
 	if config.PlainDecoder {
-		args = append(args, "-plain-decoder")
+		args = append(args, "--plain")
 	}
 
-	// Asci
 	if config.Asci {
-		args = append(args, "-asci")
+		args = append(args, "--ascii")
 	}
 
-	// Bad characters
 	if 0 < len(config.BadChars) {
 		badChars := []string{}
 		for _, b := range config.BadChars {
 			badChars = append(badChars, fmt.Sprintf("\\x%02x", b))
 		}
-		args = append(args, "-b", strings.Join(badChars, ""))
+		args = append(args, "--badchars", strings.Join(badChars, ""))
 	}
 
-	// Verbose
 	if config.Verbose {
-		args = append(args, "-v")
+		args = append(args, "--verbose")
 	}
 
-	// Output
-	args = append(args, "-o", config.Output)
-
-	// Input
 	logs.Log.Infof("[sgn] input file: %s", config.Input)
-	args = append(args, config.Input)
-
 	return args
+}
+
+func normalizeSGNArchitecture(arch string) string {
+	switch strings.ToLower(strings.TrimSpace(arch)) {
+	case "386", "32", "x86", "i386":
+		return "32"
+	default:
+		return "64"
+	}
+}
+
+func normalizePositiveInt(value, fallback int) int {
+	if value > 0 {
+		return value
+	}
+	return fallback
 }

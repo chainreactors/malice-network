@@ -1,15 +1,16 @@
 package listener
 
 import (
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/client/core"
+	"strconv"
+
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
-	"strconv"
 )
 
-func ListJobsCmd(cmd *cobra.Command, con *repl.Console) error {
+func ListJobsCmd(cmd *cobra.Command, con *core.Console) error {
 	Pipelines, err := con.Rpc.ListJobs(con.Context(), &clientpb.Empty{})
 	if err != nil {
 		return err
@@ -21,9 +22,9 @@ func ListJobsCmd(cmd *cobra.Command, con *repl.Console) error {
 	var rowEntries []table.Row
 	var row table.Row
 	tableModel := tui.NewTable([]table.Column{
-		table.NewColumn("Name", "Name", 20),
+		table.NewFlexColumn("Name", "Name", 1),
 		table.NewColumn("Listener", "Listener", 15),
-		table.NewColumn("IP", "IP", 10),
+		table.NewColumn("IP", "IP", 16),
 		table.NewColumn("Port", "Port", 7),
 		table.NewColumn("Type", "Type", 7),
 	}, true)

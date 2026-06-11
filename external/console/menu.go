@@ -297,6 +297,12 @@ func (m *Menu) resetPreRun() {
 // shown in the help strings or proposed as completions.
 func (m *Menu) hideFilteredCommands(root *cobra.Command) {
 	for _, cmd := range root.Commands() {
+		// Always hide carapace internal helper commands.
+		if cmd.Name() == "_carapace" {
+			cmd.Hidden = true
+			continue
+		}
+
 		// Don't override commands if they are already hidden
 		if cmd.Hidden {
 			continue
@@ -305,6 +311,9 @@ func (m *Menu) hideFilteredCommands(root *cobra.Command) {
 		if filters := m.ActiveFiltersFor(cmd); len(filters) > 0 {
 			cmd.Hidden = true
 		}
+
+		// Recurse into subcommands to hide nested _carapace commands.
+		m.hideFilteredCommands(cmd)
 	}
 }
 
