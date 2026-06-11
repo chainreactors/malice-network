@@ -214,13 +214,16 @@ build beacon --wizard
 		},
 		Example: `~~~
 // Build a bind payload
-build bind --target x86_64-pc-windows-gnu --profile tcp_default
+build bind --target x86_64-pc-windows-gnu --addresses tcp://127.0.0.1:5008
 
 // Build a bind payload with additional modules
-build bind --target x86_64-pc-windows-gnu --profile tcp_default --modules base,sys_full
+build bind --target x86_64-pc-windows-gnu --addresses 127.0.0.1:5008 --modules base,sys_full
+
+// Build a bind payload with a profile
+build bind --target x86_64-pc-windows-gnu --profile tcp_default
 
 // Build a bind payload by saas 
-build bind --target x86_64-pc-windows-gnu --profile tcp_default --source saas
+build bind --target x86_64-pc-windows-gnu --addresses 127.0.0.1:5008 --source saas
 ~~~`,
 	}
 
@@ -236,12 +239,15 @@ build bind --target x86_64-pc-windows-gnu --profile tcp_default --source saas
 		OllvmFlagSet,
 	)
 	bindCmd.MarkFlagRequired("target")
-	bindCmd.MarkFlagRequired("profile")
 	common.BindFlagCompletions(bindCmd, func(comp carapace.ActionMap) {
 
 		comp["profile"] = common.ProfileCompleter(con)
 		comp["target"] = common.BuildTargetCompleter(con)
 		comp["source"] = common.BuildResourceCompleter(con)
+		comp["implant-path"] = carapace.ActionFiles("yaml", "yml").Usage("implant.yaml file path")
+		comp["prelude-path"] = carapace.ActionFiles("yaml", "yml").Usage("prelude.yaml file path")
+		comp["resources-path"] = carapace.ActionDirectories().Usage("resources directory path")
+		comp["archive-path"] = carapace.ActionFiles("zip").Usage("build archive (zip) path")
 	})
 
 	preludeCmd := &cobra.Command{

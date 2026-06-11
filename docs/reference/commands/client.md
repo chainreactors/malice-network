@@ -2507,13 +2507,16 @@ build bind [flags]
 
 ~~~
 // Build a bind payload
-build bind --target x86_64-pc-windows-gnu --profile tcp_default
+build bind --target x86_64-pc-windows-gnu --addresses tcp://127.0.0.1:5008
 
 // Build a bind payload with additional modules
-build bind --target x86_64-pc-windows-gnu --profile tcp_default --modules base,sys_full
+build bind --target x86_64-pc-windows-gnu --addresses 127.0.0.1:5008 --modules base,sys_full
+
+// Build a bind payload with a profile
+build bind --target x86_64-pc-windows-gnu --profile tcp_default
 
 // Build a bind payload by saas 
-build bind --target x86_64-pc-windows-gnu --profile tcp_default --source saas
+build bind --target x86_64-pc-windows-gnu --addresses 127.0.0.1:5008 --source saas
 ~~~
 
 **Options**

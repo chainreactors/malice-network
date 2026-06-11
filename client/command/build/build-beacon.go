@@ -173,7 +173,7 @@ func prepareBuildConfig(cmd *cobra.Command, con *core.Console, buildType string)
 	}
 
 	// Layer 4: Inline flag overrides
-	profile, err = parseBuildFlags(cmd, profile)
+	profile, err = parseBuildFlags(cmd, profile, buildType)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse build flags: %w", err)
 	}
@@ -205,10 +205,13 @@ func prepareBuildConfig(cmd *cobra.Command, con *core.Console, buildType string)
 	return buildConfig, nil
 }
 
-func buildTargetsFromAddresses(addrs string, remLink string, remChanged bool) ([]implanttypes.Target, error) {
+func buildTargetsFromAddresses(addrs string, remLink string, remChanged bool, allowBareTCP bool) ([]implanttypes.Target, error) {
 	addresses := strings.Split(addrs, ",")
 	if remChanged && len(addresses) > 0 {
 		firstAddress := strings.TrimSpace(addresses[0])
+		if allowBareTCP && !strings.Contains(firstAddress, "://") {
+			firstAddress = "tcp://" + firstAddress
+		}
 		if strings.HasPrefix(firstAddress, "tcp://") {
 			remAddresses := strings.Split(remLink, ",")
 			targets := make([]implanttypes.Target, 0, len(remAddresses))
@@ -240,6 +243,9 @@ func buildTargetsFromAddresses(addrs string, remLink string, remChanged bool) ([
 		address := strings.TrimSpace(rawAddress)
 		if address == "" {
 			continue
+		}
+		if allowBareTCP && !strings.Contains(address, "://") {
+			address = "tcp://" + address
 		}
 
 		target := implanttypes.Target{}
@@ -313,7 +319,7 @@ func buildTargetsFromAddresses(addrs string, remLink string, remChanged bool) ([
 }
 
 // parseBuildFlags 解析所有构建相关的flag参数
-func parseBuildFlags(cmd *cobra.Command, profile *implanttypes.ProfileConfig) (*implanttypes.ProfileConfig, error) {
+func parseBuildFlags(cmd *cobra.Command, profile *implanttypes.ProfileConfig, buildType string) (*implanttypes.ProfileConfig, error) {
 
 	// ensure top-level sub-profiles are non-nil so flag handlers can assign safely
 	if profile.Basic == nil {
@@ -422,7 +428,7 @@ func parseBuildFlags(cmd *cobra.Command, profile *implanttypes.ProfileConfig) (*
 	addrs, _ := cmd.Flags().GetString("addresses")
 	remLink, _ := cmd.Flags().GetString("rem")
 	if cmd.Flags().Changed("addresses") {
-		targets, err := buildTargetsFromAddresses(addrs, remLink, cmd.Flags().Changed("rem"))
+		targets, err := buildTargetsFromAddresses(addrs, remLink, cmd.Flags().Changed("rem"), buildType == consts.CommandBuildBind)
 		if err != nil {
 			return nil, err
 		}

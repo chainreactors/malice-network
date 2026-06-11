@@ -28,7 +28,7 @@ func TestParseBuildFlagsAddressesOverrideExistingTargets(t *testing.T) {
 		t.Fatalf("ParseFlags failed: %v", err)
 	}
 
-	profile, err = parseBuildFlags(cmd, profile)
+	profile, err = parseBuildFlags(cmd, profile, consts.CommandBuildBeacon)
 	if err != nil {
 		t.Fatalf("parseBuildFlags failed: %v", err)
 	}
@@ -69,7 +69,7 @@ func TestParseBuildFlagsRemAddressesOverrideExistingTargets(t *testing.T) {
 		t.Fatalf("ParseFlags failed: %v", err)
 	}
 
-	profile, err = parseBuildFlags(cmd, profile)
+	profile, err = parseBuildFlags(cmd, profile, consts.CommandBuildBeacon)
 	if err != nil {
 		t.Fatalf("parseBuildFlags failed: %v", err)
 	}
