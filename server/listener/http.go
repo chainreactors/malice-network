@@ -129,13 +129,7 @@ func (pipeline *HTTPPipeline) Start() error {
 				}
 				return fmt.Errorf("http pipeline %s forward recv: %w", pipeline.Name, err)
 			}
-			if err := core.Connections.Push(msg.Session.SessionId, msg); err != nil {
-				// Beacon sessions are only connected during heartbeat windows,
-				// so push failures between beacons are expected. Keep at Debug
-				// to avoid log spam; the task is retried on next beacon check-in.
-				logs.Log.Debugf("http pipeline %s push to %s: %s", pipeline.Name, msg.Session.SessionId, err)
-				continue
-			}
+			dispatchForwardTaskRequest("http", pipeline.Name, msg)
 		}
 	}, pipeline.runtimeErrorHandler("forward recv loop"))
 
