@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/chainreactors/IoM-go/consts"
@@ -24,6 +25,8 @@ var (
 	modules3rd     = "malefic_3rd"
 	prelude        = "malefic-prelude"
 	pulse          = "malefic-pulse"
+	proxydll       = "malefic_proxydll"
+	proxydllZip    = "program.zip"
 )
 
 // GenerateProfile - Generate profile
@@ -69,37 +72,38 @@ var (
 //	return data, nil
 //}
 
-func MoveBuildOutput(target, buildType string, enable3RD bool, outputType string) (string, string, error) {
+func MoveBuildOutput(target, buildType string, enable3RD bool, outputType string, packResources bool, debug bool) (string, string, error) {
 	targetInfo, ok := consts.GetBuildTarget(target)
 	if !ok {
 		return "", "", types.ErrInvalidateTarget
+	}
+	outputTarget := buildOutputTarget(target)
+
+	buildDir := release
+	if debug {
+		buildDir = "debug"
 	}
 
 	isLib := outputType == "lib"
 	isShellcode := outputType == "shellcode"
 
-	baseName := malefic
-	switch buildType {
-	case consts.CommandBuildPrelude:
-		baseName = prelude
-	case consts.CommandBuildPulse:
-		baseName = pulse
-	case consts.CommandBuildModules:
+	// ProxyDll output is always stored as a zip archive to keep the artifact
+	// table, download filename, and UI format semantics consistent.
+	if buildType == consts.CommandBuildProxyDll {
 		if targetInfo.OS != consts.Windows {
-			return "", "", fmt.Errorf("modules build only supports Windows targets")
+			return "", "", fmt.Errorf("proxydll build only supports Windows targets")
 		}
-		if enable3RD {
-			baseName = modules3rd
-		} else {
-			baseName = modules
+		filename := proxydllZip
+		ext := filepath.Ext(filename)
+		sourcePath := filepath.Join(configs.TargetPath, outputTarget, buildDir, filename)
+		dstPath := filepath.Join(configs.TempPath, encoders.UUID()+ext)
+		if err := fileutils.MoveFile(sourcePath, dstPath); err != nil {
+			return "", "", err
 		}
-	case consts.CommandBuild3rdModules:
-		if targetInfo.OS != consts.Windows {
-			return "", "", fmt.Errorf("modules build only supports Windows targets")
-		}
-		baseName = modules3rd
+		return sourcePath, dstPath, nil
 	}
 
+	baseName := buildOutputBaseName(buildType, enable3RD, isLib)
 	filename := baseName
 	switch targetInfo.OS {
 	case consts.Windows:
@@ -144,7 +148,7 @@ func MoveBuildOutput(target, buildType string, enable3RD bool, outputType string
 	}
 
 	ext := filepath.Ext(filename)
-	sourcePath := filepath.Join(configs.TargetPath, target, release, filename)
+	sourcePath := filepath.Join(configs.TargetPath, outputTarget, buildDir, filename)
 	dstPath := filepath.Join(configs.TempPath, encoders.UUID()+ext)
 
 	err := fileutils.MoveFile(sourcePath, dstPath)
@@ -152,6 +156,131 @@ func MoveBuildOutput(target, buildType string, enable3RD bool, outputType string
 		return "", "", err
 	}
 	return sourcePath, dstPath, nil
+}
+
+func buildOutputBaseName(buildType string, enable3RD bool, isLib bool) string {
+	baseName := malefic
+	switch buildType {
+	case consts.CommandBuildPrelude:
+		baseName = prelude
+	case consts.CommandBuildPulse:
+		baseName = pulse
+	case consts.CommandBuildModules:
+		if enable3RD {
+			baseName = modules3rd
+		} else {
+			baseName = modules
+		}
+	case consts.CommandBuild3rdModules:
+		baseName = modules3rd
+	}
+
+	if isLib {
+		return cargoLibNameForBuild(buildType, enable3RD, baseName)
+	}
+	return baseName
+}
+
+func cargoLibNameForBuild(buildType string, enable3RD bool, fallback string) string {
+	crateDir := cargoCrateDirForBuild(buildType, enable3RD)
+	if crateDir == "" {
+		return fallback
+	}
+	name, err := readCargoLibName(filepath.Join(configs.SourceCodePath, crateDir, "Cargo.toml"))
+	if err != nil || name == "" {
+		return fallback
+	}
+	return name
+}
+
+func cargoCrateDirForBuild(buildType string, enable3RD bool) string {
+	switch buildType {
+	case consts.CommandBuildBeacon, consts.CommandBuildBind:
+		return "malefic"
+	case consts.CommandBuildModules:
+		if enable3RD {
+			return "malefic-3rd"
+		}
+		return "malefic-modules"
+	case consts.CommandBuild3rdModules:
+		return "malefic-3rd"
+	case consts.CommandBuildPulse:
+		return "malefic-pulse"
+	case consts.CommandBuildProxyDll:
+		return "malefic-proxydll"
+	default:
+		return ""
+	}
+}
+
+func readCargoLibName(cargoPath string) (string, error) {
+	data, err := os.ReadFile(cargoPath)
+	if err != nil {
+		return "", err
+	}
+
+	section := ""
+	for _, rawLine := range strings.Split(string(data), "\n") {
+		line := strings.TrimSpace(trimTomlComment(rawLine))
+		if line == "" {
+			continue
+		}
+		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
+			section = strings.TrimSpace(strings.Trim(line, "[]"))
+			continue
+		}
+		if section != "lib" || !strings.HasPrefix(line, "name") {
+			continue
+		}
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) != 2 || strings.TrimSpace(parts[0]) != "name" {
+			continue
+		}
+		value := strings.TrimSpace(parts[1])
+		if unquoted, err := strconv.Unquote(value); err == nil {
+			return unquoted, nil
+		}
+		return strings.Trim(value, `"' `), nil
+	}
+
+	return "", nil
+}
+
+func trimTomlComment(line string) string {
+	inSingleQuote := false
+	inDoubleQuote := false
+	escaped := false
+	for idx, r := range line {
+		if escaped {
+			escaped = false
+			continue
+		}
+		if r == '\\' && inDoubleQuote {
+			escaped = true
+			continue
+		}
+		if r == '\'' && !inDoubleQuote {
+			inSingleQuote = !inSingleQuote
+			continue
+		}
+		if r == '"' && !inSingleQuote {
+			inDoubleQuote = !inDoubleQuote
+			continue
+		}
+		if r == '#' && !inSingleQuote && !inDoubleQuote {
+			return line[:idx]
+		}
+	}
+	return line
+}
+
+func buildOutputTarget(target string) string {
+	switch target {
+	case consts.TargetX64LinuxGnu217:
+		return consts.TargetX64LinuxGnu
+	default:
+		return target
+	}
 }
 
 func GetFilePath(name, target, buildType, format string) string {
