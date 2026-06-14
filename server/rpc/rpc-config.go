@@ -35,6 +35,29 @@ func (rpc *Server) UpdateGithubConfig(ctx context.Context, req *clientpb.GithubA
 	return &clientpb.Empty{}, nil
 }
 
+func (rpc *Server) GetSaasConfig(ctx context.Context, req *clientpb.Empty) (*clientpb.SaasConfig, error) {
+	saasConfig := configs.GetSaasConfig()
+	if saasConfig == nil {
+		return &clientpb.SaasConfig{}, nil
+	}
+	return saasConfig.ToProtobuf(), nil
+}
+
+func (rpc *Server) UpdateSaasConfig(ctx context.Context, req *clientpb.SaasConfig) (*clientpb.Empty, error) {
+	if req == nil {
+		req = &clientpb.SaasConfig{}
+	}
+	err := configs.UpdateSaasConfig(&configs.SaasConfig{
+		Enable: req.GetEnable(),
+		Url:    req.GetUrl(),
+		Token:  req.GetToken(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &clientpb.Empty{}, nil
+}
+
 func (rpc *Server) GetNotifyConfig(ctx context.Context, req *clientpb.Empty) (*clientpb.Notify, error) {
 	notifyConfig := configs.GetNotifyConfig()
 	if notifyConfig == nil {

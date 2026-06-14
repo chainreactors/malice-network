@@ -212,6 +212,17 @@ type SaasConfig struct {
 	Token  string `config:"token" default:"" yaml:"token"`
 }
 
+func (s *SaasConfig) ToProtobuf() *clientpb.SaasConfig {
+	if s == nil {
+		return &clientpb.SaasConfig{}
+	}
+	return &clientpb.SaasConfig{
+		Enable: s.Enable,
+		Url:    s.Url,
+		Token:  s.Token,
+	}
+}
+
 type AcmeConfig struct {
 	Email       string            `config:"email" yaml:"email"`
 	CAUrl       string            `config:"ca_url" default:"https://acme-v02.api.letsencrypt.org/directory" yaml:"ca_url"`

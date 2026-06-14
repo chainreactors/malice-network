@@ -88,11 +88,13 @@ func GetSaasConfig() *SaasConfig {
 	s := &SaasConfig{}
 	err := config.MapStruct("server.saas", s)
 	if err != nil {
+		if strings.Contains(err.Error(), "does not exist") {
+			return s
+		}
 		logs.Log.Errorf("Failed to map saas config %s", err)
 		return nil
 	}
 	return s
-
 }
 
 func GetLLMConfig() *LLMConfig {
