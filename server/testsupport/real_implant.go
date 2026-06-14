@@ -18,13 +18,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/chainreactors/IoM-go/consts"
-	"github.com/chainreactors/IoM-go/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/cryptography"
-	implanttypes "github.com/chainreactors/malice-network/helper/implanttypes"
 	"crypto/x509"
 	"encoding/pem"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/certs"
+	"github.com/chainreactors/malice-network/helper/cryptography"
+	implanttypes "github.com/chainreactors/malice-network/helper/implanttypes"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
@@ -488,8 +488,8 @@ func (r *RealImplant) generatePatchedBinary(t testing.TB, env RealImplantEnv) er
 	outputPath := filepath.Join(configs.TempPath, r.SessionName+".exe")
 	cmd := exec.Command(
 		env.MutantPath,
-		"tool", "patch-config",
-		"-f", env.TemplatePath,
+		"tool", "patch",
+		"-i", env.TemplatePath,
 		"--from-implant", profilePath,
 		"-o", outputPath,
 	)
