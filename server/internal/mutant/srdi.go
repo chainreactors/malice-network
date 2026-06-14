@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"strings"
 
 	"github.com/chainreactors/logs"
@@ -18,7 +16,7 @@ type SrdiRequest struct {
 	Arch         string // x86 or x64
 	FunctionName string
 	Platform     string // win
-	Type         string // link or malefic
+	Type         string // malefic
 	Userdata     []byte
 }
 
@@ -80,24 +78,23 @@ func Srdi(req *SrdiRequest) ([]byte, error) {
 		args = append(args, "-p", strings.ToLower(req.Platform))
 	}
 	if req.Type != "" {
-		args = append(args, "-t", strings.ToLower(req.Type))
+		srdiType := strings.ToLower(req.Type)
+		if srdiType != "malefic" {
+			return nil, fmt.Errorf("unsupported srdi type %q: current malefic-mutant only supports malefic", req.Type)
+		}
+		args = append(args, "-t", srdiType)
 	}
 	if userdataPath != "" {
 		args = append(args, "--userdata-path", userdataPath)
 	}
 
 	// Execute malefic-mutant
-	mutantBin := "malefic-mutant"
-	if runtime.GOOS == "windows" {
-		mutantBin = "malefic-mutant.exe"
-	}
-	mutantPath := filepath.Join(configs.BinPath, mutantBin)
-
-	if err := CheckBinaryExecutable(mutantPath); err != nil {
+	binaryPath := mutantPath()
+	if err := CheckBinaryExecutable(binaryPath); err != nil {
 		return nil, err
 	}
-	logs.Log.Infof("[mutant-srdi] Executing: %s %v", mutantPath, args)
-	cmd := exec.Command(mutantPath, args...)
+	logs.Log.Infof("[mutant-srdi] Executing: %s %v", binaryPath, args)
+	cmd := exec.Command(binaryPath, args...)
 	output, err := cmd.CombinedOutput()
 
 	if err != nil {

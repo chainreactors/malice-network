@@ -92,3 +92,47 @@ func (rpc *Server) MutantSigforge(ctx context.Context, req *clientpb.MutantSigfo
 
 	return &clientpb.Bin{Bin: result}, nil
 }
+
+// MutantTool executes a malefic-mutant tool subcommand in an isolated temp dir.
+func (rpc *Server) MutantTool(ctx context.Context, req *clientpb.MutantToolRequest) (*clientpb.MutantToolResponse, error) {
+	if req == nil {
+		return nil, fmt.Errorf("request cannot be nil")
+	}
+	if len(req.Args) == 0 {
+		return nil, fmt.Errorf("tool args are required")
+	}
+
+	inputs := make([]mutant.ToolFile, 0, len(req.Inputs))
+	for _, input := range req.Inputs {
+		if input == nil {
+			continue
+		}
+		inputs = append(inputs, mutant.ToolFile{
+			Name: input.Name,
+			Bin:  input.Bin,
+		})
+	}
+
+	result, err := mutant.Tool(&mutant.ToolRequest{
+		Args:           req.Args,
+		Inputs:         inputs,
+		Outputs:        req.Outputs,
+		TimeoutSeconds: req.TimeoutSeconds,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("mutant tool failed: %w", err)
+	}
+
+	files := make([]*clientpb.MutantToolFile, 0, len(result.Files))
+	for _, file := range result.Files {
+		files = append(files, &clientpb.MutantToolFile{
+			Name: file.Name,
+			Bin:  file.Bin,
+		})
+	}
+
+	return &clientpb.MutantToolResponse{
+		Stdout: result.Stdout,
+		Files:  files,
+	}, nil
+}

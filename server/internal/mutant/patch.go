@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/server/internal/configs"
@@ -18,7 +16,7 @@ type PatchConfigRequest struct {
 }
 
 // PatchConfig patches a pre-compiled template binary with runtime config
-// by invoking malefic-mutant patch-config.
+// by invoking malefic-mutant patch.
 func PatchConfig(req *PatchConfigRequest) ([]byte, error) {
 	logs.Log.Infof("[mutant-patch] Patching template binary: %d bytes", len(req.TemplateBin))
 
@@ -56,29 +54,24 @@ func PatchConfig(req *PatchConfigRequest) ([]byte, error) {
 	outputFile.Close()
 	defer os.Remove(outputPath)
 
-	mutantBin := "malefic-mutant"
-	if runtime.GOOS == "windows" {
-		mutantBin = "malefic-mutant.exe"
-	}
-	mutantPath := filepath.Join(configs.BinPath, mutantBin)
-
 	args := []string{
-		"tool", "patch-config",
-		"-f", templatePath,
+		"tool", "patch",
+		"-i", templatePath,
 		"--from-implant", yamlPath,
 		"-o", outputPath,
 	}
 
-	if err := CheckBinaryExecutable(mutantPath); err != nil {
+	binaryPath := mutantPath()
+	if err := CheckBinaryExecutable(binaryPath); err != nil {
 		return nil, err
 	}
-	logs.Log.Infof("[mutant-patch] Executing: %s %v", mutantPath, args)
-	cmd := exec.Command(mutantPath, args...)
+	logs.Log.Infof("[mutant-patch] Executing: %s %v", binaryPath, args)
+	cmd := exec.Command(binaryPath, args...)
 	output, err := cmd.CombinedOutput()
 
 	if err != nil {
 		logs.Log.Errorf("[mutant-patch] Command failed: %s", string(output))
-		return nil, fmt.Errorf("malefic-mutant patch-config failed: %v, output: %s", err, string(output))
+		return nil, fmt.Errorf("malefic-mutant patch failed: %v, output: %s", err, string(output))
 	}
 
 	if len(output) > 0 {

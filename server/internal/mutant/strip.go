@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"strings"
 
 	"github.com/chainreactors/logs"
@@ -54,17 +52,12 @@ func Strip(req *StripRequest) ([]byte, error) {
 	}
 
 	// Execute malefic-mutant
-	mutantBin := "malefic-mutant"
-	if runtime.GOOS == "windows" {
-		mutantBin = "malefic-mutant.exe"
-	}
-	mutantPath := filepath.Join(configs.BinPath, mutantBin)
-
-	if err := CheckBinaryExecutable(mutantPath); err != nil {
+	binaryPath := mutantPath()
+	if err := CheckBinaryExecutable(binaryPath); err != nil {
 		return nil, err
 	}
-	logs.Log.Infof("[mutant-strip] Executing: %s %v", mutantPath, args)
-	cmd := exec.Command(mutantPath, args...)
+	logs.Log.Infof("[mutant-strip] Executing: %s %v", binaryPath, args)
+	cmd := exec.Command(binaryPath, args...)
 	output, err := cmd.CombinedOutput()
 
 	if err != nil {

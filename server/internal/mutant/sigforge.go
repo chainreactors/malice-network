@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 
 	"github.com/chainreactors/logs"
@@ -47,12 +46,6 @@ func Sigforge(req *SigforgeRequest) ([]byte, error) {
 	sourceFile.Close()
 
 	// Build command arguments based on operation
-	mutantBin := "malefic-mutant"
-	if runtime.GOOS == "windows" {
-		mutantBin = "malefic-mutant.exe"
-	}
-	mutantPath := filepath.Join(configs.BinPath, mutantBin)
-
 	var args []string
 	var resultPath string
 
@@ -61,7 +54,7 @@ func Sigforge(req *SigforgeRequest) ([]byte, error) {
 		// Extract signature from signed PE
 		outputPath := filepath.Join(configs.TempPath, "signature.bin")
 		defer os.Remove(outputPath)
-		args = []string{"tool", "sigforge", "extract", sourcePath, outputPath}
+		args = []string{"tool", "sigforge", "extract", "-i", sourcePath, "-o", outputPath}
 		resultPath = outputPath
 
 	case "copy":
@@ -85,7 +78,7 @@ func Sigforge(req *SigforgeRequest) ([]byte, error) {
 
 		outputPath := filepath.Join(configs.TempPath, "signed-output.exe")
 		defer os.Remove(outputPath)
-		args = []string{"tool", "sigforge", "copy", sourcePath, targetPath, outputPath}
+		args = []string{"tool", "sigforge", "copy", "-s", sourcePath, "-t", targetPath, "-o", outputPath}
 		resultPath = outputPath
 
 	case "inject":
@@ -109,29 +102,30 @@ func Sigforge(req *SigforgeRequest) ([]byte, error) {
 
 		outputPath := filepath.Join(configs.TempPath, "signed-output.exe")
 		defer os.Remove(outputPath)
-		args = []string{"tool", "sigforge", "inject", sigPath, sourcePath, outputPath}
+		args = []string{"tool", "sigforge", "inject", "-s", sigPath, "-t", sourcePath, "-o", outputPath}
 		resultPath = outputPath
 
 	case "remove":
 		// Remove signature from PE
 		outputPath := filepath.Join(configs.TempPath, "unsigned-output.exe")
 		defer os.Remove(outputPath)
-		args = []string{"tool", "sigforge", "remove", sourcePath, outputPath}
+		args = []string{"tool", "sigforge", "remove", "-i", sourcePath, "-o", outputPath}
 		resultPath = outputPath
 
 	case "check":
 		// Check if PE has signature
-		args = []string{"tool", "sigforge", "check", sourcePath}
+		args = []string{"tool", "sigforge", "check", "-i", sourcePath}
 		// Check operation returns text output, not a file
 		resultPath = ""
 	}
 
 	// Execute malefic-mutant
-	if err := CheckBinaryExecutable(mutantPath); err != nil {
+	binaryPath := mutantPath()
+	if err := CheckBinaryExecutable(binaryPath); err != nil {
 		return nil, err
 	}
-	logs.Log.Infof("[mutant-sigforge] Executing: %s %v", mutantPath, args)
-	cmd := exec.Command(mutantPath, args...)
+	logs.Log.Infof("[mutant-sigforge] Executing: %s %v", binaryPath, args)
+	cmd := exec.Command(binaryPath, args...)
 	output, err := cmd.CombinedOutput()
 
 	if err != nil {
