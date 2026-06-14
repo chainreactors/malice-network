@@ -3,6 +3,7 @@ package wizard
 import (
 	"testing"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 )
 
@@ -213,6 +214,67 @@ func TestGroupedWizardForm(t *testing.T) {
 	if form.groupIndex != 0 {
 		t.Errorf("Initial group index should be 0, got %d", form.groupIndex)
 	}
+}
+
+func TestGroupedWizardFormInputHandlesCtrlHBackspace(t *testing.T) {
+	value := "abc"
+	form := NewGroupedWizardForm([]*FormGroup{{
+		Name:  "basic",
+		Title: "Basic",
+		Fields: []*FormField{{
+			Name:       "name",
+			Title:      "Name",
+			Kind:       KindInput,
+			InputValue: value,
+			Value:      &value,
+		}},
+	}})
+	_ = form.Init()
+
+	sendInputKey(t, form, tea.KeyMsg{Type: tea.KeyCtrlH})
+	sendInputKey(t, form, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}})
+	sendInputKey(t, form, tea.KeyMsg{Type: tea.KeyEnter})
+
+	if value != "abd" {
+		t.Fatalf("value after ctrl+h edit = %q, want %q", value, "abd")
+	}
+}
+
+func TestGroupedWizardFormInputSupportsCursorEditingAndPaste(t *testing.T) {
+	value := "ab"
+	form := NewGroupedWizardForm([]*FormGroup{{
+		Name:  "basic",
+		Title: "Basic",
+		Fields: []*FormField{{
+			Name:       "name",
+			Title:      "Name",
+			Kind:       KindInput,
+			InputValue: value,
+			Value:      &value,
+		}},
+	}})
+	_ = form.Init()
+
+	sendInputKey(t, form, tea.KeyMsg{Type: tea.KeyLeft})
+	sendInputKey(t, form, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("XY")})
+	sendInputKey(t, form, tea.KeyMsg{Type: tea.KeyDelete})
+	sendInputKey(t, form, tea.KeyMsg{Type: tea.KeyHome})
+	sendInputKey(t, form, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	sendInputKey(t, form, tea.KeyMsg{Type: tea.KeyEnd})
+	sendInputKey(t, form, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'!'}})
+	sendInputKey(t, form, tea.KeyMsg{Type: tea.KeyEnter})
+
+	if value != "jaXY!" {
+		t.Fatalf("value after cursor edit = %q, want %q", value, "jaXY!")
+	}
+}
+
+func sendInputKey(t *testing.T, form *GroupedWizardForm, msg tea.KeyMsg) {
+	t.Helper()
+	if !form.inputMode {
+		t.Fatalf("form is not in input mode before key %q", msg.String())
+	}
+	_, _ = form.Update(msg)
 }
 
 func TestFieldKindConversion(t *testing.T) {

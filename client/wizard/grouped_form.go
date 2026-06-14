@@ -32,23 +32,23 @@ const (
 
 // FormTheme defines styles for the grouped wizard form
 type FormTheme struct {
-	TabActive           lipgloss.Style
-	TabInactive         lipgloss.Style
-	TabCompleted        lipgloss.Style
-	Separator           lipgloss.Style
-	Error               lipgloss.Style
-	Help                lipgloss.Style
-	FocusedTitle        lipgloss.Style
-	NormalTitle          lipgloss.Style
-	Description         lipgloss.Style
-	SelectedOption      lipgloss.Style
-	UnselectedOption    lipgloss.Style
-	FocusedUnselected   lipgloss.Style
-	MultiSelectChecked  lipgloss.Style
-	InputFocused        lipgloss.Style
-	InputBlurred        lipgloss.Style
-	GroupHeader         lipgloss.Style
-	GroupHeaderDim      lipgloss.Style
+	TabActive          lipgloss.Style
+	TabInactive        lipgloss.Style
+	TabCompleted       lipgloss.Style
+	Separator          lipgloss.Style
+	Error              lipgloss.Style
+	Help               lipgloss.Style
+	FocusedTitle       lipgloss.Style
+	NormalTitle        lipgloss.Style
+	Description        lipgloss.Style
+	SelectedOption     lipgloss.Style
+	UnselectedOption   lipgloss.Style
+	FocusedUnselected  lipgloss.Style
+	MultiSelectChecked lipgloss.Style
+	InputFocused       lipgloss.Style
+	InputBlurred       lipgloss.Style
+	GroupHeader        lipgloss.Style
+	GroupHeaderDim     lipgloss.Style
 }
 
 // DefaultFormTheme returns the default theme for grouped wizard forms
@@ -365,58 +365,133 @@ func (f *GroupedWizardForm) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // handleInputMode handles key events when in text input mode
 func (f *GroupedWizardForm) handleInputMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
-	case "ctrl+c", "esc":
+	switch msg.Type {
+	case tea.KeyCtrlC, tea.KeyEsc:
 		f.inputMode = false
 		f.inputBuf = ""
 		f.errMsg = ""
 
-	case "enter", "down", "j":
+	case tea.KeyEnter, tea.KeyDown:
 		if !f.commitInput() {
 			return f, nil
 		}
 		f.nextField()
 
-	case "up", "k":
+	case tea.KeyUp:
 		if !f.commitInput() {
 			return f, nil
 		}
 		f.prevField()
 
-	case "tab":
+	case tea.KeyTab:
 		if !f.commitInput() {
 			return f, nil
 		}
 		f.nextGroup()
 
-	case "shift+tab":
+	case tea.KeyShiftTab:
 		if !f.commitInput() {
 			return f, nil
 		}
 		f.prevGroup()
 
-	case "ctrl+d":
+	case tea.KeyCtrlD:
 		if !f.commitInput() {
 			return f, nil
 		}
 		return f.trySubmit()
 
-	case "backspace":
+	case tea.KeyBackspace, tea.KeyCtrlH:
 		f.errMsg = ""
-		if len(f.inputBuf) > 0 {
-			f.inputBuf = f.inputBuf[:len(f.inputBuf)-1]
-		}
+		f.deleteInputBeforeCursor()
+
+	case tea.KeyDelete:
+		f.errMsg = ""
+		f.deleteInputAtCursor()
+
+	case tea.KeyLeft:
+		f.errMsg = ""
+		f.moveInputCursor(-1)
+
+	case tea.KeyRight:
+		f.errMsg = ""
+		f.moveInputCursor(1)
+
+	case tea.KeyHome, tea.KeyCtrlA:
+		f.errMsg = ""
+		f.inputCurPos = 0
+
+	case tea.KeyEnd, tea.KeyCtrlE:
+		f.errMsg = ""
+		f.inputCurPos = inputRuneLen(f.inputBuf)
+
+	case tea.KeyRunes:
+		f.errMsg = ""
+		f.insertInputRunes(msg.Runes)
+
+	case tea.KeySpace:
+		f.errMsg = ""
+		f.insertInputRunes([]rune{' '})
 
 	default:
 		f.errMsg = ""
-		if len(msg.String()) == 1 {
-			f.inputBuf += msg.String()
-		} else if msg.Type == tea.KeySpace {
-			f.inputBuf += " "
-		}
 	}
 
 	return f, nil
+}
+
+func (f *GroupedWizardForm) clampInputCursor() {
+	f.inputCurPos = clampInt(f.inputCurPos, 0, inputRuneLen(f.inputBuf))
+}
+
+func (f *GroupedWizardForm) moveInputCursor(delta int) {
+	f.inputCurPos += delta
+	f.clampInputCursor()
+}
+
+func (f *GroupedWizardForm) insertInputRunes(inserted []rune) {
+	if len(inserted) == 0 {
+		return
+	}
+	buf := []rune(f.inputBuf)
+	f.inputCurPos = clampInt(f.inputCurPos, 0, len(buf))
+
+	next := make([]rune, 0, len(buf)+len(inserted))
+	next = append(next, buf[:f.inputCurPos]...)
+	next = append(next, inserted...)
+	next = append(next, buf[f.inputCurPos:]...)
+
+	f.inputBuf = string(next)
+	f.inputCurPos += len(inserted)
+}
+
+func (f *GroupedWizardForm) deleteInputBeforeCursor() {
+	buf := []rune(f.inputBuf)
+	f.inputCurPos = clampInt(f.inputCurPos, 0, len(buf))
+	if f.inputCurPos == 0 {
+		return
+	}
+
+	next := make([]rune, 0, len(buf)-1)
+	next = append(next, buf[:f.inputCurPos-1]...)
+	next = append(next, buf[f.inputCurPos:]...)
+
+	f.inputBuf = string(next)
+	f.inputCurPos--
+}
+
+func (f *GroupedWizardForm) deleteInputAtCursor() {
+	buf := []rune(f.inputBuf)
+	f.inputCurPos = clampInt(f.inputCurPos, 0, len(buf))
+	if f.inputCurPos >= len(buf) {
+		return
+	}
+
+	next := make([]rune, 0, len(buf)-1)
+	next = append(next, buf[:f.inputCurPos]...)
+	next = append(next, buf[f.inputCurPos+1:]...)
+
+	f.inputBuf = string(next)
 }
 
 // commitInput validates and saves the current input buffer, exits input mode.
@@ -734,7 +809,7 @@ func (f *GroupedWizardForm) renderConfirmOptions(field *FormField, isFocused boo
 
 func (f *GroupedWizardForm) renderInputField(field *FormField, isFocused bool) string {
 	if isFocused && f.inputMode {
-		return f.formTheme.InputFocused.Render("[" + f.inputBuf + "█]")
+		return f.formTheme.InputFocused.Render("[" + renderInputCursor(f.inputBuf, f.inputCurPos) + "]")
 	}
 	display := field.InputValue
 	if display == "" {
@@ -1262,4 +1337,24 @@ func maxInt(a, b int) int {
 		return a
 	}
 	return b
+}
+
+func clampInt(value, min, max int) int {
+	if value < min {
+		return min
+	}
+	if value > max {
+		return max
+	}
+	return value
+}
+
+func inputRuneLen(s string) int {
+	return len([]rune(s))
+}
+
+func renderInputCursor(s string, cursor int) string {
+	runes := []rune(s)
+	cursor = clampInt(cursor, 0, len(runes))
+	return string(runes[:cursor]) + "█" + string(runes[cursor:])
 }
