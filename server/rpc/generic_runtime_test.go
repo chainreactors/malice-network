@@ -33,6 +33,33 @@ func waitEventBrokerReady(t testing.TB, broker interface{ TryPublish(core.Event)
 	}
 }
 
+func subscribeEventBrokerReady(t testing.TB, broker interface {
+	Subscribe() chan core.Event
+	Unsubscribe(chan core.Event)
+	TryPublish(core.Event) error
+}) chan core.Event {
+	t.Helper()
+	sub := broker.Subscribe()
+	readyOp := "subscriber-ready"
+	deadline := time.After(2 * time.Second)
+	for {
+		err := broker.TryPublish(core.Event{EventType: "test", Op: readyOp})
+		if err != nil && !errors.Is(err, core.ErrEventBrokerQueueFull) {
+			t.Fatalf("publish subscriber readiness event: %v", err)
+		}
+		select {
+		case evt := <-sub:
+			if evt.EventType == "test" && evt.Op == readyOp {
+				return sub
+			}
+		case <-deadline:
+			broker.Unsubscribe(sub)
+			t.Fatal("subscriber did not become ready")
+		case <-time.After(10 * time.Millisecond):
+		}
+	}
+}
+
 func TestGenericRequestHandlerResponsePublishesTaskError(t *testing.T) {
 	oldBroker := core.EventBroker
 	oldTicker := core.GlobalTicker
@@ -48,7 +75,7 @@ func TestGenericRequestHandlerResponsePublishesTaskError(t *testing.T) {
 	broker := core.NewBroker()
 	defer broker.Stop()
 	waitEventBrokerReady(t, broker)
-	sub := broker.Subscribe()
+	sub := subscribeEventBrokerReady(t, broker)
 	defer broker.Unsubscribe(sub)
 
 	req := &GenericRequest{

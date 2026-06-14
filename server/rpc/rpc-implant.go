@@ -306,7 +306,7 @@ func bindPollingRunning(sessionID string) bool {
 }
 
 func sendBindPing(sess *core.Session) error {
-	streamVal, ok := pipelinesCh.Load(sess.PipelineID)
+	streamVal, ok := loadPipelineStreamForSession(sess)
 	if !ok || streamVal == nil {
 		return fmt.Errorf("bind pipeline %s unavailable for session %s", sess.PipelineID, sess.ID)
 	}

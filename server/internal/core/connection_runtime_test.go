@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
@@ -120,5 +122,46 @@ func TestConnectionsRemoveDeletesConnection(t *testing.T) {
 	}
 	if !errors.Is(conn.LastError(), ErrConnectionRemoved) {
 		t.Fatalf("last error = %v, want %v", conn.LastError(), ErrConnectionRemoved)
+	}
+}
+
+func TestConnectionsStaleEOFDoesNotDropNewerConnection(t *testing.T) {
+	oldConnections := Connections
+	t.Cleanup(func() {
+		Connections = oldConnections
+	})
+
+	for i := 0; i < 1000; i++ {
+		Connections = &connections{connections: &sync.Map{}}
+		sessionID := fmt.Sprintf("session-stale-eof-%d", i)
+		base := time.Unix(1, 0)
+
+		stale := &Connection{
+			SessionID:   sessionID,
+			LastMessage: base,
+			C:           make(chan *clientpb.SpiteRequest, 1),
+			Sender:      make(chan *implantpb.Spites, 1),
+		}
+		stale.alive.Store(true)
+
+		newer := &Connection{
+			SessionID:   sessionID,
+			LastMessage: base.Add(time.Millisecond),
+			C:           make(chan *clientpb.SpiteRequest, 1),
+			Sender:      make(chan *implantpb.Spites, 1),
+		}
+		newer.alive.Store(true)
+
+		Connections.Add(newer)
+		Connections.Add(stale)
+
+		_ = stale.closeWithError(io.EOF)
+
+		if got := Connections.Get(sessionID); got != newer {
+			t.Fatalf("iteration %d: stale EOF removed newer connection, got %#v want %#v", i, got, newer)
+		}
+		if err := Connections.Push(sessionID, &clientpb.SpiteRequest{}); err != nil {
+			t.Fatalf("iteration %d: push to newer connection failed after stale EOF: %v", i, err)
+		}
 	}
 }

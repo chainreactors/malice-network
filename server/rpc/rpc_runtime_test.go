@@ -96,7 +96,7 @@ func TestJobStreamReturnsSendErrorAndCleansCtrlState(t *testing.T) {
 	}
 }
 
-func TestPollingPublishesSessionErrorAndClearsMarker(t *testing.T) {
+func TestPollingPublishesSessionErrorAndStopsRuntime(t *testing.T) {
 	oldBroker := core.EventBroker
 	oldSessions := core.Sessions
 	oldTicker := core.GlobalTicker
@@ -104,6 +104,7 @@ func TestPollingPublishesSessionErrorAndClearsMarker(t *testing.T) {
 		core.EventBroker = oldBroker
 		core.Sessions = oldSessions
 		core.GlobalTicker = oldTicker
+		pollingRuntimes.Delete(pollingRuntimeKey("polling-session"))
 	}()
 
 	testTicker := core.NewTicker()
@@ -149,13 +150,71 @@ func TestPollingPublishesSessionErrorAndClearsMarker(t *testing.T) {
 			if evt.Session == nil || evt.Session.SessionId != sess.ID {
 				t.Fatalf("unexpected session error event: %#v", evt)
 			}
-			if _, ok := sess.GetAny("polling-1"); ok {
-				t.Fatal("polling marker should be cleared after failure")
+			state, err := (&Server{}).PollingStatus(context.Background(), &clientpb.Polling{SessionId: sess.ID})
+			if err != nil {
+				t.Fatalf("PollingStatus error: %v", err)
+			}
+			if state.Running {
+				t.Fatal("polling runtime should stop after failure")
+			}
+			if state.LastError == "" {
+				t.Fatal("polling runtime should keep last error")
 			}
 			return
 		case <-deadline:
 			t.Fatal("timed out waiting for polling session error event")
 		}
+	}
+}
+
+func TestPollingDeduplicatesAndStops(t *testing.T) {
+	oldSessions := core.Sessions
+	oldTicker := core.GlobalTicker
+	defer func() {
+		core.Sessions = oldSessions
+		core.GlobalTicker = oldTicker
+		pollingRuntimes.Delete(pollingRuntimeKey("polling-dedup-session"))
+		pipelinesCh.Delete("polling-dedup-pipeline")
+	}()
+
+	testTicker := core.NewTicker()
+	defer testTicker.RemoveAll()
+	core.GlobalTicker = testTicker
+	core.NewSessions()
+
+	sess := &core.Session{
+		ID:         "polling-dedup-session",
+		PipelineID: "polling-dedup-pipeline",
+		Tasks:      core.NewTasks(),
+		SessionContext: &client.SessionContext{
+			SessionInfo: &client.SessionInfo{},
+			Any:         map[string]interface{}{},
+		},
+	}
+	core.Sessions.Add(sess)
+	pipelinesCh.Store(sess.PipelineID, &testRPCServerStream{})
+
+	req := &clientpb.Polling{
+		SessionId: sess.ID,
+		Id:        "polling-dedup",
+		Interval:  uint64(time.Second),
+		Force:     true,
+	}
+	if _, err := (&Server{}).Polling(context.Background(), req); err != nil {
+		t.Fatalf("first Polling error: %v", err)
+	}
+	if _, err := (&Server{}).Polling(context.Background(), req); err == nil {
+		t.Fatal("second Polling should be rejected while runtime is running")
+	}
+	if _, err := (&Server{}).StopPolling(context.Background(), &clientpb.Polling{SessionId: sess.ID}); err != nil {
+		t.Fatalf("StopPolling error: %v", err)
+	}
+	state, err := (&Server{}).PollingStatus(context.Background(), &clientpb.Polling{SessionId: sess.ID})
+	if err != nil {
+		t.Fatalf("PollingStatus error: %v", err)
+	}
+	if state.Running {
+		t.Fatal("polling should be stopped")
 	}
 }
 

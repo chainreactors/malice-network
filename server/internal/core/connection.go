@@ -377,8 +377,31 @@ func (c *connections) Push(sid string, msg *clientpb.SpiteRequest) error {
 //}
 
 func (c *connections) Add(connect *Connection) *Connection {
-	c.connections.Store(connect.SessionID, connect)
-	return connect
+	if connect == nil || connect.SessionID == "" {
+		return connect
+	}
+	for {
+		currentValue, loaded := c.connections.Load(connect.SessionID)
+		if !loaded {
+			actual, loaded := c.connections.LoadOrStore(connect.SessionID, connect)
+			if !loaded {
+				return connect
+			}
+			currentValue = actual
+		}
+
+		current, ok := currentValue.(*Connection)
+		if !ok || current == connect {
+			return connect
+		}
+		if current.IsAlive() && connect.LastMessage.Before(current.LastMessage) {
+			logs.Log.Debugf("connection - stale_add_skip session=%s raw=%d current_raw=%d", connect.SessionID, connect.RawID, current.RawID)
+			return current
+		}
+		if c.connections.CompareAndSwap(connect.SessionID, current, connect) {
+			return connect
+		}
+	}
 }
 
 func (c *connections) Remove(sessionID string) {
