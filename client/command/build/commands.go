@@ -374,7 +374,7 @@ build log artifact_name --limit 70
 `,
 	}
 	common.BindFlag(logCmd, func(f *pflag.FlagSet) {
-		f.Int("limit", 50, "limit of rows")
+		f.Int("limit", 512, "limit of rows; 0 shows all rows")
 	})
 	common.BindArgCompletions(logCmd, nil, common.ArtifactCompleter(con))
 

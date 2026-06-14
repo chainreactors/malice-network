@@ -1,6 +1,10 @@
 package pivot
 
 import (
+	"fmt"
+	"net/url"
+	"strings"
+
 	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
@@ -9,8 +13,6 @@ import (
 	"github.com/chainreactors/IoM-go/types"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/spf13/cobra"
-	"net/url"
-	"strings"
 )
 
 func RemDialCmd(cmd *cobra.Command, con *core.Console) error {
@@ -34,7 +36,11 @@ func GetRemLink(con *core.Console, pipe string) (string, error) {
 	if !(ok && remPipe.GetRem() != nil) {
 		return "", types.ErrNotFoundPipeline
 	}
-	return remPipe.GetRem().Link, nil
+	link := remPipe.GetRem().Link
+	if link == "" {
+		return "", fmt.Errorf("REM pipeline %q has no link address (not started?)", pipe)
+	}
+	return link, nil
 }
 
 func FormatRemCmdLine(con *core.Console, pipe, mod string, remote, local *url.URL) ([]string, error) {

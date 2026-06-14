@@ -24,14 +24,24 @@ func LoadModuleCmd(cmd *cobra.Command, con *core.Console) error {
 	artifactName, _ := cmd.Flags().GetString("artifact")
 	modules, _ := cmd.Flags().GetString("modules")
 	thirdModules, _ := cmd.Flags().GetString("3rd")
+	args := cmd.Flags().Args()
 	if modules != "" && thirdModules != "" {
 		return errors.New("--modules and --3rd options are mutually exclusive. please specify only one of them")
+	}
+	if len(args) > 1 {
+		return errors.New("module load accepts at most one module file")
+	}
+	if len(args) == 1 {
+		if path != "" {
+			return errors.New("--path cannot be combined with module_file")
+		}
+		path = args[0]
 	}
 
 	switch {
 	case artifactName != "":
 		if path != "" || modules != "" || thirdModules != "" {
-			return errors.New("--artifact cannot be combined with --path, --modules or --3rd")
+			return errors.New("--artifact cannot be combined with module_file, --path, --modules or --3rd")
 		}
 		artifact, err := con.Rpc.DownloadArtifact(con.Context(), &clientpb.Artifact{
 			Name: artifactName,
@@ -68,7 +78,7 @@ func LoadModuleCmd(cmd *cobra.Command, con *core.Console) error {
 		session.Console(task, string(*con.App.Shell().Line()))
 		return nil
 	default:
-		return errors.New("must specify one of --path, --artifact, --modules or --3rd")
+		return errors.New("must specify one of module_file, --path, --artifact, --modules or --3rd")
 	}
 }
 

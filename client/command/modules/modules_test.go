@@ -36,6 +36,29 @@ func TestLoadModuleFromPath(t *testing.T) {
 	assertSingleTaskEvent(t, h, consts.ModuleLoadModule)
 }
 
+func TestLoadModuleFromPositionalPath(t *testing.T) {
+	h := testsupport.NewHarness(t)
+	path := filepath.Join(t.TempDir(), "module.dll")
+	if err := os.WriteFile(path, []byte("module-binary"), 0o600); err != nil {
+		t.Fatalf("WriteFile failed: %v", err)
+	}
+
+	if err := h.Execute(consts.CommandModule, "load", path); err != nil {
+		t.Fatalf("Execute failed: %v", err)
+	}
+
+	req, md := testsupport.MustSingleCall[*implantpb.LoadModule](t, h, "LoadModule")
+	if req.Bundle != "module.dll" {
+		t.Fatalf("bundle = %q, want module.dll", req.Bundle)
+	}
+	if string(req.Bin) != "module-binary" {
+		t.Fatalf("module binary = %q, want module-binary", req.Bin)
+	}
+	testsupport.RequireSessionID(t, md, h.Session.SessionId)
+	testsupport.RequireCallee(t, md, consts.CalleeCMD)
+	assertSingleTaskEvent(t, h, consts.ModuleLoadModule)
+}
+
 func TestLoadModuleFromArtifactDownloadsThenLoads(t *testing.T) {
 	h := testsupport.NewHarness(t)
 	h.Recorder.OnArtifact("DownloadArtifact", func(ctx context.Context, request any) (*clientpb.Artifact, error) {
