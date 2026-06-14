@@ -150,15 +150,22 @@ func runLogWorker(wg *sync.WaitGroup, errCh chan<- error, label string, fn func(
 }
 
 func consumeLogPipe(r io.Reader, name string) error {
-	scanner := bufio.NewScanner(r)
-	for scanner.Scan() {
-		line := sanitizeLogLine(scanner.Text()) + "\n"
-		updateBuilderLog(name, line)
-	}
-	if err := scanner.Err(); err != nil && !errors.Is(err, io.EOF) {
+	reader := bufio.NewReader(r)
+	for {
+		rawLine, err := reader.ReadString('\n')
+		if len(rawLine) > 0 {
+			line := strings.TrimRight(rawLine, "\r\n")
+			line = sanitizeLogLine(line) + "\n"
+			updateBuilderLog(name, line)
+		}
+		if err == nil {
+			continue
+		}
+		if errors.Is(err, io.EOF) {
+			return nil
+		}
 		return fmt.Errorf("scan builder log %s: %w", name, err)
 	}
-	return nil
 }
 
 func sanitizeLogLine(line string) string {

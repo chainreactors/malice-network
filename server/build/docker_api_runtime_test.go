@@ -46,6 +46,28 @@ func TestConsumeLogPipeSanitizesControlBytes(t *testing.T) {
 	}
 }
 
+func TestConsumeLogPipeDoesNotTruncateLongLines(t *testing.T) {
+	oldUpdate := updateBuilderLog
+	defer func() { updateBuilderLog = oldUpdate }()
+
+	longLine := strings.Repeat("x", 2*1024*1024)
+	var lines []string
+	updateBuilderLog = func(name string, line string) {
+		lines = append(lines, line)
+	}
+
+	err := consumeLogPipe(strings.NewReader(longLine+"\n"), "artifact-long")
+	if err != nil {
+		t.Fatalf("consumeLogPipe failed: %v", err)
+	}
+	if len(lines) != 1 {
+		t.Fatalf("line count = %d, want 1", len(lines))
+	}
+	if lines[0] != longLine+"\n" {
+		t.Fatalf("long line length = %d, want %d", len(lines[0]), len(longLine)+1)
+	}
+}
+
 func TestConsumeLogPipeReturnsScannerError(t *testing.T) {
 	want := errors.New("scan failed")
 	err := consumeLogPipe(&errReader{err: want}, "artifact-b")
