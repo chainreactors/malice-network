@@ -40,7 +40,8 @@ MCP 服务自动将 Client 命令树注册为标准 MCP 接口：
 任何兼容 MCP 协议的客户端均可接入：
 
 - Claude Code / Claude Desktop
-- 任何支持 SSE 协议的 MCP Client
+- 支持 Streamable HTTP 的 MCP Client：`http://127.0.0.1:5005/mcp`
+- 旧版 SSE MCP Client：`http://127.0.0.1:5005/mcp/sse`
 
 ## Agent 命令
 

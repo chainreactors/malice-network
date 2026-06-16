@@ -136,7 +136,7 @@ MCP 服务自动将 Client 命令树注册为标准接口：
 - **Tools**：Client 命令封装为可调用的 MCP Tool
 - **Resources**：Session、Listener 等状态暴露为可查询的 Resource
 
-支持 Claude Code / Claude Desktop 等任何兼容 MCP 协议的客户端接入。详见 [AI Agent 集成](agent.md)。
+默认使用 Streamable HTTP endpoint `http://127.0.0.1:5005/mcp`；旧版 SSE Client 可继续使用 `http://127.0.0.1:5005/mcp/sse`。支持 Claude Code / Claude Desktop 等任何兼容 MCP 协议的客户端接入。详见 [AI Agent 集成](agent.md)。
 
 ## LocalRPC 服务
 

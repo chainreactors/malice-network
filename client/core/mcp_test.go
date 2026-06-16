@@ -403,3 +403,41 @@ func TestMCPSSEServerStartStop(t *testing.T) {
 		t.Fatal("server did not stop in time")
 	}
 }
+
+func TestMCPServerStartStopSupportsStreamableHTTPAndLegacySSE(t *testing.T) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	port := listener.Addr().(*net.TCPAddr).Port
+	listener.Close()
+
+	addr := fmt.Sprintf("127.0.0.1:%d", port)
+	mcpServer := NewMCP(nil)
+	if err := mcpServer.Start("127.0.0.1", port); err != nil {
+		t.Fatalf("start failed: %v", err)
+	}
+	defer mcpServer.Stop()
+
+	assertEventStreamEndpoint(t, fmt.Sprintf("http://%s/mcp", addr))
+	assertEventStreamEndpoint(t, fmt.Sprintf("http://%s/mcp/sse", addr))
+}
+
+func assertEventStreamEndpoint(t *testing.T, url string) {
+	t.Helper()
+
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		resp, err := http.Get(url)
+		if err == nil {
+			contentType := strings.ToLower(resp.Header.Get("Content-Type"))
+			resp.Body.Close()
+			if resp.StatusCode == http.StatusOK && strings.Contains(contentType, "text/event-stream") {
+				return
+			}
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+
+	t.Fatalf("expected %s to serve text/event-stream", url)
+}

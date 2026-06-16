@@ -221,15 +221,26 @@ func findAvailableMCPPort(host string, startPort int) (int, error) {
 }
 
 // checkMCPHealth 检查指定端口上的 MCP 服务是否健康
-// 通过 HTTP GET 请求检查 /mcp/sse 端点是否响应
+// 优先检查 Streamable HTTP /mcp，同时兼容 legacy HTTP+SSE /mcp/sse。
 func checkMCPHealth(host string, port int) bool {
-	url := fmt.Sprintf("http://%s:%d/mcp/sse", host, port)
+	streamURL := fmt.Sprintf("http://%s:%d%s", host, port, mcpEndpointPath)
+	legacySSEURL := fmt.Sprintf("http://%s:%d%s/sse", host, port, mcpEndpointPath)
 
+	return checkMCPEventStream(streamURL) || checkMCPEventStream(legacySSEURL)
+}
+
+func checkMCPEventStream(url string) bool {
 	client := &http.Client{
 		Timeout: 2 * time.Second,
 	}
 
-	resp, err := client.Get(url)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return false
+	}
+	req.Header.Set("Accept", "text/event-stream")
+
+	resp, err := client.Do(req)
 	if err != nil {
 		return false
 	}

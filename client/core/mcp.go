@@ -16,10 +16,14 @@ import (
 
 // MCPServer 包装了MCP服务器实例
 type MCPServer struct {
-	server    *server.MCPServer
-	sseServer *server.SSEServer
-	console   *Console
+	server       *server.MCPServer
+	streamServer *server.StreamableHTTPServer
+	sseServer    *server.SSEServer
+	httpServer   *http.Server
+	console      *Console
 }
+
+const mcpEndpointPath = "/mcp"
 
 // NewMCP 创建一个新的MCP服务器实例
 func NewMCP(console *Console) *MCPServer {
@@ -215,16 +219,32 @@ func generateCommandDoc(cmd *cobra.Command) string {
 
 // Start 启动 MCP HTTP 服务器
 func (m *MCPServer) Start(host string, port int) error {
-	// 创建 SSE 服务器，让它自己管理 HTTP 服务器
+	addr := fmt.Sprintf("%s:%d", host, port)
+
+	// Streamable HTTP is the current MCP transport. Keep the legacy SSE
+	// endpoints mounted for older MCP clients that still use HTTP+SSE.
+	m.streamServer = server.NewStreamableHTTPServer(
+		m.server,
+		server.WithEndpointPath(mcpEndpointPath),
+	)
 	m.sseServer = server.NewSSEServer(
 		m.server,
-		server.WithBaseURL(fmt.Sprintf("http://%s:%d/mcp", host, port)),
+		server.WithBaseURL(fmt.Sprintf("http://%s:%d%s", host, port, mcpEndpointPath)),
 	)
+
+	mux := http.NewServeMux()
+	mux.Handle(mcpEndpointPath, m.streamServer)
+	mux.Handle(m.sseServer.CompleteSsePath(), m.sseServer.SSEHandler())
+	mux.Handle(m.sseServer.CompleteMessagePath(), m.sseServer.MessageHandler())
+
+	m.httpServer = &http.Server{
+		Addr:    addr,
+		Handler: mux,
+	}
 
 	// 在后台启动服务器
 	go func() {
-		addr := fmt.Sprintf("%s:%d", host, port)
-		if err := m.sseServer.Start(addr); err != nil && err != http.ErrServerClosed {
+		if err := m.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logs.Log.Errorf("Failed to start MCP server: %v\n", err)
 		}
 	}()
@@ -234,10 +254,21 @@ func (m *MCPServer) Start(host string, port int) error {
 
 // Stop 停止 MCP 服务器
 func (m *MCPServer) Stop() error {
-	if m.sseServer != nil {
-		return m.sseServer.Shutdown(context.Background())
+	var shutdownErr error
+	if m.httpServer != nil {
+		shutdownErr = m.httpServer.Shutdown(context.Background())
 	}
-	return nil
+	if m.streamServer != nil {
+		if err := m.streamServer.Shutdown(context.Background()); shutdownErr == nil {
+			shutdownErr = err
+		}
+	}
+	if m.sseServer != nil {
+		if err := m.sseServer.Shutdown(context.Background()); shutdownErr == nil {
+			shutdownErr = err
+		}
+	}
+	return shutdownErr
 }
 
 // AddTool 添加新的工具到 MCP 服务器

@@ -22,7 +22,24 @@ Client 内置 MCP (Model Context Protocol) Server，可以让 AI 通过 MCP 协�
 ./iom --mcp 127.0.0.1:4999
 ```
 
-### Claude Desktop 配置
+也可以在 Client settings 中启用 `mcp_enable` / `mcp_addr`。命令行参数优先于配置文件。
+
+### MCP Client 配置
+
+优先使用 Streamable HTTP 接入：
+
+```json
+{
+  "mcpServers": {
+    "IoM": {
+      "type": "http",
+      "url": "http://127.0.0.1:4999/mcp"
+    }
+  }
+}
+```
+
+旧版只支持 SSE 的 MCP Client 仍可使用 legacy endpoint：
 
 ```json
 {
