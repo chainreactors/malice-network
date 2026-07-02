@@ -350,6 +350,7 @@ func (rpc *Server) RemDial(ctx context.Context, req *implantpb.Request) (*client
 	if pid == "" {
 		return nil, types.ErrNotFoundPipeline
 	}
+	controlAction := remDialControlAction(req.Args)
 	req.Params = nil
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
@@ -361,6 +362,9 @@ func (rpc *Server) RemDial(ctx context.Context, req *implantpb.Request) (*client
 	}
 
 	greq.HandlerResponse(ch, types.MsgResponse, func(spite *implantpb.Spite) {
+		if controlAction != "" {
+			return
+		}
 		agentID := spite.GetResponse().GetOutput()
 		if agentID == "" {
 			logs.Log.Warnf("RemDial response has empty agent ID for pipeline %s", pid)
@@ -419,6 +423,18 @@ func (rpc *Server) RemDial(ctx context.Context, req *implantpb.Request) (*client
 		}
 	})
 	return greq.Task.ToProtobuf(), nil
+}
+
+func remDialControlAction(args []string) string {
+	if len(args) == 0 {
+		return ""
+	}
+	switch args[0] {
+	case "status", "stop":
+		return args[0]
+	default:
+		return ""
+	}
 }
 
 func (rpc *Server) RemAgentCtrl(ctx context.Context, req *clientpb.REMAgent) (*clientpb.Empty, error) {

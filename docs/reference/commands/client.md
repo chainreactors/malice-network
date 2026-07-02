@@ -61,11 +61,11 @@ login
 
 ### pivot
 
-List all pivot agents
+Manage pivot agents
 
 **Description**
 
-List all active pivot agents with their details
+List and manage active pivot agents
 
 ```
 pivot [flags]
@@ -76,12 +76,76 @@ pivot [flags]
 List all pivot agents:
 ~~~
 pivot
+pivot list --all
+~~~
+
+Manage a pivot:
+~~~
+pivot status <agent_id>
+pivot stop <agent_id>
+pivot log <agent_id>
 ~~~
 
 **Options**
 
 ```
   -a, --all   list all pivot agents
+```
+
+#### pivot list
+
+List pivot agents.
+
+```
+pivot list [flags]
+```
+
+Options:
+
+```
+  -a, --all   list all pivot agents
+```
+
+#### pivot status
+
+Query a managed pivot agent through the implant session that created it.
+
+```
+pivot status <agent_id> [flags]
+```
+
+Options:
+
+```
+  -p, --pipeline string   select a pivot by pipeline or listener:pipeline
+```
+
+#### pivot stop
+
+Stop a managed pivot agent through the implant session that created it.
+
+```
+pivot stop <agent_id> [flags]
+```
+
+Options:
+
+```
+  -p, --pipeline string   select a pivot by pipeline or listener:pipeline
+```
+
+#### pivot log
+
+Read the listener-side REM agent log for a pivot.
+
+```
+pivot log <agent_id> [flags]
+```
+
+Options:
+
+```
+  -p, --pipeline string   select a pivot by pipeline or listener:pipeline
 ```
 
 ### status

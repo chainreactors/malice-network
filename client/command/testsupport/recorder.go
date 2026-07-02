@@ -582,6 +582,10 @@ func (r *RecorderRPC) RemAgentCtrl(ctx context.Context, in *clientpb.REMAgent, o
 	return r.emptyResponse(ctx, "RemAgentCtrl", in)
 }
 
+func (r *RecorderRPC) RemDial(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error) {
+	return r.taskResponse(ctx, "RemDial", in)
+}
+
 func (r *RecorderRPC) RemAgentStop(ctx context.Context, in *clientpb.REMAgent, opts ...grpc.CallOption) (*clientpb.Empty, error) {
 	return r.emptyResponse(ctx, "RemAgentStop", in)
 }

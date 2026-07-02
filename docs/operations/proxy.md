@@ -162,6 +162,19 @@ debug 模式下的日志。 可以看到IoM的implant基于通过rem的构建的
 
 所有 pivot 命令都依赖 rem 模块，使用前请确保已通过上述方法之一加载 rem。
 
+### pivot（Pivot Agent 管理）
+```bash
+pivot [--all]
+pivot list [--all]
+pivot status <agent_id> [--pipeline <pipeline|listener:pipeline>]
+pivot stop <agent_id> [--pipeline <pipeline|listener:pipeline>]
+pivot log <agent_id> [--pipeline <pipeline|listener:pipeline>]
+```
+
+`pivot` 和 `pivot list` 用于查看已同步的 pivot agent。`pivot status` / `pivot stop` 会根据 pivot context 找到创建该 agent 的 implant session，并通过 `rem_dial status|stop <agent_id>` 下发 managed lifecycle 控制。`pivot log` 读取 listener 侧 REM agent 日志。
+
+当多个 listener 存在同名 pipeline 时，使用 `--pipeline listener:pipeline` 可以消除歧义。
+
 ### portfwd（本地端口转发）
 ```bash
 portfwd [pipeline|url] [flags]

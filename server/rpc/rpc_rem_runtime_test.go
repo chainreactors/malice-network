@@ -275,6 +275,74 @@ func TestRemDialUsesScopedPipelineBeforeAgentExists(t *testing.T) {
 	}, "scoped REM dial pivot context")
 }
 
+func TestRemDialControlActionsSkipPivotSync(t *testing.T) {
+	env := newRPCTestEnv(t)
+	sess := env.seedSession(t, "rem-dial-control-session", "rem-dial-control-transport", true)
+	pipelineName := "rem-dial-control"
+	listener, _ := seedRemRuntimeWithListener(t, "listener-rem-dial-control", pipelineName)
+
+	pipelinesCh.Store(sess.PipelineID, &testRPCServerStream{
+		sendMsg: func(interface{}) error { return nil },
+	})
+	t.Cleanup(func() { pipelinesCh.Delete(sess.PipelineID) })
+
+	for _, tc := range []struct {
+		action string
+		output string
+	}{
+		{action: "status", output: "running"},
+		{action: "stop", output: "stopped"},
+	} {
+		t.Run(tc.action, func(t *testing.T) {
+			done := make(chan struct{})
+			gotSync := make(chan *clientpb.JobCtrl, 1)
+			go func() {
+				select {
+				case ctrl := <-listener.Ctrl:
+					listener.CtrlJob.Store(ctrl.Id, &clientpb.JobStatus{
+						CtrlId: ctrl.Id,
+						Status: consts.CtrlStatusSuccess,
+						Job:    ctrl.Job,
+					})
+					gotSync <- ctrl
+				case <-done:
+				}
+			}()
+			t.Cleanup(func() { close(done) })
+
+			task, err := (&Server{}).RemDial(incomingSessionContext(sess.ID), &implantpb.Request{
+				Name: consts.ModuleRemDial,
+				Args: []string{tc.action, "agent-1"},
+				Params: map[string]string{
+					"pipeline_id": listener.Name + ":" + pipelineName,
+				},
+			})
+			if err != nil {
+				t.Fatalf("RemDial %s failed: %v", tc.action, err)
+			}
+			deliverTaskResponse(t, sess, task.TaskId, &implantpb.Spite{
+				Body: &implantpb.Spite_Response{
+					Response: &implantpb.Response{Output: tc.output},
+				},
+			})
+
+			select {
+			case ctrl := <-gotSync:
+				t.Fatalf("unexpected REM sync ctrl for %s: %#v", tc.action, ctrl)
+			case <-time.After(200 * time.Millisecond):
+			}
+
+			ctxs, err := db.NewContextQuery().WhereType(consts.ContextPivoting).WherePipeline(pipelineName).Find()
+			if err != nil {
+				t.Fatalf("query pivot contexts failed: %v", err)
+			}
+			if len(ctxs) != 0 {
+				t.Fatalf("pivot contexts = %d, want 0", len(ctxs))
+			}
+		})
+	}
+}
+
 func TestListRemsScopesPivotContextsByListener(t *testing.T) {
 	newRPCTestEnv(t)
 	pipelineName := "rem-list-shared"

@@ -98,22 +98,7 @@ func Commands(con *core.Console) []*cobra.Command {
 	fileAction := carapace.ActionFiles()
 	common.BindArgCompletions(cmdCmd, &fileAction)
 
-	pivotCmd := &cobra.Command{
-		Use:   consts.CommandPivot,
-		Short: "List all pivot agents",
-		Long:  "List all active pivot agents with their details",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return ListPivotCmd(cmd, con)
-		},
-		Example: `List all pivot agents:
-~~~
-pivot
-~~~`,
-	}
-
-	common.BindFlag(pivotCmd, func(f *pflag.FlagSet) {
-		f.BoolP("all", "a", false, "list all pivot agents")
-	})
+	pivotCmd := PivotCommand(con)
 
 	licenseInfoCmd := &cobra.Command{
 		Use:   consts.CommandLicense,
