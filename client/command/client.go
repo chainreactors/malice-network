@@ -24,6 +24,7 @@ import (
 	"github.com/chainreactors/malice-network/client/command/mal"
 	"github.com/chainreactors/malice-network/client/command/mutant"
 	"github.com/chainreactors/malice-network/client/command/pipeline"
+	"github.com/chainreactors/malice-network/client/command/project"
 	"github.com/chainreactors/malice-network/client/command/search"
 	"github.com/chainreactors/malice-network/client/command/sessions"
 	"github.com/chainreactors/malice-network/client/command/website"
@@ -49,6 +50,7 @@ func BindCommonCommands(bind BindFunc) {
 		context.Commands,
 		cert.Commands,
 		audit.Commands,
+		project.Commands,
 	)
 
 	bind(consts.ListenerGroup,
