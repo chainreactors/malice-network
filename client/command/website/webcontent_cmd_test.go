@@ -91,6 +91,11 @@ func (r *websiteTestRPC) StopWebsite(ctx context.Context, in *clientpb.CtrlPipel
 	return &clientpb.Empty{}, nil
 }
 
+func (r *websiteTestRPC) RegisterWebsite(ctx context.Context, in *clientpb.Pipeline, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+	r.record("RegisterWebsite", in)
+	return &clientpb.Empty{}, nil
+}
+
 func (r *websiteTestRPC) StartWebsite(ctx context.Context, in *clientpb.CtrlPipeline, opts ...grpc.CallOption) (*clientpb.Empty, error) {
 	r.record("StartWebsite", in)
 	return &clientpb.Empty{}, nil
@@ -362,6 +367,78 @@ func TestWebsiteTLSCmdSavesInlineCert(t *testing.T) {
 	}
 }
 
+func TestWebsiteTLSCmdGeneratesTemporaryCert(t *testing.T) {
+	rpc := &websiteTestRPC{}
+	con := newWebsiteTestConsole(rpc)
+
+	cmd := newWebsiteTLSParsedCmd(t, []string{"site-a", "--listener", "listener-a", "--generate"})
+	if err := WebsiteTLSCmd(cmd, con); err != nil {
+		t.Fatalf("WebsiteTLSCmd failed: %v", err)
+	}
+	req := onlyWebsiteCall[*clientpb.PipelineTLSUpdate](t, rpc, "UpdateWebsiteTLS")
+	if req.Mode != clientpb.TLSUpdateMode_TLS_UPDATE_MODE_INLINE_CERT || req.SaveCert || req.Tls == nil || !req.Tls.Enable {
+		t.Fatalf("request = %#v, want generated temporary inline TLS update", req)
+	}
+	if req.Tls.GetCert().GetCert() != "" || req.Tls.GetCert().GetKey() != "" {
+		t.Fatalf("request TLS = %#v, generated cert material should be produced server-side", req.Tls)
+	}
+}
+
+func TestNewWebsiteCmdAllowsGeneratedTLSWithoutCert(t *testing.T) {
+	rpc := &websiteTestRPC{}
+	con := newWebsiteTestConsole(rpc)
+
+	cmd := newWebsiteCreateParsedCmd(t, []string{"site-a", "--listener", "listener-a", "--port", "18080", "--tls"})
+	if err := NewWebsiteCmd(cmd, con); err != nil {
+		t.Fatalf("NewWebsiteCmd failed: %v", err)
+	}
+	if len(rpc.calls) != 2 {
+		t.Fatalf("call count = %d, want RegisterWebsite and StartWebsite", len(rpc.calls))
+	}
+	registerReq := rpc.calls[0].request.(*clientpb.Pipeline)
+	startReq := rpc.calls[1].request.(*clientpb.CtrlPipeline)
+	if rpc.calls[0].method != "RegisterWebsite" || registerReq.GetTls() == nil || !registerReq.GetTls().Enable {
+		t.Fatalf("register call = %s %#v, want TLS-enabled website", rpc.calls[0].method, registerReq)
+	}
+	if registerReq.GetTls().GetCert().GetCert() != "" || registerReq.GetTls().GetCert().GetKey() != "" {
+		t.Fatalf("register TLS = %#v, generated cert material should be produced server-side", registerReq.GetTls())
+	}
+	if rpc.calls[1].method != "StartWebsite" || startReq.GetPipeline().GetTls() == nil || !startReq.GetPipeline().GetTls().Enable {
+		t.Fatalf("start call = %s %#v, want TLS-enabled pipeline", rpc.calls[1].method, startReq)
+	}
+}
+
+func TestNewWebsiteCmdSavesGeneratedTLS(t *testing.T) {
+	rpc := &websiteTestRPC{}
+	con := newWebsiteTestConsole(rpc)
+
+	cmd := newWebsiteCreateParsedCmd(t, []string{
+		"site-a",
+		"--listener", "listener-a",
+		"--port", "18080",
+		"--tls",
+		"--save-cert",
+		"--save-cert-name", "site-a-cert",
+		"--cert-comment", "generated",
+	})
+	if err := NewWebsiteCmd(cmd, con); err != nil {
+		t.Fatalf("NewWebsiteCmd failed: %v", err)
+	}
+	if len(rpc.calls) != 3 {
+		t.Fatalf("call count = %d, want RegisterWebsite, StartWebsite, UpdateWebsiteTLS", len(rpc.calls))
+	}
+	updateReq := rpc.calls[2].request.(*clientpb.PipelineTLSUpdate)
+	if rpc.calls[2].method != "UpdateWebsiteTLS" || updateReq.Mode != clientpb.TLSUpdateMode_TLS_UPDATE_MODE_INLINE_CERT {
+		t.Fatalf("update call = %s %#v, want generated inline TLS update", rpc.calls[2].method, updateReq)
+	}
+	if !updateReq.SaveCert || updateReq.SaveCertName != "site-a-cert" || updateReq.CertComment != "generated" {
+		t.Fatalf("update save fields = %#v, want saved generated cert", updateReq)
+	}
+	if updateReq.Tls == nil || !updateReq.Tls.Enable || updateReq.Tls.GetCert().GetCert() != "" || updateReq.Tls.GetCert().GetKey() != "" {
+		t.Fatalf("update TLS = %#v, want server-side generated TLS marker", updateReq.Tls)
+	}
+}
+
 func TestWebsiteTLSCmdRejectsSaveCertWithoutName(t *testing.T) {
 	rpc := &websiteTestRPC{}
 	con := newWebsiteTestConsole(rpc)
@@ -428,8 +505,31 @@ func newWebsiteTLSParsedCmd(t testing.TB, args []string) *cobra.Command {
 	cmd.Flags().String("listener", "", "")
 	cmd.Flags().Bool("disable", false, "")
 	cmd.Flags().String("cert-name", "", "")
+	cmd.Flags().Bool("generate", false, "")
 	cmd.Flags().String("cert", "", "")
 	cmd.Flags().String("key", "", "")
+	cmd.Flags().Bool("save-cert", false, "")
+	cmd.Flags().String("save-cert-name", "", "")
+	cmd.Flags().String("cert-comment", "", "")
+	if err := cmd.Flags().Parse(args); err != nil {
+		t.Fatalf("Parse flags failed: %v", err)
+	}
+	return cmd
+}
+
+func newWebsiteCreateParsedCmd(t testing.TB, args []string) *cobra.Command {
+	t.Helper()
+	cmd := &cobra.Command{}
+	cmd.Flags().String("root", "/", "")
+	cmd.Flags().String("auth", "", "")
+	cmd.Flags().String("listener", "", "")
+	cmd.Flags().String("host", "0.0.0.0", "")
+	cmd.Flags().String("proxy", "", "")
+	cmd.Flags().Uint32("port", 0, "")
+	cmd.Flags().String("cert", "", "")
+	cmd.Flags().String("key", "", "")
+	cmd.Flags().Bool("tls", false, "")
+	cmd.Flags().String("cert-name", "", "")
 	cmd.Flags().Bool("save-cert", false, "")
 	cmd.Flags().String("save-cert-name", "", "")
 	cmd.Flags().String("cert-comment", "", "")

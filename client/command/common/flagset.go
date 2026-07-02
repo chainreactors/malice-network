@@ -170,6 +170,9 @@ func ParseTLSFlags(cmd *cobra.Command) (*clientpb.TLS, string, error) {
 	tls, _ := cmd.Flags().GetBool("tls")
 	var err error
 	var cert, key string
+	if (certPath == "") != (keyPath == "") {
+		return nil, "", errors.New("cert and key must be provided together")
+	}
 	if certPath != "" && keyPath != "" {
 		cert, err = cryptography.ProcessPEM(certPath)
 		if err != nil {

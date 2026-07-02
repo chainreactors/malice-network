@@ -35,7 +35,10 @@ website web_test --listener tcp_default --root /webtest
 // Register a website with a custom name and port
 website web_test --listener tcp_default --port 5003 --root /webtest
 
-// Register a website with TLS enabled
+// Register a website with a temporary self-signed TLS certificate
+website web_test --listener tcp_default --root /webtest --tls
+
+// Register a website with TLS enabled using certificate files
 website web_test --listener tcp_default --root /webtest --tls --cert /path/to/cert --key /path/to/key
 
 // Register a website with TLS enabled and save the cert
@@ -150,6 +153,9 @@ website tls web_test --listener tcp_default --cert-name web_cert
 // Use a temporary certificate
 website tls web_test --listener tcp_default --cert /path/to/cert --key /path/to/key
 
+// Generate a temporary self-signed certificate
+website tls web_test --listener tcp_default --generate
+
 // Use and save a new certificate
 website tls web_test --listener tcp_default --cert /path/to/cert --key /path/to/key --save-cert --save-cert-name web_cert
 
@@ -163,6 +169,7 @@ website tls web_test --listener tcp_default --disable
 		f.String("listener", "", "listener ID")
 		f.Bool("disable", false, "disable TLS for this website")
 		f.String("cert-name", "", "existing certificate name")
+		f.Bool("generate", false, "generate a temporary self-signed certificate")
 		f.String("cert", "", "tls cert path")
 		f.String("key", "", "tls key path")
 		f.Bool("save-cert", false, "save inline cert and key to certificate store")
@@ -173,6 +180,7 @@ website tls web_test --listener tcp_default --disable
 	common.BindFlagCompletions(websiteTLSCmd, func(comp carapace.ActionMap) {
 		comp["listener"] = common.ListenerIDCompleter(con)
 		comp["cert-name"] = common.CertNameCompleter(con)
+		comp["generate"] = carapace.ActionValues().Usage("generate temporary self-signed certificate")
 		comp["cert"] = carapace.ActionFiles().Usage("path to the cert file")
 		comp["key"] = carapace.ActionFiles().Usage("path to the key file")
 		comp["save-cert-name"] = carapace.ActionValues().Usage("saved certificate name")
@@ -191,6 +199,7 @@ website tls web_test --listener tcp_default --disable
 		f.String("listener", "", "listener ID")
 		f.Bool("disable", false, "disable TLS for this website")
 		f.String("cert-name", "", "existing certificate name")
+		f.Bool("generate", false, "generate a temporary self-signed certificate")
 		f.String("cert", "", "tls cert path")
 		f.String("key", "", "tls key path")
 		f.Bool("save-cert", false, "save inline cert and key to certificate store")
@@ -200,6 +209,7 @@ website tls web_test --listener tcp_default --disable
 	common.BindFlagCompletions(websiteCertCmd, func(comp carapace.ActionMap) {
 		comp["listener"] = common.ListenerIDCompleter(con)
 		comp["cert-name"] = common.CertNameCompleter(con)
+		comp["generate"] = carapace.ActionValues().Usage("generate temporary self-signed certificate")
 		comp["cert"] = carapace.ActionFiles().Usage("path to the cert file")
 		comp["key"] = carapace.ActionFiles().Usage("path to the key file")
 		comp["save-cert-name"] = carapace.ActionValues().Usage("saved certificate name")

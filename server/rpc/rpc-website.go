@@ -11,6 +11,7 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/output"
+	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
@@ -340,7 +341,11 @@ func (rpc *Server) StartWebsite(ctx context.Context, req *clientpb.CtrlPipeline)
 			return nil, err
 		}
 	} else if req.Pipeline != nil && req.Pipeline.Tls != nil {
-		webpipe, err = db.SetPipelineTLS(webpipe, req.Pipeline.Tls, req.Pipeline.CertName)
+		tlsConfig, err := prepareWebsiteTLS(webpipe.Name, req.Pipeline.Tls)
+		if err != nil {
+			return nil, err
+		}
+		webpipe, err = db.SetPipelineTLS(webpipe, tlsConfig, req.Pipeline.CertName)
 		if err != nil {
 			return nil, err
 		}
@@ -489,11 +494,12 @@ func applyWebsiteTLSUpdate(website *models.Pipeline, req *clientpb.PipelineTLSUp
 
 func applyInlineWebsiteTLS(website *models.Pipeline, req *clientpb.PipelineTLSUpdate) (*models.Pipeline, error) {
 	tlsConfig := req.GetTls()
-	if tlsConfig == nil || tlsConfig.Cert == nil || tlsConfig.Cert.Cert == "" || tlsConfig.Cert.Key == "" {
-		return nil, fmt.Errorf("cert and key are required")
+	if tlsConfig != nil {
+		tlsConfig.Enable = true
 	}
-	if _, err := tls.X509KeyPair([]byte(tlsConfig.Cert.Cert), []byte(tlsConfig.Cert.Key)); err != nil {
-		return nil, fmt.Errorf("invalid certificate key pair: %w", err)
+	tlsConfig, err := prepareWebsiteTLS(website.Name, tlsConfig)
+	if err != nil {
+		return nil, err
 	}
 	tlsConfig.Enable = true
 	if req.GetSaveCert() {
@@ -517,6 +523,30 @@ func applyInlineWebsiteTLS(website *models.Pipeline, req *clientpb.PipelineTLSUp
 	tlsConfig.Cert.Name = ""
 	tlsConfig.Cert.Comment = req.GetCertComment()
 	return db.SetPipelineTLS(website, tlsConfig, "")
+}
+
+func prepareWebsiteTLS(name string, tlsConfig *clientpb.TLS) (*clientpb.TLS, error) {
+	if tlsConfig == nil {
+		return nil, fmt.Errorf("tls config is required")
+	}
+	if !tlsConfig.GetEnable() {
+		return tlsConfig, nil
+	}
+	if tlsConfig.GetCert().GetCert() == "" && tlsConfig.GetCert().GetKey() == "" {
+		generated, err := certutils.GenerateSelfTLS(name, tlsConfig.GetCertSubject())
+		if err != nil {
+			return nil, err
+		}
+		generated.CertSubject = tlsConfig.GetCertSubject()
+		return generated, nil
+	}
+	if tlsConfig.GetCert().GetCert() == "" || tlsConfig.GetCert().GetKey() == "" {
+		return nil, fmt.Errorf("cert and key are required")
+	}
+	if _, err := tls.X509KeyPair([]byte(tlsConfig.GetCert().GetCert()), []byte(tlsConfig.GetCert().GetKey())); err != nil {
+		return nil, fmt.Errorf("invalid certificate key pair: %w", err)
+	}
+	return tlsConfig, nil
 }
 
 func (rpc *Server) StopWebsite(ctx context.Context, req *clientpb.CtrlPipeline) (*clientpb.Empty, error) {

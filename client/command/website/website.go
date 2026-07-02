@@ -100,8 +100,11 @@ func validateNewWebsiteTLS(certName string, tlsConfig *clientpb.TLS) error {
 	if certName != "" || tlsConfig.Acme {
 		return nil
 	}
-	if tlsConfig.Cert == nil || tlsConfig.Cert.Cert == "" || tlsConfig.Cert.Key == "" {
-		return fmt.Errorf("tls requires --cert-name or both --cert and --key")
+	if tlsConfig.Cert == nil || (tlsConfig.Cert.Cert == "" && tlsConfig.Cert.Key == "") {
+		return nil
+	}
+	if tlsConfig.Cert.Cert == "" || tlsConfig.Cert.Key == "" {
+		return fmt.Errorf("cert and key must be provided together")
 	}
 	if _, err := tls.X509KeyPair([]byte(tlsConfig.Cert.Cert), []byte(tlsConfig.Cert.Key)); err != nil {
 		return fmt.Errorf("invalid certificate key pair: %w", err)
@@ -213,9 +216,13 @@ func buildWebsiteTLSUpdateFromFlags(cmd *cobra.Command, name, listenerID string)
 	certName, _ := cmd.Flags().GetString("cert-name")
 	certPath, _ := cmd.Flags().GetString("cert")
 	keyPath, _ := cmd.Flags().GetString("key")
+	generateTLS := boolFlag(cmd, "generate")
 	saveCert, _ := cmd.Flags().GetBool("save-cert")
 	saveCertName, _ := cmd.Flags().GetString("save-cert-name")
 	certComment, _ := cmd.Flags().GetString("cert-comment")
+	if boolFlag(cmd, "tls") && certName == "" && certPath == "" && keyPath == "" {
+		generateTLS = true
+	}
 
 	sources := 0
 	if disable {
@@ -227,11 +234,14 @@ func buildWebsiteTLSUpdateFromFlags(cmd *cobra.Command, name, listenerID string)
 	if certPath != "" || keyPath != "" {
 		sources++
 	}
-	if sources != 1 {
-		return nil, fmt.Errorf("specify exactly one TLS mode: --disable, --cert-name, or --cert/--key")
+	if generateTLS {
+		sources++
 	}
-	if saveCert && certName != "" {
-		return nil, fmt.Errorf("--save-cert can only be used with --cert and --key")
+	if sources != 1 {
+		return nil, fmt.Errorf("specify exactly one TLS mode: --disable, --cert-name, --cert/--key, or --generate")
+	}
+	if saveCert && (certName != "" || disable) {
+		return nil, fmt.Errorf("--save-cert can only be used with generated or inline certs")
 	}
 	if saveCert && saveCertName == "" {
 		return nil, fmt.Errorf("--save-cert-name is required when --save-cert is set")
@@ -250,6 +260,11 @@ func buildWebsiteTLSUpdateFromFlags(cmd *cobra.Command, name, listenerID string)
 	if certName != "" {
 		update.Mode = clientpb.TLSUpdateMode_TLS_UPDATE_MODE_EXISTING_CERT
 		update.CertName = certName
+		return update, nil
+	}
+	if generateTLS {
+		update.Mode = clientpb.TLSUpdateMode_TLS_UPDATE_MODE_INLINE_CERT
+		update.Tls = &clientpb.TLS{Enable: true}
 		return update, nil
 	}
 	if certPath == "" || keyPath == "" {
@@ -278,6 +293,14 @@ func buildWebsiteTLSUpdateFromFlags(cmd *cobra.Command, name, listenerID string)
 		},
 	}
 	return update, nil
+}
+
+func boolFlag(cmd *cobra.Command, name string) bool {
+	if cmd == nil || cmd.Flags().Lookup(name) == nil {
+		return false
+	}
+	value, _ := cmd.Flags().GetBool(name)
+	return value
 }
 
 func ListWebsitesCmd(cmd *cobra.Command, con *core.Console) error {

@@ -1693,7 +1693,10 @@ website web_test --listener tcp_default --root /webtest
 // Register a website with a custom name and port
 website web_test --listener tcp_default --port 5003 --root /webtest
 
-// Register a website with TLS enabled
+// Register a website with a temporary self-signed TLS certificate
+website web_test --listener tcp_default --root /webtest --tls
+
+// Register a website with TLS enabled using certificate files
 website web_test --listener tcp_default --root /webtest --tls --cert /path/to/cert --key /path/to/key
 
 // Register a website with TLS enabled and save the cert
@@ -1954,6 +1957,9 @@ website tls web_test --listener tcp_default --cert-name web_cert
 // Use a temporary certificate
 website tls web_test --listener tcp_default --cert /path/to/cert --key /path/to/key
 
+// Generate a temporary self-signed certificate
+website tls web_test --listener tcp_default --generate
+
 // Use and save a new certificate
 website tls web_test --listener tcp_default --cert /path/to/cert --key /path/to/key --save-cert --save-cert-name web_cert
 
@@ -1968,6 +1974,7 @@ website tls web_test --listener tcp_default --disable
       --cert-comment string     comment for saved inline certificate
       --cert-name string        existing certificate name
       --disable                 disable TLS for this website
+      --generate                generate a temporary self-signed certificate
       --key string              tls key path
       --listener string         listener ID
       --save-cert               save inline cert and key to certificate store

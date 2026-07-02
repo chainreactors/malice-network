@@ -272,6 +272,67 @@ func TestUpdateWebsiteTLSInlineSaveCreatesCertificateAndBinds(t *testing.T) {
 	}
 }
 
+func TestUpdateWebsiteTLSGeneratesTemporarySelfSignedCert(t *testing.T) {
+	newRPCTestEnv(t)
+	server := &Server{}
+	seedWebsitePipelineForTLSTest(t, "site-tls-generate")
+
+	updated, err := server.UpdateWebsiteTLS(context.Background(), &clientpb.PipelineTLSUpdate{
+		Name:       "site-tls-generate",
+		ListenerId: "listener-a",
+		Mode:       clientpb.TLSUpdateMode_TLS_UPDATE_MODE_INLINE_CERT,
+		Tls:        &clientpb.TLS{Enable: true},
+	})
+	if err != nil {
+		t.Fatalf("UpdateWebsiteTLS failed: %v", err)
+	}
+	if updated.CertName != "" {
+		t.Fatalf("updated cert name = %q, want temporary TLS without cert store binding", updated.CertName)
+	}
+	if updated.GetTls() == nil || !updated.GetTls().Enable || updated.GetTls().GetCert().GetCert() == "" || updated.GetTls().GetCert().GetKey() == "" {
+		t.Fatalf("updated TLS = %#v, want generated certificate material", updated.GetTls())
+	}
+	certs, err := db.GetAllCertificates()
+	if err != nil {
+		t.Fatalf("GetAllCertificates failed: %v", err)
+	}
+	if len(certs) != 0 {
+		t.Fatalf("certificate count = %d, want no saved certificate", len(certs))
+	}
+}
+
+func TestUpdateWebsiteTLSGeneratesAndSavesSelfSignedCert(t *testing.T) {
+	newRPCTestEnv(t)
+	server := &Server{}
+	seedWebsitePipelineForTLSTest(t, "site-tls-generate-save")
+
+	updated, err := server.UpdateWebsiteTLS(context.Background(), &clientpb.PipelineTLSUpdate{
+		Name:         "site-tls-generate-save",
+		ListenerId:   "listener-a",
+		Mode:         clientpb.TLSUpdateMode_TLS_UPDATE_MODE_INLINE_CERT,
+		Tls:          &clientpb.TLS{Enable: true},
+		SaveCert:     true,
+		SaveCertName: "generated-site-cert",
+		CertComment:  "generated from website",
+	})
+	if err != nil {
+		t.Fatalf("UpdateWebsiteTLS failed: %v", err)
+	}
+	if updated.CertName != "generated-site-cert" || updated.GetTls() == nil || !updated.GetTls().Enable {
+		t.Fatalf("updated pipeline = %#v, want saved generated cert binding", updated)
+	}
+	saved, err := db.FindCertificate("generated-site-cert")
+	if err != nil {
+		t.Fatalf("FindCertificate failed: %v", err)
+	}
+	if saved.CertPEM == "" || saved.KeyPEM == "" || saved.CACertPEM == "" || saved.CAKeyPEM == "" {
+		t.Fatalf("saved cert = %#v, want generated cert and CA material", saved)
+	}
+	if saved.Comment != "generated from website" {
+		t.Fatalf("saved comment = %q, want generated from website", saved.Comment)
+	}
+}
+
 func TestUpdateWebsiteTLSDisableClearsTLS(t *testing.T) {
 	newRPCTestEnv(t)
 	server := &Server{}

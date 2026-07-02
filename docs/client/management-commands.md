@@ -66,7 +66,8 @@ website route add --artifact <artifact> --website <website> --path /payload.bin
 website route list <website>
 website route remove <content_id>
 website cert <website> --cert-name <cert_name>
+website tls <website> --generate
 ```
 
 - `route` 子命令复用现有 website content RPC。
-- `cert` 是 `website tls` 的证书管理入口，可绑定已有证书、导入 inline cert/key 或禁用 TLS。
+- `cert` 是 `website tls` 的证书管理入口，可绑定已有证书、导入 inline cert/key、生成临时自签名证书或禁用 TLS。

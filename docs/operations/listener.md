@@ -240,6 +240,7 @@ http --listener listener --host 127.0.0.1 --port 8083
 也可以在IoM的client端中使用命令添加一个website pipeline：
 ```bash
 website web-test --listener listener --port 5080 --root /web
+website web-test --listener listener --port 5443 --root /web --tls
 website web-test --listener listener --port 5443 --root /web --tls --cert-name cert-name
 website web-test --listener listener --port 5443 --root /web --tls --cert cert.crt --key cert.key --save-cert --save-cert-name web-test-cert --cert-comment "website tls cert"
 ```
@@ -265,6 +266,9 @@ website tls web-test --listener listener --cert-name cert-name
 
 # 使用临时证书，不写入证书库
 website tls web-test --listener listener --cert cert.crt --key cert.key
+
+# 生成临时自签名证书，不写入证书库
+website tls web-test --listener listener --generate
 
 # 使用新证书并保存到证书库
 website tls web-test --listener listener --cert cert.crt --key cert.key --save-cert --save-cert-name web-test-cert --cert-comment "rotated cert"
