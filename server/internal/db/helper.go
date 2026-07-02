@@ -131,6 +131,20 @@ func (c Certificates) ToProtobuf() []*clientpb.TLS {
 	return tlsList
 }
 
+// Projects is a slice of Project models
+type Projects []*models.Project
+
+// ToProtobuf converts Projects to protobuf
+func (p Projects) ToProtobuf() *clientpb.Projects {
+	pbProjects := &clientpb.Projects{Projects: make([]*clientpb.Project, 0, len(p))}
+	for _, project := range p {
+		if project != nil {
+			pbProjects.Projects = append(pbProjects.Projects, project.ToProtobuf())
+		}
+	}
+	return pbProjects
+}
+
 // ============================================
 // Generic CRUD Operations
 // ============================================
@@ -1105,4 +1119,77 @@ func loadPipelineCert(pipeline *models.Pipeline) {
 	if certificate != nil {
 		pipeline.Tls = implanttypes.FromTls(certificate.ToProtobuf())
 	}
+}
+
+// ============================================
+// ProjectQuery Builder
+// ============================================
+
+type ProjectQuery struct {
+	db *gorm.DB
+}
+
+// NewProjectQuery creates a new project query builder, defaulting to non-deleted projects.
+func NewProjectQuery() *ProjectQuery {
+	return &ProjectQuery{db: Session().Where("is_deleted = ?", false)}
+}
+
+// Unscoped resets filters to a fresh session (includes deleted projects).
+func (q *ProjectQuery) Unscoped() *ProjectQuery {
+	q.db = Session()
+	return q
+}
+
+// WhereID filters by project ID.
+func (q *ProjectQuery) WhereID(id string) *ProjectQuery {
+	q.db = q.db.Where("id = ?", id)
+	return q
+}
+
+// WhereName filters by project name.
+func (q *ProjectQuery) WhereName(name string) *ProjectQuery {
+	q.db = q.db.Where("name = ?", name)
+	return q
+}
+
+// WhereIsDeleted filters by deleted status.
+func (q *ProjectQuery) WhereIsDeleted(deleted bool) *ProjectQuery {
+	q.db = q.db.Where("is_deleted = ?", deleted)
+	return q
+}
+
+// OrderByCreated orders by created_at ASC.
+func (q *ProjectQuery) OrderByCreated() *ProjectQuery {
+	q.db = q.db.Order("created_at ASC")
+	return q
+}
+
+// Find executes the query and returns all matching projects.
+func (q *ProjectQuery) Find() (Projects, error) {
+	var projects Projects
+	err := q.db.Find(&projects).Error
+	if err != nil {
+		return nil, err
+	}
+	return projects, nil
+}
+
+// First returns the first matching project.
+func (q *ProjectQuery) First() (*models.Project, error) {
+	var project models.Project
+	err := q.db.First(&project).Error
+	if err != nil {
+		return nil, err
+	}
+	return &project, nil
+}
+
+// Delete deletes matching projects.
+func (q *ProjectQuery) Delete() error {
+	return q.db.Delete(&models.Project{}).Error
+}
+
+// Updates updates multiple fields on matching projects.
+func (q *ProjectQuery) Updates(fields map[string]interface{}) error {
+	return q.db.Model(&models.Project{}).Updates(fields).Error
 }

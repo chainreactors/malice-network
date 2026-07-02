@@ -56,6 +56,7 @@ func NewDBClient(dbConfig *configs.DatabaseConfig) (*gorm.DB, error) {
 		&models.Artifact{},
 		&models.Task{},
 		&models.Context{},
+		&models.Project{},
 	}
 
 	if dbConfig.Dialect == configs.Postgres {
@@ -92,6 +93,7 @@ func NewDBClient(dbConfig *configs.DatabaseConfig) (*gorm.DB, error) {
 		sqlDB.SetMaxOpenConns(dbConfig.MaxOpenConns)
 		sqlDB.SetConnMaxLifetime(time.Hour)
 	}
+	seedDefaultProject(dbClient)
 	return dbClient, nil
 }
 
@@ -370,6 +372,22 @@ func addPostgresForeignKeys(db *gorm.DB) {
 		)
 		if err := db.Exec(sql).Error; err != nil {
 			logs.Log.Warnf("Failed to add FK %s: %v", fk.name, err)
+		}
+	}
+}
+
+func seedDefaultProject(dbClient *gorm.DB) {
+	var count int64
+	dbClient.Model(&models.Project{}).Where("name = ?", "default").Count(&count)
+	if count == 0 {
+		project := &models.Project{
+			Name:        "default",
+			Description: "Default project",
+		}
+		if err := dbClient.Create(project).Error; err != nil {
+			logs.Log.Warnf("Failed to create default project: %v", err)
+		} else {
+			logs.Log.Infof("default project created")
 		}
 	}
 }
