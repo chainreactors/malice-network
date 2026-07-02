@@ -86,7 +86,7 @@ func printMals(maljson m.MalsYaml, malHttpConfig m.MalHTTPConfig, con *core.Cons
 
 	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
-	tableModel.SetHandle(func() {
+	tableModel.SetHandler(func() {
 		selectRow := tableModel.GetHighlightedRow()
 		if selectRow.Data == nil {
 			logs.Log.Infof("No row selected")

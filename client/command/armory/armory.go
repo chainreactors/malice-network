@@ -437,7 +437,7 @@ func PrintArmoryPackages(aliases []*alias.AliasManifest, exts []*extension.Exten
 	}
 	tableModel.SetRows(rowEntries)
 	tableModel.SetMultiline()
-	tableModel.SetHandle(DownloadArmoryCallback(tableModel, tableModel.Buffer, con, clientConfig))
+	tableModel.SetHandler(DownloadArmoryCallback(tableModel, tableModel.Buffer, con, clientConfig))
 	rendered, err := common.RunTable(con, tableModel)
 	if err != nil {
 		con.Log.Errorf("Failed to run table model: %s\n", err)

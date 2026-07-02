@@ -143,7 +143,7 @@ func PrintSessions(sessions map[string]*client.Session, con *core.Console, isAll
 	}, common.ShouldUseStaticOutput(con))
 	tableModel.SetRows(rowEntries)
 	tableModel.SetMultiline()
-	tableModel.SetHandle(func() {
+	tableModel.SetHandler(func() {
 		SessionLogin(tableModel, con)()
 	})
 	rendered, err := common.RunTable(con, tableModel)

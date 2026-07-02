@@ -93,7 +93,7 @@ func PrintArtifacts(artifacts *clientpb.Artifacts, con *core.Console) error {
 	}, common.ShouldUseStaticOutput(con))
 	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
-	tableModel.SetHandle(func() {})
+	tableModel.SetHandler(func() {})
 	rendered, err := common.RunTable(con, tableModel)
 	if err != nil {
 		return err
