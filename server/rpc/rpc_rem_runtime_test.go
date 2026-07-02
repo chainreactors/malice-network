@@ -40,6 +40,34 @@ func TestRemAgentCtrlPropagatesListenerFailure(t *testing.T) {
 	}
 }
 
+func TestStopRemTreatsMissingRuntimeAsStopped(t *testing.T) {
+	newRPCTestEnv(t)
+	listener, pipeline := seedRemRuntime(t, "rem-stop-missing-runtime")
+	if _, err := db.SavePipeline(models.FromPipelinePb(pipeline)); err != nil {
+		t.Fatalf("SavePipeline failed: %v", err)
+	}
+
+	go func() {
+		ctrl := <-listener.Ctrl
+		listener.CtrlJob.Store(ctrl.Id, &clientpb.JobStatus{
+			CtrlId: ctrl.Id,
+			Status: consts.CtrlStatusFailed,
+			Error:  "pipeline not found",
+		})
+	}()
+
+	_, err := (&Server{}).StopRem(context.Background(), &clientpb.CtrlPipeline{
+		Name:       pipeline.Name,
+		ListenerId: listener.Name,
+	})
+	if err != nil {
+		t.Fatalf("StopRem returned error for missing runtime: %v", err)
+	}
+	if got := listener.GetPipeline(pipeline.Name); got != nil {
+		t.Fatalf("StopRem should remove stale listener cache, got %#v", got)
+	}
+}
+
 func TestRemAgentLogRejectsMissingLogPayload(t *testing.T) {
 	newRPCTestEnv(t)
 	listener, pipeline := seedRemRuntime(t, "rem-runtime-log")

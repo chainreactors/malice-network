@@ -326,7 +326,9 @@ func (rpc *Server) StopRem(ctx context.Context, req *clientpb.CtrlPipeline) (*cl
 		})
 		status := lns.WaitCtrl(ctrlID)
 		if err := waitForCtrlStatus("stop rem", req.Name, status); err != nil {
-			return nil, err
+			if status == nil || !strings.Contains(status.Error, "pipeline not found") {
+				return nil, err
+			}
 		}
 	}
 
