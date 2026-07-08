@@ -3,6 +3,7 @@ package core
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -11,9 +12,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/server/internal/parser"
+	"github.com/chainreactors/malice-network/server/internal/parser/malefic"
 	cryptostream "github.com/chainreactors/malice-network/server/internal/stream"
 )
 
@@ -164,4 +167,63 @@ func TestConnectionsStaleEOFDoesNotDropNewerConnection(t *testing.T) {
 			t.Fatalf("iteration %d: push to newer connection failed after stale EOF: %v", i, err)
 		}
 	}
+}
+
+func TestGetOrReuseConnectionDoesNotReuseAcrossPipelines(t *testing.T) {
+	oldConnections := Connections
+	t.Cleanup(func() {
+		Connections = oldConnections
+	})
+	Connections = &connections{connections: &sync.Map{}}
+
+	rawID := uint32(0x01020304)
+	first := newMaleficProbeConn(t, rawID)
+	firstConn, err := GetOrReuseConnection(first, "listener-a:http-a", nil)
+	if err != nil {
+		t.Fatalf("first GetOrReuseConnection failed: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = firstConn.closeWithError(ErrConnectionRemoved)
+	})
+
+	second := newMaleficProbeConn(t, rawID)
+	secondConn, err := GetOrReuseConnection(second, "listener-b:http-b", nil)
+	if err != nil {
+		t.Fatalf("second GetOrReuseConnection failed: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = secondConn.closeWithError(ErrConnectionRemoved)
+	})
+
+	if secondConn == firstConn {
+		t.Fatalf("connection for raw session %d was reused across different pipelines: got pipeline %q, want %q",
+			rawID, secondConn.PipelineID, "listener-b:http-b")
+	}
+	if secondConn.PipelineID != "listener-b:http-b" {
+		t.Fatalf("connection pipeline = %q, want %q", secondConn.PipelineID, "listener-b:http-b")
+	}
+}
+
+func newMaleficProbeConn(t testing.TB, rawID uint32) *cryptostream.Conn {
+	t.Helper()
+
+	header := make([]byte, malefic.HeaderLength)
+	header[0] = malefic.DefaultStartDelimiter
+	binary.LittleEndian.PutUint32(header[1:5], rawID)
+	binary.LittleEndian.PutUint32(header[5:9], 0)
+
+	cryptor, err := cryptostream.NewCryptor(consts.CryptorRAW, nil, nil)
+	if err != nil {
+		t.Fatalf("new raw cryptor: %v", err)
+	}
+	conn, err := cryptostream.WrapPeekConn(
+		cryptostream.WrapReadWriteCloser(bytes.NewReader(header), io.Discard, nil),
+		[]cryptostream.Cryptor{cryptor},
+		consts.ImplantMalefic,
+		0,
+	)
+	if err != nil {
+		t.Fatalf("wrap probe connection: %v", err)
+	}
+	return conn
 }

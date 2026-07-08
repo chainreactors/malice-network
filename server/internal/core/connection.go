@@ -83,8 +83,12 @@ func GetOrReuseConnection(conn *cryptostream.Conn, pipelineID string, secureConf
 	sessionID := hash.Md5Hash(encoders.Uint32ToBytes(sid))
 
 	if existing := Connections.Get(sessionID); existing != nil && existing.IsAlive() {
-		existing.LastMessage = time.Now()
-		return existing, nil
+		if existing.PipelineID != pipelineID {
+			existing.closeWithError(fmt.Errorf("connection pipeline changed from %s to %s", existing.PipelineID, pipelineID))
+		} else {
+			existing.LastMessage = time.Now()
+			return existing, nil
+		}
 	}
 
 	keyPair := GetKeyPairForSession(sid, secureConfig)
