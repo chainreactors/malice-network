@@ -3,6 +3,7 @@ package rpc
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -213,6 +214,9 @@ func TestSyncStreamStreamsContextFileInChunks(t *testing.T) {
 	if stream.chunks[1].Offset != 0 {
 		t.Fatalf("first content offset = %d, want 0", stream.chunks[1].Offset)
 	}
+	if got := len(stream.chunks[1].Content); got != 512*1024 {
+		t.Fatalf("first content length = %d, want %d", got, 512*1024)
+	}
 	if stream.chunks[2].Offset != syncStreamChunkSize {
 		t.Fatalf("second content offset = %d, want %d", stream.chunks[2].Offset, syncStreamChunkSize)
 	}
@@ -268,6 +272,25 @@ func TestSendContextContentStreamSendsBeforeReaderEOF(t *testing.T) {
 	}
 	if !stream.chunks[2].Eof {
 		t.Fatalf("last content chunk eof = false, want true")
+	}
+}
+
+func TestSendContextContentStreamRejectsTruncatedContent(t *testing.T) {
+	stream := newCaptureContextChunkStream(context.Background())
+	err := sendContextContentStream(
+		&clientpb.Context{Id: "truncated"},
+		6,
+		bytes.NewReader([]byte("abc")),
+		stream,
+	)
+	if !errors.Is(err, io.ErrUnexpectedEOF) {
+		t.Fatalf("error = %v, want io.ErrUnexpectedEOF", err)
+	}
+	if len(stream.chunks) != 2 || stream.chunks[0].Header == nil {
+		t.Fatalf("chunks = %#v, want metadata header and partial content", stream.chunks)
+	}
+	if got := string(stream.chunks[1].Content); got != "abc" || stream.chunks[1].Eof {
+		t.Fatalf("partial chunk = %#v, want abc with eof=false", stream.chunks[1])
 	}
 }
 

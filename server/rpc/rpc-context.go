@@ -20,7 +20,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-const syncStreamChunkSize int64 = 256 * 1024
+const syncStreamChunkSize int64 = 512 * 1024
 
 func (rpc *Server) GetContexts(ctx context.Context, req *clientpb.Context) (*clientpb.Contexts, error) {
 	query := db.NewContextQuery()
@@ -377,10 +377,7 @@ func sendContextContentStream(
 		return err
 	}
 
-	buf := make([]byte, syncStreamChunkSize)
-	offset := int64(0)
-
-	for {
+	for offset := int64(0); offset < totalSize; {
 		// Honor client cancellation promptly.
 		select {
 		case <-stream.Context().Done():
@@ -388,28 +385,42 @@ func sendContextContentStream(
 		default:
 		}
 
-		n, readErr := reader.Read(buf)
-		if n > 0 {
-			chunk := make([]byte, n)
-			copy(chunk, buf[:n])
-
-			eof := readErr == io.EOF || offset+int64(n) >= totalSize
-			if err := stream.Send(&clientpb.ContextChunk{
-				Content:   chunk,
-				Offset:    offset,
-				TotalSize: totalSize,
-				Eof:       eof,
-			}); err != nil {
-				return err
-			}
-			offset += int64(n)
+		chunkSize := syncStreamChunkSize
+		if remaining := totalSize - offset; remaining < chunkSize {
+			chunkSize = remaining
 		}
+		chunk := make([]byte, chunkSize)
+		n, readErr := reader.Read(chunk)
+		if n == 0 {
+			if readErr == nil {
+				return io.ErrNoProgress
+			}
+			if errors.Is(readErr, io.EOF) {
+				return fmt.Errorf("read context content at offset %d: %w", offset, io.ErrUnexpectedEOF)
+			}
+			return readErr
+		}
+
+		nextOffset := offset + int64(n)
+		if err := stream.Send(&clientpb.ContextChunk{
+			Content:   chunk[:n],
+			Offset:    offset,
+			TotalSize: totalSize,
+			Eof:       nextOffset == totalSize,
+		}); err != nil {
+			return err
+		}
+		offset = nextOffset
 
 		if readErr != nil {
 			if errors.Is(readErr, io.EOF) {
+				if offset < totalSize {
+					return fmt.Errorf("read context content at offset %d: %w", offset, io.ErrUnexpectedEOF)
+				}
 				return nil
 			}
 			return readErr
 		}
 	}
+	return nil
 }
