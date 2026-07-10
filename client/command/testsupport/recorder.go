@@ -12,7 +12,9 @@ import (
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/IoM-go/proto/services/listenerrpc"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -37,6 +39,7 @@ type RecorderRPC struct {
 	artifactsResponders       map[string]func(context.Context, any) (*clientpb.Artifacts, error)
 	buildConfigResponders     map[string]func(context.Context, any) (*clientpb.BuildConfig, error)
 	contextResponders         map[string]func(context.Context, any) (*clientpb.Context, error)
+	contextStreamResponders   map[string]func(context.Context, any) (grpc.ServerStreamingClient[clientpb.ContextChunk], error)
 	taskContextResponders     map[string]func(context.Context, any) (*clientpb.TaskContext, error)
 	taskContextsResponders    map[string]func(context.Context, any) (*clientpb.TaskContexts, error)
 	tasksResponders           map[string]func(context.Context, any) (*clientpb.Tasks, error)
@@ -67,6 +70,7 @@ func NewRecorderRPC() *RecorderRPC {
 		artifactsResponders:       map[string]func(context.Context, any) (*clientpb.Artifacts, error){},
 		buildConfigResponders:     map[string]func(context.Context, any) (*clientpb.BuildConfig, error){},
 		contextResponders:         map[string]func(context.Context, any) (*clientpb.Context, error){},
+		contextStreamResponders:   map[string]func(context.Context, any) (grpc.ServerStreamingClient[clientpb.ContextChunk], error){},
 		taskContextResponders:     map[string]func(context.Context, any) (*clientpb.TaskContext, error){},
 		taskContextsResponders:    map[string]func(context.Context, any) (*clientpb.TaskContexts, error){},
 		tasksResponders:           map[string]func(context.Context, any) (*clientpb.Tasks, error){},
@@ -142,6 +146,10 @@ func (r *RecorderRPC) OnBuildConfig(method string, fn func(context.Context, any)
 
 func (r *RecorderRPC) OnContext(method string, fn func(context.Context, any) (*clientpb.Context, error)) {
 	r.contextResponders[method] = fn
+}
+
+func (r *RecorderRPC) OnContextStream(method string, fn func(context.Context, any) (grpc.ServerStreamingClient[clientpb.ContextChunk], error)) {
+	r.contextStreamResponders[method] = fn
 }
 
 func (r *RecorderRPC) OnTaskContext(method string, fn func(context.Context, any) (*clientpb.TaskContext, error)) {
@@ -451,6 +459,25 @@ func (r *RecorderRPC) Sync(ctx context.Context, in *clientpb.Sync, opts ...grpc.
 		return responder(ctx, in)
 	}
 	return &clientpb.Context{Id: in.GetContextId()}, nil
+}
+
+func (r *RecorderRPC) SyncStream(ctx context.Context, in *clientpb.Sync, opts ...grpc.CallOption) (grpc.ServerStreamingClient[clientpb.ContextChunk], error) {
+	r.recordPrimary(ctx, "SyncStream", in)
+	if responder, ok := r.contextStreamResponders["SyncStream"]; ok {
+		return responder(ctx, in)
+	}
+	return &ContextChunkStream{RecvFunc: func() (*clientpb.ContextChunk, error) {
+		return nil, status.Error(codes.Unimplemented, "SyncStream is not configured")
+	}}, nil
+}
+
+type ContextChunkStream struct {
+	grpc.ClientStream
+	RecvFunc func() (*clientpb.ContextChunk, error)
+}
+
+func (s *ContextChunkStream) Recv() (*clientpb.ContextChunk, error) {
+	return s.RecvFunc()
 }
 
 func (r *RecorderRPC) GetAllTaskContent(ctx context.Context, in *clientpb.Task, opts ...grpc.CallOption) (*clientpb.TaskContexts, error) {
