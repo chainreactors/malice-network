@@ -454,6 +454,61 @@ func TestSessionRequestWithStreamWriterReturnsErrorAfterSendFailure(t *testing.T
 	}
 }
 
+func TestSessionSysInfoSnapshotConcurrent(t *testing.T) {
+	sess := newTestSession("sysinfo-snapshot")
+	sess.UpdateSysInfo(&implantpb.SysInfo{
+		Os:          &implantpb.Os{Name: "linux", Arch: "amd64", Username: "user-a"},
+		Process:     &implantpb.Process{Name: "agent-a", Arch: "amd64"},
+		IsPrivilege: true,
+		Filepath:    "/tmp/agent-a",
+		Workdir:     "/tmp/a",
+	})
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 500; i++ {
+			suffix := "a"
+			isPrivilege := true
+			if i%2 == 0 {
+				suffix = "b"
+				isPrivilege = false
+			}
+			sess.UpdateSysInfo(&implantpb.SysInfo{
+				Os:          &implantpb.Os{Name: "linux", Arch: "amd64", Username: "user-" + suffix},
+				Process:     &implantpb.Process{Name: "agent-" + suffix, Arch: "amd64"},
+				IsPrivilege: isPrivilege,
+				Filepath:    "/tmp/agent-" + suffix,
+				Workdir:     "/tmp/" + suffix,
+			})
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 500; i++ {
+			pb := sess.ToProtobufLite()
+			if pb.Os == nil || pb.Process == nil {
+				t.Errorf("ToProtobufLite returned incomplete sysinfo: %#v", pb)
+				return
+			}
+			suffix := "a"
+			wantPrivilege := true
+			if pb.Filepath == "/tmp/agent-b" {
+				suffix = "b"
+				wantPrivilege = false
+			}
+			if pb.Filepath != "/tmp/agent-"+suffix || pb.Workdir != "/tmp/"+suffix ||
+				pb.Os.Username != "user-"+suffix || pb.Process.Name != "agent-"+suffix ||
+				pb.IsPrivilege != wantPrivilege {
+				t.Errorf("ToProtobufLite mixed sysinfo generations: %#v", pb)
+				return
+			}
+		}
+	}()
+	wg.Wait()
+}
+
 // ---------- Task management ----------
 
 func TestSession_NewTask_IncrementsSeq(t *testing.T) {

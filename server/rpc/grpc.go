@@ -162,24 +162,3 @@ func NewServer() *Server {
 	// todo event
 	return &Server{}
 }
-
-//func (rpc *Server) genericHandler(ctx context.Context, req *GenericRequest) (proto.Message, error) {
-//	spite, err := req.NewSpite(req.Message)
-//	if err != nil {
-//		logs.Log.Errorf(err.Error())
-//		return nil, err
-//	}
-//	data, err := req.Session.RequestAndWait(
-//		&clientpb.SpiteSession{SessionId: req.Session.ID, TaskId: req.Task.Id, Spite: spite},
-//		pipelinesCh[req.Session.PipelineID],
-//		consts.MinTimeout)
-//	if err != nil {
-//		return nil, err
-//	}
-//	req.Session.DeleteResp(req.Task.Id)
-//	resp, err := types.ParseSpite(data)
-//	if err != nil {
-//		return nil, err
-//	}
-//	return resp, nil
-//}

@@ -91,10 +91,7 @@ func TestSleepDispatchesRequestAndUpdatesSession(t *testing.T) {
 	deliverTaskResponse(t, sess, task.TaskId, &implantpb.Spite{
 		Body: &implantpb.Spite_Empty{Empty: &implantpb.Empty{}},
 	})
-	waitForCondition(t, 2*time.Second, func() bool {
-		stored := sess.Tasks.Get(task.TaskId)
-		return stored != nil && stored.Finished()
-	}, "sleep task to finish")
+	waitForTaskDone(t, sess.Tasks.Get(task.TaskId), "sleep task")
 }
 
 func TestKeepaliveEnablesSessionAfterResponse(t *testing.T) {
@@ -129,7 +126,10 @@ func TestKeepaliveEnablesSessionAfterResponse(t *testing.T) {
 		Name: consts.ModuleKeepalive,
 		Body: &implantpb.Spite_Common{Common: &implantpb.CommonBody{Name: consts.ModuleKeepalive}},
 	})
-	waitForCondition(t, 2*time.Second, sess.IsKeepaliveEnabled, "keepalive to become enabled")
+	waitForTaskDone(t, sess.Tasks.Get(task.TaskId), "keepalive task")
+	if !sess.IsKeepaliveEnabled() {
+		t.Fatal("keepalive stayed disabled after task completion")
+	}
 }
 
 func TestInfoUpdatesSessionSysinfoFromResponse(t *testing.T) {
@@ -155,9 +155,11 @@ func TestInfoUpdatesSessionSysinfoFromResponse(t *testing.T) {
 			Process: &implantpb.Process{Name: "agent.bin"},
 		}},
 	})
-	waitForCondition(t, 2*time.Second, func() bool {
-		return sess.Os != nil && sess.Os.Name == "linux" && sess.Os.Arch == "x64"
-	}, "session sysinfo update")
+	waitForTaskDone(t, sess.Tasks.Get(task.TaskId), "info task")
+	pb := sess.ToProtobufLite()
+	if pb.Os == nil || pb.Os.Name != "linux" || pb.Os.Arch != "x64" {
+		t.Fatalf("session sysinfo = %#v, want linux/x64", pb.Os)
+	}
 }
 
 func TestGetSessionReturnsDatabaseRecordWithoutRecovery(t *testing.T) {
@@ -431,4 +433,22 @@ func waitForCondition(t testing.TB, timeout time.Duration, cond func() bool, des
 		time.Sleep(25 * time.Millisecond)
 	}
 	t.Fatalf("timed out waiting for %s", description)
+}
+
+func waitForTaskDone(t testing.TB, task *core.Task, description string) {
+	t.Helper()
+	if task == nil {
+		t.Fatalf("%s was not stored", description)
+	}
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		if task.IsClosed() {
+			if !task.Finished() {
+				t.Fatalf("%s closed but stayed running", description)
+			}
+			return
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	t.Fatalf("timed out waiting for %s to finish", description)
 }

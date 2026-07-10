@@ -20,7 +20,7 @@ func (rpc *Server) Ls(ctx context.Context, req *implantpb.Request) (*clientpb.Ta
 func (rpc *Server) Cd(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
 	return rpc.AssertAndHandleWithSession(ctx, req, consts.ModuleCd, types.MsgResponse, func(greq *GenericRequest, spite *implantpb.Spite) {
 		if output := spite.GetResponse().GetOutput(); output != "" {
-			greq.Session.WorkDir = output
+			greq.Session.SetWorkDir(output)
 			_ = greq.Session.SaveAndNotify("")
 		}
 	})

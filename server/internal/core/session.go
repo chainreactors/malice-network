@@ -37,9 +37,7 @@ var (
 	//                         example when the command is not supported on the platform
 	ErrUnknownMessageType = errors.New("unknown message type")
 
-	// ErrImplantSendTimeout - The implant did not respond prior to timeout deadline
-	ErrImplantSendTimeout = errors.New("implant timeout")
-	ErrSpiteStreamClosed  = errors.New("spite stream writer closed")
+	ErrSpiteStreamClosed = errors.New("spite stream writer closed")
 
 	// DB function variables — swappable in tests for mocking
 	sessionDBSave        = func(s *models.Session) error { return db.SaveSessionModel(s) }
@@ -273,6 +271,7 @@ type Session struct {
 	keepaliveMu      sync.Mutex
 	keepaliveEnabled bool
 	anyMu            sync.RWMutex
+	sysInfoMu        sync.RWMutex
 
 	Ctx    context.Context
 	Cancel context.CancelFunc
@@ -355,6 +354,8 @@ func (w *SpiteStreamWriter) finish(err error) {
 }
 
 func (s *Session) Abstract() string {
+	s.sysInfoMu.RLock()
+	defer s.sysInfoMu.RUnlock()
 	if s.Os == nil {
 		return fmt.Sprintf("%s(%s)", s.Name, s.ID)
 	} else {
@@ -553,7 +554,8 @@ func (s *Session) isAlived() bool {
 }
 
 func (s *Session) ToProtobuf() *clientpb.Session {
-	return &clientpb.Session{
+	s.sysInfoMu.RLock()
+	pb := &clientpb.Session{
 		Type:        s.Type,
 		SessionId:   s.ID,
 		RawId:       s.RawID,
@@ -565,8 +567,8 @@ func (s *Session) ToProtobuf() *clientpb.Session {
 		Target:      s.Target,
 		PipelineId:  s.PipelineID,
 		ListenerId:  s.ListenerID,
-		Os:          s.Os,
-		Process:     s.Process,
+		Os:          cloneSysInfoOS(s.Os),
+		Process:     cloneSysInfoProcess(s.Process),
 		LastCheckin: s.LastCheckinUnix(),
 		Filepath:    s.SessionContext.Filepath,
 		Workdir:     s.SessionContext.WorkDir,
@@ -574,15 +576,19 @@ func (s *Session) ToProtobuf() *clientpb.Session {
 		Proxy:       s.SessionContext.ProxyURL,
 		Timer:       &implantpb.Timer{Expression: s.Expression, Jitter: s.Jitter},
 		CreatedAt:   s.CreatedAt.Unix(),
-		Tasks:       s.Tasks.ToProtobuf(),
 		Modules:     s.Modules,
 		Addons:      s.Addons,
 		KeyPair:     s.KeyPair, // 添加密钥对
 		Data:        s.Marshal(),
 	}
+	s.sysInfoMu.RUnlock()
+	pb.Tasks = s.Tasks.ToProtobuf()
+	return pb
 }
 
 func (s *Session) ToProtobufLite() *clientpb.Session {
+	s.sysInfoMu.RLock()
+	defer s.sysInfoMu.RUnlock()
 	return &clientpb.Session{
 		Type:        s.Type,
 		SessionId:   s.ID,
@@ -595,8 +601,8 @@ func (s *Session) ToProtobufLite() *clientpb.Session {
 		Target:      s.Target,
 		PipelineId:  s.PipelineID,
 		ListenerId:  s.ListenerID,
-		Os:          s.Os,
-		Process:     s.Process,
+		Os:          cloneSysInfoOS(s.Os),
+		Process:     cloneSysInfoProcess(s.Process),
 		LastCheckin: s.LastCheckinUnix(),
 		Filepath:    s.SessionContext.Filepath,
 		Workdir:     s.SessionContext.WorkDir,
@@ -616,6 +622,8 @@ func (s *Session) Save() error {
 }
 
 func (s *Session) ToModel() *models.Session {
+	name := s.Name
+	s.sysInfoMu.RLock()
 	sessModel := &models.Session{
 		SessionID:   s.ID,
 		RawID:       s.RawID,
@@ -630,7 +638,8 @@ func (s *Session) ToModel() *models.Session {
 		LastCheckin: s.LastCheckinUnix(),
 		DataString:  s.Marshal(),
 	}
-	artifact, err := sessionDBGetArtifact(s.Name)
+	s.sysInfoMu.RUnlock()
+	artifact, err := sessionDBGetArtifact(name)
 	if err == nil && artifact.ProfileName != "" {
 		if _, profileErr := sessionDBGetProfile(artifact.ProfileName); profileErr == nil {
 			sessModel.ProfileName = artifact.ProfileName
@@ -702,14 +711,17 @@ func (s *Session) Update(req *clientpb.RegisterSession) {
 		s.Jitter = req.RegisterData.Timer.Jitter
 	}
 	s.SessionContext.Update(req)
-
 	// SecureManager现在使用固定的100次交互计数，不需要更新间隔
 
+	shouldPublishInit := false
 	if req.RegisterData.Sysinfo != nil {
-		if !s.Initialized {
-			s.Publish(consts.CtrlSessionInit, fmt.Sprintf("session %s init", s.ID), true, true)
-		}
-		s.UpdateSysInfo(req.RegisterData.Sysinfo)
+		s.sysInfoMu.Lock()
+		shouldPublishInit = !s.Initialized
+		s.updateSysInfoLocked(req.RegisterData.Sysinfo)
+		s.sysInfoMu.Unlock()
+	}
+	if shouldPublishInit {
+		s.Publish(consts.CtrlSessionInit, fmt.Sprintf("session %s init", s.ID), true, true)
 	}
 
 	err := s.Save()
@@ -722,6 +734,18 @@ func (s *Session) UpdateSysInfo(info *implantpb.SysInfo) {
 	if info == nil {
 		return
 	}
+	s.sysInfoMu.Lock()
+	defer s.sysInfoMu.Unlock()
+	s.updateSysInfoLocked(info)
+}
+
+func (s *Session) SetWorkDir(workDir string) {
+	s.sysInfoMu.Lock()
+	s.WorkDir = workDir
+	s.sysInfoMu.Unlock()
+}
+
+func (s *Session) updateSysInfoLocked(info *implantpb.SysInfo) {
 	s.Initialized = true
 	osInfo := mergeSysInfoOS(s.Os, info.GetOs())
 	processInfo := mergeSysInfoProcess(s.Process, info.GetProcess())
@@ -882,15 +906,18 @@ func hasSignatureMetadata(value *implantpb.Process) bool {
 }
 
 func (s *Session) FillSysInfo() {
-	artifact, err := sessionDBGetArtifact(s.Name)
+	name := s.Name
+	artifact, err := sessionDBGetArtifact(name)
 	if err != nil {
-		logs.Log.Errorf("failed to find atrtifact %s: %s", s.Name, err)
+		logs.Log.Errorf("failed to find atrtifact %s: %s", name, err)
 		return
 	}
+	s.sysInfoMu.Lock()
 	s.Os = &implantpb.Os{
 		Name: artifact.Os,
 		Arch: artifact.Arch,
 	}
+	s.sysInfoMu.Unlock()
 }
 
 func (s *Session) Publish(Op string, msg string, notify bool, important bool) {
@@ -925,17 +952,6 @@ func (s *Session) NewTask(name string, total int) *Task {
 // Request
 func (s *Session) Request(msg *clientpb.SpiteRequest, stream grpc.ServerStream) error {
 	return stream.SendMsg(msg)
-}
-
-func (s *Session) RequestAndWait(msg *clientpb.SpiteRequest, stream grpc.ServerStream, timeout time.Duration) (*implantpb.Spite, error) {
-	ch := make(chan *implantpb.Spite, 16)
-	s.StoreResp(msg.Task.TaskId, ch)
-	err := s.Request(msg, stream)
-	if err != nil {
-		return nil, err
-	}
-	resp := <-ch
-	return resp, nil
 }
 
 // RequestWithStream - 'async' means that the response is not returned immediately, but is returned through the channel 'ch
