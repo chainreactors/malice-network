@@ -80,6 +80,7 @@ func TestAuditForwardEventQueueBackpressurePreservesEvent(t *testing.T) {
 	if got := <-stream.events; got != first {
 		t.Fatalf("first queued event = %#v, want %#v", got, first)
 	}
+	stream.releaseEventSlot()
 	select {
 	case err := <-resultCh:
 		if err != nil {

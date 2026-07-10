@@ -25,9 +25,34 @@ import (
 )
 
 var (
-	Listener *listener
+	currentListener  *listener
+	listenerGlobalMu sync.Mutex
 	// ListenerSessions 在 listener 层维护的 Sessions map (rawID -> Session)
 )
+
+func setCurrentListener(lns *listener) {
+	listenerGlobalMu.Lock()
+	currentListener = lns
+	listenerGlobalMu.Unlock()
+}
+
+func clearCurrentListener(lns *listener) {
+	listenerGlobalMu.Lock()
+	if currentListener == lns {
+		currentListener = nil
+	}
+	listenerGlobalMu.Unlock()
+}
+
+func CloseCurrentListener() error {
+	listenerGlobalMu.Lock()
+	lns := currentListener
+	listenerGlobalMu.Unlock()
+	if lns == nil {
+		return nil
+	}
+	return lns.Close()
+}
 
 var openListenerJobStream = func(client listenerrpc.ListenerRPCClient, ctx context.Context) (listenerrpc.ListenerRPC_JobStreamClient, error) {
 	return client.JobStream(ctx)
@@ -73,7 +98,7 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig, ser
 		return err
 	}
 	core.GoGuarded("listener-job-stream:"+lns.ID(), lns.Handler, core.LogGuardedError("listener-job-stream:"+lns.ID()))
-	Listener = lns
+	setCurrentListener(lns)
 
 	for _, tcpPipeline := range cfg.TcpPipelines {
 		pipeline, err := tcpPipeline.ToProtobuf(lns.Name)
@@ -217,13 +242,21 @@ type listener struct {
 	websites    map[string]*Website
 	shutdown    func() error
 	retireOnce  sync.Once
+	closeOnce   sync.Once
+	closeErr    error
 }
 
 func (lns *listener) Close() error {
 	if lns == nil {
 		return nil
 	}
+	lns.closeOnce.Do(func() {
+		lns.closeErr = lns.close()
+	})
+	return lns.closeErr
+}
 
+func (lns *listener) close() error {
 	var errs []error
 
 	for _, pipeline := range lns.pipelines.ToProtobuf().GetPipelines() {
@@ -259,9 +292,7 @@ func (lns *listener) Close() error {
 		}
 	}
 
-	if Listener == lns {
-		Listener = nil
-	}
+	clearCurrentListener(lns)
 
 	return errors.Join(errs...)
 }

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"sync"
 
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
@@ -18,6 +19,11 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/parser"
 	cryptostream "github.com/chainreactors/malice-network/server/internal/stream"
+)
+
+var (
+	tcpListen    = net.Listen
+	tcpStartCmux = StartCmuxTCPListener
 )
 
 func NewTcpPipeline(rpc pipelineRPCClient, pipeline *clientpb.Pipeline) (*TCPPipeline, error) {
@@ -36,22 +42,28 @@ func NewTcpPipeline(rpc pipelineRPCClient, pipeline *clientpb.Pipeline) (*TCPPip
 }
 
 type TCPPipeline struct {
-	ln       net.Listener
-	rpc      pipelineRPCClient
-	Name     string
-	Port     uint16
-	Host     string
-	Enable   bool
-	Target   []string
-	CertName string
-	parser   *parser.MessageParser
+	stateMu   sync.RWMutex
+	starting  bool
+	startDone chan struct{}
+	ln        net.Listener
+	rpc       pipelineRPCClient
+	Name      string
+	Port      uint16
+	Host      string
+	Enable    bool
+	Target    []string
+	CertName  string
+	parser    *parser.MessageParser
 	*core.PipelineConfig
 }
 
 func (pipeline *TCPPipeline) ToProtobuf() *clientpb.Pipeline {
+	pipeline.stateMu.RLock()
+	enabled := pipeline.Enable
+	pipeline.stateMu.RUnlock()
 	p := &clientpb.Pipeline{
 		Name:       pipeline.Name,
-		Enable:     pipeline.Enable,
+		Enable:     enabled,
 		Type:       consts.TCPPipeline,
 		ListenerId: pipeline.ListenerID,
 		Parser:     pipeline.Parser,
@@ -76,12 +88,20 @@ func (pipeline *TCPPipeline) ID() string {
 }
 
 func (pipeline *TCPPipeline) Close() error {
+	pipeline.stateMu.Lock()
 	pipeline.Enable = false
-	if pipeline.ln == nil {
+	if pipeline.starting {
+		done := pipeline.startDone
+		pipeline.stateMu.Unlock()
+		<-done
 		return nil
 	}
 	ln := pipeline.ln
 	pipeline.ln = nil
+	pipeline.stateMu.Unlock()
+	if ln == nil {
+		return nil
+	}
 	err := ln.Close()
 	if err != nil && !errors.Is(err, net.ErrClosed) {
 		return err
@@ -90,20 +110,90 @@ func (pipeline *TCPPipeline) Close() error {
 }
 
 func (pipeline *TCPPipeline) Start() error {
-	if pipeline.Enable {
+	if !pipeline.beginStart() {
 		return nil
 	}
+
 	forward, err := core.NewForward(pipeline.rpc, pipeline)
 	if err != nil {
+		pipeline.abortStart()
 		return err
 	}
 	forward.ListenerId = pipeline.ListenerID
+	committed := false
+	defer func() {
+		if !committed {
+			_ = forward.Abort()
+			pipeline.abortStart()
+		}
+	}()
+
+	ln, err := pipeline.handler()
+	if err != nil {
+		return err
+	}
+	if !pipeline.commitStart(ln, forward) {
+		_ = ln.Close()
+		return nil
+	}
+	committed = true
+	logs.Log.Infof("pipeline.tcp - start host=%s port=%d parser=%s tls=%t",
+		pipeline.Host, pipeline.Port, pipeline.Parser, pipeline.TLSConfig.Enable)
+	return nil
+}
+
+func (pipeline *TCPPipeline) enabled() bool {
+	pipeline.stateMu.RLock()
+	defer pipeline.stateMu.RUnlock()
+	return pipeline.Enable
+}
+
+func (pipeline *TCPPipeline) beginStart() bool {
+	for {
+		pipeline.stateMu.Lock()
+		if pipeline.starting {
+			done := pipeline.startDone
+			pipeline.stateMu.Unlock()
+			<-done
+			continue
+		}
+		if pipeline.Enable {
+			pipeline.stateMu.Unlock()
+			return false
+		}
+		pipeline.Enable = true
+		pipeline.starting = true
+		pipeline.startDone = make(chan struct{})
+		pipeline.stateMu.Unlock()
+		return true
+	}
+}
+
+func (pipeline *TCPPipeline) abortStart() {
+	pipeline.stateMu.Lock()
+	pipeline.starting = false
+	pipeline.Enable = false
+	done := pipeline.startDone
+	pipeline.startDone = nil
+	if done != nil {
+		close(done)
+	}
+	pipeline.stateMu.Unlock()
+}
+
+func (pipeline *TCPPipeline) commitStart(ln net.Listener, forward *core.Forward) bool {
+	pipeline.stateMu.Lock()
+	defer pipeline.stateMu.Unlock()
+	if !pipeline.Enable {
+		return false
+	}
+	pipeline.ln = ln
 	core.Forwarders.Add(forward)
 	core.GoGuarded("tcp-forward-recv:"+pipeline.Name, func() error {
 		for {
 			msg, err := forward.Stream.Recv()
 			if err != nil {
-				if !pipeline.Enable {
+				if !pipeline.enabled() {
 					return nil
 				}
 				return fmt.Errorf("tcp pipeline %s forward recv: %w", pipeline.Name, err)
@@ -111,26 +201,27 @@ func (pipeline *TCPPipeline) Start() error {
 			dispatchForwardTaskRequest("tcp", pipeline.Name, msg)
 		}
 	}, pipeline.runtimeErrorHandler("forward recv loop"))
-
-	pipeline.ln, err = pipeline.handler()
-	if err != nil {
-		return err
-	}
-	logs.Log.Infof("pipeline.tcp - start host=%s port=%d parser=%s tls=%t",
-		pipeline.Host, pipeline.Port, pipeline.Parser, pipeline.TLSConfig.Enable)
-	pipeline.Enable = true
-	return nil
+	pipeline.starting = false
+	done := pipeline.startDone
+	pipeline.startDone = nil
+	close(done)
+	return true
 }
 
 func (pipeline *TCPPipeline) handler() (net.Listener, error) {
-	ln, err := net.Listen("tcp", fmt.Sprintf("%s:%d", pipeline.Host, pipeline.Port))
+	ln, err := tcpListen("tcp", fmt.Sprintf("%s:%d", pipeline.Host, pipeline.Port))
 	if err != nil {
 		return nil, err
 	}
 
 	// 如果启用了 TLS，使用 cmux 实现 TLS 和非 TLS 的端口复用
 	if pipeline.TLSConfig != nil && pipeline.TLSConfig.Enable {
-		return pipeline.handleWithCmux(ln)
+		cmuxListener, err := pipeline.handleWithCmux(ln)
+		if err != nil {
+			_ = ln.Close()
+			return nil, err
+		}
+		return cmuxListener, nil
 	}
 
 	// 非 TLS 模式，使用原有逻辑
@@ -156,7 +247,7 @@ func (pipeline *TCPPipeline) handleWithCmux(ln net.Listener) (net.Listener, erro
 		}
 	}
 
-	return StartCmuxTCPListener(ln, tlsConfig, pipeline.HandleConnection, pipeline.runtimeErrorHandler("cmux"))
+	return tcpStartCmux(ln, tlsConfig, pipeline.HandleConnection, pipeline.runtimeErrorHandler("cmux"))
 }
 
 // startAcceptLoop 启动连接接受循环 (用于非 cmux 模式)
@@ -165,7 +256,7 @@ func (pipeline *TCPPipeline) startAcceptLoop(ln net.Listener, logPrefix string) 
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
-			if !pipeline.Enable || errors.Is(err, net.ErrClosed) {
+			if !pipeline.enabled() || errors.Is(err, net.ErrClosed) {
 				logs.Log.Importantf("%s already disable, break accept", ln.Addr().String())
 				return nil
 			}
@@ -253,10 +344,7 @@ func (pipeline *TCPPipeline) runtimeErrorHandler(scope string) core.GoErrorHandl
 	return core.CombineErrorHandlers(
 		core.LogGuardedError(label),
 		func(err error) {
-			pipeline.Enable = false
-			if pipeline.ln != nil {
-				_ = pipeline.ln.Close()
-			}
+			_ = pipeline.Close()
 			if core.EventBroker != nil {
 				core.EventBroker.Publish(core.Event{
 					EventType: consts.EventListener,

@@ -37,6 +37,30 @@ func (testForwardStream) Recv() (*clientpb.SpiteRequest, error) {
 	return nil, errors.New("not used")
 }
 
+type abortForwardStream struct {
+	closeCalls atomic.Int32
+}
+
+func (*abortForwardStream) Send(*clientpb.SpiteResponse) error { return nil }
+func (*abortForwardStream) Recv() (*clientpb.SpiteRequest, error) {
+	return nil, errors.New("not used")
+}
+func (s *abortForwardStream) CloseSend() error {
+	s.closeCalls.Add(1)
+	return nil
+}
+
+type abortForwardClient struct {
+	*testForwardRPC
+	stream *abortForwardStream
+	ctx    context.Context
+}
+
+func (c *abortForwardClient) OpenForwardStream(ctx context.Context, _ Pipeline) (ForwardStream, error) {
+	c.ctx = ctx
+	return c.stream, nil
+}
+
 type testPipeline struct {
 	id       string
 	closeErr error
@@ -50,6 +74,38 @@ func (p testPipeline) Close() error { return p.closeErr }
 
 func (p testPipeline) ToProtobuf() *clientpb.Pipeline {
 	return &clientpb.Pipeline{Name: p.id}
+}
+
+func TestForwardAbortClosesStreamCancelsContextAndStopsHandler(t *testing.T) {
+	stream := &abortForwardStream{}
+	client := &abortForwardClient{testForwardRPC: &testForwardRPC{}, stream: stream}
+	forward, err := NewForward(client, testPipeline{id: "pipe-abort"})
+	if err != nil {
+		t.Fatalf("NewForward failed: %v", err)
+	}
+
+	if err := forward.Abort(); err != nil {
+		t.Fatalf("Abort failed: %v", err)
+	}
+	if err := forward.Abort(); err != nil {
+		t.Fatalf("second Abort failed: %v", err)
+	}
+	if got := stream.closeCalls.Load(); got != 1 {
+		t.Fatalf("CloseSend calls = %d, want 1", got)
+	}
+	select {
+	case <-client.ctx.Done():
+	default:
+		t.Fatal("OpenForwardStream context was not canceled")
+	}
+	select {
+	case <-forward.handlerDone:
+	default:
+		t.Fatal("forward handler was still running after Abort returned")
+	}
+	if got := Forwarders.Get(forward.RuntimeKey()); got != nil {
+		t.Fatalf("aborted forward remained in registry: %#v", got)
+	}
 }
 
 func TestForwardHandlerReturnsStreamSendError(t *testing.T) {

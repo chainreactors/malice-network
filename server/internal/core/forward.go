@@ -129,6 +129,7 @@ func (f *forwarders) Send(id string, msg *Message) {
 
 func NewForward(rpc ForwardClient, pipeline Pipeline) (*Forward, error) {
 	var err error
+	ctx, cancel := context.WithCancel(context.Background())
 	listenerID := ""
 	if pb := pipeline.ToProtobuf(); pb != nil {
 		listenerID = pb.ListenerId
@@ -138,25 +139,32 @@ func NewForward(rpc ForwardClient, pipeline Pipeline) (*Forward, error) {
 		ListenerRpc: rpc,
 		Pipeline:    pipeline,
 		ListenerId:  listenerID,
-		ctx:         context.Background(),
+		ctx:         ctx,
+		cancel:      cancel,
 		done:        make(chan struct{}),
+		handlerDone: make(chan struct{}),
 	}
 	forward.alive.Store(true)
 
-	forward.Stream, err = rpc.OpenForwardStream(context.Background(), pipeline)
+	forward.Stream, err = rpc.OpenForwardStream(ctx, pipeline)
 	if err != nil {
+		cancel()
 		return nil, err
 	}
 
-	GoGuarded("forward:"+pipeline.ID(), forward.Handler, forward.handleRuntimeError(), forward.shutdown)
+	GoGuarded("forward:"+pipeline.ID(), func() error {
+		defer close(forward.handlerDone)
+		return forward.Handler()
+	}, forward.handleRuntimeError(), forward.shutdown)
 
 	return forward, nil
 }
 
 // Forward is a struct that handles messages from listener and server
 type Forward struct {
-	ctx   context.Context
-	count int
+	ctx    context.Context
+	cancel context.CancelFunc
+	count  int
 	Pipeline
 	ListenerId string
 	Stream     ForwardStream
@@ -164,9 +172,12 @@ type Forward struct {
 
 	ListenerRpc forwardRPCClient
 
-	alive     atomic.Bool
-	done      chan struct{}
-	closeOnce sync.Once
+	alive       atomic.Bool
+	done        chan struct{}
+	closeOnce   sync.Once
+	handlerDone chan struct{}
+	abortOnce   sync.Once
+	abortErr    error
 }
 
 func (f *Forward) RuntimeKey() string {
@@ -192,8 +203,29 @@ func (f *Forward) Add(msg *Message) {
 func (f *Forward) shutdown() {
 	f.alive.Store(false)
 	f.closeOnce.Do(func() {
+		if f.cancel != nil {
+			f.cancel()
+		}
 		close(f.done)
 	})
+}
+
+// Abort closes an uncommitted forward without touching the global registry or
+// closing its pipeline. It is safe to call more than once.
+func (f *Forward) Abort() error {
+	if f == nil {
+		return nil
+	}
+	f.abortOnce.Do(func() {
+		f.shutdown()
+		if stream, ok := f.Stream.(interface{ CloseSend() error }); ok {
+			f.abortErr = stream.CloseSend()
+		}
+		if f.handlerDone != nil {
+			<-f.handlerDone
+		}
+	})
+	return f.abortErr
 }
 
 func (f *Forward) Count() int {
@@ -211,7 +243,17 @@ func (f *Forward) Context(sid string) context.Context {
 
 // Handler is a loop that handles messages from implant
 func (f *Forward) Handler() error {
-	for msg := range f.implantC {
+	for {
+		var msg *Message
+		select {
+		case <-f.done:
+			return nil
+		case received, ok := <-f.implantC:
+			if !ok {
+				return nil
+			}
+			msg = received
+		}
 		_, err := f.ListenerRpc.Checkin(f.Context(msg.SessionID), &implantpb.Ping{})
 		if err != nil {
 			logs.Log.Warnf("forward %s checkin failed for session %s: %v", f.ID(), msg.SessionID, err)
@@ -260,7 +302,6 @@ func (f *Forward) Handler() error {
 			}
 		}
 	}
-	return nil
 }
 
 func (f *Forward) handleRuntimeError() GoErrorHandler {

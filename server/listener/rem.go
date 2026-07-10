@@ -26,7 +26,13 @@ var remHealthCheck = func(client listenerrpc.ListenerRPCClient, ctx context.Cont
 	return err
 }
 
-var remSleep = time.Sleep
+var remConsoleListen = func(con *rem.RemConsole) error {
+	return con.Listen(con.ConsoleURL)
+}
+
+var remConsoleClose = func(con *rem.RemConsole) error {
+	return con.Close()
+}
 
 func NewRem(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline) (*REM, error) {
 	remConfig := pipeline.GetRem()
@@ -54,13 +60,18 @@ func NewRem(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline) (*RE
 }
 
 type REM struct {
-	con        *rem.RemConsole
-	rpc        listenerrpc.ListenerRPCClient
-	remConfig  *clientpb.REM
-	ListenerID string
-	Name       string
-	Enable     bool
-	CertName   string
+	stateMu        sync.RWMutex
+	starting       bool
+	startDone      chan struct{}
+	stopCh         chan struct{}
+	healthInterval time.Duration
+	con            *rem.RemConsole
+	rpc            listenerrpc.ListenerRPCClient
+	remConfig      *clientpb.REM
+	ListenerID     string
+	Name           string
+	Enable         bool
+	CertName       string
 	*core.PipelineConfig
 	ownAgents sync.Map // agent.ID → struct{}: tracks agents belonging to this pipeline
 }
@@ -70,22 +81,31 @@ func (rem *REM) ID() string {
 }
 
 func (rem *REM) Start() error {
-	if rem.Enable {
+	if !rem.beginStart() {
 		return nil
 	}
 
-	err := rem.con.Listen(rem.con.ConsoleURL)
+	err := remConsoleListen(rem.con)
 	if err != nil {
+		rem.abortStart()
 		return err
 	}
-	rem.Enable = true
+	if !rem.enabled() {
+		_ = remConsoleClose(rem.con)
+		rem.abortStart()
+		return nil
+	}
 	logs.Log.Important(rem.con.Link())
-	core.GoGuarded("rem-accept:"+rem.Name, rem.acceptLoop, rem.runtimeErrorHandler("accept loop"))
-	core.GoGuarded("rem-health:"+rem.Name, rem.healthLoop, rem.runtimeErrorHandler("health loop"))
+	if !rem.commitStart() {
+		_ = remConsoleClose(rem.con)
+		rem.abortStart()
+		return nil
+	}
 	return nil
 }
 
 func (rem *REM) ToProtobuf() *clientpb.Pipeline {
+	enabled := rem.enabled()
 	link := rem.getLink()
 	subscribe := rem.getSubscribe()
 	host := ""
@@ -121,7 +141,7 @@ func (rem *REM) ToProtobuf() *clientpb.Pipeline {
 
 	return &clientpb.Pipeline{
 		Name:       rem.Name,
-		Enable:     rem.Enable,
+		Enable:     enabled,
 		ListenerId: rem.ListenerID,
 		Parser:     parserName,
 		Type:       consts.RemPipeline,
@@ -181,18 +201,95 @@ func (rem *REM) getSubscribe() (subscribe string) {
 }
 
 func (rem *REM) Close() error {
+	rem.stateMu.Lock()
+	wasActive := rem.Enable
 	rem.Enable = false
-	if rem.con == nil {
+	stopCh := rem.stopCh
+	rem.stopCh = nil
+	if rem.starting {
+		done := rem.startDone
+		rem.stateMu.Unlock()
+		if stopCh != nil {
+			close(stopCh)
+		}
+		<-done
 		return nil
 	}
-	return rem.con.Close()
+	rem.stateMu.Unlock()
+	if stopCh != nil {
+		close(stopCh)
+	}
+	if !wasActive || rem.con == nil {
+		return nil
+	}
+	return remConsoleClose(rem.con)
+}
+
+func (rem *REM) enabled() bool {
+	rem.stateMu.RLock()
+	defer rem.stateMu.RUnlock()
+	return rem.Enable
+}
+
+func (rem *REM) beginStart() bool {
+	for {
+		rem.stateMu.Lock()
+		if rem.starting {
+			done := rem.startDone
+			rem.stateMu.Unlock()
+			<-done
+			continue
+		}
+		if rem.Enable {
+			rem.stateMu.Unlock()
+			return false
+		}
+		rem.Enable = true
+		rem.starting = true
+		rem.startDone = make(chan struct{})
+		rem.stopCh = make(chan struct{})
+		rem.stateMu.Unlock()
+		return true
+	}
+}
+
+func (rem *REM) abortStart() {
+	rem.stateMu.Lock()
+	rem.starting = false
+	rem.Enable = false
+	done := rem.startDone
+	rem.startDone = nil
+	stopCh := rem.stopCh
+	rem.stopCh = nil
+	if done != nil {
+		close(done)
+	}
+	rem.stateMu.Unlock()
+	if stopCh != nil {
+		close(stopCh)
+	}
+}
+
+func (rem *REM) commitStart() bool {
+	rem.stateMu.Lock()
+	defer rem.stateMu.Unlock()
+	if !rem.Enable {
+		return false
+	}
+	core.GoGuarded("rem-accept:"+rem.Name, rem.acceptLoop, rem.runtimeErrorHandler("accept loop"))
+	core.GoGuarded("rem-health:"+rem.Name, rem.healthLoop, rem.runtimeErrorHandler("health loop"))
+	rem.starting = false
+	done := rem.startDone
+	rem.startDone = nil
+	close(done)
+	return true
 }
 
 func (rem *REM) acceptLoop() error {
-	for rem.Enable {
+	for rem.enabled() {
 		ag, err := rem.con.Accept()
 		if err != nil {
-			if !rem.Enable {
+			if !rem.enabled() {
 				return nil
 			}
 			// Accept errors are typically transient (timeout, client disconnect).
@@ -228,7 +325,8 @@ func (rem *REM) healthLoop() error {
 
 	consecutiveFailures := 0
 	unhealthy := false
-	for rem.Enable {
+	stopCh := rem.stopSignal()
+	for rem.enabled() {
 		if err := remHealthCheck(rem.rpc, context.Background(), rem.ToProtobuf()); err != nil {
 			consecutiveFailures++
 			logs.Log.Errorf("rem %s health check failed (%d/%d): %v", rem.Name, consecutiveFailures, healthFailureThreshold, err)
@@ -258,9 +356,33 @@ func (rem *REM) healthLoop() error {
 			consecutiveFailures = 0
 			unhealthy = false
 		}
-		remSleep(30 * time.Second)
+		interval := rem.healthInterval
+		if interval <= 0 {
+			interval = 30 * time.Second
+		}
+		timer := time.NewTimer(interval)
+		select {
+		case <-timer.C:
+		case <-stopCh:
+			if !timer.Stop() {
+				select {
+				case <-timer.C:
+				default:
+				}
+			}
+			return nil
+		}
 	}
 	return nil
+}
+
+func (rem *REM) stopSignal() <-chan struct{} {
+	rem.stateMu.Lock()
+	defer rem.stateMu.Unlock()
+	if rem.stopCh == nil {
+		rem.stopCh = make(chan struct{})
+	}
+	return rem.stopCh
 }
 
 func (rem *REM) runtimeErrorHandler(scope string) core.GoErrorHandler {
@@ -268,10 +390,7 @@ func (rem *REM) runtimeErrorHandler(scope string) core.GoErrorHandler {
 	return core.CombineErrorHandlers(
 		core.LogGuardedError(label),
 		func(err error) {
-			rem.Enable = false
-			if rem.con != nil {
-				_ = rem.con.Close()
-			}
+			_ = rem.Close()
 			if core.EventBroker != nil {
 				core.EventBroker.Publish(core.Event{
 					EventType: consts.EventListener,
@@ -303,10 +422,10 @@ func (lns *listener) handlerRemAgentCtrl(job *clientpb.Job) error {
 	rem.(*REM).ownAgents.Store(a.ID, struct{}{})
 	job.Body = &clientpb.Job_RemAgent{
 		RemAgent: &clientpb.REMAgent{
-			Id:     a.Name(),
+			Id:          a.Name(),
 			InboundSide: a.InboundSide,
-			Local:  a.LocalURL.String(),
-			Remote: a.RemoteURL.String(),
+			Local:       a.LocalURL.String(),
+			Remote:      a.RemoteURL.String(),
 		},
 	}
 	return nil

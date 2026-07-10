@@ -1,5 +1,3 @@
-//go:build audit
-
 package listener
 
 import (

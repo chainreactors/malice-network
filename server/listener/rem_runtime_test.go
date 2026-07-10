@@ -27,14 +27,11 @@ func TestREMGetLinkFallsBackWhenRuntimePanics(t *testing.T) {
 
 func TestREMHealthLoopPanicBecomesGuardedError(t *testing.T) {
 	oldHealthCheck := remHealthCheck
-	oldSleep := remSleep
 	remHealthCheck = func(listenerrpc.ListenerRPCClient, context.Context, *clientpb.Pipeline) error {
 		panic("health panic")
 	}
-	remSleep = func(time.Duration) {}
 	defer func() {
 		remHealthCheck = oldHealthCheck
-		remSleep = oldSleep
 	}()
 
 	rem := &REM{
@@ -52,12 +49,10 @@ func TestREMHealthLoopPanicBecomesGuardedError(t *testing.T) {
 
 func TestREMHealthLoopPublishesDegradedAndRecoveredEvents(t *testing.T) {
 	oldHealthCheck := remHealthCheck
-	oldSleep := remSleep
 	oldBroker := core.EventBroker
 	oldTicker := core.GlobalTicker
 	defer func() {
 		remHealthCheck = oldHealthCheck
-		remSleep = oldSleep
 		core.EventBroker = oldBroker
 		core.GlobalTicker = oldTicker
 	}()
@@ -96,13 +91,12 @@ func TestREMHealthLoopPublishesDegradedAndRecoveredEvents(t *testing.T) {
 		}
 		return nil
 	}
-	remSleep = func(time.Duration) {}
-
 	rem := &REM{
-		Name:       "rem-health",
-		Enable:     true,
-		ListenerID: "listener-a",
-		remConfig:  &clientpb.REM{},
+		Name:           "rem-health",
+		Enable:         true,
+		ListenerID:     "listener-a",
+		remConfig:      &clientpb.REM{},
+		healthInterval: time.Millisecond,
 	}
 
 	done := make(chan error, 1)
@@ -121,7 +115,7 @@ func TestREMHealthLoopPublishesDegradedAndRecoveredEvents(t *testing.T) {
 				degraded = true
 			case "health-check-recovered":
 				recovered = true
-				rem.Enable = false
+				_ = rem.Close()
 			}
 		case err := <-done:
 			if err != nil {
@@ -135,7 +129,7 @@ func TestREMHealthLoopPublishesDegradedAndRecoveredEvents(t *testing.T) {
 		}
 	}
 
-	rem.Enable = false
+	_ = rem.Close()
 	select {
 	case err := <-done:
 		if err != nil {

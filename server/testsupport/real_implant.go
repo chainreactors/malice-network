@@ -372,10 +372,8 @@ func (r *RealImplant) Close() error {
 		}
 	}
 
-	if listener.Listener != nil {
-		if err := listener.Listener.Close(); err != nil {
-			errs = append(errs, fmt.Sprintf("close listener: %v", err))
-		}
+	if err := listener.CloseCurrentListener(); err != nil {
+		errs = append(errs, fmt.Sprintf("close listener: %v", err))
 	}
 
 	for _, path := range []string{r.BinaryPath, r.ProfilePath, r.AuthPath} {

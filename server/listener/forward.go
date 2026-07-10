@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
@@ -73,7 +74,7 @@ func NewForwardListener(cfg *configs.ListenerConfig) (*ForwardListener, error) {
 		}
 		return nil
 	}, core.LogGuardedError("forward-listener:"+cfg.Name))
-	Listener = lns
+	setCurrentListener(lns)
 	logs.Log.Importantf("listener.forward - start name=%s address=%s", cfg.Name, ln.Addr().String())
 	return runtime, nil
 }
@@ -243,6 +244,11 @@ type forwardLocalStream struct {
 	events     chan *clientpb.SpiteRequest
 	done       chan struct{}
 	closeOnce  sync.Once
+	closed     atomic.Bool
+	eventMu    sync.Mutex
+	slotsOnce  sync.Once
+	eventSlots chan struct{}
+	remoteSend sync.WaitGroup
 }
 
 func (s *forwardLocalStream) Send(resp *clientpb.SpiteResponse) error {
@@ -297,13 +303,18 @@ func (s *forwardLocalStream) serve(stream forwardrpc.ForwardListener_TaskStreamS
 		}
 	}()
 	go func() {
+		s.eventSlotPool()
 		for {
 			select {
 			case event, ok := <-s.events:
 				if !ok {
 					return
 				}
-				if err := stream.Send(event); err != nil {
+				s.releaseEventSlot()
+				if err := s.sendRemoteEvent(stream, event); err != nil {
+					if errors.Is(err, io.ErrClosedPipe) {
+						return
+					}
 					errCh <- err
 					return
 				}
@@ -328,9 +339,13 @@ func (s *forwardLocalStream) serve(stream forwardrpc.ForwardListener_TaskStreamS
 
 func (s *forwardLocalStream) close() {
 	s.closeOnce.Do(func() {
+		s.eventMu.Lock()
+		s.closed.Store(true)
 		if s.done != nil {
 			close(s.done)
 		}
+		s.eventMu.Unlock()
+		s.remoteSend.Wait()
 	})
 }
 
@@ -338,14 +353,54 @@ func (s *forwardLocalStream) sendEvent(event *clientpb.SpiteRequest) error {
 	if event == nil {
 		return nil
 	}
+	timer := time.NewTimer(10 * time.Second)
+	defer timer.Stop()
+	slots := s.eventSlotPool()
 	select {
-	case s.events <- event:
+	case <-slots:
+		s.eventMu.Lock()
+		if s.closed.Load() {
+			s.eventMu.Unlock()
+			s.releaseEventSlot()
+			return io.ErrClosedPipe
+		}
+		s.events <- event
+		s.eventMu.Unlock()
 		return nil
 	case <-s.done:
 		return io.ErrClosedPipe
-	case <-time.After(10 * time.Second):
+	case <-timer.C:
 		return fmt.Errorf("forward stream %s:%s event queue full", s.listenerID, s.pipelineID)
 	}
+}
+
+func (s *forwardLocalStream) eventSlotPool() chan struct{} {
+	s.slotsOnce.Do(func() {
+		capacity := cap(s.events)
+		s.eventSlots = make(chan struct{}, capacity)
+		for i := len(s.events); i < capacity; i++ {
+			s.eventSlots <- struct{}{}
+		}
+	})
+	return s.eventSlots
+}
+
+func (s *forwardLocalStream) releaseEventSlot() {
+	s.eventSlotPool() <- struct{}{}
+}
+
+func (s *forwardLocalStream) sendRemoteEvent(stream forwardrpc.ForwardListener_TaskStreamServer, event *clientpb.SpiteRequest) error {
+	s.eventMu.Lock()
+	if s.closed.Load() {
+		s.eventMu.Unlock()
+		return io.ErrClosedPipe
+	}
+	s.remoteSend.Add(1)
+	s.eventMu.Unlock()
+
+	defer s.remoteSend.Done()
+	err := stream.Send(event)
+	return err
 }
 
 func metadataValue(ctx context.Context, key string) (string, error) {

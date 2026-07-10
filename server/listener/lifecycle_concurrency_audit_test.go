@@ -61,10 +61,14 @@ func TestAuditListenerConcurrentClose(t *testing.T) {
 		websites:  make(map[string]*Website),
 	}
 
-	oldListener := Listener
-	Listener = lns
+	listenerGlobalMu.Lock()
+	oldListener := currentListener
+	currentListener = lns
+	listenerGlobalMu.Unlock()
 	t.Cleanup(func() {
-		Listener = oldListener
+		listenerGlobalMu.Lock()
+		currentListener = oldListener
+		listenerGlobalMu.Unlock()
 	})
 
 	runAuditConcurrentClose(t, lns.Close)
