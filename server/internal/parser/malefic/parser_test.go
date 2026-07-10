@@ -79,15 +79,30 @@ func TestMaleficParser_ReadHeader_PacketTooLarge(t *testing.T) {
 
 	buf := &rwcBuf{bytes.NewBuffer(header)}
 	sid, length, err := p.ReadHeader(buf)
-	// Large packets are now accepted with a warning, not rejected
 	if err != nil {
-		t.Fatalf("expected large packet to be accepted, got error: %v", err)
+		t.Fatalf("expected packet beyond the chunking threshold to remain compatible: %v", err)
 	}
 	if sid != 1 {
-		t.Fatalf("expected session_id=1, got %d", sid)
+		t.Fatalf("ReadHeader SID = %d, want 1", sid)
 	}
-	if length == 0 {
-		t.Fatal("expected non-zero length")
+	if length != hugeLen+1 {
+		t.Fatalf("ReadHeader length = %d, want %d", length, hugeLen+1)
+	}
+}
+
+func TestMaleficParser_ReadHeader_CompatibilityMarginBoundary(t *testing.T) {
+	const maxPacketLength = uint32(1024)
+	p := NewMaleficParser()
+	p.MaxPacketLength = maxPacketLength
+	declaredLength := maxPacketLength + uint32(consts.KB)*16
+	header := buildHeader(DefaultStartDelimiter, 1, declaredLength)
+
+	_, length, err := p.ReadHeader(&rwcBuf{bytes.NewBuffer(header)})
+	if err != nil {
+		t.Fatalf("expected packet at the compatibility boundary to be accepted: %v", err)
+	}
+	if length != declaredLength+1 {
+		t.Fatalf("ReadHeader length = %d, want %d", length, declaredLength+1)
 	}
 }
 

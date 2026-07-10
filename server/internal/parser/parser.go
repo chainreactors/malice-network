@@ -57,6 +57,8 @@ type MessageParser struct {
 	PacketParser
 }
 
+const payloadReadChunkSize = 64 * 1024
+
 // WithSecure 为 MessageParser 添加安全支持
 func (mp *MessageParser) WithSecure(keyPair *clientpb.KeyPair) {
 	switch mp.Implant {
@@ -80,8 +82,7 @@ func (mp *MessageParser) WithMaxPacketLength(n uint32) {
 }
 
 func (parser *MessageParser) ReadMessage(conn io.ReadWriteCloser, length uint32) (*implantpb.Spites, error) {
-	buf := make([]byte, length)
-	_, err := io.ReadFull(conn, buf)
+	buf, err := readPayload(conn, length)
 	if err != nil {
 		return nil, err
 	}
@@ -94,14 +95,39 @@ func (parser *MessageParser) ReadPacket(conn io.ReadWriteCloser) (uint32, *impla
 		return 0, nil, err
 	}
 
-	buf := make([]byte, length)
-	_, err = io.ReadFull(conn, buf)
+	buf, err := readPayload(conn, length)
 	if err != nil {
 		return 0, nil, err
 	}
 
 	msg, err := parser.Parse(buf)
 	return sessionId, msg, err
+}
+
+func readPayload(conn io.Reader, length uint32) ([]byte, error) {
+	if length == 0 {
+		return []byte{}, nil
+	}
+
+	chunkLength := payloadReadChunkSize
+	if uint32(chunkLength) > length {
+		chunkLength = int(length)
+	}
+	chunk := make([]byte, chunkLength)
+	payload := make([]byte, 0, chunkLength)
+	remaining := uint64(length)
+	for remaining > 0 {
+		readLength := len(chunk)
+		if uint64(readLength) > remaining {
+			readLength = int(remaining)
+		}
+		if _, err := io.ReadFull(conn, chunk[:readLength]); err != nil {
+			return nil, err
+		}
+		payload = append(payload, chunk[:readLength]...)
+		remaining -= uint64(readLength)
+	}
+	return payload, nil
 }
 
 func (parser *MessageParser) WritePacket(conn net.Conn, msg *implantpb.Spites, sid uint32) error {
