@@ -10,7 +10,7 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
-	"github.com/chainreactors/IoM-go/types"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/spf13/cobra"
 )
@@ -31,10 +31,16 @@ func GetRemLink(con *core.Console, pipe string) (string, error) {
 	if strings.Contains(pipe, "://") {
 		return pipe, nil
 	}
-	// pipeline name mode: look up in cached pipelines
-	remPipe, ok := con.Pipelines[pipe]
-	if !(ok && remPipe.GetRem() != nil) {
-		return "", types.ErrNotFoundPipeline
+	remPipe, err := common.FindCachedPipeline(con, pipe, func(pipeline *clientpb.Pipeline) bool {
+		return pipeline.GetRem() != nil && pipeline.GetRem().GetLink() != ""
+	})
+	if err != nil {
+		if con != nil && con.Pipelines != nil {
+			if remPipe, ok := con.Pipelines[pipe]; ok && remPipe.GetRem() != nil {
+				return "", fmt.Errorf("REM pipeline %q has no link address (not started?)", pipe)
+			}
+		}
+		return "", err
 	}
 	link := remPipe.GetRem().Link
 	if link == "" {

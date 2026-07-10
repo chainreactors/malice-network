@@ -63,6 +63,18 @@ func deletePipelineStream(listenerID, pipelineID string) {
 	}
 }
 
+func deletePipelineStreamIfSame(key string, stream interface{}) bool {
+	if key == "" || stream == nil {
+		return false
+	}
+	current, ok := pipelinesCh.Load(key)
+	if !ok || current != stream {
+		return false
+	}
+	pipelinesCh.Delete(key)
+	return true
+}
+
 func (rpc *Server) SpiteStream(stream listenerrpc.ListenerRPC_SpiteStreamServer) error {
 	pipelineID, err := getPipelineID(stream.Context())
 	if err != nil {
@@ -73,8 +85,11 @@ func (rpc *Server) SpiteStream(stream listenerrpc.ListenerRPC_SpiteStreamServer)
 	pipelineKey := core.PipelineRuntimeKey(listenerID, pipelineID)
 	pipelinesCh.Store(pipelineKey, stream)
 	defer func() {
-		pipelinesCh.Delete(pipelineKey)
-		logs.Log.Warnf("pipeline %s SpiteStream disconnected, cleaned from pipelinesCh", pipelineKey)
+		if deletePipelineStreamIfSame(pipelineKey, stream) {
+			logs.Log.Warnf("pipeline %s SpiteStream disconnected, cleaned from pipelinesCh", pipelineKey)
+		} else {
+			logs.Log.Warnf("pipeline %s SpiteStream disconnected, replacement stream kept", pipelineKey)
+		}
 	}()
 
 	for {

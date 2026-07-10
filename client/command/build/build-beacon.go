@@ -156,14 +156,9 @@ func prepareBuildConfig(cmd *cobra.Command, con *core.Console, buildType string)
 	if cmd.Flags().Changed("rem") {
 		remValue, _ := cmd.Flags().GetString("rem")
 		if !strings.Contains(remValue, "://") {
-			// pipeline name mode: look up link from cached pipelines
-			pipe, ok := con.Pipelines[remValue]
-			if !ok || pipe.GetRem() == nil {
-				return nil, fmt.Errorf("REM pipeline %q not found or not running", remValue)
-			}
-			link := pipe.GetRem().Link
-			if link == "" {
-				return nil, fmt.Errorf("REM pipeline %q has no link address", remValue)
+			link, err := resolveBuildRemPipelineLink(con, remValue)
+			if err != nil {
+				return nil, err
 			}
 			// rewrite --rem flag value to resolved link so parseBuildFlags sees a real address
 			if err := cmd.Flags().Set("rem", link); err != nil {
@@ -203,6 +198,25 @@ func prepareBuildConfig(cmd *cobra.Command, con *core.Console, buildType string)
 	}
 
 	return buildConfig, nil
+}
+
+func resolveBuildRemPipelineLink(con *core.Console, remValue string) (string, error) {
+	pipe, err := common.FindCachedPipeline(con, remValue, func(candidate *clientpb.Pipeline) bool {
+		return candidate.GetRem() != nil && candidate.GetRem().GetLink() != ""
+	})
+	if err != nil {
+		if con != nil && con.Pipelines != nil {
+			if cached, ok := con.Pipelines[remValue]; ok && cached.GetRem() != nil {
+				return "", fmt.Errorf("REM pipeline %q has no link address", remValue)
+			}
+		}
+		return "", fmt.Errorf("REM pipeline %q not found or not running", remValue)
+	}
+	link := pipe.GetRem().Link
+	if link == "" {
+		return "", fmt.Errorf("REM pipeline %q has no link address", remValue)
+	}
+	return link, nil
 }
 
 func buildTargetsFromAddresses(addrs string, remLink string, remChanged bool, allowBareTCP bool) ([]implanttypes.Target, error) {

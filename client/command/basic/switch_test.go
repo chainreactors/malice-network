@@ -3,9 +3,11 @@ package basic
 import (
 	"testing"
 
+	iomclient "github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/implanttypes"
 )
 
@@ -105,6 +107,48 @@ func TestBuildSwitchRequestREMPipelineIncludesLink(t *testing.T) {
 	}
 	if target.GetRemConfig() == nil || target.GetRemConfig().GetLink() != "grpc://127.0.0.1:34996" {
 		t.Fatalf("rem config = %#v, want grpc link", target.GetRemConfig())
+	}
+}
+
+func TestFindSwitchPipelineFallsBackToScopedREMPipelineCache(t *testing.T) {
+	const (
+		listenerID   = "listener-main"
+		pipelineName = "rem_graph_api_01"
+		wantLink     = "simplex+sharepoint://user:pass@example.test:443"
+	)
+
+	staleBare := &clientpb.Pipeline{
+		Name:       pipelineName,
+		ListenerId: listenerID,
+		Type:       consts.RemPipeline,
+		Body: &clientpb.Pipeline_Rem{Rem: &clientpb.REM{
+			Name:       pipelineName,
+			ListenerId: listenerID,
+		}},
+	}
+	freshScoped := &clientpb.Pipeline{
+		Name:       pipelineName,
+		ListenerId: listenerID,
+		Type:       consts.RemPipeline,
+		Body: &clientpb.Pipeline_Rem{Rem: &clientpb.REM{
+			Name:       pipelineName,
+			ListenerId: listenerID,
+			Link:       wantLink,
+		}},
+	}
+	con := &core.Console{Server: &core.Server{ServerState: &iomclient.ServerState{
+		Pipelines: map[string]*clientpb.Pipeline{
+			pipelineName:                            staleBare,
+			iomclient.PipelineCacheKey(freshScoped): freshScoped,
+		},
+	}}}
+
+	got, err := findSwitchPipeline(con, pipelineName)
+	if err != nil {
+		t.Fatalf("findSwitchPipeline returned error: %v", err)
+	}
+	if got.GetRem().GetLink() != wantLink {
+		t.Fatalf("switch rem link = %q, want %q", got.GetRem().GetLink(), wantLink)
 	}
 }
 

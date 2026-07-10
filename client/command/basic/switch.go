@@ -12,6 +12,7 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/implanttypes"
 	"github.com/spf13/cobra"
@@ -24,8 +25,8 @@ func SwitchCmd(cmd *cobra.Command, con *core.Console) error {
 		return fmt.Errorf("must specify --pipeline")
 	}
 
-	pipe, ok := con.Pipelines[pipeline]
-	if !ok {
+	pipe, err := findSwitchPipeline(con, pipeline)
+	if err != nil {
 		return fmt.Errorf("no such pipeline: %s", pipeline)
 	}
 
@@ -35,6 +36,19 @@ func SwitchCmd(cmd *cobra.Command, con *core.Console) error {
 	}
 	session.Console(task, string(*con.App.Shell().Line()))
 	return nil
+}
+
+func findSwitchPipeline(con *core.Console, pipeline string) (*clientpb.Pipeline, error) {
+	return common.FindCachedPipeline(con, pipeline, func(candidate *clientpb.Pipeline) bool {
+		switch {
+		case candidate.GetTcp() != nil, candidate.GetHttp() != nil:
+			return true
+		case candidate.GetRem() != nil:
+			return candidate.GetRem().GetLink() != ""
+		default:
+			return false
+		}
+	})
 }
 
 func Switch(rpc clientrpc.MaliceRPCClient, session *client.Session, pipeline *clientpb.Pipeline) (*clientpb.Task, error) {

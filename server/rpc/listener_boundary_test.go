@@ -67,6 +67,29 @@ func TestSpiteStreamDisconnectLeavesStalePipelineEntry(t *testing.T) {
 	}
 }
 
+func TestPipelineStreamCleanupDoesNotDeleteReplacementStream(t *testing.T) {
+	withIsolatedPipelinesCh(t)
+
+	listenerID := "stream-race-listener"
+	pipelineID := "stream-race-pipe"
+	key := core.PipelineRuntimeKey(listenerID, pipelineID)
+	oldStream := &testRPCServerStream{}
+	newStream := &testRPCServerStream{}
+
+	pipelinesCh.Store(key, oldStream)
+	pipelinesCh.Store(key, newStream)
+
+	deletePipelineStreamIfSame(key, oldStream)
+
+	got, ok := pipelinesCh.Load(key)
+	if !ok {
+		t.Fatal("replacement stream should remain after stale stream cleanup")
+	}
+	if got != newStream {
+		t.Fatalf("pipeline stream = %#v, want replacement stream %#v", got, newStream)
+	}
+}
+
 // C2 regression: JobStream's defer cleanup must deactivate listener, clear pipelines,
 // remove from Listeners map, and clean associated pipelinesCh entries.
 func TestJobStreamDisconnectDoesNotCleanListener(t *testing.T) {

@@ -3,7 +3,10 @@ package build
 import (
 	"testing"
 
+	iomclient "github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/implanttypes"
 	"github.com/spf13/cobra"
 )
@@ -85,5 +88,47 @@ func TestParseBuildFlagsRemAddressesOverrideExistingTargets(t *testing.T) {
 	}
 	if profile.Basic.Targets[1].REM == nil || profile.Basic.Targets[1].REM.Link != "tcp://rem-b" {
 		t.Fatalf("second rem target = %#v, want rem-b", profile.Basic.Targets[1])
+	}
+}
+
+func TestResolveBuildRemPipelineLinkFallsBackToScopedCache(t *testing.T) {
+	const (
+		listenerID   = "listener-main"
+		pipelineName = "rem_graph_api_01"
+		wantLink     = "simplex+sharepoint://user:pass@example.test:443"
+	)
+
+	staleBare := &clientpb.Pipeline{
+		Name:       pipelineName,
+		ListenerId: listenerID,
+		Type:       consts.RemPipeline,
+		Body: &clientpb.Pipeline_Rem{Rem: &clientpb.REM{
+			Name:       pipelineName,
+			ListenerId: listenerID,
+		}},
+	}
+	freshScoped := &clientpb.Pipeline{
+		Name:       pipelineName,
+		ListenerId: listenerID,
+		Type:       consts.RemPipeline,
+		Body: &clientpb.Pipeline_Rem{Rem: &clientpb.REM{
+			Name:       pipelineName,
+			ListenerId: listenerID,
+			Link:       wantLink,
+		}},
+	}
+	con := &core.Console{Server: &core.Server{ServerState: &iomclient.ServerState{
+		Pipelines: map[string]*clientpb.Pipeline{
+			pipelineName:                            staleBare,
+			iomclient.PipelineCacheKey(freshScoped): freshScoped,
+		},
+	}}}
+
+	got, err := resolveBuildRemPipelineLink(con, pipelineName)
+	if err != nil {
+		t.Fatalf("resolveBuildRemPipelineLink returned error: %v", err)
+	}
+	if got != wantLink {
+		t.Fatalf("resolveBuildRemPipelineLink = %q, want %q", got, wantLink)
 	}
 }

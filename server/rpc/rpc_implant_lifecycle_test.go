@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/types"
@@ -143,6 +144,65 @@ func TestRegister_ReRegisterExistingSession(t *testing.T) {
 	}
 	if got := sess.LastCheckinUnix(); got != wantTimestamp {
 		t.Fatalf("re-register last_checkin = %d, want %d", got, wantTimestamp)
+	}
+}
+
+func TestRegister_ReRegisterRejectsUnknownPipelineAndPreservesRouting(t *testing.T) {
+	env := newRPCTestEnv(t)
+	sess := env.seedSession(t, "rereg-unknown-pipeline", "rereg-known-pipe", true)
+
+	_, err := (&Server{}).Register(context.Background(), &clientpb.RegisterSession{
+		Type:       consts.TCPPipeline,
+		SessionId:  sess.ID,
+		RawId:      1,
+		PipelineId: "rereg-missing-pipe",
+		ListenerId: "test-listener",
+		Target:     "10.0.0.2",
+		RegisterData: &implantpb.Register{
+			Name:  "re-agent",
+			Timer: &implantpb.Timer{Expression: "*/5 * * * * * *"},
+		},
+	})
+	if !errors.Is(err, types.ErrNotFoundPipeline) {
+		t.Fatalf("re-register unknown pipeline error = %v, want %v", err, types.ErrNotFoundPipeline)
+	}
+	if sess.ListenerID != "test-listener" || sess.PipelineID != "rereg-known-pipe" {
+		t.Fatalf("session routing = %s/%s, want test-listener/rereg-known-pipe", sess.ListenerID, sess.PipelineID)
+	}
+}
+
+func TestRegister_ReRegisterAllowsKnownPipelineSwitch(t *testing.T) {
+	env := newRPCTestEnv(t)
+	sess := env.seedSession(t, "rereg-known-pipeline", "rereg-pipe-a", true)
+	listener, err := core.Listeners.Get("test-listener")
+	if err != nil {
+		t.Fatalf("test listener missing: %v", err)
+	}
+	listener.AddPipeline(&clientpb.Pipeline{
+		Name:       "rereg-pipe-b",
+		ListenerId: listener.Name,
+		Ip:         "127.0.0.1",
+		Type:       consts.TCPPipeline,
+		Secure:     &clientpb.Secure{},
+	})
+
+	_, err = (&Server{}).Register(context.Background(), &clientpb.RegisterSession{
+		Type:       consts.TCPPipeline,
+		SessionId:  sess.ID,
+		RawId:      1,
+		PipelineId: "rereg-pipe-b",
+		ListenerId: listener.Name,
+		Target:     "10.0.0.3",
+		RegisterData: &implantpb.Register{
+			Name:  "re-agent",
+			Timer: &implantpb.Timer{Expression: "*/5 * * * * * *"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("re-register known pipeline error: %v", err)
+	}
+	if sess.ListenerID != listener.Name || sess.PipelineID != "rereg-pipe-b" {
+		t.Fatalf("session routing = %s/%s, want %s/rereg-pipe-b", sess.ListenerID, sess.PipelineID, listener.Name)
 	}
 }
 

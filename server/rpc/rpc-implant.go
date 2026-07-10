@@ -46,6 +46,9 @@ func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) 
 		logs.Log.Importantf("new session %s from %s", sess.ID, sess.PipelineID)
 		core.Sessions.Add(sess)
 	} else {
+		if err := validateReRegisterPipeline(req); err != nil {
+			return nil, err
+		}
 		logs.Log.Infof("session %s re-register", sess.ID)
 		sess.SetLastCheckin(getTimestamp(ctx))
 		sess.Update(req)
@@ -68,6 +71,22 @@ func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) 
 		}
 	}
 	return &clientpb.Empty{}, nil
+}
+
+func validateReRegisterPipeline(req *clientpb.RegisterSession) error {
+	if req.PipelineId == "" {
+		return nil
+	}
+	if req.ListenerId != "" {
+		if _, ok := core.Listeners.FindByListener(req.ListenerId, req.PipelineId); !ok {
+			return types.ErrNotFoundPipeline
+		}
+		return nil
+	}
+	if _, ok := core.Listeners.Find(req.PipelineId); !ok {
+		return types.ErrNotFoundPipeline
+	}
+	return nil
 }
 
 func (rpc *Server) SysInfo(ctx context.Context, req *implantpb.SysInfo) (*clientpb.Empty, error) {
