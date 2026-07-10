@@ -12,6 +12,8 @@ import (
 
 	iomclient "github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/plugin"
@@ -49,6 +51,100 @@ func TestRefreshMalReloadsProfileChangedByAnotherClient(t *testing.T) {
 	}
 	if len(profile.Mals) != 1 || profile.Mals[0] != "other-client-value" {
 		t.Fatalf("profile mals = %v, want other-client-value", profile.Mals)
+	}
+}
+
+func TestRegisterAndUnregisterMalPluginUpdatesRuntimeState(t *testing.T) {
+	con := newMalTestConsole(t, false)
+	con.Server = &core.Server{ServerState: &iomclient.ServerState{
+		EventHook: map[iomclient.EventCondition][]iomclient.OnEventFunc{},
+	}}
+	index, err := core.NewSearchIndex(filepath.Join(t.TempDir(), "search.db"))
+	if err != nil {
+		t.Fatalf("create search index: %v", err)
+	}
+	t.Cleanup(func() { _ = index.Close() })
+	con.SearchIndex = index
+
+	condition := iomclient.EventCondition{Type: "mal-test-event"}
+	hook := func(*clientpb.Event) (bool, error) { return false, nil }
+	cmd := &cobra.Command{
+		Use:         "dynamic-mal-command",
+		Short:       "dynamic registration test",
+		Annotations: map[string]string{"depend": "execute"},
+	}
+	plug := &fakeMalPlugin{
+		manifest: &plugin.MalManiFest{Name: "dynamic-mal"},
+		commands: plugin.Commands{
+			cmd.Name(): {Name: cmd.Name(), Command: cmd},
+		},
+		events: map[iomclient.EventCondition]iomclient.OnEventFunc{condition: hook},
+	}
+
+	if err := registerMalPlugin(con, con.ImplantMenu(), plug); err != nil {
+		t.Fatalf("register mal plugin: %v", err)
+	}
+	if cmd.Parent() != con.ImplantMenu() || cmd.GroupID != plug.manifest.Name {
+		t.Fatalf("registered command parent/group = %v/%q", cmd.Parent(), cmd.GroupID)
+	}
+	if cmd.Annotations["menu"] != consts.ImplantMenu || cmd.Annotations["source"] != "mal" {
+		t.Fatalf("registered command annotations = %#v", cmd.Annotations)
+	}
+	if con.CMDs[cmd.Name()] != cmd || con.Helpers["execute"] != cmd {
+		t.Fatal("registered command is missing from console runtime indexes")
+	}
+	if len(con.EventHook[condition]) != 1 {
+		t.Fatalf("registered event hooks = %d, want 1", len(con.EventHook[condition]))
+	}
+	results, err := index.Search(cmd.Name(), "", "", 10)
+	if err != nil || len(results) != 1 {
+		t.Fatalf("search registered command = %#v, err = %v", results, err)
+	}
+
+	unregisterMalPlugin(con, con.ImplantMenu(), plug)
+	if cmd.Parent() != nil {
+		t.Fatal("unregistered command remains attached")
+	}
+	if _, ok := con.CMDs[cmd.Name()]; ok {
+		t.Fatal("unregistered command remains in console CMDs")
+	}
+	if _, ok := con.Helpers["execute"]; ok {
+		t.Fatal("unregistered command remains in console Helpers")
+	}
+	if len(con.EventHook[condition]) != 0 {
+		t.Fatalf("event hooks after unregister = %d, want 0", len(con.EventHook[condition]))
+	}
+	results, err = index.Search(cmd.Name(), "", "", 10)
+	if err != nil || len(results) != 0 {
+		t.Fatalf("search unregistered command = %#v, err = %v", results, err)
+	}
+}
+
+func TestRegisterMalPluginAppliesActiveSessionVisibility(t *testing.T) {
+	con := newMalTestConsole(t, false)
+	activeTarget := &iomclient.ActiveTarget{}
+	activeTarget.Set(&iomclient.Session{Session: &clientpb.Session{
+		Type: "malefic",
+		Os:   &implantpb.Os{Name: "linux", Arch: "x64"},
+	}})
+	con.Server = &core.Server{ServerState: &iomclient.ServerState{
+		ActiveTarget: activeTarget,
+		EventHook:    map[iomclient.EventCondition][]iomclient.OnEventFunc{},
+	}}
+	cmd := &cobra.Command{
+		Use:         "windows-dynamic-command",
+		Annotations: map[string]string{"os": "windows"},
+	}
+	plug := &fakeMalPlugin{
+		manifest: &plugin.MalManiFest{Name: "windows-mal"},
+		commands: plugin.Commands{cmd.Name(): {Name: cmd.Name(), Command: cmd}},
+	}
+
+	if err := registerMalPlugin(con, con.ImplantMenu(), plug); err != nil {
+		t.Fatalf("register mal plugin: %v", err)
+	}
+	if !cmd.Hidden {
+		t.Fatal("incompatible dynamic command is visible for the active Linux session")
 	}
 }
 
@@ -167,6 +263,20 @@ type malFixture struct {
 	version string
 	lib     bool
 	files   []malFile
+}
+
+type fakeMalPlugin struct {
+	manifest *plugin.MalManiFest
+	commands plugin.Commands
+	events   map[iomclient.EventCondition]iomclient.OnEventFunc
+}
+
+func (p *fakeMalPlugin) Run() error                    { return nil }
+func (p *fakeMalPlugin) Manifest() *plugin.MalManiFest { return p.manifest }
+func (p *fakeMalPlugin) Commands() plugin.Commands     { return p.commands }
+func (p *fakeMalPlugin) Destroy() error                { return nil }
+func (p *fakeMalPlugin) GetEvents() map[iomclient.EventCondition]iomclient.OnEventFunc {
+	return p.events
 }
 
 type malFile struct {

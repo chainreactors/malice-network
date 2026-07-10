@@ -20,7 +20,6 @@ import (
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/tui/console"
 	"github.com/spf13/cobra"
-	"golang.org/x/exp/slices"
 	"golang.org/x/term"
 	"google.golang.org/grpc/metadata"
 
@@ -105,6 +104,8 @@ type Console struct {
 	VectorIndex *VectorIndex
 
 	MalManager *plugin.MalManager
+
+	pluginEventHooks map[plugin.Plugin][]pluginEventHookRegistration
 
 	// ConfigPath is the auth config file path used for the current login.
 	// Populated by LoginCmd so the multiplexer can forward it to child processes.
@@ -485,23 +486,7 @@ func refreshCmdVisibility(cmd *cobra.Command, sess *client.Session) {
 		refreshCmdVisibility(sub, sess)
 	}
 
-	cmd.Hidden = false
-	if o, ok := cmd.Annotations["os"]; ok && !strings.Contains(o, sess.Os.Name) {
-		cmd.Hidden = true
-	}
-	if arch, ok := cmd.Annotations["arch"]; ok && !strings.Contains(arch, sess.Os.Arch) {
-		cmd.Hidden = true
-	}
-	if implantType, ok := cmd.Annotations["implant"]; ok && sess.Type != implantType {
-		cmd.Hidden = true
-	}
-	if depend, ok := cmd.Annotations["depend"]; ok {
-		for _, dep := range strings.Split(depend, ",") {
-			if !slices.Contains(sess.Modules, dep) {
-				cmd.Hidden = true
-			}
-		}
-	}
+	cmd.Hidden = CheckCommandCompatibility(cmd, sess) != nil
 
 	// For parent commands without "depend" annotation, hide them if all
 	// their subcommands are hidden (e.g. "pipe" when no pipe modules exist)

@@ -34,6 +34,8 @@ type Server struct {
 	taskMessageMu      sync.Mutex
 	taskMessages       map[string]string
 	eventHookMu        sync.RWMutex
+	eventHookIDs       map[client.EventCondition][]uint64
+	nextEventHookID    uint64
 	eventHandlerMu     sync.Mutex
 	eventHandlerActive bool
 
@@ -267,9 +269,9 @@ func HandlerTask(sess *client.Session, log *client.Logger, ctx *clientpb.TaskCon
 	}
 }
 
-func (s *Server) AddEventHook(event client.EventCondition, callback client.OnEventFunc) {
+func (s *Server) AddEventHook(event client.EventCondition, callback client.OnEventFunc) uint64 {
 	if s == nil {
-		return
+		return 0
 	}
 	s.eventHookMu.Lock()
 	defer s.eventHookMu.Unlock()
@@ -279,12 +281,22 @@ func (s *Server) AddEventHook(event client.EventCondition, callback client.OnEve
 	if _, ok := s.EventHook[event]; !ok {
 		s.EventHook[event] = []client.OnEventFunc{}
 	}
+	if s.eventHookIDs == nil {
+		s.eventHookIDs = map[client.EventCondition][]uint64{}
+	}
+	for len(s.eventHookIDs[event]) < len(s.EventHook[event]) {
+		s.eventHookIDs[event] = append(s.eventHookIDs[event], 0)
+	}
+	s.nextEventHookID++
 	s.EventHook[event] = append(s.EventHook[event], callback)
+	s.eventHookIDs[event] = append(s.eventHookIDs[event], s.nextEventHookID)
+	return s.nextEventHookID
 }
 
 type eventHookGroup struct {
 	condition client.EventCondition
 	hooks     []client.OnEventFunc
+	ids       []uint64
 }
 
 func (s *Server) matchingEventHooks(event *clientpb.Event) []eventHookGroup {
@@ -305,15 +317,17 @@ func (s *Server) matchingEventHooks(event *clientpb.Event) []eventHookGroup {
 			continue
 		}
 		hooksCopy := append([]client.OnEventFunc(nil), hooks...)
+		idsCopy := append([]uint64(nil), s.eventHookIDs[condition]...)
 		groups = append(groups, eventHookGroup{
 			condition: conditionCopy,
 			hooks:     hooksCopy,
+			ids:       idsCopy,
 		})
 	}
 	return groups
 }
 
-func (s *Server) removeEventHook(condition client.EventCondition, target client.OnEventFunc) {
+func (s *Server) RemoveEventHook(condition client.EventCondition, target client.OnEventFunc) {
 	if s == nil || target == nil {
 		return
 	}
@@ -328,7 +342,9 @@ func (s *Server) removeEventHook(condition client.EventCondition, target client.
 
 	targetPtr := reflect.ValueOf(target).Pointer()
 	filtered := make([]client.OnEventFunc, 0, len(hooks))
-	for _, hook := range hooks {
+	filteredIDs := make([]uint64, 0, len(hooks))
+	ids := s.eventHookIDs[condition]
+	for index, hook := range hooks {
 		if hook == nil {
 			continue
 		}
@@ -336,12 +352,46 @@ func (s *Server) removeEventHook(condition client.EventCondition, target client.
 			continue
 		}
 		filtered = append(filtered, hook)
+		if index < len(ids) {
+			filteredIDs = append(filteredIDs, ids[index])
+		}
 	}
 	if len(filtered) == 0 {
 		delete(s.EventHook, condition)
+		delete(s.eventHookIDs, condition)
 		return
 	}
 	s.EventHook[condition] = filtered
+	s.eventHookIDs[condition] = filteredIDs
+}
+
+func (s *Server) RemoveEventHookByID(condition client.EventCondition, targetID uint64) {
+	if s == nil || targetID == 0 {
+		return
+	}
+	s.eventHookMu.Lock()
+	defer s.eventHookMu.Unlock()
+
+	hooks := s.EventHook[condition]
+	ids := s.eventHookIDs[condition]
+	filteredHooks := make([]client.OnEventFunc, 0, len(hooks))
+	filteredIDs := make([]uint64, 0, len(ids))
+	for index, hook := range hooks {
+		if index < len(ids) && ids[index] == targetID {
+			continue
+		}
+		filteredHooks = append(filteredHooks, hook)
+		if index < len(ids) {
+			filteredIDs = append(filteredIDs, ids[index])
+		}
+	}
+	if len(filteredHooks) == 0 {
+		delete(s.EventHook, condition)
+		delete(s.eventHookIDs, condition)
+		return
+	}
+	s.EventHook[condition] = filteredHooks
+	s.eventHookIDs[condition] = filteredIDs
 }
 
 func (s *Server) dispatchEventHooks(event *clientpb.Event) {
@@ -352,21 +402,26 @@ func (s *Server) dispatchEventHooks(event *clientpb.Event) {
 	for _, group := range s.matchingEventHooks(event) {
 		condition := group.condition
 		hooks := group.hooks
-		go func(condition client.EventCondition, hooks []client.OnEventFunc) {
-			for _, hook := range hooks {
+		ids := group.ids
+		go func(condition client.EventCondition, hooks []client.OnEventFunc, ids []uint64) {
+			for index, hook := range hooks {
 				if hook == nil {
 					continue
 				}
 				_, err := hook(event)
 				if err != nil {
 					if errors.Is(err, ErrLuaVMDead) {
-						s.removeEventHook(condition, hook)
+						if index < len(ids) {
+							s.RemoveEventHookByID(condition, ids[index])
+						} else {
+							s.RemoveEventHook(condition, hook)
+						}
 					} else {
 						client.Log.Errorf("error running event hook: %s", err)
 					}
 				}
 			}
-		}(condition, hooks)
+		}(condition, hooks, ids)
 	}
 }
 

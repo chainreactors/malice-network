@@ -202,6 +202,32 @@ local rem_socks_cmd = command("rem_community:socks5", run_socks5, "serving socks
 bind_args_completer(rem_socks_cmd, { rem_completer() })
 ```
 
+### 目标平台与命令展示
+
+当前 MAL `command()` API 没有 OS/Arch 元数据参数。MAL 命令注册后会显示在所有
+Session 的命令树中，不会根据当前 Session 是 Windows、Linux 或其他系统自动隐藏。
+
+插件可以在执行时读取当前 Session 并进行平台保护：
+
+```lua
+local function windows_only()
+    local session = active()
+    if session.Os.Name ~= "windows" then
+        error("this command only supports Windows sessions")
+    end
+
+    -- Windows-specific implementation
+end
+
+command("windows-only", windows_only, "run a Windows-only action", "T0000")
+```
+
+这只能阻止命令在错误平台执行，不能将命令从不支持平台的帮助、补全或命令列表中隐藏。
+Client 的底层命令树已经支持 `os`、`arch`、`implant` 和 `depend` annotation，但当前
+MAL API 尚未公开设置这些平台 annotation 的稳定接口。底层 annotation 一旦存在，
+Client 会同时用于命令展示和执行前校验；这里仍需运行时保护，是因为当前 MAL API
+无法声明该约束。
+
 ## 标准库与内置库
 
 ### MAL Package

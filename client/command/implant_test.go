@@ -87,6 +87,59 @@ func TestMakeRunnersPreBypassesCompletionMode(t *testing.T) {
 	}
 }
 
+func TestMakeRunnersPreRejectsCommandIncompatibleWithSession(t *testing.T) {
+	con := newImplantTestConsole(t, &fakeImplantRPC{})
+	sess := addImplantTestSession(t, con, "implant-incompatible")
+	sess.Os.Name = "linux"
+	con.ActiveTarget.Set(sess)
+
+	root := newImplantTestRoot(con)
+	root.PersistentPreRunE, _ = makeRunners(root, con)
+	ran := false
+	restricted := &cobra.Command{
+		Use:         "windows-only",
+		Annotations: map[string]string{"os": "windows"},
+		Run: func(_ *cobra.Command, _ []string) {
+			ran = true
+		},
+	}
+	root.AddCommand(restricted)
+	root.SetArgs([]string{restricted.Name()})
+
+	if err := root.Execute(); err == nil {
+		t.Fatal("expected an incompatible command error")
+	}
+	if ran {
+		t.Fatal("incompatible command handler was executed")
+	}
+}
+
+func TestMakeRunnersPreDoesNotTreatHiddenAsExecutionRestriction(t *testing.T) {
+	con := newImplantTestConsole(t, &fakeImplantRPC{})
+	sess := addImplantTestSession(t, con, "implant-hidden")
+	con.ActiveTarget.Set(sess)
+
+	root := newImplantTestRoot(con)
+	root.PersistentPreRunE, _ = makeRunners(root, con)
+	ran := false
+	hidden := &cobra.Command{
+		Use:    "hidden-helper",
+		Hidden: true,
+		Run: func(_ *cobra.Command, _ []string) {
+			ran = true
+		},
+	}
+	root.AddCommand(hidden)
+	root.SetArgs([]string{hidden.Name()})
+
+	if err := root.Execute(); err != nil {
+		t.Fatalf("hidden command failed: %v", err)
+	}
+	if !ran {
+		t.Fatal("hidden command handler was not executed")
+	}
+}
+
 func TestMakeRunnersPostWaitsForLastTask(t *testing.T) {
 	var waited bool
 	rpc := &fakeImplantRPC{

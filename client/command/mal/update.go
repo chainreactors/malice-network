@@ -2,7 +2,6 @@ package mal
 
 import (
 	"fmt"
-	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/mals/m"
@@ -58,6 +57,7 @@ func updateMal(con *core.Console, name string, malHttpConfig m.MalHTTPConfig) er
 	if !updated {
 		return nil
 	}
+	unregisterMalPlugin(con, con.ImplantMenu(), plug)
 	err = manager.ReloadExternalMal(name)
 	if err != nil {
 		return err
@@ -66,13 +66,8 @@ func updateMal(con *core.Console, name string, malHttpConfig m.MalHTTPConfig) er
 	if !exists {
 		return fmt.Errorf("mal %s reload completed but plugin is unavailable", name)
 	}
-	for event, fn := range plug.GetEvents() {
-		con.AddEventHook(event, fn)
-	}
-
-	for _, cmd := range plug.Commands() {
-		con.ImplantMenu().AddCommand(cmd.Command)
-		logs.Log.Debugf("add command: %s", cmd.Command.Name())
+	if err := registerMalPlugin(con, con.ImplantMenu(), plug); err != nil {
+		return err
 	}
 
 	profile, err := assets.GetProfile()

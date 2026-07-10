@@ -8,7 +8,6 @@ import (
 	"github.com/chainreactors/malice-network/client/plugin"
 	"path/filepath"
 
-	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/mals/m"
 	"github.com/chainreactors/tui"
@@ -39,11 +38,11 @@ func MalLoadCmd(ctx *cobra.Command, con *core.Console) error {
 		return err
 	}
 
-	var plug plugin.Plugin
-
 	// 检查是否已加载
-	if _, exists := manager.GetExternalPlugin(manifest.Name); exists {
+	var plug plugin.Plugin
+	if oldPlugin, exists := manager.GetExternalPlugin(manifest.Name); exists {
 		con.Log.Warnf("mal %s already loaded, reloading\n", manifest.Name)
+		unregisterMalPlugin(con, con.ImplantMenu(), oldPlugin)
 		err := manager.ReloadExternalMal(manifest.Name)
 		if err != nil {
 			return err
@@ -58,15 +57,8 @@ func MalLoadCmd(ctx *cobra.Command, con *core.Console) error {
 		}
 	}
 
-	// 添加事件钩子
-	for event, fn := range plug.GetEvents() {
-		con.AddEventHook(event, fn)
-	}
-
-	// 添加命令到implant菜单
-	for _, cmd := range plug.Commands() {
-		con.ImplantMenu().AddCommand(cmd.Command)
-		logs.Log.Debugf("add command: %s", cmd.Command.Name())
+	if err := registerMalPlugin(con, con.ImplantMenu(), plug); err != nil {
+		return err
 	}
 
 	// 更新配置文件
@@ -93,14 +85,18 @@ func LoadMalWithManifest(con *core.Console, rootCmd *cobra.Command, manifest *pl
 		return err
 	}
 
-	plug, err := manager.LoadExternalMal(manifest)
-	if err != nil {
-		return err
-	}
-
-	// 添加事件钩子
-	for event, fn := range plug.GetEvents() {
-		con.AddEventHook(event, fn)
+	var plug plugin.Plugin
+	if oldPlugin, exists := manager.GetExternalPlugin(manifest.Name); exists {
+		unregisterMalPlugin(con, rootCmd, oldPlugin)
+		if err := manager.ReloadExternalMal(manifest.Name); err != nil {
+			return err
+		}
+		plug, _ = manager.GetExternalPlugin(manifest.Name)
+	} else {
+		plug, err = manager.LoadExternalMal(manifest)
+		if err != nil {
+			return err
+		}
 	}
 
 	// 更新配置文件
@@ -110,9 +106,8 @@ func LoadMalWithManifest(con *core.Console, rootCmd *cobra.Command, manifest *pl
 	}
 	profile.AddMal(manifest.Name)
 
-	// 注册命令
-	for _, cmd := range plug.Commands() {
-		rootCmd.AddCommand(cmd.Command)
+	if err := registerMalPlugin(con, rootCmd, plug); err != nil {
+		return err
 	}
 	con.Log.Importantf("load mal: %s successfully\n", manifest.Name)
 	return nil

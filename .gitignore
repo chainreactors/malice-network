@@ -22,6 +22,8 @@ helper/intl/custom/*
 /server_linux_amd64
 /core
 /testinventory.exe
+.*-professional.yml
+.*-professional.yaml
 helper/intl/community/resources/
 helper/intl/community/modules/
 helper/intl/community/main.lua

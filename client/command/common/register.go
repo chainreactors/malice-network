@@ -2,7 +2,9 @@ package common
 
 import (
 	"github.com/carapace-sh/carapace"
+	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/malice-network/client/plugin"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/mals"
 	"github.com/spf13/cobra"
@@ -51,4 +53,85 @@ func Register(con *core.Console) {
 	con.RegisterServerFunc("content_completer", intermediate.WrapFunctionReturn(WebContentCompleter), &mals.Helper{Group: intermediate.ClientGroup})
 	con.RegisterServerFunc("rem_completer", intermediate.WrapFunctionReturn(RemPipelineCompleter), &mals.Helper{Group: intermediate.ClientGroup})
 	con.RegisterServerFunc("rem_agent_completer", intermediate.WrapFunctionReturn(RemAgentCompleter), &mals.Helper{Group: intermediate.ClientGroup})
+}
+
+// RegisterCommand attaches a top-level command using the same metadata and
+// console indexes as built-in command registration.
+func RegisterCommand(parent *cobra.Command, con *core.Console, group, source string, cmd *cobra.Command) {
+	RegisterCommandGroup(parent, group)
+	if cmd.Annotations == nil {
+		cmd.Annotations = map[string]string{}
+	}
+	cmd.GroupID = group
+	cmd.Annotations["menu"] = parent.Name()
+	cmd.Annotations["source"] = source
+	prepareCommandTree(con, cmd, false)
+	parent.AddCommand(cmd)
+}
+
+// UnregisterCommand detaches a command and removes references installed by
+// RegisterCommand. References replaced by another command are preserved.
+func UnregisterCommand(parent *cobra.Command, con *core.Console, cmd *cobra.Command) {
+	removeCommandTreeReferences(con, cmd, false)
+	parent.RemoveCommand(cmd)
+}
+
+func RegisterPluginEventHooks(con *core.Console, plug plugin.Plugin) {
+	if con == nil {
+		return
+	}
+	con.RegisterPluginEventHooks(plug)
+}
+
+func UnregisterPluginEventHooks(con *core.Console, plug plugin.Plugin) {
+	if con == nil || plug == nil {
+		return
+	}
+	con.UnregisterPluginEventHooks(plug)
+}
+
+func RegisterCommandGroup(parent *cobra.Command, group string) {
+	if group == "" {
+		return
+	}
+	for _, existing := range parent.Groups() {
+		if existing.ID == group {
+			return
+		}
+	}
+	parent.AddGroup(&cobra.Group{ID: group, Title: group})
+}
+
+func prepareCommandTree(con *core.Console, cmd *cobra.Command, isSubcommand bool) {
+	cmd.SetHelpFunc(help.HelpFunc)
+	cmd.SetUsageFunc(help.UsageFunc)
+	if cmd.Annotations == nil {
+		cmd.Annotations = map[string]string{}
+	}
+	if cmd.Annotations["opsec"] != "" {
+		cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
+			return OpsecConfirm(cmd, con)
+		}
+	}
+	if !isSubcommand {
+		con.CMDs[cmd.Name()] = cmd
+	}
+	if dependency := cmd.Annotations["depend"]; dependency != "" {
+		con.Helpers[dependency] = cmd
+	}
+	for _, child := range cmd.Commands() {
+		prepareCommandTree(con, child, true)
+	}
+}
+
+func removeCommandTreeReferences(con *core.Console, cmd *cobra.Command, isSubcommand bool) {
+	if !isSubcommand && con.CMDs[cmd.Name()] == cmd {
+		delete(con.CMDs, cmd.Name())
+	}
+	if dependency := cmd.Annotations["depend"]; dependency != "" && con.Helpers[dependency] == cmd {
+		delete(con.Helpers, dependency)
+	}
+	for _, child := range cmd.Commands() {
+		removeCommandTreeReferences(con, child, true)
+	}
 }

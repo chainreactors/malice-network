@@ -262,8 +262,8 @@ func (s *LocalRPCServer) StreamCommand(req *localrpc.ExecuteCommandRequest, stre
 		}
 		return false, nil
 	})
-	s.console.AddEventHook(hookCondition, hookFn)
-	defer s.console.removeEventHook(hookCondition, hookFn)
+	hookID := s.console.AddEventHook(hookCondition, hookFn)
+	defer s.console.RemoveEventHookByID(hookCondition, hookID)
 
 	// 2. Execute the command; LastTask is returned from within the lock (no race).
 	syncOutput, lastTask, err := executeStreamCommand(s.console, req.Command, req.SessionId)

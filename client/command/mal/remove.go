@@ -51,10 +51,7 @@ func RemoveMal(name string, con *core.Console) error {
 		return errors.New("mal not found")
 	}
 
-	implantMenu := con.ImplantMenu()
-	for _, cmd := range plug.Commands() {
-		implantMenu.RemoveCommand(cmd.Command)
-	}
+	unregisterMalPlugin(con, con.ImplantMenu(), plug)
 
 	err = manager.RemoveExternalMal(name)
 	if err != nil {

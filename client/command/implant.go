@@ -121,6 +121,9 @@ func makeRunners(implantCmd *cobra.Command, con *core.Console) (pre, post func(c
 				return fmt.Errorf("session %s not found", sid)
 			}
 		}
+		if err := core.CheckCommandCompatibility(cmd, session); err != nil {
+			return err
+		}
 
 		//if !session.IsAlive {
 		//	con.Log.Warnf("Session %s is marked dead, continuing anyway\n", sid)
@@ -292,6 +295,9 @@ func BindImplantCommands(con *core.Console) console.Commands {
 
 		// 注册嵌入式插件命令
 		embeddedBind := MakeBind(implant, con, "mal")
+		for _, plug := range con.MalManager.GetAllEmbeddedPlugins() {
+			common.RegisterPluginEventHooks(con, plug)
+		}
 		customCommands := con.MalManager.GetEmbeddedCommandsByLevel(plugin.CustomLevel)
 		if len(customCommands) > 0 {
 			embeddedBind(plugin.CustomLevel.String(), BindCommand(customCommands))
@@ -310,6 +316,7 @@ func BindImplantCommands(con *core.Console) console.Commands {
 		// 注册外部插件命令
 		externalBind := MakeBind(implant, con, "mal")
 		for _, plug := range con.MalManager.GetAllExternalPlugins() {
+			common.RegisterPluginEventHooks(con, plug)
 			externalBind(plug.Manifest().Name, BindCommand(plug.Commands().Commands()))
 		}
 

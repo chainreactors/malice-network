@@ -1,9 +1,7 @@
 package mal
 
 import (
-	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/spf13/cobra"
 )
@@ -19,8 +17,6 @@ func RefreshMalCmd(cmd *cobra.Command, con *core.Console) error {
 
 	implantCmd := con.ImplantMenu()
 
-	common.RemoveCommandsByGroup(implantCmd, consts.MalGroup)
-
 	// 获取所有外部插件名称
 	externalPlugins := manager.GetAllExternalPlugins()
 	var pluginNames []string
@@ -30,6 +26,9 @@ func RefreshMalCmd(cmd *cobra.Command, con *core.Console) error {
 
 	// 移除所有外部插件
 	for _, name := range pluginNames {
+		if plug, exists := manager.GetExternalPlugin(name); exists {
+			unregisterMalPlugin(con, implantCmd, plug)
+		}
 		err := manager.RemoveExternalMal(name)
 		if err != nil {
 			con.Log.Warnf("Failed to remove plugin %s: %s\n", name, err)

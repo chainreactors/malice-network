@@ -98,7 +98,7 @@ func (h *Harness) AddSession(t testing.TB, sessionID string) *iomclient.Session 
 	session := &clientpb.Session{
 		SessionId:  sessionID,
 		RawId:      rawID,
-		Type:       consts.ImplantMalefic,
+		Type:       consts.ImplantMaleficBind,
 		PipelineId: "pipe-test",
 		Note:       "fixture",
 		GroupName:  "group",
@@ -146,6 +146,9 @@ func (h *Harness) AddTCPPipeline(name, host string, port uint32) {
 
 func (h *Harness) Execute(argv ...string) error {
 	root := commandpkg.ImplantCmd(h.Console)
+	if cmd, _, err := root.Find(argv); err == nil && cmd != nil {
+		addCommandDependencies(h.Session, cmd)
+	}
 	root.SilenceErrors = true
 	root.SilenceUsage = true
 	h.Console.App.Shell().Line().Set([]rune(strings.Join(argv, " "))...)
@@ -156,6 +159,25 @@ func (h *Harness) Execute(argv ...string) error {
 	}
 	root.SetArgs(args)
 	return root.Execute()
+}
+
+func addCommandDependencies(session *iomclient.Session, cmd *cobra.Command) {
+	modules := make(map[string]struct{}, len(session.Modules))
+	for _, module := range session.Modules {
+		modules[module] = struct{}{}
+	}
+	for current := cmd; current != nil; current = current.Parent() {
+		for _, dependency := range strings.Split(current.Annotations["depend"], ",") {
+			dependency = strings.TrimSpace(dependency)
+			if dependency == "" {
+				continue
+			}
+			if _, ok := modules[dependency]; !ok {
+				session.Modules = append(session.Modules, dependency)
+				modules[dependency] = struct{}{}
+			}
+		}
+	}
 }
 
 func (h *Harness) ExecuteClient(argv ...string) error {
