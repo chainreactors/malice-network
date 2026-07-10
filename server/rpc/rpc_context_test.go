@@ -1,8 +1,12 @@
 package rpc
 
 import (
+	"bytes"
 	"context"
+	"io"
 	"os"
+	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -11,6 +15,8 @@ import (
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestAddCredentialResolvesTaskWithoutSessionEnvelope(t *testing.T) {
@@ -162,6 +168,109 @@ func TestSyncReturnsContextWithoutContentWhenBackingFileIsMissing(t *testing.T) 
 	}
 }
 
+func TestSyncStreamStreamsContextFileInChunks(t *testing.T) {
+	env := newRPCTestEnv(t)
+	sess := env.seedSession(t, "rpc-context-sync-stream", "rpc-context-sync-stream-pipe", true)
+	task := seedRPCTestTask(t, sess, "download")
+
+	content := bytes.Repeat([]byte("x"), int(syncStreamChunkSize)+17)
+	filePath := filepath.Join(t.TempDir(), "download.bin")
+	if err := os.WriteFile(filePath, content, 0o600); err != nil {
+		t.Fatalf("WriteFile failed: %v", err)
+	}
+
+	model, err := db.SaveContext(&clientpb.Context{
+		Task:    task.ToProtobuf(),
+		Session: task.Session.ToProtobufLite(),
+		Type:    consts.ContextDownload,
+		Value: output.MarshalContext(&output.DownloadContext{
+			FileDescriptor: &output.FileDescriptor{
+				Name:       "download.bin",
+				TargetPath: "remote/download.bin",
+				FilePath:   filePath,
+				Size:       int64(len(content)),
+			},
+		}),
+	})
+	if err != nil {
+		t.Fatalf("SaveContext failed: %v", err)
+	}
+
+	stream := newCaptureContextChunkStream(context.Background())
+	if err := (&Server{}).SyncStream(&clientpb.Sync{ContextId: model.ID.String()}, stream); err != nil {
+		t.Fatalf("SyncStream failed: %v", err)
+	}
+
+	if len(stream.chunks) != 3 {
+		t.Fatalf("chunk count = %d, want 3", len(stream.chunks))
+	}
+	if stream.chunks[0].Header == nil || stream.chunks[0].Header.Id != model.ID.String() {
+		t.Fatalf("header = %#v, want context id %s", stream.chunks[0].Header, model.ID.String())
+	}
+	if len(stream.chunks[0].Header.Content) != 0 {
+		t.Fatalf("header content length = %d, want 0", len(stream.chunks[0].Header.Content))
+	}
+	if stream.chunks[1].Offset != 0 {
+		t.Fatalf("first content offset = %d, want 0", stream.chunks[1].Offset)
+	}
+	if stream.chunks[2].Offset != syncStreamChunkSize {
+		t.Fatalf("second content offset = %d, want %d", stream.chunks[2].Offset, syncStreamChunkSize)
+	}
+	combined := append([]byte{}, stream.chunks[1].Content...)
+	combined = append(combined, stream.chunks[2].Content...)
+	if !bytes.Equal(combined, content) {
+		t.Fatalf("streamed content mismatch")
+	}
+	if !stream.chunks[2].Eof {
+		t.Fatalf("last content chunk eof = false, want true")
+	}
+}
+
+func TestSendContextContentStreamSendsBeforeReaderEOF(t *testing.T) {
+	reader := &blockingContextReader{
+		first:   []byte("abc"),
+		rest:    []byte("def"),
+		release: make(chan struct{}),
+	}
+	stream := newCaptureContextChunkStream(context.Background())
+	stream.contentSent = make(chan struct{})
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- sendContextContentStream(&clientpb.Context{Id: "streaming"}, 6, reader, stream)
+	}()
+
+	select {
+	case <-stream.contentSent:
+	case <-time.After(time.Second):
+		t.Fatal("first content chunk was not sent before reader EOF")
+	}
+
+	if len(stream.chunks) != 2 {
+		t.Fatalf("chunk count before EOF = %d, want 2", len(stream.chunks))
+	}
+	if got := string(stream.chunks[1].Content); got != "abc" {
+		t.Fatalf("first content chunk = %q, want abc", got)
+	}
+
+	close(reader.release)
+
+	if err := <-errCh; err != nil {
+		t.Fatalf("sendContextContentStream failed: %v", err)
+	}
+	if len(stream.chunks) != 3 {
+		t.Fatalf("final chunk count = %d, want 3", len(stream.chunks))
+	}
+	combined := append([]byte{}, stream.chunks[1].Content...)
+	combined = append(combined, stream.chunks[2].Content...)
+	if string(combined) != "abcdef" {
+		t.Fatalf("combined content = %q, want abcdef", combined)
+	}
+	if !stream.chunks[2].Eof {
+		t.Fatalf("last content chunk eof = false, want true")
+	}
+}
+
 func seedRPCTestTask(t testing.TB, sess *core.Session, taskType string) *core.Task {
 	t.Helper()
 
@@ -178,4 +287,67 @@ func seedRPCTestTask(t testing.TB, sess *core.Session, taskType string) *core.Ta
 		t.Fatalf("UpdateTaskFinish failed: %v", err)
 	}
 	return task
+}
+
+type captureContextChunkStream struct {
+	ctx         context.Context
+	chunks      []*clientpb.ContextChunk
+	contentSent chan struct{}
+	once        sync.Once
+}
+
+func newCaptureContextChunkStream(ctx context.Context) *captureContextChunkStream {
+	return &captureContextChunkStream{ctx: ctx}
+}
+
+func (s *captureContextChunkStream) Send(chunk *clientpb.ContextChunk) error {
+	copied := proto.Clone(chunk).(*clientpb.ContextChunk)
+	s.chunks = append(s.chunks, copied)
+	if len(chunk.Content) > 0 && s.contentSent != nil {
+		s.once.Do(func() { close(s.contentSent) })
+	}
+	return nil
+}
+
+func (s *captureContextChunkStream) SetHeader(metadata.MD) error {
+	return nil
+}
+
+func (s *captureContextChunkStream) SendHeader(metadata.MD) error {
+	return nil
+}
+
+func (s *captureContextChunkStream) SetTrailer(metadata.MD) {}
+
+func (s *captureContextChunkStream) Context() context.Context {
+	return s.ctx
+}
+
+func (s *captureContextChunkStream) SendMsg(any) error {
+	return nil
+}
+
+func (s *captureContextChunkStream) RecvMsg(any) error {
+	return io.EOF
+}
+
+type blockingContextReader struct {
+	first   []byte
+	rest    []byte
+	release chan struct{}
+	reads   int
+}
+
+func (r *blockingContextReader) Read(p []byte) (int, error) {
+	switch r.reads {
+	case 0:
+		r.reads++
+		return copy(p, r.first), nil
+	case 1:
+		r.reads++
+		<-r.release
+		return copy(p, r.rest), io.EOF
+	default:
+		return 0, io.EOF
+	}
 }

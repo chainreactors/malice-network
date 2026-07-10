@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/chainreactors/IoM-go/client"
@@ -18,6 +19,8 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"google.golang.org/protobuf/proto"
 )
+
+const syncStreamChunkSize int64 = 256 * 1024
 
 func (rpc *Server) GetContexts(ctx context.Context, req *clientpb.Context) (*clientpb.Contexts, error) {
 	query := db.NewContextQuery()
@@ -328,25 +331,56 @@ func (rpc *Server) SyncStream(req *clientpb.Sync, stream clientrpc.MaliceRPC_Syn
 	// Content is shipped in subsequent chunks; keep header lean.
 	header.Content = nil
 
-	data, readErr := core.ReadFileForContext(ictx.Context)
-	totalSize := int64(len(data))
+	filePath, readErr := core.FilePathForContext(ictx.Context)
+	if readErr != nil {
+		return sendEmptyContextStream(header, stream)
+	}
 
+	file, readErr := os.Open(filePath)
+	if readErr != nil {
+		return sendEmptyContextStream(header, stream)
+	}
+	defer file.Close()
+
+	stat, readErr := file.Stat()
+	if readErr != nil || stat.Size() == 0 {
+		return sendEmptyContextStream(header, stream)
+	}
+
+	return sendContextContentStream(header, stat.Size(), file, stream)
+}
+
+func sendEmptyContextStream(header *clientpb.Context, stream clientrpc.MaliceRPC_SyncStreamServer) error {
 	// Always send the header first so the client can populate metadata.
+	return stream.Send(&clientpb.ContextChunk{
+		Header:    header,
+		TotalSize: 0,
+		Eof:       true,
+	})
+}
+
+func sendContextContentStream(
+	header *clientpb.Context,
+	totalSize int64,
+	reader io.Reader,
+	stream clientrpc.MaliceRPC_SyncStreamServer,
+) error {
+	if totalSize <= 0 {
+		return sendEmptyContextStream(header, stream)
+	}
+
 	if err := stream.Send(&clientpb.ContextChunk{
 		Header:    header,
 		TotalSize: totalSize,
-		Eof:       readErr != nil || totalSize == 0,
+		Eof:       false,
 	}); err != nil {
 		return err
 	}
 
-	// If file is missing or empty, the EOF flag on the header is enough.
-	if readErr != nil || totalSize == 0 {
-		return nil
-	}
+	buf := make([]byte, syncStreamChunkSize)
+	offset := int64(0)
 
-	const chunkSize int64 = 256 * 1024 // 256 KB per chunk
-	for offset := int64(0); offset < totalSize; offset += chunkSize {
+	for {
 		// Honor client cancellation promptly.
 		select {
 		case <-stream.Context().Done():
@@ -354,19 +388,28 @@ func (rpc *Server) SyncStream(req *clientpb.Sync, stream clientrpc.MaliceRPC_Syn
 		default:
 		}
 
-		end := offset + chunkSize
-		if end > totalSize {
-			end = totalSize
+		n, readErr := reader.Read(buf)
+		if n > 0 {
+			chunk := make([]byte, n)
+			copy(chunk, buf[:n])
+
+			eof := readErr == io.EOF || offset+int64(n) >= totalSize
+			if err := stream.Send(&clientpb.ContextChunk{
+				Content:   chunk,
+				Offset:    offset,
+				TotalSize: totalSize,
+				Eof:       eof,
+			}); err != nil {
+				return err
+			}
+			offset += int64(n)
 		}
-		eof := end == totalSize
-		if err := stream.Send(&clientpb.ContextChunk{
-			Content:   data[offset:end],
-			Offset:    offset,
-			TotalSize: totalSize,
-			Eof:       eof,
-		}); err != nil {
-			return err
+
+		if readErr != nil {
+			if errors.Is(readErr, io.EOF) {
+				return nil
+			}
+			return readErr
 		}
 	}
-	return nil
 }

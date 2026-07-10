@@ -264,6 +264,19 @@ func LoadContext(ctx output.Context) (output.Context, error) {
 }
 
 func ReadFileForContext(ctx output.Context) ([]byte, error) {
+	filePath, err := FilePathForContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
+func FilePathForContext(ctx output.Context) (string, error) {
 	var filePath string
 	switch c := ctx.(type) {
 	case *output.ScreenShotContext:
@@ -277,14 +290,10 @@ func ReadFileForContext(ctx output.Context) ([]byte, error) {
 	case *output.MediaContext:
 		filePath = c.FilePath
 	default:
-		return nil, errors.New("unsupported context type")
+		return "", errors.New("unsupported context type")
 	}
 
-	data, err := os.ReadFile(filePath)
-	if err != nil {
-		return nil, err
-	}
-	return data, nil
+	return filePath, nil
 }
 
 func sanitizeContextFragment(value string) string {
