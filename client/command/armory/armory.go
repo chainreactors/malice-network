@@ -141,53 +141,70 @@ func ArmoryCmd(cmd *cobra.Command, con *core.Console) {
 	isBundle, _ := cmd.Flags().GetBool("bundle")
 
 	for _, index := range indexes {
-		errorCount := 0
 		con.Log.Infof("Fetching package information ... \n")
 		fetchPackageSignatures(index, clientConfig)
-		pkgCache.Range(func(key, value interface{}) bool {
-			cacheEntry, ok := value.(pkgCacheEntry)
-			if !ok {
-				// Something is wrong with this entry
-				pkgCache.Delete(value)
-				return true
-			}
-			//if cacheEntry.ArmoryConfig.PublicKey != index.ArmoryConfig.PublicKey {
-			//	return true
-			//}
-			if cacheEntry.LastErr != nil {
-				errorCount++
-				if errorCount == 0 {
-					con.Log.Infof("errors!\n")
-				}
-				con.Log.Errorf("%s - %s\n", cacheEntry.RepoURL, cacheEntry.LastErr)
-			} else {
-				if cacheEntry.Pkg.IsAlias {
-					aliases = append(aliases, cacheEntry.Alias)
-				} else {
-					exts = append(exts, cacheEntry.Extension)
-				}
-			}
-			return true
-		})
-		if errorCount == 0 {
-			con.Log.Infof("done!\n")
-		}
-		if isBundle {
-			bundles := bundlesInCache()
-			if 0 < len(bundles) {
-				PrintArmoryBundles(bundles, con)
-			} else {
-				con.Log.Infof("No bundles found\n")
-			}
-		} else {
-			if 0 < len(aliases) || 0 < len(exts) {
-				PrintArmoryPackages(aliases, exts, con, clientConfig)
-			} else {
-				con.Log.Infof("No packages found\n")
-			}
-		}
-
 	}
+
+	aliases, exts, failures := collectPackageManifests(indexes)
+	if len(failures) > 0 {
+		con.Log.Infof("errors!\n")
+		for _, cacheEntry := range failures {
+			con.Log.Errorf("%s - %s\n", cacheEntry.RepoURL, cacheEntry.LastErr)
+		}
+	} else {
+		con.Log.Infof("done!\n")
+	}
+	if isBundle {
+		bundles := bundlesInCache()
+		if 0 < len(bundles) {
+			PrintArmoryBundles(bundles, con)
+		} else {
+			con.Log.Infof("No bundles found\n")
+		}
+	} else if 0 < len(aliases) || 0 < len(exts) {
+		PrintArmoryPackages(aliases, exts, con, clientConfig)
+	} else {
+		con.Log.Infof("No packages found\n")
+	}
+}
+
+func collectPackageManifests(indexes []ArmoryIndex) ([]*alias.AliasManifest, []*extension.ExtensionManifest, []pkgCacheEntry) {
+	enabled := make(map[string]struct{}, len(indexes))
+	for _, index := range indexes {
+		if index.ArmoryConfig != nil {
+			enabled[index.ArmoryConfig.PublicKey] = struct{}{}
+		}
+	}
+
+	var aliases []*alias.AliasManifest
+	var extensions []*extension.ExtensionManifest
+	var failures []pkgCacheEntry
+	pkgCache.Range(func(key, value interface{}) bool {
+		cacheEntry, ok := value.(pkgCacheEntry)
+		if !ok {
+			pkgCache.Delete(key)
+			return true
+		}
+		if cacheEntry.ArmoryConfig == nil {
+			return true
+		}
+		if _, ok := enabled[cacheEntry.ArmoryConfig.PublicKey]; !ok {
+			return true
+		}
+		if cacheEntry.LastErr != nil {
+			failures = append(failures, cacheEntry)
+			return true
+		}
+		if cacheEntry.Pkg.IsAlias {
+			if cacheEntry.Alias != nil {
+				aliases = append(aliases, cacheEntry.Alias)
+			}
+		} else if cacheEntry.Extension != nil {
+			extensions = append(extensions, cacheEntry.Extension)
+		}
+		return true
+	})
+	return aliases, extensions, failures
 }
 
 func refresh(clientConfig ArmoryHTTPConfig) {
@@ -199,10 +216,21 @@ func refresh(clientConfig ArmoryHTTPConfig) {
 }
 
 func packageManifestsInCache() ([]*alias.AliasManifest, []*extension.ExtensionManifest) {
+	enabled := enabledArmoryKeys()
 	var aliases []*alias.AliasManifest
 	var exts []*extension.ExtensionManifest
 	pkgCache.Range(func(key, value interface{}) bool {
-		cacheEntry := value.(pkgCacheEntry)
+		cacheEntry, ok := value.(pkgCacheEntry)
+		if !ok {
+			pkgCache.Delete(key)
+			return true
+		}
+		if cacheEntry.ArmoryConfig == nil {
+			return true
+		}
+		if _, ok := enabled[cacheEntry.ArmoryConfig.PublicKey]; !ok {
+			return true
+		}
 		if cacheEntry.LastErr == nil {
 			if cacheEntry.Pkg.IsAlias {
 				aliases = append(aliases, cacheEntry.Alias)
@@ -336,13 +364,39 @@ func packageCacheLookupByID(packageID string) *pkgCacheEntry {
 }
 
 func bundlesInCache() []*ArmoryBundle {
+	enabled := enabledArmoryKeys()
 	bundles := []*ArmoryBundle{}
 	indexCache.Range(func(key, value interface{}) bool {
-		indexBundles := value.(indexCacheEntry).Index.Bundles
+		publicKey, ok := key.(string)
+		if !ok {
+			indexCache.Delete(key)
+			return true
+		}
+		if _, ok := enabled[publicKey]; !ok {
+			return true
+		}
+		entry, ok := value.(indexCacheEntry)
+		if !ok {
+			indexCache.Delete(key)
+			return true
+		}
+		indexBundles := entry.Index.Bundles
 		bundles = append(bundles, indexBundles...)
 		return true
 	})
 	return bundles
+}
+
+func enabledArmoryKeys() map[string]struct{} {
+	enabled := make(map[string]struct{})
+	currentArmories.Range(func(_, value interface{}) bool {
+		config, ok := value.(assets.ArmoryConfig)
+		if ok && config.Enabled {
+			enabled[config.PublicKey] = struct{}{}
+		}
+		return true
+	})
+	return enabled
 }
 
 // AliasExtensionOrBundleCompleter - Completer for alias, extension, and bundle names
@@ -571,9 +625,22 @@ func fetchIndexes(clientConfig ArmoryHTTPConfig) []ArmoryIndex {
 		return true
 	})
 	wg.Wait()
+	enabled := enabledArmoryKeys()
 	indexes := []ArmoryIndex{}
 	indexCache.Range(func(key, value interface{}) bool {
-		cacheEntry := value.(indexCacheEntry)
+		publicKey, ok := key.(string)
+		if !ok {
+			indexCache.Delete(key)
+			return true
+		}
+		if _, ok := enabled[publicKey]; !ok {
+			return true
+		}
+		cacheEntry, ok := value.(indexCacheEntry)
+		if !ok {
+			indexCache.Delete(key)
+			return true
+		}
 		if cacheEntry.LastErr == nil {
 			indexes = append(indexes, cacheEntry.Index)
 		}

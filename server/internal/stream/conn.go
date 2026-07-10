@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io"
 	"net"
+	"sync"
 )
 
 func NewCryptoConn(conn net.Conn, cryptor Cryptor) *CryptoConn {
@@ -25,10 +26,15 @@ type CryptoConn struct {
 	net.Conn
 	io.ReadWriteCloser
 	Cryptor
+	readMu  sync.Mutex
+	writeMu sync.Mutex
 	readBuf []byte
 }
 
 func (sc *CryptoConn) Write(data []byte) (int, error) {
+	sc.writeMu.Lock()
+	defer sc.writeMu.Unlock()
+
 	encryptedData, err := sc.encrypt(data)
 	if err != nil {
 		return 0, err
@@ -38,6 +44,9 @@ func (sc *CryptoConn) Write(data []byte) (int, error) {
 }
 
 func (sc *CryptoConn) Read(data []byte) (int, error) {
+	sc.readMu.Lock()
+	defer sc.readMu.Unlock()
+
 	// 1. If there is cached decrypted data from a previous over-read, serve it first
 	if len(sc.readBuf) > 0 {
 		n := copy(data, sc.readBuf)

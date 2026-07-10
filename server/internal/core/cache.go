@@ -6,6 +6,8 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
+	"github.com/robfig/cron/v3"
 	"google.golang.org/protobuf/proto"
 	"io"
 	"math"
@@ -18,10 +20,14 @@ import (
 var CacheName = "cache.bin"
 
 type Cache struct {
-	items    sync.Map // map[string]*clientpb.SpiteCacheItem
-	maxSize  int
-	duration time.Duration
-	savePath string
+	items     sync.Map // map[string]*clientpb.SpiteCacheItem
+	maxSize   int
+	duration  time.Duration
+	savePath  string
+	saveMu    sync.Mutex
+	ticker    *Ticker
+	tickerIDs []cron.EntryID
+	closeOnce sync.Once
 }
 
 // NewCache initializes a new cache with a specified size, duration, and save path
@@ -30,17 +36,52 @@ func NewCache(savePath string) *Cache {
 		maxSize:  1024,
 		duration: math.MaxInt64,
 		savePath: savePath,
+		ticker:   GlobalTicker,
 	}
-	GlobalTicker.Start(consts.DefaultCacheInterval, func() {
+	saveID, err := cache.ticker.Start(consts.DefaultCacheInterval, func() {
 		err := cache.Save()
 		if err != nil {
 			logs.Log.Errorf("Failed to save cache: %v", err)
 			return
 		}
 	})
+	if err != nil {
+		logs.Log.Errorf("Failed to start cache saver: %v", err)
+	} else {
+		cache.tickerIDs = append(cache.tickerIDs, saveID)
+	}
 
-	GlobalTicker.Start(consts.DefaultCacheInterval, cache.trim)
+	trimID, err := cache.ticker.Start(consts.DefaultCacheInterval, cache.trim)
+	if err != nil {
+		logs.Log.Errorf("Failed to start cache trimmer: %v", err)
+	} else {
+		cache.tickerIDs = append(cache.tickerIDs, trimID)
+	}
 	return cache
+}
+
+func loadRecoveredCache(savePath, sessionID string) *Cache {
+	cache := NewCache(savePath)
+	if err := cache.Load(); err != nil {
+		logs.Log.Warnf("failed to load derived task cache for session %s, rebuilding from task data: %v", sessionID, err)
+	}
+	return cache
+}
+
+// Close releases the periodic jobs owned by this cache.
+func (c *Cache) Close() {
+	if c == nil {
+		return
+	}
+	c.closeOnce.Do(func() {
+		if c.ticker == nil {
+			return
+		}
+		for _, id := range c.tickerIDs {
+			c.ticker.Remove(id)
+		}
+		c.tickerIDs = nil
+	})
 }
 
 // AddMessage adds a new item to the cache with TaskId and Index as part of the key
@@ -101,11 +142,8 @@ func (c *Cache) GetMessages(taskID int) ([]*implantpb.Spite, bool) {
 
 // Save serializes the cache items to a file using protobuf
 func (c *Cache) Save() error {
-	file, err := os.Create(c.savePath)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
+	c.saveMu.Lock()
+	defer c.saveMu.Unlock()
 
 	items := &clientpb.SpiteCache{
 		Items: make([]*clientpb.SpiteCacheItem, 0),
@@ -120,10 +158,7 @@ func (c *Cache) Save() error {
 	if err != nil {
 		return err
 	}
-	if _, err = file.Write(data); err != nil {
-		return err
-	}
-	return nil
+	return fileutils.AtomicWriteFile(c.savePath, data, 0o600)
 }
 
 // Load deserializes cache items from a file using protobuf

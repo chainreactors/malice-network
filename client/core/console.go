@@ -165,7 +165,7 @@ func (c *Console) Start(bindCmds ...BindCmds) error {
 
 	go func() {
 		for {
-			if c.Server != nil && !c.Server.EventStatus {
+			if c.Server != nil && !c.Server.EventHandlerRunning() {
 				c.EventHandler()
 			}
 			time.Sleep(10 * time.Millisecond)
@@ -406,7 +406,7 @@ func (c *Console) getStatusLine() string {
 		if c.Client != nil {
 			name = c.Client.Name
 		}
-		sessionInfo := fmt.Sprintf("%d", len(c.Sessions))
+		sessionInfo := fmt.Sprintf("%d", len(c.SnapshotSessions()))
 		if c.Rpc != nil {
 			count, err := c.Rpc.GetSessionCount(context.Background(), &clientpb.Empty{})
 			if err == nil && count != nil {

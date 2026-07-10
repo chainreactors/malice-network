@@ -1,13 +1,92 @@
 package core
 
 import (
+	"context"
+	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
 )
+
+func TestLoadRecoveredCacheTreatsCorruptDerivedFileAsEmpty(t *testing.T) {
+	withIsolatedTicker(t)
+
+	path := filepath.Join(t.TempDir(), "cache.bin")
+	if err := os.WriteFile(path, []byte("not-protobuf"), 0o600); err != nil {
+		t.Fatalf("write corrupt cache: %v", err)
+	}
+
+	cache := loadRecoveredCache(path, "session-1")
+	t.Cleanup(cache.Close)
+	if got := cache.GetAll(); len(got) != 0 {
+		t.Fatalf("recovered corrupt cache contains %d items, want 0", len(got))
+	}
+	if err := cache.Save(); err != nil {
+		t.Fatalf("recovered cache could not replace corrupt derived file: %v", err)
+	}
+	loaded := &Cache{savePath: path}
+	if err := loaded.Load(); err != nil {
+		t.Fatalf("replacement cache file is still corrupt: %v", err)
+	}
+}
+
+func TestRemovingSessionReleasesCacheTickerEntries(t *testing.T) {
+	withIsolatedTicker(t)
+
+	cache := NewCache(filepath.Join(t.TempDir(), "cache.bin"))
+	if got := len(GlobalTicker.cron.Entries()); got != 2 {
+		t.Fatalf("cache registered %d ticker entries, want 2", got)
+	}
+
+	_, cancel := context.WithCancel(context.Background())
+	sessions := &sessions{active: &sync.Map{}}
+	sessions.Add(&Session{ID: "session-1", Cache: cache, Cancel: cancel})
+	sessions.Remove("session-1")
+
+	if got := len(GlobalTicker.cron.Entries()); got != 0 {
+		t.Fatalf("session removal left %d cache ticker entries, want 0", got)
+	}
+}
+
+func TestCacheConcurrentSavesRemainLoadable(t *testing.T) {
+	withIsolatedTicker(t)
+
+	path := filepath.Join(t.TempDir(), "cache.bin")
+	cache := NewCache(path)
+	cache.AddMessage(&implantpb.Spite{TaskId: 7, Name: "result"}, 0)
+
+	start := make(chan struct{})
+	errCh := make(chan error, 16)
+	var wg sync.WaitGroup
+	for i := 0; i < cap(errCh); i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			errCh <- cache.Save()
+		}()
+	}
+	close(start)
+	wg.Wait()
+	close(errCh)
+	for err := range errCh {
+		if err != nil {
+			t.Fatalf("concurrent Save failed: %v", err)
+		}
+	}
+
+	loaded := &Cache{savePath: path}
+	if err := loaded.Load(); err != nil {
+		t.Fatalf("cache file is not loadable after concurrent saves: %v", err)
+	}
+	if _, ok := loaded.GetMessage(7, 0); !ok {
+		t.Fatal("loaded cache is missing the saved message")
+	}
+}
 
 func withIsolatedTicker(t *testing.T) {
 	t.Helper()

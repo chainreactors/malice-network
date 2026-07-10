@@ -58,6 +58,11 @@ MAL 插件注册的命令按来源分层显示：
 | **Community** | 社区插件注册的命令 |
 | **Professional** | 专业版插件注册的命令 |
 
+多个 Client 进程各自维护运行时插件表，不会实时广播本地 profile 变化。一个终端执行
+`mal load`、`mal install` 或 `mal remove` 后，其他已运行终端可执行 `mal refresh`：该命令
+会先重新读取磁盘上的 `malice.yaml`，再重建本进程的外部插件、命令、事件 hook 和搜索索引；
+重启 Client 也会得到相同的最新 profile 快照。
+
 !!! tip "延伸阅读"
     
     - 插件开发 → [MAL 插件开发](../development/mal/)

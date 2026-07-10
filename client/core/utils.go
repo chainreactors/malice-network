@@ -49,7 +49,7 @@ func RunCommand(con *Console, cmdline interface{}) (string, error) {
 // switchSessionWithCallee 切换session并设置callee
 func switchSessionWithCallee(con *Console, sessionID, callee string) error {
 	if sessionID != "" {
-		session, ok := con.Sessions[sessionID]
+		session, ok := con.GetLocalSession(sessionID)
 		if !ok || session == nil {
 			return fmt.Errorf("session %s not found", sessionID)
 		}
@@ -315,7 +315,7 @@ func getHistory(con *Console, taskID uint32, sessionID string) (string, error) {
 		return "", fmt.Errorf("session_id is required")
 	}
 
-	session, ok := con.Sessions[sessionID]
+	session, ok := con.GetLocalSession(sessionID)
 	if !ok || session == nil {
 		return "", fmt.Errorf("session %s not found", sessionID)
 	}

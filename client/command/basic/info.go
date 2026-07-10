@@ -37,7 +37,7 @@ func SessionInfoCmd(cmd *cobra.Command, con *core.Console) error {
 // findSessionByPrefix finds session by prefix, returns error if multiple matches
 func findSessionByPrefix(con *core.Console, prefix string) (*client.Session, error) {
 	// Try exact match first
-	if sess, ok := con.Sessions[prefix]; ok {
+	if sess, ok := con.GetLocalSession(prefix); ok {
 		return sess, nil
 	}
 
@@ -45,7 +45,7 @@ func findSessionByPrefix(con *core.Console, prefix string) (*client.Session, err
 	var matches []*client.Session
 	var matchIDs []string
 
-	for id, sess := range con.Sessions {
+	for id, sess := range con.SnapshotSessions() {
 		if strings.HasPrefix(id, prefix) {
 			matches = append(matches, sess)
 			matchIDs = append(matchIDs, id[:8])

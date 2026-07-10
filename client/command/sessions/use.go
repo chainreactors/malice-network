@@ -30,21 +30,25 @@ func UseSessionCmd(cmd *cobra.Command, con *core.Console) error {
 
 // findSessionByPrefix finds session by prefix, returns error if multiple matches
 func findSessionByPrefix(con *core.Console, prefix string) (*client.Session, error) {
-	var matches []*client.Session
+	var matchedIDs []string
 	var matchIDs []string
 
-	for id, sess := range con.Sessions {
+	for id := range con.SnapshotSessions() {
 		if strings.HasPrefix(id, prefix) {
-			matches = append(matches, sess)
+			matchedIDs = append(matchedIDs, id)
 			matchIDs = append(matchIDs, shortSessionID(id))
 		}
 	}
 
-	switch len(matches) {
+	switch len(matchedIDs) {
 	case 0:
 		return nil, core.ErrNotFoundSession
 	case 1:
-		return matches[0], nil
+		session, ok := con.GetLocalSession(matchedIDs[0])
+		if ok {
+			return session, nil
+		}
+		return nil, core.ErrNotFoundSession
 	default:
 		return nil, fmt.Errorf("ambiguous session prefix '%s', matches: %s", prefix, strings.Join(matchIDs, ", "))
 	}

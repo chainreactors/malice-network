@@ -46,16 +46,19 @@ func StatusCmd(con *core.Console) error {
 	con.Log.Console(common.NewKVTable("Server", serverKeys, serverValues).View() + "\n")
 
 	// Resources
+	sessions := con.SnapshotSessions()
+	listeners := con.SnapshotListeners()
+	clients := con.SnapshotClients()
 	var alive int
-	for _, s := range con.Sessions {
+	for _, s := range sessions {
 		if s.IsAlive {
 			alive++
 		}
 	}
-	total := len(con.Sessions)
+	total := len(sessions)
 
 	var pipelineCount int
-	for _, l := range con.Listeners {
+	for _, l := range listeners {
 		pipelineCount += len(l.Pipelines.GetPipelines())
 	}
 
@@ -71,12 +74,12 @@ func StatusCmd(con *core.Console) error {
 	}))
 	rowEntries = append(rowEntries, table.NewRow(table.RowData{
 		"Resource": "Listeners",
-		"Count":    fmt.Sprintf("%d", len(con.Listeners)),
+		"Count":    fmt.Sprintf("%d", len(listeners)),
 		"Detail":   fmt.Sprintf("%d pipelines", pipelineCount),
 	}))
 	rowEntries = append(rowEntries, table.NewRow(table.RowData{
 		"Resource": "Clients",
-		"Count":    fmt.Sprintf("%d", len(con.Clients)),
+		"Count":    fmt.Sprintf("%d", len(clients)),
 		"Detail":   "",
 	}))
 	rowEntries = append(rowEntries, table.NewRow(table.RowData{

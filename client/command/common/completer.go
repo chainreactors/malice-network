@@ -77,7 +77,7 @@ func AllSessionIDCompleter(con *core.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		con.UpdateSessions(true)
 		results := make([]string, 0)
-		for _, s := range con.Sessions {
+		for _, s := range con.SnapshotSessions() {
 			if s.Note != "" {
 				results = append(results, s.SessionId, fmt.Sprintf("SessionAlias, %s，%s", s.Note, s.Target))
 			} else {
@@ -93,7 +93,7 @@ func ListenerIDCompleter(con *core.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
 
-		for _, listener := range con.Listeners {
+		for _, listener := range con.SnapshotListeners() {
 			results = append(results, listener.Id, fmt.Sprintf("ListenerID, %s", listener.Id))
 		}
 		return carapace.ActionValuesDescribed(results...).Tag("listener id")
@@ -129,7 +129,7 @@ func ListenerPipelineNameCompleter(con *core.Console, cmd *cobra.Command) carapa
 			return carapace.ActionValuesDescribed(results...).Tag("pipeline name")
 		}
 		var lis *clientpb.Listener
-		for _, listener := range con.Listeners {
+		for _, listener := range con.SnapshotListeners() {
 			if listener.Id == listenerID {
 				lis = listener
 				break

@@ -59,19 +59,22 @@ func initStateWithOptions(con *Console, conn *grpc.ClientConn, config *mtls.Clie
 	con.Server.Quiet = con.Quiet
 
 	// 记录状态信息
+	listeners := con.SnapshotListeners()
+	sessions := con.SnapshotSessions()
+	clients := con.SnapshotClients()
 	var pipelineCount int
-	for _, i := range con.Listeners {
+	for _, i := range listeners {
 		pipelineCount += len(i.Pipelines.Pipelines)
 	}
 	var alive int
-	for _, i := range con.Sessions {
+	for _, i := range sessions {
 		if i.IsAlive {
 			alive++
 		}
 	}
 	if !options.SuppressStartupOutput {
 		logs.Log.Importantf("%d listeners, %d pipelines, %d clients, %d sessions (%d alive)\n",
-			len(con.Listeners), pipelineCount, len(con.Clients), len(con.Sessions), alive)
+			len(listeners), pipelineCount, len(clients), len(sessions), alive)
 	}
 
 	return nil

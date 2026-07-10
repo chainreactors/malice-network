@@ -38,7 +38,7 @@ func NewClientHarness(t testing.TB, h *ControlPlaneHarness) *ClientHarness {
 	}
 	go server.EventHandler()
 	WaitForCondition(t, 5*time.Second, func() bool {
-		return server.EventStatus
+		return server.EventHandlerRunning()
 	}, "event stream to become active")
 
 	con := &clientcore.Console{

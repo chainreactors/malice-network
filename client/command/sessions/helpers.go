@@ -22,7 +22,7 @@ func resolveSessionID(con *core.Console, sid string) (string, error) {
 		return con.GetInteractive().Session.GetSessionId(), nil
 	}
 
-	if session, ok := con.Sessions[sid]; ok && session != nil {
+	if session, ok := con.GetLocalSession(sid); ok && session != nil {
 		return session.SessionId, nil
 	}
 

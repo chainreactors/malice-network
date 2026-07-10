@@ -31,6 +31,27 @@ func TestUpdateMalReturnsErrorWhenPluginIsNotLoaded(t *testing.T) {
 	}
 }
 
+func TestRefreshMalReloadsProfileChangedByAnotherClient(t *testing.T) {
+	con := newMalTestConsole(t, true)
+	config.Set("mals", []string{"stale-client-value"})
+
+	profilePath := filepath.Join(assets.GetRootAppDir(), "malice.yaml")
+	if err := os.WriteFile(profilePath, []byte("mals:\n  - other-client-value\n"), 0o600); err != nil {
+		t.Fatalf("write profile from other client: %v", err)
+	}
+
+	if err := RefreshMalCmd(&cobra.Command{}, con); err != nil {
+		t.Fatalf("RefreshMalCmd failed: %v", err)
+	}
+	profile, err := assets.GetProfile()
+	if err != nil {
+		t.Fatalf("GetProfile failed: %v", err)
+	}
+	if len(profile.Mals) != 1 || profile.Mals[0] != "other-client-value" {
+		t.Fatalf("profile mals = %v, want other-client-value", profile.Mals)
+	}
+}
+
 func TestInstallFromDirTarGzInstallsMalArchive(t *testing.T) {
 	con := newMalTestConsole(t, false)
 	archivePath := writeTarGzMalArchive(t, malFixture{

@@ -90,9 +90,11 @@ func startMux(cmd *cobra.Command, con *core.Console) error {
 	go func() {
 		for {
 			if con.Server != nil {
+				cachedSessions := con.SnapshotSessions()
+				cachedListeners := con.SnapshotListeners()
 				var alive int
 				var sessions []mux.SessionInfo
-				for _, s := range con.Sessions {
+				for _, s := range cachedSessions {
 					if s.IsAlive {
 						alive++
 					}
@@ -121,8 +123,8 @@ func startMux(cmd *cobra.Command, con *core.Console) error {
 				}
 				m.SetSidebarState(mux.SidebarState{
 					SessionAlive:  alive,
-					SessionTotal:  len(con.Sessions),
-					ListenerCount: len(con.Listeners),
+					SessionTotal:  len(cachedSessions),
+					ListenerCount: len(cachedListeners),
 					PipelineCount: len(con.Pipelines),
 					Sessions:      sessions,
 				})
@@ -136,7 +138,7 @@ func startMux(cmd *cobra.Command, con *core.Console) error {
 	if con.Server != nil {
 		go func() {
 			for {
-				if !con.Server.EventStatus {
+				if !con.Server.EventHandlerRunning() {
 					con.Server.Quiet = true
 					con.EventHandler()
 				}

@@ -20,6 +20,7 @@ import (
 	iomclient "github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/malice-network/client/assets"
+	"github.com/chainreactors/malice-network/client/command/alias"
 	"github.com/chainreactors/malice-network/client/command/extension"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/cryptography/minisign"
@@ -54,6 +55,68 @@ func TestPackageHashLookupByArmoryFiltersArmoryPackages(t *testing.T) {
 	got := packageHashLookupByArmory("armory-a")
 	if len(got) != 1 || got[0] != "pkg-a" {
 		t.Fatalf("package hashes = %v, want [pkg-a]", got)
+	}
+}
+
+func TestCollectPackageManifestsFiltersEnabledArmoriesAndVisitsCacheOnce(t *testing.T) {
+	resetArmoryState(t)
+
+	armoryA := &assets.ArmoryConfig{PublicKey: "armory-a"}
+	armoryB := &assets.ArmoryConfig{PublicKey: "armory-b"}
+	pkgCache.Store("a", pkgCacheEntry{
+		ArmoryConfig: armoryA,
+		Pkg:          ArmoryPackage{IsAlias: true},
+		Alias:        &alias.AliasManifest{CommandName: "alias-a"},
+	})
+	pkgCache.Store("b", pkgCacheEntry{
+		ArmoryConfig: armoryB,
+		Extension:    &extension.ExtensionManifest{Name: "extension-b"},
+	})
+	pkgCache.Store("stale", pkgCacheEntry{
+		ArmoryConfig: &assets.ArmoryConfig{PublicKey: "armory-stale"},
+		Pkg:          ArmoryPackage{IsAlias: true},
+		Alias:        &alias.AliasManifest{CommandName: "stale"},
+	})
+	pkgCache.Store("invalid", "invalid-entry")
+
+	aliases, extensions, failures := collectPackageManifests([]ArmoryIndex{
+		{ArmoryConfig: armoryA},
+		{ArmoryConfig: armoryB},
+	})
+	if len(aliases) != 1 || aliases[0].CommandName != "alias-a" {
+		t.Fatalf("aliases = %#v, want only alias-a", aliases)
+	}
+	if len(extensions) != 1 || extensions[0].Name != "extension-b" {
+		t.Fatalf("extensions = %#v, want only extension-b", extensions)
+	}
+	if len(failures) != 0 {
+		t.Fatalf("failures = %#v, want none", failures)
+	}
+	if _, ok := pkgCache.Load("invalid"); ok {
+		t.Fatal("invalid cache entry was not removed by key")
+	}
+}
+
+func TestFetchIndexesExcludesCachedArmoriesThatAreNoLongerEnabled(t *testing.T) {
+	resetArmoryState(t)
+
+	active := assets.ArmoryConfig{Name: "active", PublicKey: "armory-a", Enabled: true}
+	currentArmories.Store(active.PublicKey, active)
+	indexCache.Store(active.PublicKey, indexCacheEntry{
+		ArmoryConfig: &active,
+		Fetched:      time.Now(),
+		Index:        ArmoryIndex{ArmoryConfig: &active},
+	})
+	stale := &assets.ArmoryConfig{Name: "stale", PublicKey: "armory-stale", Enabled: true}
+	indexCache.Store(stale.PublicKey, indexCacheEntry{
+		ArmoryConfig: stale,
+		Fetched:      time.Now(),
+		Index:        ArmoryIndex{ArmoryConfig: stale},
+	})
+
+	indexes := fetchIndexes(ArmoryHTTPConfig{})
+	if len(indexes) != 1 || indexes[0].ArmoryConfig.PublicKey != active.PublicKey {
+		t.Fatalf("indexes = %#v, want only active armory", indexes)
 	}
 }
 

@@ -156,6 +156,12 @@ func AgeKeyExFromImplant(serverPrivateKey string, implantPrivateKey string, ciph
 	if _, loaded := keyExReplay.LoadOrStore(b64Digest, true); loaded {
 		return nil, ErrReplayAttack
 	}
+	validated := false
+	defer func() {
+		if !validated {
+			keyExReplay.Delete(b64Digest)
+		}
+	}()
 
 	// Decrypt the message
 	plaintext, err := AgeDecrypt(serverPrivateKey, ciphertext)
@@ -177,6 +183,7 @@ func AgeKeyExFromImplant(serverPrivateKey string, implantPrivateKey string, ciph
 	if !hmac.Equal(mac.Sum(nil), plaintext[:sha256Size]) {
 		return nil, ErrDecryptFailed
 	}
+	validated = true
 	return plaintext[sha256Size:], nil
 }
 

@@ -38,9 +38,7 @@ type MalManager struct {
 
 // GetGlobalMalManager 获取全局mal管理器（单例）
 func GetGlobalMalManager() *MalManager {
-	if !globalMalManager.initialized {
-		globalMalManager.initialize()
-	}
+	globalMalManager.initialize()
 	return globalMalManager
 }
 
@@ -174,7 +172,7 @@ func (mm *MalManager) loadExternalMals() {
 	mm.globalPlugins = LoadGlobalLuaPlugin()
 
 	for _, manifest := range GetPluginManifest() {
-		_, err := mm.LoadExternalMal(manifest)
+		_, err := mm.loadExternalMalLocked(manifest)
 		if err != nil {
 			logs.Log.Errorf("Failed to load external mal %s: %v\n", manifest.Name, err)
 			continue
@@ -184,6 +182,13 @@ func (mm *MalManager) loadExternalMals() {
 
 // LoadExternalMal 加载单个外部mal插件
 func (mm *MalManager) LoadExternalMal(manifest *MalManiFest) (Plugin, error) {
+	mm.mu.Lock()
+	defer mm.mu.Unlock()
+	return mm.loadExternalMalLocked(manifest)
+}
+
+// loadExternalMalLocked loads a plugin while the manager write lock is held.
+func (mm *MalManager) loadExternalMalLocked(manifest *MalManiFest) (Plugin, error) {
 	// 检查是否已加载
 	if _, exists := mm.externalPlugins[manifest.Name]; exists {
 		return nil, fmt.Errorf("external mal %s already loaded\n", manifest.Name)

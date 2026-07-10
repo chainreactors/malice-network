@@ -2,12 +2,16 @@ package mal
 
 import (
 	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/spf13/cobra"
 )
 
 func RefreshMalCmd(cmd *cobra.Command, con *core.Console) error {
+	if err := assets.RefreshProfile(); err != nil {
+		return err
+	}
 	manager, err := ensureMalManager(con)
 	if err != nil {
 		return err

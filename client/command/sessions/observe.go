@@ -10,7 +10,7 @@ func ObserveCmd(cmd *cobra.Command, con *core.Console) error {
 	var session *client.Session
 	isList, _ := cmd.Flags().GetBool("list")
 	if isList {
-		for i, ob := range con.Observers {
+		for i, ob := range con.SnapshotObservers() {
 			con.Log.Infof("%s: %s\n", i, ob.SessionId)
 		}
 		return nil
@@ -22,7 +22,7 @@ func ObserveCmd(cmd *cobra.Command, con *core.Console) error {
 			idArg = []string{con.GetInteractive().SessionId}
 		} else {
 			var i int
-			for _, ob := range con.Observers {
+			for _, ob := range con.SnapshotObservers() {
 				con.Log.Infof("%d: %s\n", i, ob.SessionId)
 				i++
 			}
@@ -30,7 +30,7 @@ func ObserveCmd(cmd *cobra.Command, con *core.Console) error {
 		}
 	}
 	for _, sid := range idArg {
-		session = con.Sessions[sid]
+		session, _ = con.GetLocalSession(sid)
 
 		if session == nil {
 			con.Log.Warn(core.ErrNotFoundSession.Error())

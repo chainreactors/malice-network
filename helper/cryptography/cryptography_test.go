@@ -2,7 +2,9 @@ package cryptography
 
 import (
 	"bytes"
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha256"
 	insecureRand "math/rand"
 	"os"
 	"sync"
@@ -174,6 +176,37 @@ func TestAgeKeyExReplay(t *testing.T) {
 	)
 	if err == nil {
 		t.Fatal(err)
+	}
+}
+
+func TestAgeKeyExInvalidAttemptDoesNotPoisonReplayCache(t *testing.T) {
+	keyExReplay = sync.Map{}
+	t.Cleanup(func() { keyExReplay = sync.Map{} })
+
+	sessionKey := RandomSymmetricKey()
+	privateKeyDigest := sha256.Sum256([]byte(implantPeerAgeKeyPair.Private))
+	mac := hmac.New(sha256.New, privateKeyDigest[:])
+	_, _ = mac.Write(sessionKey[:])
+	payload := append(mac.Sum(nil), sessionKey[:]...)
+	ciphertext, err := AgeEncrypt(serverAgeKeyPair.Public, payload)
+	if err != nil {
+		t.Fatalf("AgeEncrypt failed: %v", err)
+	}
+
+	wrongKeyPair, err := RandomAgeKeyPair()
+	if err != nil {
+		t.Fatalf("RandomAgeKeyPair failed: %v", err)
+	}
+	if _, err := AgeKeyExFromImplant(serverAgeKeyPair.Private, wrongKeyPair.Private, ciphertext); err == nil {
+		t.Fatal("first validation with a wrong implant key should fail")
+	}
+
+	plaintext, err := AgeKeyExFromImplant(serverAgeKeyPair.Private, implantPeerAgeKeyPair.Private, ciphertext)
+	if err != nil {
+		t.Fatalf("valid retry was rejected after a failed validation: %v", err)
+	}
+	if !bytes.Equal(plaintext, sessionKey[:]) {
+		t.Fatal("valid retry returned the wrong session key")
 	}
 }
 

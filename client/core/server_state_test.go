@@ -68,6 +68,23 @@ func TestEventHandlerClaimPreventsDuplicateLoops(t *testing.T) {
 	s.releaseEventHandler()
 }
 
+func TestEventHandlerRunningTracksClaimLifecycle(t *testing.T) {
+	s := &Server{ServerState: &iomclient.ServerState{}}
+	if s.EventHandlerRunning() {
+		t.Fatal("new server should not report an active event handler")
+	}
+	if !s.claimEventHandler() {
+		t.Fatal("first event handler claim should succeed")
+	}
+	if !s.EventHandlerRunning() {
+		t.Fatal("claimed event handler should report active")
+	}
+	s.releaseEventHandler()
+	if s.EventHandlerRunning() {
+		t.Fatal("released event handler should report inactive")
+	}
+}
+
 func TestRenderEventAppliesColoringForSessionRegister(t *testing.T) {
 	event := &clientpb.Event{
 		Type:      consts.EventSession,

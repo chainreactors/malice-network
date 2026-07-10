@@ -65,6 +65,15 @@ func (s *Server) releaseEventHandler() {
 	s.EventStatus = false
 }
 
+func (s *Server) EventHandlerRunning() bool {
+	if s == nil {
+		return false
+	}
+	s.eventHandlerMu.Lock()
+	defer s.eventHandlerMu.Unlock()
+	return s.eventHandlerActive
+}
+
 func taskMessageKey(sessionID string, taskID uint32) string {
 	return fmt.Sprintf("%s-%d", sessionID, taskID)
 }

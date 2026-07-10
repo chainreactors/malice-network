@@ -59,8 +59,9 @@ func SessionsCmd(cmd *cobra.Command, con *core.Console) error {
 	if err != nil {
 		return err
 	}
-	if 0 < len(con.Sessions) {
-		PrintSessions(con.Sessions, con, isAll)
+	sessions := con.SnapshotSessions()
+	if 0 < len(sessions) {
+		PrintSessions(sessions, con, isAll)
 	} else {
 		con.Log.Info("No sessions\n")
 	}
@@ -167,7 +168,7 @@ func SessionLogin(tableModel *tui.TableModel, con *core.Console) func() {
 	}
 	prefix := selectRow.Data["ID"].(string)
 	var matches []string
-	for id := range con.Sessions {
+	for id := range con.SnapshotSessions() {
 		if strings.HasPrefix(id, prefix) {
 			matches = append(matches, id)
 		}
@@ -184,7 +185,7 @@ func SessionLogin(tableModel *tui.TableModel, con *core.Console) func() {
 			con.Log.Errorf("ambiguous session prefix '%s'\n", prefix)
 		}
 	}
-	session := con.Sessions[sessionId]
+	session, _ := con.GetLocalSession(sessionId)
 
 	if session == nil {
 		return func() {

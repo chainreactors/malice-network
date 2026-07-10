@@ -152,14 +152,12 @@ func formatFloat(f float64) string {
 }
 
 func RefreshProfile() error {
-	a := &Profile{}
-	config.MapStruct("", a)
-	err := config.ReloadFiles()
-	if err != nil {
-		return err
-	}
-	config.MapStruct("", a)
-	return nil
+	// Replace the in-memory snapshot instead of merging the file over typed
+	// slices. ReloadFiles merges YAML []interface{} values into []string values
+	// and can reject a profile written by another client process.
+	config.Default().ClearData()
+	_, err := LoadProfile()
+	return err
 }
 
 func GetProfile() (*Profile, error) {

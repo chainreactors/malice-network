@@ -98,6 +98,7 @@ func RegisterSession(req *clientpb.RegisterSession) (*Session, error) {
 	cache := NewCache(filepath.Join(cacheDir, CacheName))
 	err = cache.Save()
 	if err != nil {
+		cache.Close()
 		return nil, err
 	}
 	sess := &Session{
@@ -139,11 +140,13 @@ func RecoverSession(sess *models.Session) (*Session, error) {
 	if err != nil {
 		return nil, err
 	}
-	cache := NewCache(cachePath)
-	err = cache.Load()
-	if err != nil {
-		return nil, err
-	}
+	cache := loadRecoveredCache(cachePath, sess.SessionID)
+	recovered := false
+	defer func() {
+		if !recovered {
+			cache.Close()
+		}
+	}()
 
 	sessionContext := sess.Data
 	if sessionContext == nil && sess.DataString != "" {
@@ -235,6 +238,7 @@ func RecoverSession(sess *models.Session) (*Session, error) {
 	if err != nil {
 		return nil, err
 	}
+	recovered = true
 	return s, nil
 }
 
@@ -1110,6 +1114,9 @@ func (s *sessions) Remove(sessionID string) {
 	}
 	parentSession := val.(*Session)
 	parentSession.ResetKeepalive()
+	if parentSession.Cache != nil {
+		parentSession.Cache.Close()
+	}
 	parentSession.Cancel()
 	s.active.Delete(parentSession.ID)
 }

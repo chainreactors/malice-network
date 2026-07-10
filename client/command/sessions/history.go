@@ -41,7 +41,7 @@ func GetHistoryWithTaskID(con *core.Console, taskID uint32, sessionId string) (s
 		return "", fmt.Errorf("session_id is required")
 	}
 
-	session, ok := con.Sessions[sessionId]
+	session, ok := con.GetLocalSession(sessionId)
 	if !ok || session == nil {
 		return "", fmt.Errorf("session %s not found", sessionId)
 	}

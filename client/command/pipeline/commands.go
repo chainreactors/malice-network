@@ -259,11 +259,12 @@ rem update interval --pipeline-id rem_graph_api_03 --agent-id uDM0BgG6 5000
 func registerWizardProviders(cmd *cobra.Command, con *core.Console) {
 	// Listener options - fetch from cached listeners
 	wizard.RegisterProviderForCommand(cmd, "listener", func() []string {
-		if len(con.Listeners) == 0 {
+		listeners := con.SnapshotListeners()
+		if len(listeners) == 0 {
 			return nil
 		}
-		opts := make([]string, 0, len(con.Listeners))
-		for _, listener := range con.Listeners {
+		opts := make([]string, 0, len(listeners))
+		for _, listener := range listeners {
 			if listener.Id != "" {
 				opts = append(opts, listener.Id)
 			}

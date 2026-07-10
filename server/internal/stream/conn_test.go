@@ -6,8 +6,45 @@ import (
 	"errors"
 	"io"
 	"net"
+	"sync"
 	"testing"
 )
+
+func TestCryptoConnConcurrentReadsSerializeOverflowBuffer(t *testing.T) {
+	conn := &CryptoConn{readBuf: bytes.Repeat([]byte("x"), 2048)}
+	start := make(chan struct{})
+	lengths := make(chan int, 2)
+	var wg sync.WaitGroup
+	wg.Add(2)
+	for i := 0; i < 2; i++ {
+		go func() {
+			defer wg.Done()
+			<-start
+			buf := make([]byte, 1024)
+			n, err := conn.Read(buf)
+			if err != nil {
+				t.Errorf("Read failed: %v", err)
+				return
+			}
+			lengths <- n
+		}()
+	}
+
+	close(start)
+	wg.Wait()
+	close(lengths)
+
+	total := 0
+	for n := range lengths {
+		total += n
+	}
+	if total != 2048 {
+		t.Fatalf("concurrent reads returned %d bytes, want 2048", total)
+	}
+	if len(conn.readBuf) != 0 {
+		t.Fatalf("overflow buffer retains %d bytes, want 0", len(conn.readBuf))
+	}
+}
 
 // simpleRWC wraps a bytes.Buffer into a ReadWriteCloser for testing.
 type simpleRWC struct {

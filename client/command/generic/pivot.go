@@ -248,16 +248,14 @@ func sessionForPivot(con *core.Console, ctx *clientpb.Context, agentID string) (
 	if sessionID == "" {
 		return nil, fmt.Errorf("pivot agent %s has no owning session", agentID)
 	}
-	if sess, ok := con.Sessions[sessionID]; ok {
+	if sess, ok := con.GetLocalSession(sessionID); ok {
 		return sess, nil
 	}
 	sessionPB, err := con.Rpc.GetSession(con.Context(), &clientpb.SessionRequest{SessionId: sessionID})
 	if err != nil {
 		return nil, err
 	}
-	sess := iomclient.NewSession(sessionPB, con.Server.ServerState)
-	con.Sessions[sessionID] = sess
-	return sess, nil
+	return con.AddSession(sessionPB), nil
 }
 
 func PrintPivots(contexts []*clientpb.Context, con *core.Console, all bool) {
