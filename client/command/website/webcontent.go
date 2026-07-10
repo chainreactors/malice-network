@@ -2,14 +2,14 @@ package website
 
 import (
 	"errors"
+	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/helper/utils/fileutils"
-	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -235,24 +235,30 @@ func AddArtifactContentCmd(cmd *cobra.Command, con *core.Console) error {
 
 func AddArtifactContent(con *core.Console, artifactName, websiteName, format, rdi, webPath, contentType, name, comment, auth string) (*clientpb.WebContent, error) {
 	rpcFormat := normalizeArtifactContentFormat(format)
-	artifact, err := con.Rpc.DownloadArtifact(con.Context(), &clientpb.Artifact{
-		Name:   artifactName,
-		Format: rpcFormat,
-		Rdi:    rdi,
-	})
-	if err != nil {
-		return nil, err
-	}
-	if len(artifact.Bin) == 0 {
-		return nil, errors.New("artifact maybe not download in server")
-	}
 	if name == "" {
 		name = artifactName
 	}
-	if webPath == "" {
-		webPath = defaultArtifactWebPath(artifact, artifactName, rpcFormat)
+
+	resolvedWebsite, listenerID, _ := resolveWebsiteTarget(con, websiteName)
+	website := &clientpb.Website{
+		Name:       resolvedWebsite,
+		ListenerId: listenerID,
+		Contents: map[string]*clientpb.WebContent{
+			webPath: {
+				WebsiteId:   resolvedWebsite,
+				ListenerId:  listenerID,
+				File:        artifactName,
+				Path:        webPath,
+				Type:        consts.ArtifactWebcontent,
+				Url:         artifactContentOptions(rpcFormat, rdi),
+				ContentType: contentType,
+				Name:        name,
+				Comment:     comment,
+				Auth:        auth,
+			},
+		},
 	}
-	return AddWebContentData(con, websiteName, artifact.Bin, webPath, contentType, name, comment, auth)
+	return con.Rpc.AddWebsiteContent(con.Context(), website)
 }
 
 func normalizeArtifactContentFormat(format string) string {
@@ -262,22 +268,15 @@ func normalizeArtifactContentFormat(format string) string {
 	return format
 }
 
-func defaultArtifactWebPath(artifact *clientpb.Artifact, fallbackName, format string) string {
-	name := artifact.GetName()
-	if name == "" {
-		name = fallbackName
+func artifactContentOptions(format, rdi string) string {
+	values := url.Values{}
+	if format != "" {
+		values.Set("format", format)
 	}
-	ext := artifact.GetFormat()
-	if f, ok := output.SupportedFormats[strings.ToLower(format)]; ok && f.Extension != "" {
-		ext = f.Extension
+	if rdi != "" {
+		values.Set("rdi", rdi)
 	}
-	if ext == "" {
-		ext, _ = fileutils.GetExtensionByBytes(artifact.GetBin())
-	}
-	if ext != "" && !strings.HasPrefix(ext, ".") {
-		ext = "." + ext
-	}
-	return "/" + name + ext
+	return values.Encode()
 }
 
 // RemoveWebContentCmd - 删除网站内容

@@ -208,21 +208,20 @@ func TestAddWebContentCmdSupportsArtifactFlag(t *testing.T) {
 	if err := AddWebContentCmd(cmd, con); err != nil {
 		t.Fatalf("AddWebContentCmd failed: %v", err)
 	}
-	if len(rpc.calls) != 2 {
-		t.Fatalf("call count = %d, want 2", len(rpc.calls))
+	if len(rpc.calls) != 1 {
+		t.Fatalf("call count = %d, want 1", len(rpc.calls))
 	}
-	download := rpc.calls[0].request.(*clientpb.Artifact)
-	if download.Name != "beacon" || download.Format != "raw" {
-		t.Fatalf("download request = %#v, want beacon/raw", download)
-	}
-	add := rpc.calls[1].request.(*clientpb.Website)
+	add := rpc.calls[0].request.(*clientpb.Website)
 	content := add.GetContents()["/payload.bin"]
-	if content == nil || content.ContentType != "application/octet-stream" || content.Name != "payload" {
-		t.Fatalf("content = %#v, want artifact website content", content)
+	if rpc.calls[0].method != "AddWebsiteContent" || add.Name != "site-a" || add.ListenerId != "listener-a" || content == nil {
+		t.Fatalf("add call = %s %#v, content %#v, want scoped website payload", rpc.calls[0].method, add, content)
+	}
+	if len(content.Content) != 0 || content.Type != consts.ArtifactWebcontent || content.File != "beacon" || content.Url != "format=raw" || content.ContentType != "application/octet-stream" || content.Name != "payload" {
+		t.Fatalf("content = %#v, want server-side artifact reference", content)
 	}
 }
 
-func TestAddArtifactContentDownloadsAndAddsWebsiteContent(t *testing.T) {
+func TestAddArtifactContentAddsServerSideArtifactReference(t *testing.T) {
 	rpc := &websiteTestRPC{}
 	con := newWebsiteTestConsole(rpc)
 	con.Pipelines["listener-a:site-a"] = scopedWebsitePipeline("site-a", "listener-a")
@@ -230,20 +229,16 @@ func TestAddArtifactContentDownloadsAndAddsWebsiteContent(t *testing.T) {
 	if _, err := AddArtifactContent(con, "beacon", "listener-a:site-a", "shellcode", "", "/payload.bin", "application/octet-stream", "payload", "from artifact", "none"); err != nil {
 		t.Fatalf("AddArtifactContent failed: %v", err)
 	}
-	if len(rpc.calls) != 2 {
-		t.Fatalf("call count = %d, want 2", len(rpc.calls))
+	if len(rpc.calls) != 1 {
+		t.Fatalf("call count = %d, want 1", len(rpc.calls))
 	}
-	download := rpc.calls[0].request.(*clientpb.Artifact)
-	if rpc.calls[0].method != "DownloadArtifact" || download.Name != "beacon" || download.Format != "raw" {
-		t.Fatalf("download call = %s %#v, want beacon/raw", rpc.calls[0].method, download)
-	}
-	add := rpc.calls[1].request.(*clientpb.Website)
+	add := rpc.calls[0].request.(*clientpb.Website)
 	content := add.GetContents()["/payload.bin"]
-	if rpc.calls[1].method != "AddWebsiteContent" || add.Name != "site-a" || add.ListenerId != "listener-a" || content == nil {
-		t.Fatalf("add call = %s %#v, content %#v, want scoped website payload", rpc.calls[1].method, add, content)
+	if rpc.calls[0].method != "AddWebsiteContent" || add.Name != "site-a" || add.ListenerId != "listener-a" || content == nil {
+		t.Fatalf("add call = %s %#v, content %#v, want scoped website payload", rpc.calls[0].method, add, content)
 	}
-	if string(content.Content) != "artifact-binary" || content.Name != "payload" || content.Comment != "from artifact" || content.Auth != "none" {
-		t.Fatalf("content = %#v, want artifact bytes with metadata", content)
+	if len(content.Content) != 0 || content.Type != consts.ArtifactWebcontent || content.File != "beacon" || content.Name != "payload" || content.Comment != "from artifact" || content.Auth != "none" {
+		t.Fatalf("content = %#v, want server-side artifact reference with metadata", content)
 	}
 }
 
