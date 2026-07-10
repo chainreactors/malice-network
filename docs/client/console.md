@@ -94,6 +94,15 @@ switch              # 在多个 session 间快速切换
 - **Session pane** ：`use <session>` 时自动创建独立 pane，以 `--quiet` 模式运行，屏蔽全局事件
 - **切换** ：通过侧边栏在不同 pane 间切换
 
+### 搜索索引生命周期
+
+Client 在命令注册完成后构建本地 FTS5 搜索索引。索引是可重新生成的运行时缓存，不包含需要持久化的业务数据。
+
+- 每个 Client 进程使用独立的 `~/.config/malice/temp/search/search-<pid>.db`，多个终端不会共享 SQLite 写锁。
+- Client 正常退出时会关闭并删除自己的数据库以及 `-wal`、`-shm`、`-journal` 文件。
+- Client 启动时会检查同目录下的 PID 索引，并清理对应进程已经退出的残留文件；仍在运行的进程文件会保留。
+- 旧版本创建的 `~/.config/malice/search.db` 不再使用。确认没有旧版 Client 运行后，可以手动删除该文件及其 SQLite sidecar。
+
 ## 非交互式执行
 
 直接追加子命令，执行完毕后退出：

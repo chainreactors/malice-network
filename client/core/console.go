@@ -101,8 +101,8 @@ type Console struct {
 	CMDs    map[string]*cobra.Command
 	Helpers map[string]*cobra.Command
 
-	SearchIndex  *SearchIndex
-	VectorIndex  *VectorIndex
+	SearchIndex *SearchIndex
+	VectorIndex *VectorIndex
 
 	MalManager *plugin.MalManager
 
@@ -177,12 +177,20 @@ func (c *Console) Start(bindCmds ...BindCmds) error {
 	c.App.Menu(consts.ClientMenu).Command = bindCmds[0](c)()
 	c.App.Menu(consts.ImplantMenu).Command = bindCmds[1](c)()
 
-	// Build FTS5 search index from registered commands
-	si, err := NewSearchIndex(filepath.Join(assets.GetRootAppDir(), "search.db"))
+	// Build a process-local FTS5 search index from registered commands.
+	si, err := newCurrentProcessSearchIndex(filepath.Join(assets.GetTempDir(), "search"))
 	if err != nil {
 		client.Log.Warnf("search index init failed: %v\n", err)
 	} else {
 		c.SearchIndex = si
+		defer func() {
+			if closeErr := si.Close(); closeErr != nil {
+				client.Log.Warnf("search index cleanup failed: %v\n", closeErr)
+			}
+			if c.SearchIndex == si {
+				c.SearchIndex = nil
+			}
+		}()
 		clientMenu := c.App.Menu(consts.ClientMenu)
 		implantMenu := c.App.Menu(consts.ImplantMenu)
 		if rebuildErr := si.Rebuild(clientMenu.Commands, implantMenu.Commands); rebuildErr != nil {
