@@ -74,6 +74,5 @@ func cleanupRetiredListener(listenerID string) {
 	for _, pipe := range lns.AllPipelines() {
 		deletePipelineStream(pipe.ListenerId, pipe.Name)
 	}
-	_ = core.Listeners.Stop(listenerID)
-	core.Listeners.Map.Delete(listenerID)
+	core.Listeners.Remove(lns)
 }

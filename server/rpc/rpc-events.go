@@ -123,6 +123,9 @@ func (rpc *Server) SessionEvent(ctx context.Context, req *clientpb.Event) (*clie
 
 func (rpc *Server) GetEvent(ctx context.Context, req *clientpb.Int) (*clientpb.Events, error) {
 	events := core.EventBroker.GetAll()
+	if limit := int(req.GetLimit()); limit > 0 && len(events) > limit {
+		events = events[len(events)-limit:]
+	}
 
 	eventspb := &clientpb.Events{
 		Events: []*clientpb.Event{},

@@ -128,11 +128,13 @@ func startForwardListenerClient(ctx context.Context, cfg *configs.ListenerConfig
 				if msg.Job != nil && msg.Job.Pipeline != nil {
 					if err := ensureForwardTaskStream(runtimeCtx, client, msg.Job.Pipeline.ListenerId, msg.Job.Pipeline.Name); err != nil {
 						lns.CtrlJob.Delete(msg.Id)
+						lns.DiscardDeferredEvent(msg.Id)
 						return err
 					}
 				}
 				if err := stream.Send(msg); err != nil {
 					lns.CtrlJob.Delete(msg.Id)
+					lns.DiscardDeferredEvent(msg.Id)
 					return fmt.Errorf("send forward listener ctrl: %w", err)
 				}
 			}
@@ -207,22 +209,25 @@ func (r *forwardListenerRuntime) stop() {
 		return
 	}
 	r.stopOnce.Do(func() {
-		forwardListenerRuntimes.Delete(r.listenerID)
-		clearForwardTaskStreams(r.listenerID)
+		current, ownsRuntime := forwardListenerRuntimes.Load(r.listenerID)
+		ownsRuntime = ownsRuntime && current == r
 		if r.cancel != nil {
 			r.cancel()
 		}
 		if r.conn != nil {
 			_ = r.conn.Close()
 		}
+		if !ownsRuntime {
+			return
+		}
+		clearForwardTaskStreams(r.listenerID)
 		if r.ownsListener {
 			listener, err := core.Listeners.Get(r.listenerID)
-			if err != nil {
-				return
+			if err == nil {
+				core.Listeners.Remove(listener)
 			}
-			_ = core.Listeners.Stop(r.listenerID)
-			core.Listeners.Remove(listener)
 		}
+		forwardListenerRuntimes.CompareAndDelete(r.listenerID, r)
 	})
 }
 

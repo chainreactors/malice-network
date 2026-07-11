@@ -217,13 +217,21 @@ type listener struct {
 	websites    map[string]*Website
 	shutdown    func() error
 	retireOnce  sync.Once
+	closeOnce   sync.Once
+	closeErr    error
 }
 
 func (lns *listener) Close() error {
 	if lns == nil {
 		return nil
 	}
+	lns.closeOnce.Do(func() {
+		lns.closeErr = lns.close()
+	})
+	return lns.closeErr
+}
 
+func (lns *listener) close() error {
 	var errs []error
 
 	for _, pipeline := range lns.pipelines.ToProtobuf().GetPipelines() {

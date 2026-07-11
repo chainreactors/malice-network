@@ -195,6 +195,7 @@ func HandleFileOperations(op string, data []byte, task *Task) error {
 			Op:        consts.CtrlContextFileClose,
 			Task:      task.ToProtobuf(),
 			Message:   fmt.Sprintf("file_saved_on_server: %s", savePath),
+			Important: true,
 		})
 		return nil
 	}

@@ -84,6 +84,39 @@ func TestEventsV2StreamsReadyAndSequencedEvents(t *testing.T) {
 	}
 }
 
+func TestGetEventHonorsLatestEventLimit(t *testing.T) {
+	_ = newRPCTestEnv(t)
+	for _, message := range []string{"oldest", "middle", "latest"} {
+		core.EventBroker.Publish(core.Event{
+			EventType: consts.EventBuild,
+			Message:   message,
+			Important: true,
+		})
+	}
+
+	limited, err := (&Server{}).GetEvent(context.Background(), &clientpb.Int{Limit: 2})
+	if err != nil {
+		t.Fatalf("GetEvent limited error: %v", err)
+	}
+	if got := len(limited.GetEvents()); got != 2 {
+		t.Fatalf("limited event count = %d, want 2", got)
+	}
+	if got := string(limited.GetEvents()[0].GetMessage()); got != "middle" {
+		t.Fatalf("first limited event = %q, want middle", got)
+	}
+	if got := string(limited.GetEvents()[1].GetMessage()); got != "latest" {
+		t.Fatalf("last limited event = %q, want latest", got)
+	}
+
+	all, err := (&Server{}).GetEvent(context.Background(), &clientpb.Int{})
+	if err != nil {
+		t.Fatalf("GetEvent all error: %v", err)
+	}
+	if got := len(all.GetEvents()); got != 3 {
+		t.Fatalf("unlimited event count = %d, want 3", got)
+	}
+}
+
 func waitEventsV2Envelope(t *testing.T, events <-chan *clientpb.EventEnvelope) *clientpb.EventEnvelope {
 	t.Helper()
 	select {

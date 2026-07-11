@@ -475,6 +475,9 @@ func TestStopRemDisablesPipelineWhenListenerIsOffline(t *testing.T) {
 	if event.EventType != consts.EventJob || event.Job.GetPipeline().GetName() != pipeline.Name {
 		t.Fatalf("unexpected offline REM stop event: %#v", event)
 	}
+	if event.Job.GetPipeline().GetEnable() {
+		t.Fatalf("offline REM stop event retained enabled state: %#v", event.Job.GetPipeline())
+	}
 }
 
 func TestDeleteRemRemovesPipelineWhenListenerIsOffline(t *testing.T) {
@@ -536,6 +539,49 @@ func TestHealthCheckRemDoesNotDisableOtherListenerOrAmbiguousLegacyContexts(t *t
 		if !pivot.Enable {
 			t.Fatalf("%s was disabled by %s health check", tc.description, listenerA.Name)
 		}
+	}
+}
+
+func TestHealthCheckRemPublishesExistingPivotStateChange(t *testing.T) {
+	newRPCTestEnv(t)
+	listener, pipeline := seedRemRuntime(t, "rem-health-event")
+	contextID := createPivotContext(t, pipeline.Name, listener.Name, "agent-offline", true)
+	pipeline.GetRem().Agents = map[string]*clientpb.REMAgent{}
+	events := subscribeEventBrokerReady(t, core.EventBroker)
+	defer core.EventBroker.Unsubscribe(events)
+
+	if _, err := (&Server{}).HealthCheckRem(context.Background(), pipeline); err != nil {
+		t.Fatalf("HealthCheckRem failed: %v", err)
+	}
+
+	event := waitForLifecycleEvent(t, events, "pivot_local")
+	if event.EventType != consts.EventPivot || !event.Important {
+		t.Fatalf("pivot state event = %#v, want important pivot event", event)
+	}
+	contextModel, err := db.FindContext(contextID)
+	if err != nil {
+		t.Fatalf("FindContext failed: %v", err)
+	}
+	if contextModel.Context.(*output.PivotingContext).Enable {
+		t.Fatal("missing REM agent should persist a disabled pivot context")
+	}
+
+	pipeline.GetRem().Agents["agent-offline"] = &clientpb.REMAgent{
+		Id:          "agent-offline",
+		PipelineId:  pipeline.Name,
+		InboundSide: "local",
+		Enable:      true,
+	}
+	if _, err := (&Server{}).HealthCheckRem(context.Background(), pipeline); err != nil {
+		t.Fatalf("HealthCheckRem re-enable failed: %v", err)
+	}
+	waitForLifecycleEvent(t, events, "pivot_local")
+	contextModel, err = db.FindContext(contextID)
+	if err != nil {
+		t.Fatalf("FindContext after re-enable failed: %v", err)
+	}
+	if !contextModel.Context.(*output.PivotingContext).Enable {
+		t.Fatal("restored REM agent should persist an enabled pivot context")
 	}
 }
 

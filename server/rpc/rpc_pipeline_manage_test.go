@@ -8,6 +8,7 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
+	"github.com/chainreactors/malice-network/server/internal/db/models"
 )
 
 // ---------------------------------------------------------------------------
@@ -210,6 +211,58 @@ func TestListPipelines_AfterRegister(t *testing.T) {
 	}
 	if !found {
 		t.Fatal("registered pipeline not found in ListPipelines result")
+	}
+}
+
+func TestListPipelinesReportsRuntimeAvailability(t *testing.T) {
+	_ = newRPCTestEnv(t)
+	pipeline := &clientpb.Pipeline{
+		Name:       "runtime-authority-pipe",
+		ListenerId: "runtime-authority-listener",
+		Enable:     true,
+		Ip:         "127.0.0.1",
+		Type:       consts.TCPPipeline,
+		Secure:     &clientpb.Secure{},
+		Body: &clientpb.Pipeline_Tcp{Tcp: &clientpb.TCPPipeline{
+			Name:       "runtime-authority-pipe",
+			ListenerId: "runtime-authority-listener",
+			Host:       "127.0.0.1",
+			Port:       7788,
+		}},
+	}
+	if _, err := db.SavePipeline(models.FromPipelinePb(pipeline)); err != nil {
+		t.Fatalf("SavePipeline error: %v", err)
+	}
+
+	list := func() *clientpb.Pipeline {
+		t.Helper()
+		resp, err := (&Server{}).ListPipelines(context.Background(), &clientpb.Listener{Id: pipeline.ListenerId})
+		if err != nil {
+			t.Fatalf("ListPipelines error: %v", err)
+		}
+		for _, candidate := range resp.GetPipelines() {
+			if candidate.GetName() == pipeline.Name {
+				return candidate
+			}
+		}
+		t.Fatalf("pipeline %q missing from ListPipelines result", pipeline.Name)
+		return nil
+	}
+
+	if got := list(); got.GetEnable() {
+		t.Fatal("persisted pipeline without a live listener runtime should be reported as disabled")
+	}
+
+	listener := core.NewListener(pipeline.ListenerId, pipeline.Ip)
+	core.Listeners.Add(listener)
+	listener.AddPipeline(pipeline)
+	if got := list(); !got.GetEnable() {
+		t.Fatal("persisted enabled pipeline with a live runtime should be reported as enabled")
+	}
+
+	pipeline.Enable = false
+	if got := list(); got.GetEnable() {
+		t.Fatal("disabled runtime pipeline should be reported as disabled")
 	}
 }
 

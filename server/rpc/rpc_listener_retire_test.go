@@ -20,9 +20,17 @@ func TestRetireListenerPushesCtrlAndRevokesOperator(t *testing.T) {
 	withIsolatedPipelinesCh(t)
 	seedForwardAdminOperator(t, "admin-client", "admin-retire-fp")
 	seedForwardListenerOperator(t, "listener-retire", "listener-retire-fp")
+	oldBroker := core.EventBroker
+	core.EventBroker = core.NewBroker()
+	t.Cleanup(func() {
+		core.EventBroker.Stop()
+		core.EventBroker = oldBroker
+	})
 
 	lns := core.NewListener("listener-retire", "10.0.0.8")
 	core.Listeners.Add(lns)
+	events := subscribeEventBrokerReady(t, core.EventBroker)
+	defer core.EventBroker.Unsubscribe(events)
 	go func() {
 		ctrl := <-lns.Ctrl
 		if ctrl.GetCtrl() != consts.CtrlListenerRetire {
@@ -57,6 +65,10 @@ func TestRetireListenerPushesCtrlAndRevokesOperator(t *testing.T) {
 	}
 	if !op.Revoked || op.Type != mtls.Listener {
 		t.Fatalf("operator = %#v, want revoked listener operator", op)
+	}
+	event := waitForLifecycleEvent(t, events, consts.CtrlListenerStop)
+	if event.EventType != consts.EventListener || event.Listener.GetId() != "listener-retire" || event.Listener.GetActive() {
+		t.Fatalf("listener retire event = %#v, want inactive listener_stop", event)
 	}
 }
 

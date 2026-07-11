@@ -120,8 +120,9 @@ func TestReconcileEventTracksWebsiteLifecycle(t *testing.T) {
 	}
 
 	website := &clientpb.Pipeline{
-		Name: "site-alpha",
-		Type: consts.WebsitePipeline,
+		Name:   "site-alpha",
+		Type:   consts.WebsitePipeline,
+		Enable: true,
 		Body: &clientpb.Pipeline_Web{
 			Web: &clientpb.Website{
 				Name:     "site-alpha",
@@ -133,7 +134,7 @@ func TestReconcileEventTracksWebsiteLifecycle(t *testing.T) {
 	}
 
 	state.ReconcileEvent(&clientpb.Event{
-		Type: consts.EventJob,
+		Type: consts.EventWebsite,
 		Op:   consts.CtrlWebsiteStart,
 		Job: &clientpb.Job{
 			Pipeline: website,
@@ -144,16 +145,30 @@ func TestReconcileEventTracksWebsiteLifecycle(t *testing.T) {
 		t.Fatal("website start event should populate client pipeline cache")
 	}
 
+	stoppedWebsite := proto.Clone(website).(*clientpb.Pipeline)
+	stoppedWebsite.Enable = false
 	state.ReconcileEvent(&clientpb.Event{
-		Type: consts.EventJob,
+		Type: consts.EventWebsite,
 		Op:   consts.CtrlWebsiteStop,
 		Job: &clientpb.Job{
-			Pipeline: website,
+			Pipeline: stoppedWebsite,
+		},
+	})
+
+	if got := state.Pipelines["site-alpha"]; got == nil || got.Enable {
+		t.Fatalf("website stop event should retain a disabled cache entry, got %#v", got)
+	}
+
+	state.ReconcileEvent(&clientpb.Event{
+		Type: consts.EventWebsite,
+		Op:   consts.CtrlWebsiteDelete,
+		Job: &clientpb.Job{
+			Pipeline: stoppedWebsite,
 		},
 	})
 
 	if _, ok := state.Pipelines["site-alpha"]; ok {
-		t.Fatal("website stop event should remove client pipeline cache entry")
+		t.Fatal("website delete event should remove client pipeline cache entry")
 	}
 }
 
@@ -166,11 +181,13 @@ func TestReconcileEventScopesDuplicatePipelineNames(t *testing.T) {
 		Name:       "shared-pipe",
 		ListenerId: "listener-a",
 		Type:       consts.TCPPipeline,
+		Enable:     true,
 	}
 	pipelineB := &clientpb.Pipeline{
 		Name:       "shared-pipe",
 		ListenerId: "listener-b",
 		Type:       consts.TCPPipeline,
+		Enable:     true,
 	}
 
 	state.ReconcileEvent(&clientpb.Event{
@@ -197,15 +214,29 @@ func TestReconcileEventScopesDuplicatePipelineNames(t *testing.T) {
 		t.Fatalf("listener B scoped key missing, got %#v", got)
 	}
 
+	stoppedPipelineB := proto.Clone(pipelineB).(*clientpb.Pipeline)
+	stoppedPipelineB.Enable = false
 	state.ReconcileEvent(&clientpb.Event{
 		Type: consts.EventJob,
 		Op:   consts.CtrlPipelineStop,
-		Job:  &clientpb.Job{Pipeline: pipelineB},
+		Job:  &clientpb.Job{Pipeline: stoppedPipelineB},
+	})
+	if got := state.Pipelines[iomclient.PipelineCacheKey(pipelineB)]; got == nil || got.Enable {
+		t.Fatalf("stopped scoped pipeline should remain disabled, got %#v", got)
+	}
+	if _, ok := state.Pipelines["shared-pipe"]; ok {
+		t.Fatal("bare pipeline key should remain absent while duplicate names are registered")
+	}
+
+	state.ReconcileEvent(&clientpb.Event{
+		Type: consts.EventJob,
+		Op:   consts.CtrlPipelineDelete,
+		Job:  &clientpb.Job{Pipeline: stoppedPipelineB},
 	})
 	if _, ok := state.Pipelines[iomclient.PipelineCacheKey(pipelineB)]; ok {
-		t.Fatal("stopped scoped pipeline should be removed")
+		t.Fatal("deleted scoped pipeline should be removed")
 	}
-	if got := state.Pipelines["shared-pipe"]; got == nil || got.ListenerId != "listener-a" {
+	if got := state.Pipelines["shared-pipe"]; got == nil || got.ListenerId != "listener-a" || !got.Enable {
 		t.Fatalf("remaining unique pipeline should be promoted to bare key, got %#v", got)
 	}
 }

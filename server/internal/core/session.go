@@ -649,6 +649,7 @@ func (s *Session) PushUpdate(msg string) {
 		Op:        consts.CtrlSessionUpdate,
 		Session:   s.ToProtobufLite(),
 		Message:   msg,
+		Important: true,
 	})
 }
 

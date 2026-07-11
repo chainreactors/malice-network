@@ -682,6 +682,32 @@ func RemoveContent(id string) error {
 	return NewWebContentQuery().WhereID(contentID).Delete()
 }
 
+// RestoreContent restores an exact website content snapshot after a runtime
+// control failure. It preserves the original ID and metadata.
+func RestoreContent(content *models.WebsiteContent, data []byte) error {
+	if content == nil {
+		return errors.New("content is nil")
+	}
+
+	restored := *content
+	restored.Pipeline = nil
+	if err := Session().Session(&gorm.Session{SkipHooks: true}).Omit("Pipeline").Save(&restored).Error; err != nil {
+		return err
+	}
+	if restored.Type != "raw" {
+		return nil
+	}
+
+	contentPath, err := fileutils.SafeJoin(configs.WebsitePath, filepath.Join(restored.StorageKey(), restored.ID.String()))
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(contentPath), 0o700); err != nil {
+		return err
+	}
+	return os.WriteFile(contentPath, data, 0o600)
+}
+
 // FindEnabledWebsites - Get all enabled websites from database
 func FindEnabledWebsites() (Pipelines, error) {
 	return NewPipelineQuery().WhereType(consts.WebsitePipeline).WhereEnabled(true).WithCert().Find()

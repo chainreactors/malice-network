@@ -467,7 +467,7 @@ func (broker *eventBroker) recordV2Event(event Event) SequencedEvent {
 		OccurredAt: time.Now(),
 		Event:      &eventCopy,
 	}
-	if event.EventType == consts.EventHeartbeat {
+	if event.EventType == consts.EventHeartbeat || !event.Important {
 		sequenced.OldestSequence, sequenced.LatestSequence = broker.v2Bounds()
 		return sequenced
 	}
@@ -532,7 +532,9 @@ func (broker *eventBroker) dispatchV2(subscriber *eventV2Subscriber, event Seque
 	select {
 	case subscriber.channel <- event:
 	default:
-		subscriber.needsReset = true
+		if event.Event == nil || event.Event.Important {
+			subscriber.needsReset = true
+		}
 	}
 	return nil
 }

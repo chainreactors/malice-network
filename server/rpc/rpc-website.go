@@ -84,6 +84,34 @@ func publishWebsiteLifecycleEvent(operation, name, listenerID string, pipeline *
 	})
 }
 
+func publishWebsiteContentLifecycleEvent(operation, name, listenerID string, pipeline *clientpb.Pipeline, contents map[string]*clientpb.WebContent) {
+	if pipeline == nil {
+		pipeline = &clientpb.Pipeline{
+			Name:       name,
+			ListenerId: listenerID,
+			Type:       consts.WebsitePipeline,
+		}
+	}
+	core.EventBroker.Publish(core.Event{
+		EventType: consts.EventWebsite,
+		Op:        operation,
+		Job: &clientpb.Job{
+			Name:     name,
+			Pipeline: pipeline,
+			Contents: contents,
+		},
+		Important: true,
+		Message:   fmt.Sprintf("website %s content changed", name),
+	})
+}
+
+func restoreWebsiteContent(snapshot *models.WebsiteContent, data []byte, operationErr error) error {
+	if rollbackErr := db.RestoreContent(snapshot, data); rollbackErr != nil {
+		return fmt.Errorf("%v; rollback failed: %w", operationErr, rollbackErr)
+	}
+	return operationErr
+}
+
 func cloneWebsiteJob(job *core.Job, contents map[string]*clientpb.WebContent) *clientpb.Job {
 	if job == nil {
 		return nil
@@ -160,6 +188,23 @@ func (rpc *Server) AddWebsiteContent(ctx context.Context, req *clientpb.Website)
 			return nil, err
 		}
 	}
+	type contentSnapshot struct {
+		model *models.WebsiteContent
+		data  []byte
+	}
+	snapshots := make(map[string]contentSnapshot)
+	if job != nil {
+		existingContents, findErr := db.FindWebContentsByWebsiteAndListener(website.Name, website.ListenerId)
+		if findErr != nil {
+			return nil, findErr
+		}
+		for _, existing := range existingContents {
+			snapshots[existing.Path] = contentSnapshot{
+				model: existing,
+				data:  existing.ToProtobuf(true).GetContent(),
+			}
+		}
+	}
 	var contentModel *models.WebsiteContent
 	if len(req.Contents) != 0 {
 		for _, content := range req.Contents {
@@ -174,23 +219,41 @@ func (rpc *Server) AddWebsiteContent(ctx context.Context, req *clientpb.Website)
 				return nil, err
 			}
 			if job != nil {
-				lns.PushCtrl(&clientpb.JobCtrl{
+				previous, overwritten := snapshots[content.Path]
+				rollback := func(operationErr error) error {
+					if overwritten {
+						return restoreWebsiteContent(previous.model, previous.data, operationErr)
+					}
+					if rollbackErr := db.RemoveContent(contentModel.ID.String()); rollbackErr != nil {
+						return fmt.Errorf("%v; rollback failed: %w", operationErr, rollbackErr)
+					}
+					return operationErr
+				}
+				ctrlID := lns.PushCtrlDeferredEvent(ctx, &clientpb.JobCtrl{
 					Ctrl:    consts.CtrlWebContentAdd,
 					Job:     job.ToProtobuf(),
 					Content: content,
 				})
+				if ctrlID == 0 {
+					queueErr := fmt.Errorf("add website content %s failed: listener control was not queued", content.Path)
+					return nil, rollback(queueErr)
+				}
+				if statusErr := waitForCtrlStatus("add website content", content.Path, lns.WaitCtrl(ctrlID)); statusErr != nil {
+					return nil, rollback(statusErr)
+				}
+				snapshots[content.Path] = contentSnapshot{
+					model: contentModel,
+					data:  append([]byte(nil), content.GetContent()...),
+				}
 			}
+			publishWebsiteContentLifecycleEvent(consts.CtrlWebContentAdd, website.Name, website.ListenerId, website.ToProtobuf(), map[string]*clientpb.WebContent{
+				content.Path: contentModel.ToProtobuf(false),
+			})
 		}
 	}
 	if contentModel == nil {
 		return nil, errors.New("no content provided")
 	}
-	if job == nil {
-		// An active website reports this operation through JobStatus. Only
-		// fill the event gap when no runtime control message was sent.
-		publishWebsiteLifecycleEvent(consts.CtrlWebContentAdd, website.Name, website.ListenerId, website.ToProtobuf())
-	}
-
 	return contentModel.ToProtobuf(false), nil
 }
 
@@ -221,6 +284,7 @@ func (rpc *Server) UpdateWebsiteContent(ctx context.Context, req *clientpb.WebCo
 	if req.ListenerId == "" && existingContent.Pipeline != nil {
 		req.ListenerId = existingContent.Pipeline.ListenerId
 	}
+	existingData := existingContent.ToProtobuf(true).GetContent()
 
 	content, err := db.AddContent(req)
 	if err != nil {
@@ -229,24 +293,31 @@ func (rpc *Server) UpdateWebsiteContent(ctx context.Context, req *clientpb.WebCo
 
 	website, job, err := getWebsiteRuntime(req.WebsiteId, req.ListenerId)
 	if err != nil {
-		return nil, err
+		return nil, restoreWebsiteContent(existingContent, existingData, err)
 	}
 	if job != nil {
 		lns, err := core.Listeners.Get(website.ListenerId)
 		if err != nil {
-			return nil, err
+			return nil, restoreWebsiteContent(existingContent, existingData, err)
 		}
-		lns.PushCtrl(&clientpb.JobCtrl{
+		ctrlID := lns.PushCtrlDeferredEvent(ctx, &clientpb.JobCtrl{
 			Ctrl: consts.CtrlWebContentUpdate,
 			Job: cloneWebsiteJob(job, map[string]*clientpb.WebContent{
 				content.Path: content.ToProtobuf(false),
 			}),
 			Content: content.ToProtobuf(true),
 		})
+		if ctrlID == 0 {
+			queueErr := fmt.Errorf("update website content %s failed: listener control was not queued", content.Path)
+			return nil, restoreWebsiteContent(existingContent, existingData, queueErr)
+		}
+		if statusErr := waitForCtrlStatus("update website content", content.Path, lns.WaitCtrl(ctrlID)); statusErr != nil {
+			return nil, restoreWebsiteContent(existingContent, existingData, statusErr)
+		}
 	}
-	if job == nil {
-		publishWebsiteLifecycleEvent(consts.CtrlWebContentUpdate, website.Name, website.ListenerId, website.ToProtobuf())
-	}
+	publishWebsiteContentLifecycleEvent(consts.CtrlWebContentUpdate, website.Name, website.ListenerId, website.ToProtobuf(), map[string]*clientpb.WebContent{
+		content.Path: content.ToProtobuf(false),
+	})
 
 	return content.ToProtobuf(false), nil
 }
@@ -259,7 +330,13 @@ func (rpc *Server) UpdateWebsiteContentMetadata(ctx context.Context, req *client
 	if err != nil {
 		return nil, err
 	}
-	publishWebsiteLifecycleEvent(consts.CtrlWebContentUpdate, content.PipelineID, content.ListenerID, nil)
+	var pipeline *clientpb.Pipeline
+	if content.Pipeline != nil {
+		pipeline = content.Pipeline.ToProtobuf()
+	}
+	publishWebsiteContentLifecycleEvent(consts.CtrlWebContentUpdate, content.PipelineID, content.ListenerID, pipeline, map[string]*clientpb.WebContent{
+		content.Path: content.ToProtobuf(false),
+	})
 	return content.ToProtobuf(false), nil
 }
 
@@ -272,29 +349,31 @@ func (rpc *Server) RemoveWebsiteContent(ctx context.Context, req *clientpb.WebCo
 	if err != nil {
 		return nil, err
 	}
-	if req.WebsiteId == "" {
-		req.WebsiteId = existingContent.PipelineID
-	}
-	if req.Path == "" {
-		req.Path = existingContent.Path
-	}
-	if req.ListenerId == "" {
-		req.ListenerId = existingContent.ListenerID
-	}
+	req.WebsiteId = existingContent.PipelineID
+	req.Path = existingContent.Path
+	req.ListenerId = existingContent.ListenerID
 	if req.ListenerId == "" && existingContent.Pipeline != nil {
 		req.ListenerId = existingContent.Pipeline.ListenerId
 	}
+	existingData := existingContent.ToProtobuf(true).GetContent()
 
 	website, job, err := getWebsiteRuntime(req.WebsiteId, req.ListenerId)
 	if err != nil {
 		return nil, err
 	}
+	var lns *core.Listener
 	if job != nil {
-		lns, err := core.Listeners.Get(website.ListenerId)
+		lns, err = core.Listeners.Get(website.ListenerId)
 		if err != nil {
 			return nil, err
 		}
-		lns.PushCtrl(&clientpb.JobCtrl{
+	}
+
+	if err = db.RemoveContent(req.Id); err != nil {
+		return nil, err
+	}
+	if job != nil {
+		ctrlID := lns.PushCtrlDeferredEvent(ctx, &clientpb.JobCtrl{
 			Ctrl: consts.CtrlWebContentRemove,
 			Job: cloneWebsiteJob(job, map[string]*clientpb.WebContent{
 				req.Path: {
@@ -302,15 +381,17 @@ func (rpc *Server) RemoveWebsiteContent(ctx context.Context, req *clientpb.WebCo
 				},
 			}),
 		})
+		if ctrlID == 0 {
+			queueErr := fmt.Errorf("remove website content %s failed: listener control was not queued", req.Path)
+			return nil, restoreWebsiteContent(existingContent, existingData, queueErr)
+		}
+		if statusErr := waitForCtrlStatus("remove website content", req.Path, lns.WaitCtrl(ctrlID)); statusErr != nil {
+			return nil, restoreWebsiteContent(existingContent, existingData, statusErr)
+		}
 	}
-
-	err = db.RemoveContent(req.Id)
-	if err != nil {
-		return nil, err
-	}
-	if job == nil {
-		publishWebsiteLifecycleEvent(consts.CtrlWebContentRemove, website.Name, website.ListenerId, website.ToProtobuf())
-	}
+	publishWebsiteContentLifecycleEvent(consts.CtrlWebContentRemove, website.Name, website.ListenerId, website.ToProtobuf(), map[string]*clientpb.WebContent{
+		req.Path: {Path: req.Path},
+	})
 	return &clientpb.Empty{}, nil
 }
 
@@ -402,7 +483,7 @@ func (rpc *Server) StartWebsite(ctx context.Context, req *clientpb.CtrlPipeline)
 		Pipeline: webpb,
 		Name:     webpipe.Name,
 	}
-	ctrlID := listener.PushCtrl(&clientpb.JobCtrl{
+	ctrlID := listener.PushCtrlDeferredEvent(ctx, &clientpb.JobCtrl{
 		Ctrl: consts.CtrlWebsiteStart,
 		Job:  job.ToProtobuf(),
 	})
@@ -418,6 +499,7 @@ func (rpc *Server) StartWebsite(ctx context.Context, req *clientpb.CtrlPipeline)
 		return nil, err
 	}
 	core.Jobs.AddPipeline(webpb)
+	publishWebsiteLifecycleEvent(consts.CtrlWebsiteStart, webpb.Name, webpb.ListenerId, webpb)
 
 	artifacts, err := db.GetValidArtifacts()
 	if err != nil {
@@ -598,13 +680,12 @@ func (rpc *Server) StopWebsite(ctx context.Context, req *clientpb.CtrlPipeline) 
 		return nil, err
 	}
 
-	controlReported := false
 	if job != nil {
 		listener, err := core.Listeners.Get(website.ListenerId)
 		if err != nil {
 			core.Jobs.Remove(website.ListenerId, website.Name)
 		} else {
-			ctrlID := listener.PushCtrl(&clientpb.JobCtrl{
+			ctrlID := listener.PushCtrlDeferredEvent(ctx, &clientpb.JobCtrl{
 				Ctrl: consts.CtrlWebsiteStop,
 				Job:  job.ToProtobuf(),
 			})
@@ -612,7 +693,6 @@ func (rpc *Server) StopWebsite(ctx context.Context, req *clientpb.CtrlPipeline) 
 			if err := waitForCtrlStatus("stop website", req.Name, status); err != nil {
 				return nil, err
 			}
-			controlReported = true
 		}
 	}
 
@@ -627,9 +707,9 @@ func (rpc *Server) StopWebsite(ctx context.Context, req *clientpb.CtrlPipeline) 
 			core.Jobs.Remove(website.ListenerId, website.Name)
 		}
 	}
-	if !controlReported {
-		publishWebsiteLifecycleEvent(consts.CtrlWebsiteStop, website.Name, website.ListenerId, website.ToProtobuf())
-	}
+	persisted := website.ToProtobuf()
+	persisted.Enable = false
+	publishWebsiteLifecycleEvent(consts.CtrlWebsiteStop, website.Name, website.ListenerId, persisted)
 	return &clientpb.Empty{}, nil
 }
 
@@ -663,7 +743,7 @@ func (rpc *Server) DeleteWebsite(ctx context.Context, req *clientpb.CtrlPipeline
 	}
 	if job != nil {
 		if listener, err := core.Listeners.Get(website.ListenerId); err == nil {
-			ctrlID := listener.PushCtrl(&clientpb.JobCtrl{
+			ctrlID := listener.PushCtrlDeferredEvent(ctx, &clientpb.JobCtrl{
 				Ctrl: consts.CtrlWebsiteStop,
 				Job:  job.ToProtobuf(),
 			})

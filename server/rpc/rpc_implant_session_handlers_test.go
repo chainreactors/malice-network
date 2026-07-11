@@ -95,6 +95,10 @@ func TestSleepDispatchesRequestAndUpdatesSession(t *testing.T) {
 		stored := sess.Tasks.Get(task.TaskId)
 		return stored != nil && stored.Finished()
 	}, "sleep task to finish")
+	waitForCondition(t, 2*time.Second, func() bool {
+		_, pending := sess.GetResp(task.TaskId)
+		return !pending
+	}, "sleep response handler to finish cleanup")
 }
 
 func TestKeepaliveEnablesSessionAfterResponse(t *testing.T) {
@@ -130,6 +134,10 @@ func TestKeepaliveEnablesSessionAfterResponse(t *testing.T) {
 		Body: &implantpb.Spite_Common{Common: &implantpb.CommonBody{Name: consts.ModuleKeepalive}},
 	})
 	waitForCondition(t, 2*time.Second, sess.IsKeepaliveEnabled, "keepalive to become enabled")
+	waitForCondition(t, 2*time.Second, func() bool {
+		_, pending := sess.GetResp(task.TaskId)
+		return !pending
+	}, "keepalive response handler to finish cleanup")
 }
 
 func TestInfoUpdatesSessionSysinfoFromResponse(t *testing.T) {
@@ -156,8 +164,12 @@ func TestInfoUpdatesSessionSysinfoFromResponse(t *testing.T) {
 		}},
 	})
 	waitForCondition(t, 2*time.Second, func() bool {
-		return sess.Os != nil && sess.Os.Name == "linux" && sess.Os.Arch == "x64"
-	}, "session sysinfo update")
+		_, pending := sess.GetResp(task.TaskId)
+		return !pending
+	}, "info response handler to finish cleanup")
+	if sess.Os == nil || sess.Os.Name != "linux" || sess.Os.Arch != "x64" {
+		t.Fatalf("session OS = %#v, want normalized linux/x64", sess.Os)
+	}
 }
 
 func TestGetSessionReturnsDatabaseRecordWithoutRecovery(t *testing.T) {

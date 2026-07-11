@@ -200,6 +200,8 @@ func TestAddWebsiteContentPersistsRawArtifactPayload(t *testing.T) {
 	})); err != nil {
 		t.Fatalf("SavePipeline failed: %v", err)
 	}
+	events := subscribeEventBrokerReady(t, core.EventBroker)
+	defer core.EventBroker.Unsubscribe(events)
 	content, err := server.AddWebsiteContent(context.Background(), &clientpb.Website{
 		Name:       "site-artifact",
 		ListenerId: "listener-a",
@@ -230,6 +232,11 @@ func TestAddWebsiteContentPersistsRawArtifactPayload(t *testing.T) {
 	storedPb := stored.ToProtobuf(true)
 	if string(storedPb.GetContent()) != "artifact-payload" || storedPb.GetName() != "payload" || storedPb.GetComment() != "from artifact" || storedPb.GetAuth() != "none" {
 		t.Fatalf("stored content = %#v, want artifact payload with metadata", storedPb)
+	}
+	event := waitForLifecycleEvent(t, events, consts.CtrlWebContentAdd)
+	eventContent := event.Job.GetContents()["/payload.bin"]
+	if event.EventType != consts.EventWebsite || eventContent.GetComment() != "from artifact" || eventContent.GetName() != "payload" {
+		t.Fatalf("website content event = %#v, want complete committed content", event)
 	}
 }
 
@@ -513,7 +520,7 @@ func TestUpdateWebsiteContentMetadataReturnsUpdatedListFields(t *testing.T) {
 		t.Fatalf("updated metadata = name %q comment %q, want payload/staged content", updated.Name, updated.Comment)
 	}
 	event := waitForLifecycleEvent(t, events, consts.CtrlWebContentUpdate)
-	if event.EventType != consts.EventWebsite || event.Job.GetPipeline().GetName() != "site-metadata" {
+	if event.EventType != consts.EventWebsite || event.Job.GetPipeline().GetName() != "site-metadata" || event.Job.GetContents()["/payload.bin"].GetComment() != "staged content" {
 		t.Fatalf("unexpected website metadata event: %#v", event)
 	}
 	updated, err = server.UpdateWebsiteContentMetadata(context.Background(), &clientpb.WebContent{
@@ -578,17 +585,19 @@ func TestUpdateWebsiteContentUsesSingleRuntimeUpdateEvent(t *testing.T) {
 	events := subscribeEventBrokerReady(t, core.EventBroker)
 	defer core.EventBroker.Unsubscribe(events)
 
-	updated, err := server.UpdateWebsiteContent(context.Background(), &clientpb.WebContent{
-		Id:      content.ID.String(),
-		Comment: "updated",
-		Content: []byte("new"),
-	})
-	if err != nil {
-		t.Fatalf("UpdateWebsiteContent failed: %v", err)
+	type updateResult struct {
+		content *clientpb.WebContent
+		err     error
 	}
-	if updated.Comment != "updated" {
-		t.Fatalf("updated comment = %q, want updated", updated.Comment)
-	}
+	result := make(chan updateResult, 1)
+	go func() {
+		updated, updateErr := server.UpdateWebsiteContent(context.Background(), &clientpb.WebContent{
+			Id:      content.ID.String(),
+			Comment: "updated",
+			Content: []byte("new"),
+		})
+		result <- updateResult{content: updated, err: updateErr}
+	}()
 
 	var ctrl *clientpb.JobCtrl
 	select {
@@ -599,17 +608,101 @@ func TestUpdateWebsiteContentUsesSingleRuntimeUpdateEvent(t *testing.T) {
 	if ctrl.Ctrl != consts.CtrlWebContentUpdate {
 		t.Fatalf("control operation = %q, want %q", ctrl.Ctrl, consts.CtrlWebContentUpdate)
 	}
+	listener.CtrlJob.Store(ctrl.Id, nil)
 	if got := ctrl.Job.GetPipeline().GetWeb().GetContents()["/payload.bin"].GetComment(); got != "updated" {
 		t.Fatalf("event content comment = %q, want updated", got)
 	}
 	if got := string(ctrl.Content.GetContent()); got != "new" {
 		t.Fatalf("runtime content = %q, want new", got)
 	}
-
 	select {
-	case event := <-events:
-		t.Fatalf("received lifecycle event before runtime status: %#v", event)
-	case <-time.After(100 * time.Millisecond):
+	case got := <-result:
+		t.Fatalf("UpdateWebsiteContent returned before runtime acknowledgement: content=%#v err=%v", got.content, got.err)
+	case <-time.After(50 * time.Millisecond):
+	}
+
+	assertNoLifecycleEvent(t, events, consts.CtrlWebContentUpdate, 100*time.Millisecond)
+
+	handleJobStatus(listener, &clientpb.JobStatus{
+		CtrlId: ctrl.Id,
+		Ctrl:   ctrl.Ctrl,
+		Status: consts.CtrlStatusSuccess,
+		Job:    ctrl.Job,
+	})
+	select {
+	case got := <-result:
+		if got.err != nil {
+			t.Fatalf("UpdateWebsiteContent failed: %v", got.err)
+		}
+		if got.content.GetComment() != "updated" {
+			t.Fatalf("updated comment = %q, want updated", got.content.GetComment())
+		}
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for UpdateWebsiteContent result")
+	}
+	event := waitForLifecycleEvent(t, events, consts.CtrlWebContentUpdate)
+	if event.EventType != consts.EventWebsite || event.Job.GetContents()["/payload.bin"].GetComment() != "updated" {
+		t.Fatalf("website update event = %#v, want complete committed content", event)
+	}
+}
+
+func TestRemoveWebsiteContentDeletesBeforeRuntimeStatus(t *testing.T) {
+	newRPCTestEnv(t)
+	server := &Server{}
+	listener := core.NewListener("listener-content-remove", "127.0.0.1")
+	core.Listeners.Add(listener)
+	pipeline := &clientpb.Pipeline{
+		Name:       "site-content-remove",
+		ListenerId: listener.Name,
+		Type:       consts.WebsitePipeline,
+		Enable:     true,
+		Body: &clientpb.Pipeline_Web{Web: &clientpb.Website{
+			Name:       "site-content-remove",
+			ListenerId: listener.Name,
+			Root:       "/",
+			Port:       8080,
+		}},
+	}
+	if _, err := db.SavePipeline(models.FromPipelinePb(pipeline)); err != nil {
+		t.Fatalf("SavePipeline failed: %v", err)
+	}
+	content, err := db.AddContent(&clientpb.WebContent{
+		WebsiteId:  pipeline.Name,
+		ListenerId: listener.Name,
+		Path:       "/payload.bin",
+		Type:       "raw",
+		Content:    []byte("old"),
+	})
+	if err != nil {
+		t.Fatalf("AddContent failed: %v", err)
+	}
+	core.Jobs.AddPipeline(pipeline)
+	events := subscribeEventBrokerReady(t, core.EventBroker)
+	defer core.EventBroker.Unsubscribe(events)
+
+	result := make(chan error, 1)
+	go func() {
+		_, removeErr := server.RemoveWebsiteContent(context.Background(), &clientpb.WebContent{Id: content.ID.String()})
+		result <- removeErr
+	}()
+
+	var ctrl *clientpb.JobCtrl
+	select {
+	case ctrl = <-listener.Ctrl:
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for website content remove control")
+	}
+	if ctrl.Ctrl != consts.CtrlWebContentRemove {
+		t.Fatalf("control operation = %q, want %q", ctrl.Ctrl, consts.CtrlWebContentRemove)
+	}
+	listener.CtrlJob.Store(ctrl.Id, nil)
+	if _, err := db.FindWebContent(content.ID.String()); err == nil {
+		t.Fatal("content should be deleted before the runtime success event is published")
+	}
+	select {
+	case err := <-result:
+		t.Fatalf("RemoveWebsiteContent returned before runtime acknowledgement: %v", err)
+	case <-time.After(50 * time.Millisecond):
 	}
 
 	handleJobStatus(listener, &clientpb.JobStatus{
@@ -618,9 +711,235 @@ func TestUpdateWebsiteContentUsesSingleRuntimeUpdateEvent(t *testing.T) {
 		Status: consts.CtrlStatusSuccess,
 		Job:    ctrl.Job,
 	})
-	event := waitForLifecycleEvent(t, events, consts.CtrlWebContentUpdate)
-	if event.EventType != consts.EventJob {
-		t.Fatalf("event type = %q, want %q", event.EventType, consts.EventJob)
+	select {
+	case err := <-result:
+		if err != nil {
+			t.Fatalf("RemoveWebsiteContent failed: %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for RemoveWebsiteContent result")
+	}
+	event := waitForLifecycleEvent(t, events, consts.CtrlWebContentRemove)
+	if event.EventType != consts.EventWebsite || event.Job.GetContents()["/payload.bin"].GetPath() != "/payload.bin" {
+		t.Fatalf("website remove event = %#v, want removed path", event)
+	}
+}
+
+func TestRemoveWebsiteContentUsesPersistedIdentity(t *testing.T) {
+	newRPCTestEnv(t)
+	pipeline := &clientpb.Pipeline{
+		Name:       "site-content-remove-identity",
+		ListenerId: "listener-content-remove-identity",
+		Type:       consts.WebsitePipeline,
+		Body: &clientpb.Pipeline_Web{Web: &clientpb.Website{
+			Name:       "site-content-remove-identity",
+			ListenerId: "listener-content-remove-identity",
+			Root:       "/",
+			Port:       8080,
+		}},
+	}
+	if _, err := db.SavePipeline(models.FromPipelinePb(pipeline)); err != nil {
+		t.Fatalf("SavePipeline failed: %v", err)
+	}
+	content, err := db.AddContent(&clientpb.WebContent{
+		WebsiteId:  pipeline.Name,
+		ListenerId: pipeline.ListenerId,
+		Path:       "/payload.bin",
+		Type:       "raw",
+		Content:    []byte("payload"),
+	})
+	if err != nil {
+		t.Fatalf("AddContent failed: %v", err)
+	}
+	events := subscribeEventBrokerReady(t, core.EventBroker)
+	defer core.EventBroker.Unsubscribe(events)
+
+	if _, err := (&Server{}).RemoveWebsiteContent(context.Background(), &clientpb.WebContent{
+		Id:         content.ID.String(),
+		WebsiteId:  "stale-website",
+		ListenerId: "stale-listener",
+		Path:       "/stale.bin",
+	}); err != nil {
+		t.Fatalf("RemoveWebsiteContent should use persisted identity: %v", err)
+	}
+	if _, err := db.FindWebContent(content.ID.String()); err == nil {
+		t.Fatal("persisted content was not removed")
+	}
+	event := waitForLifecycleEvent(t, events, consts.CtrlWebContentRemove)
+	if got := event.Job.GetPipeline(); got.GetName() != pipeline.Name || got.GetListenerId() != pipeline.ListenerId {
+		t.Fatalf("remove event pipeline = %#v, want persisted website identity", got)
+	}
+	if got := event.Job.GetContents()["/payload.bin"].GetPath(); got != "/payload.bin" {
+		t.Fatalf("remove event path = %q, want persisted path", got)
+	}
+}
+
+func TestRemoveWebsiteContentRollsBackWhenControlCannotQueue(t *testing.T) {
+	newRPCTestEnv(t)
+	server := &Server{}
+	listener := core.NewListener("listener-content-remove-rollback", "127.0.0.1")
+	core.Listeners.Add(listener)
+	pipeline := &clientpb.Pipeline{
+		Name:       "site-content-remove-rollback",
+		ListenerId: listener.Name,
+		Type:       consts.WebsitePipeline,
+		Enable:     true,
+		Body: &clientpb.Pipeline_Web{Web: &clientpb.Website{
+			Name:       "site-content-remove-rollback",
+			ListenerId: listener.Name,
+			Root:       "/",
+			Port:       8080,
+		}},
+	}
+	if _, err := db.SavePipeline(models.FromPipelinePb(pipeline)); err != nil {
+		t.Fatalf("SavePipeline failed: %v", err)
+	}
+	content, err := db.AddContent(&clientpb.WebContent{
+		WebsiteId:  pipeline.Name,
+		ListenerId: listener.Name,
+		Path:       "/payload.bin",
+		Type:       "raw",
+		Content:    []byte("old"),
+	})
+	if err != nil {
+		t.Fatalf("AddContent failed: %v", err)
+	}
+	core.Jobs.AddPipeline(pipeline)
+	for index := 0; index < cap(listener.Ctrl); index++ {
+		listener.Ctrl <- &clientpb.JobCtrl{Ctrl: consts.CtrlPipelineSync}
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err = server.RemoveWebsiteContent(ctx, &clientpb.WebContent{Id: content.ID.String()})
+	if err == nil {
+		t.Fatal("RemoveWebsiteContent should fail when runtime control cannot be queued")
+	}
+	stored, findErr := db.FindWebContent(content.ID.String())
+	if findErr != nil {
+		t.Fatalf("removed content was not restored: %v", findErr)
+	}
+	if got := string(stored.ToProtobuf(true).GetContent()); got != "old" {
+		t.Fatalf("restored content = %q, want old", got)
+	}
+}
+
+func TestUpdateWebsiteContentRollsBackWhenControlCannotQueue(t *testing.T) {
+	newRPCTestEnv(t)
+	server := &Server{}
+	listener := core.NewListener("listener-content-rollback", "127.0.0.1")
+	core.Listeners.Add(listener)
+	pipeline := &clientpb.Pipeline{
+		Name:       "site-content-rollback",
+		ListenerId: listener.Name,
+		Type:       consts.WebsitePipeline,
+		Enable:     true,
+		Body: &clientpb.Pipeline_Web{Web: &clientpb.Website{
+			Name:       "site-content-rollback",
+			ListenerId: listener.Name,
+			Root:       "/",
+			Port:       8080,
+		}},
+	}
+	if _, err := db.SavePipeline(models.FromPipelinePb(pipeline)); err != nil {
+		t.Fatalf("SavePipeline failed: %v", err)
+	}
+	content, err := db.AddContent(&clientpb.WebContent{
+		WebsiteId:  pipeline.Name,
+		ListenerId: listener.Name,
+		Path:       "/payload.bin",
+		Type:       "raw",
+		Comment:    "old",
+		Content:    []byte("old"),
+	})
+	if err != nil {
+		t.Fatalf("AddContent failed: %v", err)
+	}
+	core.Jobs.AddPipeline(pipeline)
+	for index := 0; index < cap(listener.Ctrl); index++ {
+		listener.Ctrl <- &clientpb.JobCtrl{Ctrl: consts.CtrlPipelineSync}
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err = server.UpdateWebsiteContent(ctx, &clientpb.WebContent{
+		Id:      content.ID.String(),
+		Comment: "updated",
+		Content: []byte("new"),
+	})
+	if err == nil {
+		t.Fatal("UpdateWebsiteContent should fail when runtime control cannot be queued")
+	}
+	stored, findErr := db.FindWebContent(content.ID.String())
+	if findErr != nil {
+		t.Fatalf("FindWebContent failed: %v", findErr)
+	}
+	storedPB := stored.ToProtobuf(true)
+	if storedPB.GetComment() != "old" || string(storedPB.GetContent()) != "old" {
+		t.Fatalf("stored content = comment %q body %q, want rolled back old values", storedPB.GetComment(), storedPB.GetContent())
+	}
+}
+
+func TestAddWebsiteContentRestoresExistingContentWhenControlCannotQueue(t *testing.T) {
+	newRPCTestEnv(t)
+	server := &Server{}
+	listener := core.NewListener("listener-content-add-rollback", "127.0.0.1")
+	core.Listeners.Add(listener)
+	pipeline := &clientpb.Pipeline{
+		Name:       "site-content-add-rollback",
+		ListenerId: listener.Name,
+		Type:       consts.WebsitePipeline,
+		Enable:     true,
+		Body: &clientpb.Pipeline_Web{Web: &clientpb.Website{
+			Name:       "site-content-add-rollback",
+			ListenerId: listener.Name,
+			Root:       "/",
+			Port:       8080,
+		}},
+	}
+	if _, err := db.SavePipeline(models.FromPipelinePb(pipeline)); err != nil {
+		t.Fatalf("SavePipeline failed: %v", err)
+	}
+	existing, err := db.AddContent(&clientpb.WebContent{
+		WebsiteId:  pipeline.Name,
+		ListenerId: listener.Name,
+		Path:       "/payload.bin",
+		Type:       "raw",
+		Comment:    "old",
+		Content:    []byte("old"),
+	})
+	if err != nil {
+		t.Fatalf("AddContent failed: %v", err)
+	}
+	core.Jobs.AddPipeline(pipeline)
+	for index := 0; index < cap(listener.Ctrl); index++ {
+		listener.Ctrl <- &clientpb.JobCtrl{Ctrl: consts.CtrlPipelineSync}
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err = server.AddWebsiteContent(ctx, &clientpb.Website{
+		Name:       pipeline.Name,
+		ListenerId: listener.Name,
+		Contents: map[string]*clientpb.WebContent{
+			"/payload.bin": {
+				Path:    "/payload.bin",
+				Type:    "raw",
+				Comment: "new",
+				Content: []byte("new"),
+			},
+		},
+	})
+	if err == nil {
+		t.Fatal("AddWebsiteContent should fail when runtime control cannot be queued")
+	}
+	stored, findErr := db.FindWebContent(existing.ID.String())
+	if findErr != nil {
+		t.Fatalf("overwritten content was not restored: %v", findErr)
+	}
+	storedPB := stored.ToProtobuf(true)
+	if storedPB.GetComment() != "old" || string(storedPB.GetContent()) != "old" {
+		t.Fatalf("restored content = comment %q body %q, want old values", storedPB.GetComment(), storedPB.GetContent())
 	}
 }
 

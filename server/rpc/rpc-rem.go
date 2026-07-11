@@ -120,6 +120,18 @@ func pivotBelongsToPipeline(pivot *output.PivotingContext, pipeline *clientpb.Pi
 	return false
 }
 
+func publishPivotLifecycleEvent(pivot *output.PivotingContext) {
+	if pivot == nil {
+		return
+	}
+	core.EventBroker.Publish(core.Event{
+		EventType: consts.EventPivot,
+		Op:        "pivot_" + pivot.InboundSide,
+		Message:   pivot.Abstract(),
+		Important: true,
+	})
+}
+
 func (rpc *Server) RegisterRem(ctx context.Context, req *clientpb.Pipeline) (*clientpb.Empty, error) {
 	if req == nil || req.GetRem() == nil {
 		return nil, types.ErrMissingRequestField
@@ -245,7 +257,10 @@ func (rpc *Server) StartRem(ctx context.Context, req *clientpb.CtrlPipeline) (*c
 	}
 
 	if existing := lns.GetPipeline(req.Name); existing != nil && existing.Enable {
-		_ = db.EnablePipelineByListener(req.Name, listenerID)
+		if err := db.EnablePipelineByListener(req.Name, listenerID); err != nil {
+			return nil, err
+		}
+		existing.Enable = true
 		publishPipelineLifecycleEvent(consts.CtrlRemStart, existing)
 		return &clientpb.Empty{}, nil
 	}
@@ -257,7 +272,7 @@ func (rpc *Server) StartRem(ctx context.Context, req *clientpb.CtrlPipeline) (*c
 		Name:     rem.Name,
 	}
 
-	ctrlID := lns.PushCtrl(&clientpb.JobCtrl{
+	ctrlID := lns.PushCtrlDeferredEvent(ctx, &clientpb.JobCtrl{
 		Ctrl: consts.CtrlRemStart,
 		Job:  job.ToProtobuf(),
 	})
@@ -271,10 +286,12 @@ func (rpc *Server) StartRem(ctx context.Context, req *clientpb.CtrlPipeline) (*c
 	if err := db.EnablePipelineByListener(rem.Name, listenerID); err != nil {
 		return nil, err
 	}
+	rem.Enable = true
 	// Do not call core.Jobs.AddPipeline(rem) here: the listener's
 	// handleStartRem already invoked SyncPipeline with the runtime-
 	// populated pipeline (Link, Subscribe, Port). Calling AddPipeline
 	// again with the stale DB snapshot would overwrite those values.
+	publishPipelineLifecycleEvent(consts.CtrlRemStart, rem)
 	return &clientpb.Empty{}, nil
 }
 
@@ -298,7 +315,7 @@ func (rpc *Server) DeleteRem(ctx context.Context, req *clientpb.CtrlPipeline) (*
 	}
 
 	if existing := lns.GetPipeline(req.Name); existing != nil {
-		ctrlID := lns.PushCtrl(&clientpb.JobCtrl{
+		ctrlID := lns.PushCtrlDeferredEvent(ctx, &clientpb.JobCtrl{
 			Ctrl: consts.CtrlRemStop,
 			Job: &clientpb.Job{
 				Id:       core.NextJobID(),
@@ -336,7 +353,9 @@ func (rpc *Server) StopRem(ctx context.Context, req *clientpb.CtrlPipeline) (*cl
 		if err := db.DisablePipelineByListener(req.Name, listenerID); err != nil {
 			return nil, err
 		}
-		publishPipelineLifecycleEvent(consts.CtrlRemStop, remDB.ToProtobuf())
+		persisted := remDB.ToProtobuf()
+		persisted.Enable = false
+		publishPipelineLifecycleEvent(consts.CtrlRemStop, persisted)
 		return &clientpb.Empty{}, nil
 	}
 
@@ -348,7 +367,7 @@ func (rpc *Server) StopRem(ctx context.Context, req *clientpb.CtrlPipeline) (*cl
 			Pipeline: pipe,
 		}
 
-		ctrlID := lns.PushCtrl(&clientpb.JobCtrl{
+		ctrlID := lns.PushCtrlDeferredEvent(ctx, &clientpb.JobCtrl{
 			Ctrl: consts.CtrlRemStop,
 			Job:  job.ToProtobuf(),
 		})
@@ -365,11 +384,10 @@ func (rpc *Server) StopRem(ctx context.Context, req *clientpb.CtrlPipeline) (*cl
 	}
 	if pipe != nil {
 		lns.RemovePipeline(pipe)
-	} else {
-		// No control status will arrive when the REM pipeline is already
-		// absent from the listener runtime.
-		publishPipelineLifecycleEvent(consts.CtrlRemStop, remDB.ToProtobuf())
 	}
+	persisted := remDB.ToProtobuf()
+	persisted.Enable = false
+	publishPipelineLifecycleEvent(consts.CtrlRemStop, persisted)
 	return &clientpb.Empty{}, nil
 }
 
@@ -530,11 +548,7 @@ func (rpc *Server) RemAgentCtrl(ctx context.Context, req *clientpb.REMAgent) (*c
 		pipe.GetRem().Agents = make(map[string]*clientpb.REMAgent)
 	}
 	pipe.GetRem().Agents[agent.Id] = agent
-	core.EventBroker.Publish(core.Event{
-		EventType: consts.EventPivot,
-		Op:        "pivot_" + pivot.InboundSide,
-		Message:   pivot.Abstract(),
-	})
+	publishPivotLifecycleEvent(pivot)
 	return &clientpb.Empty{}, nil
 }
 
@@ -619,6 +633,7 @@ func (rpc *Server) HealthCheckRem(ctx context.Context, req *clientpb.Pipeline) (
 			continue
 		}
 		knownAgents[piv.RemAgentID] = struct{}{}
+		changed := false
 		if _, ok := agents[piv.RemAgentID]; !ok && piv.Enable {
 			piv.Enable = false
 			c.Value = piv.Marshal()
@@ -626,6 +641,7 @@ func (rpc *Server) HealthCheckRem(ctx context.Context, req *clientpb.Pipeline) (
 			if err != nil {
 				return nil, err
 			}
+			changed = true
 		} else if ok && !piv.Enable {
 			piv.Enable = true
 			c.Value = piv.Marshal()
@@ -633,6 +649,10 @@ func (rpc *Server) HealthCheckRem(ctx context.Context, req *clientpb.Pipeline) (
 			if err != nil {
 				return nil, err
 			}
+			changed = true
+		}
+		if changed {
+			publishPivotLifecycleEvent(piv)
 		}
 	}
 
@@ -651,12 +671,7 @@ func (rpc *Server) HealthCheckRem(ctx context.Context, req *clientpb.Pipeline) (
 		if err != nil {
 			return nil, err
 		}
-		core.EventBroker.Publish(core.Event{
-			EventType: consts.EventPivot,
-			Op:        "pivot_" + pivot.InboundSide,
-			Message:   pivot.Abstract(),
-			Important: true,
-		})
+		publishPivotLifecycleEvent(pivot)
 	}
 
 	return &clientpb.Empty{}, nil

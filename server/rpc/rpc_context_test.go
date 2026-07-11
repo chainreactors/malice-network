@@ -3,6 +3,7 @@ package rpc
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"errors"
 	"io"
 	"os"
@@ -58,6 +59,137 @@ func TestAddCredentialResolvesTaskWithoutSessionEnvelope(t *testing.T) {
 	}
 	if contexts.Contexts[0].Session == nil || contexts.Contexts[0].Session.SessionId != sess.ID {
 		t.Fatalf("context session = %#v, want session %s", contexts.Contexts[0].Session, sess.ID)
+	}
+}
+
+func TestAddContextPublishesLifecycleEvent(t *testing.T) {
+	env := newRPCTestEnv(t)
+	sess := env.seedSession(t, "rpc-context-add-event", "rpc-context-add-event-pipe", true)
+	task := seedRPCTestTask(t, sess, "credential")
+	events := subscribeEventBrokerReady(t, core.EventBroker)
+	defer core.EventBroker.Unsubscribe(events)
+
+	if _, err := (&Server{}).AddContext(context.Background(), &clientpb.Context{
+		Task:  task.ToProtobuf(),
+		Type:  consts.ContextCredential,
+		Nonce: "generic-context-event",
+		Value: output.MarshalContext(&output.CredentialContext{
+			CredentialType: output.UserPassCredential,
+			Target:         "generic.local",
+		}),
+	}); err != nil {
+		t.Fatalf("AddContext failed: %v", err)
+	}
+
+	event := waitForLifecycleEvent(t, events, consts.ContextCredential)
+	if event.EventType != consts.EventContext || !event.Important {
+		t.Fatalf("AddContext event = %#v, want important context event", event)
+	}
+}
+
+func TestAddDownloadPublishesLifecycleEvent(t *testing.T) {
+	env := newRPCTestEnv(t)
+	sess := env.seedSession(t, "rpc-context-download-event", "rpc-context-download-event-pipe", true)
+	task := seedRPCTestTask(t, sess, "download")
+	events := subscribeEventBrokerReady(t, core.EventBroker)
+	defer core.EventBroker.Unsubscribe(events)
+
+	if _, err := (&Server{}).AddDownload(context.Background(), &clientpb.Context{
+		Task:  task.ToProtobuf(),
+		Type:  consts.ContextDownload,
+		Nonce: "download-context-event",
+		Value: output.MarshalContext(&output.DownloadContext{FileDescriptor: &output.FileDescriptor{
+			Name:       "download.bin",
+			TargetPath: "C:/download.bin",
+			FilePath:   "/tmp/download.bin",
+			Size:       8,
+		}}),
+	}); err != nil {
+		t.Fatalf("AddDownload failed: %v", err)
+	}
+
+	event := waitForLifecycleEvent(t, events, consts.ContextDownload)
+	if event.EventType != consts.EventContext || !event.Important {
+		t.Fatalf("AddDownload event = %#v, want important context event", event)
+	}
+}
+
+func TestDeleteContextPublishesLifecycleEvent(t *testing.T) {
+	env := newRPCTestEnv(t)
+	sess := env.seedSession(t, "rpc-context-delete-event", "rpc-context-delete-event-pipe", true)
+	task := seedRPCTestTask(t, sess, "credential")
+	contextModel, err := db.SaveContext(&clientpb.Context{
+		Task:  task.ToProtobuf(),
+		Type:  consts.ContextCredential,
+		Nonce: "delete-context-event",
+		Value: output.MarshalContext(&output.CredentialContext{
+			CredentialType: output.UserPassCredential,
+			Target:         "delete.local",
+		}),
+	})
+	if err != nil {
+		t.Fatalf("SaveContext failed: %v", err)
+	}
+	events := subscribeEventBrokerReady(t, core.EventBroker)
+	defer core.EventBroker.Unsubscribe(events)
+
+	if _, err := (&Server{}).DeleteContext(context.Background(), &clientpb.Context{Id: contextModel.ID.String()}); err != nil {
+		t.Fatalf("DeleteContext failed: %v", err)
+	}
+
+	event := waitForLifecycleEvent(t, events, consts.CtrlContextDelete)
+	if event.EventType != consts.EventContext || !event.Important {
+		t.Fatalf("DeleteContext event = %#v, want important context event", event)
+	}
+}
+
+func TestSaveTaskContextsPublishesReplayableLifecycleEvent(t *testing.T) {
+	env := newRPCTestEnv(t)
+	sess := env.seedSession(t, "rpc-context-event", "rpc-context-event-pipe", true)
+	task := seedRPCTestTask(t, sess, "port")
+	events := subscribeEventBrokerReady(t, core.EventBroker)
+	defer core.EventBroker.Unsubscribe(events)
+
+	saveTaskContextsFromContent(task, contextRequestMeta{
+		ContextType: output.GOGOPortType,
+		Nonce:       "port-event",
+	}, []byte(`{"ip":"127.0.0.1","port":"8080","protocol":"tcp","status":"open"}`))
+
+	event := waitForLifecycleEvent(t, events, consts.ContextPort)
+	if event.EventType != consts.EventContext || !event.Important {
+		t.Fatalf("context lifecycle event = %#v, want important context event", event)
+	}
+}
+
+func TestCompletedFileContextPublishesReplayableLifecycleEvent(t *testing.T) {
+	env := newRPCTestEnv(t)
+	sess := env.seedSession(t, "rpc-file-context-event", "rpc-file-context-event-pipe", true)
+	task := seedRPCTestTask(t, sess, "download")
+	events := subscribeEventBrokerReady(t, core.EventBroker)
+	defer core.EventBroker.Unsubscribe(events)
+
+	const fileID = uint32(7)
+	openPayload := make([]byte, 8+len("result.bin"))
+	binary.LittleEndian.PutUint32(openPayload[:4], fileID)
+	copy(openPayload[8:], "result.bin")
+	if err := core.HandleFileOperations("open", openPayload, task); err != nil {
+		t.Fatalf("open file context failed: %v", err)
+	}
+	writePayload := make([]byte, 4+len("result"))
+	binary.LittleEndian.PutUint32(writePayload[:4], fileID)
+	copy(writePayload[4:], "result")
+	if err := core.HandleFileOperations("write", writePayload, task); err != nil {
+		t.Fatalf("write file context failed: %v", err)
+	}
+	closePayload := make([]byte, 4)
+	binary.LittleEndian.PutUint32(closePayload, fileID)
+	if err := core.HandleFileOperations("close", closePayload, task); err != nil {
+		t.Fatalf("close file context failed: %v", err)
+	}
+
+	event := waitForLifecycleEvent(t, events, consts.CtrlContextFileClose)
+	if event.EventType != consts.EventContext || !event.Important {
+		t.Fatalf("file context lifecycle event = %#v, want important context event", event)
 	}
 }
 

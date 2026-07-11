@@ -50,10 +50,13 @@ func TestDeliverSpiteResponseReturnsErrorOnClosedOrFullChannel(t *testing.T) {
 	}
 }
 
-func TestJobStreamReturnsSendErrorAndCleansCtrlState(t *testing.T) {
+func TestJobStreamReturnsSendErrorCleansStateAndPublishesStop(t *testing.T) {
+	newRPCTestEnv(t)
 	lns := core.NewListener("listener-job-stream", "127.0.0.1")
 	core.Listeners.Store(lns.Name, lns)
 	defer core.Listeners.Delete(lns.Name)
+	events := subscribeEventBrokerReady(t, core.EventBroker)
+	defer core.EventBroker.Unsubscribe(events)
 
 	ctx := metadata.NewIncomingContext(context.Background(), metadata.Pairs("listener_id", lns.Name))
 	streamCtx, streamCancel := context.WithCancel(ctx)
@@ -93,6 +96,13 @@ func TestJobStreamReturnsSendErrorAndCleansCtrlState(t *testing.T) {
 
 	if _, ok := lns.CtrlJob.Load(job.Id); ok {
 		t.Fatal("CtrlJob entry should be removed after send failure")
+	}
+	if _, err := core.Listeners.Get(lns.Name); err == nil {
+		t.Fatal("listener should be removed after JobStream disconnect")
+	}
+	event := waitForLifecycleEvent(t, events, consts.CtrlListenerStop)
+	if event.EventType != consts.EventListener || event.Listener.GetId() != lns.Name {
+		t.Fatalf("unexpected listener stop event: %#v", event)
 	}
 }
 
