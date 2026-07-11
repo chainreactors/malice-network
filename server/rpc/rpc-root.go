@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/mtls"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/client/rootpb"
@@ -161,6 +162,7 @@ func (rpc *Server) AddListener(ctx context.Context, req *rootpb.Operator) (*root
 	if err != nil {
 		return nil, err
 	}
+	publishListenerIdentityEvent(consts.CtrlListenerRegister, listener.Name, listener.Remote)
 	data, err := yaml.Marshal(clientConf)
 	if err != nil {
 		return &rootpb.Response{
@@ -200,10 +202,24 @@ func (rpc *Server) RemoveListener(ctx context.Context, req *rootpb.Operator) (*r
 			Error:  err.Error(),
 		}, err
 	}
+	publishListenerIdentityEvent(consts.CtrlListenerRemove, listenerID, "")
 	return &rootpb.Response{
 		Status:   0,
 		Response: "",
 	}, nil
+}
+
+func publishListenerIdentityEvent(operation, listenerID, remote string) {
+	core.EventBroker.Publish(core.Event{
+		EventType: consts.EventListener,
+		Op:        operation,
+		Listener: &clientpb.Listener{
+			Id: listenerID,
+			Ip: remote,
+		},
+		Important: true,
+		Message:   fmt.Sprintf("listener %s changed", listenerID),
+	})
 }
 
 func ensureListenerIdentityRemovable(listenerID string) error {

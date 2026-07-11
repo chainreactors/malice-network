@@ -455,6 +455,8 @@ func TestStopRemDisablesPipelineWhenListenerIsOffline(t *testing.T) {
 	if _, err := db.SavePipeline(models.FromPipelinePb(pipeline)); err != nil {
 		t.Fatalf("SavePipeline failed: %v", err)
 	}
+	events := subscribeEventBrokerReady(t, core.EventBroker)
+	defer core.EventBroker.Unsubscribe(events)
 
 	if _, err := (&Server{}).StopRem(context.Background(), &clientpb.CtrlPipeline{
 		Name:       pipeline.Name,
@@ -468,6 +470,10 @@ func TestStopRemDisablesPipelineWhenListenerIsOffline(t *testing.T) {
 	}
 	if stored.Enable {
 		t.Fatal("StopRem should disable the persisted pipeline")
+	}
+	event := waitForLifecycleEvent(t, events, consts.CtrlRemStop)
+	if event.EventType != consts.EventJob || event.Job.GetPipeline().GetName() != pipeline.Name {
+		t.Fatalf("unexpected offline REM stop event: %#v", event)
 	}
 }
 
@@ -483,6 +489,8 @@ func TestDeleteRemRemovesPipelineWhenListenerIsOffline(t *testing.T) {
 	if _, err := db.SavePipeline(models.FromPipelinePb(pipeline)); err != nil {
 		t.Fatalf("SavePipeline failed: %v", err)
 	}
+	events := subscribeEventBrokerReady(t, core.EventBroker)
+	defer core.EventBroker.Unsubscribe(events)
 
 	if _, err := (&Server{}).DeleteRem(context.Background(), &clientpb.CtrlPipeline{
 		Name:       pipeline.Name,
@@ -492,6 +500,10 @@ func TestDeleteRemRemovesPipelineWhenListenerIsOffline(t *testing.T) {
 	}
 	if _, err := db.FindPipelineByListener(pipeline.Name, pipeline.ListenerId); err == nil {
 		t.Fatal("DeleteRem should remove the persisted pipeline")
+	}
+	event := waitForLifecycleEvent(t, events, consts.CtrlRemDelete)
+	if event.EventType != consts.EventJob || event.Job.GetPipeline().GetName() != pipeline.Name {
+		t.Fatalf("unexpected offline REM delete event: %#v", event)
 	}
 }
 

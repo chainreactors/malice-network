@@ -3,12 +3,14 @@ package rpc
 import (
 	"context"
 	"fmt"
+	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/server/build"
 	"github.com/chainreactors/malice-network/server/internal/configs"
+	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"os"
@@ -82,6 +84,19 @@ func (rpc *Server) DownloadArtifact(ctx context.Context, req *clientpb.Artifact)
 // VM-image uploads that would otherwise exhaust disk.
 const maxArtifactUploadSize = 128 << 20
 
+func publishArtifactLifecycleEvent(operation string, artifact *clientpb.Artifact) {
+	if artifact == nil {
+		return
+	}
+	core.EventBroker.Publish(core.Event{
+		EventType: consts.EventBuild,
+		Op:        operation,
+		Job:       &clientpb.Job{Name: artifact.Name},
+		Important: true,
+		Message:   fmt.Sprintf("artifact %s changed", artifact.Name),
+	})
+}
+
 func (rpc *Server) UploadArtifact(ctx context.Context, req *clientpb.Artifact) (*clientpb.Artifact, error) {
 	if len(req.Bin) == 0 {
 		return nil, fmt.Errorf("uploaded artifact has empty binary")
@@ -116,7 +131,9 @@ func (rpc *Server) UploadArtifact(ctx context.Context, req *clientpb.Artifact) (
 		}
 		return nil, fmt.Errorf("write artifact %s: %w", req.Name, err)
 	}
-	return artifact.ToProtobuf([]byte{}), nil
+	result := artifact.ToProtobuf([]byte{})
+	publishArtifactLifecycleEvent(consts.CtrlArtifactUpload, result)
+	return result, nil
 }
 
 // for listener
@@ -160,7 +177,9 @@ func (rpc *Server) UpdateArtifact(ctx context.Context, req *clientpb.Artifact) (
 	if err != nil {
 		return nil, err
 	}
-	return artifact.ToProtobuf([]byte{}), nil
+	result := artifact.ToProtobuf([]byte{})
+	publishArtifactLifecycleEvent(consts.CtrlArtifactUpdate, result)
+	return result, nil
 }
 
 func (rpc *Server) FindArtifact(ctx context.Context, req *clientpb.Artifact) (*clientpb.Artifact, error) {
@@ -173,5 +192,9 @@ func (rpc *Server) FindArtifact(ctx context.Context, req *clientpb.Artifact) (*c
 }
 
 func (rpc *Server) DeleteArtifact(ctx context.Context, req *clientpb.Artifact) (*clientpb.Empty, error) {
-	return &clientpb.Empty{}, db.DeleteArtifactByName(req.Name)
+	if err := db.DeleteArtifactByName(req.Name); err != nil {
+		return nil, err
+	}
+	publishArtifactLifecycleEvent(consts.CtrlArtifactDelete, req)
+	return &clientpb.Empty{}, nil
 }

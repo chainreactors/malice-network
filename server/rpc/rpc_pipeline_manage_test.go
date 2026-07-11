@@ -75,6 +75,8 @@ func TestRegisterPipeline_Valid(t *testing.T) {
 	env := newRPCTestEnv(t)
 	// seedSession creates a listener named "test-listener".
 	env.seedSession(t, "rp-valid-sess", "rp-valid-pipe", true)
+	events := subscribeEventBrokerReady(t, core.EventBroker)
+	defer core.EventBroker.Unsubscribe(events)
 
 	_, err := (&Server{}).RegisterPipeline(context.Background(), &clientpb.Pipeline{
 		Name:       "new-registered-pipe",
@@ -93,6 +95,10 @@ func TestRegisterPipeline_Valid(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("RegisterPipeline error: %v", err)
+	}
+	event := waitForLifecycleEvent(t, events, consts.CtrlPipelineRegister)
+	if event.EventType != consts.EventJob || event.Job.GetPipeline().GetName() != "new-registered-pipe" {
+		t.Fatalf("unexpected pipeline register event: %#v", event)
 	}
 }
 

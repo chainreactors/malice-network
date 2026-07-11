@@ -28,6 +28,21 @@ func waitForCtrlStatus(action, name string, status *clientpb.JobStatus) error {
 	return fmt.Errorf("%s %s failed: unknown error", action, name)
 }
 
+func publishPipelineLifecycleEvent(operation string, pipeline *clientpb.Pipeline) {
+	if pipeline == nil {
+		return
+	}
+	core.EventBroker.Publish(core.Event{
+		EventType: consts.EventJob,
+		Op:        operation,
+		Job: &clientpb.Job{
+			Name:     pipeline.Name,
+			Pipeline: pipeline,
+		},
+		Important: true,
+	})
+}
+
 // resolveListenerID resolves the listener ID from a CtrlPipeline request.
 // If listener_id is not provided, it queries the database by pipeline name.
 // Returns an error if no pipeline is found, or if multiple pipelines share the same name.
@@ -78,6 +93,7 @@ func (rpc *Server) RegisterPipeline(ctx context.Context, req *clientpb.Pipeline)
 	if err := registerDefaultProfileForPipeline(req); err != nil {
 		logs.Log.Errorf("new profile %s failed %v", req.Name, err)
 	}
+	publishPipelineLifecycleEvent(consts.CtrlPipelineRegister, req)
 	return &clientpb.Empty{}, nil
 }
 
@@ -182,6 +198,7 @@ func (rpc *Server) StartPipeline(ctx context.Context, req *clientpb.CtrlPipeline
 
 	if existing := lns.GetPipeline(req.Name); existing != nil && existing.Enable {
 		_ = db.EnablePipelineByListener(req.Name, listenerID)
+		publishPipelineLifecycleEvent(consts.CtrlPipelineStart, existing)
 		return &clientpb.Empty{}, nil
 	}
 
@@ -258,6 +275,10 @@ func (rpc *Server) StopPipeline(ctx context.Context, req *clientpb.CtrlPipeline)
 	}
 	if pipe != nil {
 		lns.RemovePipeline(pipe)
+	} else {
+		// No control status will arrive when the pipeline is already absent
+		// from the listener runtime, so publish the persisted state change.
+		publishPipelineLifecycleEvent(consts.CtrlPipelineStop, pipelineDB.ToProtobuf())
 	}
 	return &clientpb.Empty{}, nil
 }
@@ -304,5 +325,6 @@ func (rpc *Server) DeletePipeline(ctx context.Context, req *clientpb.CtrlPipelin
 	if err != nil {
 		return nil, err
 	}
+	publishPipelineLifecycleEvent(consts.CtrlPipelineDelete, pipelineDB.ToProtobuf())
 	return &clientpb.Empty{}, nil
 }

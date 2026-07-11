@@ -64,6 +64,26 @@ func getWebsiteRuntime(name, listenerID string) (*models.Pipeline, *core.Job, er
 	return website, job, nil
 }
 
+func publishWebsiteLifecycleEvent(operation, name, listenerID string, pipeline *clientpb.Pipeline) {
+	if pipeline == nil {
+		pipeline = &clientpb.Pipeline{
+			Name:       name,
+			ListenerId: listenerID,
+			Type:       consts.WebsitePipeline,
+		}
+	}
+	core.EventBroker.Publish(core.Event{
+		EventType: consts.EventWebsite,
+		Op:        operation,
+		Job: &clientpb.Job{
+			Name:     name,
+			Pipeline: pipeline,
+		},
+		Important: true,
+		Message:   fmt.Sprintf("website %s changed", name),
+	})
+}
+
 func cloneWebsiteJob(job *core.Job, contents map[string]*clientpb.WebContent) *clientpb.Job {
 	if job == nil {
 		return nil
@@ -165,6 +185,11 @@ func (rpc *Server) AddWebsiteContent(ctx context.Context, req *clientpb.Website)
 	if contentModel == nil {
 		return nil, errors.New("no content provided")
 	}
+	if job == nil {
+		// An active website reports this operation through JobStatus. Only
+		// fill the event gap when no runtime control message was sent.
+		publishWebsiteLifecycleEvent(consts.CtrlWebContentAdd, website.Name, website.ListenerId, website.ToProtobuf())
+	}
 
 	return contentModel.ToProtobuf(false), nil
 }
@@ -212,10 +237,15 @@ func (rpc *Server) UpdateWebsiteContent(ctx context.Context, req *clientpb.WebCo
 			return nil, err
 		}
 		lns.PushCtrl(&clientpb.JobCtrl{
-			Ctrl:    consts.CtrlWebContentAdd,
-			Job:     job.ToProtobuf(),
+			Ctrl: consts.CtrlWebContentUpdate,
+			Job: cloneWebsiteJob(job, map[string]*clientpb.WebContent{
+				content.Path: content.ToProtobuf(false),
+			}),
 			Content: content.ToProtobuf(true),
 		})
+	}
+	if job == nil {
+		publishWebsiteLifecycleEvent(consts.CtrlWebContentUpdate, website.Name, website.ListenerId, website.ToProtobuf())
 	}
 
 	return content.ToProtobuf(false), nil
@@ -229,6 +259,7 @@ func (rpc *Server) UpdateWebsiteContentMetadata(ctx context.Context, req *client
 	if err != nil {
 		return nil, err
 	}
+	publishWebsiteLifecycleEvent(consts.CtrlWebContentUpdate, content.PipelineID, content.ListenerID, nil)
 	return content.ToProtobuf(false), nil
 }
 
@@ -277,6 +308,9 @@ func (rpc *Server) RemoveWebsiteContent(ctx context.Context, req *clientpb.WebCo
 	if err != nil {
 		return nil, err
 	}
+	if job == nil {
+		publishWebsiteLifecycleEvent(consts.CtrlWebContentRemove, website.Name, website.ListenerId, website.ToProtobuf())
+	}
 	return &clientpb.Empty{}, nil
 }
 
@@ -312,6 +346,7 @@ func (rpc *Server) RegisterWebsite(ctx context.Context, req *clientpb.Pipeline) 
 			return nil, err
 		}
 	}
+	publishWebsiteLifecycleEvent(consts.CtrlWebsiteRegister, req.Name, req.ListenerId, req)
 
 	return &clientpb.Empty{}, nil
 }
@@ -442,6 +477,7 @@ func (rpc *Server) UpdateWebsiteTLS(ctx context.Context, req *clientpb.PipelineT
 	if err := MapContents(pb); err != nil {
 		return nil, err
 	}
+	publishWebsiteLifecycleEvent(consts.CtrlWebsiteUpdate, pb.Name, pb.ListenerId, pb)
 	return pb, nil
 }
 
@@ -562,6 +598,7 @@ func (rpc *Server) StopWebsite(ctx context.Context, req *clientpb.CtrlPipeline) 
 		return nil, err
 	}
 
+	controlReported := false
 	if job != nil {
 		listener, err := core.Listeners.Get(website.ListenerId)
 		if err != nil {
@@ -575,6 +612,7 @@ func (rpc *Server) StopWebsite(ctx context.Context, req *clientpb.CtrlPipeline) 
 			if err := waitForCtrlStatus("stop website", req.Name, status); err != nil {
 				return nil, err
 			}
+			controlReported = true
 		}
 	}
 
@@ -588,6 +626,9 @@ func (rpc *Server) StopWebsite(ctx context.Context, req *clientpb.CtrlPipeline) 
 		} else {
 			core.Jobs.Remove(website.ListenerId, website.Name)
 		}
+	}
+	if !controlReported {
+		publishWebsiteLifecycleEvent(consts.CtrlWebsiteStop, website.Name, website.ListenerId, website.ToProtobuf())
 	}
 	return &clientpb.Empty{}, nil
 }
@@ -640,6 +681,7 @@ func (rpc *Server) DeleteWebsite(ctx context.Context, req *clientpb.CtrlPipeline
 	if err != nil && !errors.Is(err, db.ErrRecordNotFound) {
 		return nil, err
 	}
+	publishWebsiteLifecycleEvent(consts.CtrlWebsiteDelete, website.Name, website.ListenerId, website.ToProtobuf())
 
 	return &clientpb.Empty{}, nil
 }

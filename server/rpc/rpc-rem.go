@@ -155,6 +155,7 @@ func (rpc *Server) RegisterRem(ctx context.Context, req *clientpb.Pipeline) (*cl
 	if err != nil {
 		return nil, err
 	}
+	publishPipelineLifecycleEvent(consts.CtrlRemRegister, req)
 
 	return &clientpb.Empty{}, nil
 }
@@ -245,6 +246,7 @@ func (rpc *Server) StartRem(ctx context.Context, req *clientpb.CtrlPipeline) (*c
 
 	if existing := lns.GetPipeline(req.Name); existing != nil && existing.Enable {
 		_ = db.EnablePipelineByListener(req.Name, listenerID)
+		publishPipelineLifecycleEvent(consts.CtrlRemStart, existing)
 		return &clientpb.Empty{}, nil
 	}
 
@@ -273,7 +275,6 @@ func (rpc *Server) StartRem(ctx context.Context, req *clientpb.CtrlPipeline) (*c
 	// handleStartRem already invoked SyncPipeline with the runtime-
 	// populated pipeline (Link, Subscribe, Port). Calling AddPipeline
 	// again with the stale DB snapshot would overwrite those values.
-
 	return &clientpb.Empty{}, nil
 }
 
@@ -283,7 +284,8 @@ func (rpc *Server) DeleteRem(ctx context.Context, req *clientpb.CtrlPipeline) (*
 		return nil, err
 	}
 
-	if _, err := db.FindPipelineByListener(req.Name, listenerID); err != nil {
+	remDB, err := db.FindPipelineByListener(req.Name, listenerID)
+	if err != nil {
 		return &clientpb.Empty{}, err
 	}
 	lns, runtimeErr := core.Listeners.Get(listenerID)
@@ -291,6 +293,7 @@ func (rpc *Server) DeleteRem(ctx context.Context, req *clientpb.CtrlPipeline) (*
 		if err := db.DeletePipelineByListener(req.Name, listenerID); err != nil {
 			return nil, err
 		}
+		publishPipelineLifecycleEvent(consts.CtrlRemDelete, remDB.ToProtobuf())
 		return &clientpb.Empty{}, nil
 	}
 
@@ -314,6 +317,7 @@ func (rpc *Server) DeleteRem(ctx context.Context, req *clientpb.CtrlPipeline) (*
 	if err != nil {
 		return nil, err
 	}
+	publishPipelineLifecycleEvent(consts.CtrlRemDelete, remDB.ToProtobuf())
 	return &clientpb.Empty{}, nil
 }
 
@@ -323,7 +327,8 @@ func (rpc *Server) StopRem(ctx context.Context, req *clientpb.CtrlPipeline) (*cl
 		return nil, err
 	}
 
-	if _, err := db.FindPipelineByListener(req.Name, listenerID); err != nil {
+	remDB, err := db.FindPipelineByListener(req.Name, listenerID)
+	if err != nil {
 		return nil, err
 	}
 	lns, runtimeErr := core.Listeners.Get(listenerID)
@@ -331,6 +336,7 @@ func (rpc *Server) StopRem(ctx context.Context, req *clientpb.CtrlPipeline) (*cl
 		if err := db.DisablePipelineByListener(req.Name, listenerID); err != nil {
 			return nil, err
 		}
+		publishPipelineLifecycleEvent(consts.CtrlRemStop, remDB.ToProtobuf())
 		return &clientpb.Empty{}, nil
 	}
 
@@ -359,6 +365,10 @@ func (rpc *Server) StopRem(ctx context.Context, req *clientpb.CtrlPipeline) (*cl
 	}
 	if pipe != nil {
 		lns.RemovePipeline(pipe)
+	} else {
+		// No control status will arrive when the REM pipeline is already
+		// absent from the listener runtime.
+		publishPipelineLifecycleEvent(consts.CtrlRemStop, remDB.ToProtobuf())
 	}
 	return &clientpb.Empty{}, nil
 }

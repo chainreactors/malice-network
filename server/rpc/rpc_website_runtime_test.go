@@ -498,6 +498,8 @@ func TestUpdateWebsiteContentMetadataReturnsUpdatedListFields(t *testing.T) {
 	if err != nil {
 		t.Fatalf("AddContent failed: %v", err)
 	}
+	events := subscribeEventBrokerReady(t, core.EventBroker)
+	defer core.EventBroker.Unsubscribe(events)
 
 	updated, err := server.UpdateWebsiteContentMetadata(context.Background(), &clientpb.WebContent{
 		Id:      content.ID.String(),
@@ -509,6 +511,10 @@ func TestUpdateWebsiteContentMetadataReturnsUpdatedListFields(t *testing.T) {
 	}
 	if updated.Name != "payload" || updated.Comment != "staged content" {
 		t.Fatalf("updated metadata = name %q comment %q, want payload/staged content", updated.Name, updated.Comment)
+	}
+	event := waitForLifecycleEvent(t, events, consts.CtrlWebContentUpdate)
+	if event.EventType != consts.EventWebsite || event.Job.GetPipeline().GetName() != "site-metadata" {
+		t.Fatalf("unexpected website metadata event: %#v", event)
 	}
 	updated, err = server.UpdateWebsiteContentMetadata(context.Background(), &clientpb.WebContent{
 		Id:           content.ID.String(),
@@ -535,6 +541,86 @@ func TestUpdateWebsiteContentMetadataReturnsUpdatedListFields(t *testing.T) {
 	got := contents.GetContents()[0]
 	if got.Name != "payload" || got.Comment != "" {
 		t.Fatalf("listed metadata = name %q comment %q, want payload/empty", got.Name, got.Comment)
+	}
+}
+
+func TestUpdateWebsiteContentUsesSingleRuntimeUpdateEvent(t *testing.T) {
+	newRPCTestEnv(t)
+	server := &Server{}
+	listener := core.NewListener("listener-content-update", "127.0.0.1")
+	core.Listeners.Add(listener)
+	pipeline := &clientpb.Pipeline{
+		Name:       "site-content-update",
+		ListenerId: listener.Name,
+		Type:       consts.WebsitePipeline,
+		Enable:     true,
+		Body: &clientpb.Pipeline_Web{Web: &clientpb.Website{
+			Name:       "site-content-update",
+			ListenerId: listener.Name,
+			Root:       "/",
+			Port:       8080,
+		}},
+	}
+	if _, err := db.SavePipeline(models.FromPipelinePb(pipeline)); err != nil {
+		t.Fatalf("SavePipeline failed: %v", err)
+	}
+	content, err := db.AddContent(&clientpb.WebContent{
+		WebsiteId:  pipeline.Name,
+		ListenerId: listener.Name,
+		Path:       "/payload.bin",
+		Type:       "raw",
+		Content:    []byte("old"),
+	})
+	if err != nil {
+		t.Fatalf("AddContent failed: %v", err)
+	}
+	core.Jobs.AddPipeline(pipeline)
+	events := subscribeEventBrokerReady(t, core.EventBroker)
+	defer core.EventBroker.Unsubscribe(events)
+
+	updated, err := server.UpdateWebsiteContent(context.Background(), &clientpb.WebContent{
+		Id:      content.ID.String(),
+		Comment: "updated",
+		Content: []byte("new"),
+	})
+	if err != nil {
+		t.Fatalf("UpdateWebsiteContent failed: %v", err)
+	}
+	if updated.Comment != "updated" {
+		t.Fatalf("updated comment = %q, want updated", updated.Comment)
+	}
+
+	var ctrl *clientpb.JobCtrl
+	select {
+	case ctrl = <-listener.Ctrl:
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for website content control")
+	}
+	if ctrl.Ctrl != consts.CtrlWebContentUpdate {
+		t.Fatalf("control operation = %q, want %q", ctrl.Ctrl, consts.CtrlWebContentUpdate)
+	}
+	if got := ctrl.Job.GetPipeline().GetWeb().GetContents()["/payload.bin"].GetComment(); got != "updated" {
+		t.Fatalf("event content comment = %q, want updated", got)
+	}
+	if got := string(ctrl.Content.GetContent()); got != "new" {
+		t.Fatalf("runtime content = %q, want new", got)
+	}
+
+	select {
+	case event := <-events:
+		t.Fatalf("received lifecycle event before runtime status: %#v", event)
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	handleJobStatus(listener, &clientpb.JobStatus{
+		CtrlId: ctrl.Id,
+		Ctrl:   ctrl.Ctrl,
+		Status: consts.CtrlStatusSuccess,
+		Job:    ctrl.Job,
+	})
+	event := waitForLifecycleEvent(t, events, consts.CtrlWebContentUpdate)
+	if event.EventType != consts.EventJob {
+		t.Fatalf("event type = %q, want %q", event.EventType, consts.EventJob)
 	}
 }
 
@@ -583,6 +669,8 @@ func TestStopWebsiteDisablesPipelineWhenListenerIsOffline(t *testing.T) {
 	if len(listed.Pipelines) != 1 || listed.Pipelines[0].Enable {
 		t.Fatalf("offline website list = %#v, want one inactive pipeline", listed.Pipelines)
 	}
+	events := subscribeEventBrokerReady(t, core.EventBroker)
+	defer core.EventBroker.Unsubscribe(events)
 
 	if _, err := (&Server{}).StopWebsite(context.Background(), &clientpb.CtrlPipeline{
 		Name:       pipeline.Name,
@@ -599,6 +687,10 @@ func TestStopWebsiteDisablesPipelineWhenListenerIsOffline(t *testing.T) {
 	}
 	if _, err := core.Jobs.GetByListener(pipeline.Name, pipeline.ListenerId); err == nil {
 		t.Fatal("StopWebsite should remove the stale runtime job")
+	}
+	event := waitForLifecycleEvent(t, events, consts.CtrlWebsiteStop)
+	if event.EventType != consts.EventWebsite || event.Job.GetPipeline().GetName() != pipeline.Name {
+		t.Fatalf("unexpected offline website stop event: %#v", event)
 	}
 }
 
@@ -619,6 +711,8 @@ func TestDeleteWebsiteRemovesPipelineWhenListenerIsOffline(t *testing.T) {
 	if _, err := db.SavePipeline(models.FromPipelinePb(pipeline)); err != nil {
 		t.Fatalf("SavePipeline failed: %v", err)
 	}
+	events := subscribeEventBrokerReady(t, core.EventBroker)
+	defer core.EventBroker.Unsubscribe(events)
 
 	if _, err := (&Server{}).DeleteWebsite(context.Background(), &clientpb.CtrlPipeline{
 		Name:       pipeline.Name,
@@ -628,5 +722,9 @@ func TestDeleteWebsiteRemovesPipelineWhenListenerIsOffline(t *testing.T) {
 	}
 	if _, err := db.FindPipelineByListener(pipeline.Name, pipeline.ListenerId); err == nil {
 		t.Fatal("DeleteWebsite should remove the persisted pipeline")
+	}
+	event := waitForLifecycleEvent(t, events, consts.CtrlWebsiteDelete)
+	if event.EventType != consts.EventWebsite || event.Job.GetPipeline().GetName() != pipeline.Name {
+		t.Fatalf("unexpected offline website delete event: %#v", event)
 	}
 }

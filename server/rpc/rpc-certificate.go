@@ -32,7 +32,7 @@ func (rpc *Server) GenerateSelfCert(ctx context.Context, req *clientpb.Pipeline)
 			if err != nil {
 				return nil, err
 			}
-			return rpc.publishCertEvent(certModel)
+			return rpc.publishCertEvent(consts.CtrlCertCreate, certModel)
 		}
 
 		tls, err := certutils.GenerateSelfTLS("", req.Tls.CertSubject)
@@ -45,7 +45,7 @@ func (rpc *Server) GenerateSelfCert(ctx context.Context, req *clientpb.Pipeline)
 		if err != nil {
 			return nil, err
 		}
-		return rpc.publishCertEvent(certModel)
+		return rpc.publishCertEvent(consts.CtrlCertCreate, certModel)
 	}
 
 	// Pipeline-bound certificate generation: only act when TLS is enabled.
@@ -58,7 +58,7 @@ func (rpc *Server) GenerateSelfCert(ctx context.Context, req *clientpb.Pipeline)
 		if err != nil {
 			return nil, err
 		}
-		return rpc.publishCertEvent(certModel)
+		return rpc.publishCertEvent(consts.CtrlCertCreate, certModel)
 	}
 
 	certModel, err := db.FindPipelineCert(pipelineName, req.ListenerId)
@@ -81,7 +81,7 @@ func (rpc *Server) GenerateSelfCert(ctx context.Context, req *clientpb.Pipeline)
 		return nil, err
 	}
 
-	return rpc.publishCertEvent(certModel)
+	return rpc.publishCertEvent(consts.CtrlCertCreate, certModel)
 }
 
 func (rpc *Server) DeleteCertificate(ctx context.Context, req *clientpb.Cert) (*clientpb.Empty, error) {
@@ -89,6 +89,7 @@ func (rpc *Server) DeleteCertificate(ctx context.Context, req *clientpb.Cert) (*
 	if err != nil {
 		return nil, err
 	}
+	publishCertificateLifecycleEvent(consts.CtrlCertDelete, req.Name, "")
 	return &clientpb.Empty{}, nil
 }
 
@@ -118,6 +119,7 @@ func (rpc *Server) UpdateCertificate(ctx context.Context, req *clientpb.TLS) (*c
 	if err != nil {
 		return nil, err
 	}
+	publishCertificateLifecycleEvent(consts.CtrlCertUpdate, req.Cert.Name, "")
 	return &clientpb.Empty{}, nil
 }
 
@@ -139,7 +141,9 @@ func (rpc *Server) ObtainAcmeCert(ctx context.Context, req *clientpb.AcmeRequest
 
 	// Check if cert already exists, update or create
 	existing, _ := db.FindCertificate(req.Domain)
+	operation := consts.CtrlCertCreate
 	if existing != nil {
+		operation = consts.CtrlCertUpdate
 		err = db.UpdateCert(req.Domain, string(certPEM), string(keyPEM), "")
 		if err != nil {
 			return nil, fmt.Errorf("failed to update certificate: %w", err)
@@ -160,7 +164,7 @@ func (rpc *Server) ObtainAcmeCert(ctx context.Context, req *clientpb.AcmeRequest
 
 	certModel, _ := db.FindCertificate(req.Domain)
 	if certModel != nil {
-		return rpc.publishCertEvent(certModel)
+		return rpc.publishCertEvent(operation, certModel)
 	}
 	return &clientpb.Empty{}, nil
 }
@@ -177,16 +181,24 @@ func (rpc *Server) SaveAcmeCert(ctx context.Context, req *clientpb.Pipeline) (*c
 	return nil, fmt.Errorf("deprecated: use ObtainAcmeCert with DNS-01 challenge instead")
 }
 
-func (rpc *Server) publishCertEvent(certModel *models.Certificate) (*clientpb.Empty, error) {
+func (rpc *Server) publishCertEvent(operation string, certModel *models.Certificate) (*clientpb.Empty, error) {
 	msg, err := certs.FormatSubject(certModel.Name, certModel.Type, certModel.CertPEM)
 	if err != nil {
 		return nil, err
 	}
+	publishCertificateLifecycleEvent(operation, certModel.Name, msg)
+	return &clientpb.Empty{}, nil
+}
+
+func publishCertificateLifecycleEvent(operation, name, message string) {
+	if message == "" {
+		message = fmt.Sprintf("certificate %s changed", name)
+	}
 	core.EventBroker.Publish(core.Event{
 		EventType: consts.EventCert,
+		Op:        operation,
 		IsNotify:  false,
-		Message:   msg,
+		Message:   message,
 		Important: true,
 	})
-	return &clientpb.Empty{}, nil
 }
