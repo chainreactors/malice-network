@@ -53,22 +53,12 @@ func TestEventBrokerRunStopClosesSubscribers(t *testing.T) {
 		resultCh <- broker.run()
 	}()
 
-	broker.subscribe <- sub
-	deadline := time.After(2 * time.Second)
-subscribed:
-	for {
-		broker.publish <- Event{
-			EventType: consts.EventBroadcast,
-			Op:        "ready",
-			Message:   "ready",
-		}
-		select {
-		case <-sub:
-			break subscribed
-		case <-time.After(20 * time.Millisecond):
-		case <-deadline:
-			t.Fatal("subscriber did not receive initial event")
-		}
+	ready := make(chan struct{})
+	broker.subscribe <- eventSubscription{events: sub, ready: ready}
+	select {
+	case <-ready:
+	case <-time.After(2 * time.Second):
+		t.Fatal("subscriber was not registered")
 	}
 	close(broker.stop)
 
@@ -118,7 +108,9 @@ func TestEventBrokerStartSurvivesBrokenSubscriber(t *testing.T) {
 
 	closedSub := make(chan Event, 1)
 	close(closedSub)
-	broker.subscribe <- closedSub
+	closedReady := make(chan struct{})
+	broker.subscribe <- eventSubscription{events: closedSub, ready: closedReady}
+	<-closedReady
 	if err := broker.TryPublish(Event{
 		EventType: consts.EventBroadcast,
 		Op:        "panic",
@@ -127,7 +119,10 @@ func TestEventBrokerStartSurvivesBrokenSubscriber(t *testing.T) {
 		t.Fatalf("TryPublish panic trigger error = %v", err)
 	}
 
-	sub := broker.Subscribe()
+	sub, err := broker.Subscribe()
+	if err != nil {
+		t.Fatalf("Subscribe error = %v", err)
+	}
 	defer broker.Unsubscribe(sub)
 
 	deadline = time.After(2 * time.Second)
@@ -172,6 +167,72 @@ subscribed:
 			}
 		case <-deadline:
 			t.Fatal("broker did not continue dispatching events")
+		}
+	}
+}
+
+func TestEventBrokerSubscribeWaitsForRegistration(t *testing.T) {
+	broker := newTestBroker()
+	returned := make(chan chan Event, 1)
+	go func() {
+		sub, _ := broker.Subscribe()
+		returned <- sub
+	}()
+
+	select {
+	case <-returned:
+		t.Fatal("Subscribe returned before the broker registered the subscriber")
+	case <-time.After(50 * time.Millisecond):
+	}
+
+	go func() {
+		_ = broker.run()
+	}()
+	defer broker.Stop()
+
+	var sub chan Event
+	select {
+	case sub = <-returned:
+	case <-time.After(2 * time.Second):
+		t.Fatal("Subscribe did not return after registration")
+	}
+
+	want := Event{EventType: consts.EventBroadcast, Op: "after-ready"}
+	if err := broker.TryPublish(want); err != nil {
+		t.Fatalf("TryPublish error = %v", err)
+	}
+	select {
+	case got := <-sub:
+		if got.Op != want.Op {
+			t.Fatalf("event op = %q, want %q", got.Op, want.Op)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("registered subscriber missed the first event")
+	}
+}
+
+func TestEventBrokerSubscribeAfterStopReturnsUnavailable(t *testing.T) {
+	broker := newTestBroker()
+	broker.Stop()
+	if _, err := broker.Subscribe(); !errors.Is(err, ErrEventBrokerUnavailable) {
+		t.Fatalf("Subscribe error = %v, want %v", err, ErrEventBrokerUnavailable)
+	}
+}
+
+func TestEventBrokerSubscribeRacingStopDoesNotHang(t *testing.T) {
+	for i := 0; i < 100; i++ {
+		broker := newTestBroker()
+		go func() { _ = broker.run() }()
+		result := make(chan error, 1)
+		go func() {
+			_, err := broker.Subscribe()
+			result <- err
+		}()
+		broker.Stop()
+		select {
+		case <-result:
+		case <-time.After(2 * time.Second):
+			t.Fatalf("Subscribe hung while racing Stop at iteration %d", i)
 		}
 	}
 }

@@ -25,7 +25,7 @@ func TestLifecycle_TickerMarksDead(t *testing.T) {
 	broker := &eventBroker{
 		stop:        make(chan struct{}),
 		publish:     make(chan Event, eventBufSize),
-		subscribe:   make(chan chan Event, eventBufSize),
+		subscribe:   make(chan eventSubscription),
 		unsubscribe: make(chan chan Event, eventBufSize),
 		send:        make(chan Event, eventBufSize),
 		notifier:    inotify.NewNotifier(),
@@ -88,7 +88,7 @@ func TestLifecycle_TickerKeepsAlive(t *testing.T) {
 	broker := &eventBroker{
 		stop:        make(chan struct{}),
 		publish:     make(chan Event, eventBufSize),
-		subscribe:   make(chan chan Event, eventBufSize),
+		subscribe:   make(chan eventSubscription),
 		unsubscribe: make(chan chan Event, eventBufSize),
 		send:        make(chan Event, eventBufSize),
 		notifier:    inotify.NewNotifier(),
@@ -167,7 +167,7 @@ func TestLifecycle_RegisterCheckinDeadReborn(t *testing.T) {
 	broker := &eventBroker{
 		stop:        make(chan struct{}),
 		publish:     make(chan Event, eventBufSize*4),
-		subscribe:   make(chan chan Event, eventBufSize),
+		subscribe:   make(chan eventSubscription),
 		unsubscribe: make(chan chan Event, eventBufSize),
 		send:        make(chan Event, eventBufSize),
 		notifier:    inotify.NewNotifier(),
@@ -279,7 +279,7 @@ func TestLifecycle_ConcurrentCheckinAndTicker(t *testing.T) {
 	broker := &eventBroker{
 		stop:        make(chan struct{}),
 		publish:     make(chan Event, eventBufSize*10),
-		subscribe:   make(chan chan Event, eventBufSize),
+		subscribe:   make(chan eventSubscription),
 		unsubscribe: make(chan chan Event, eventBufSize),
 		send:        make(chan Event, eventBufSize),
 		notifier:    inotify.NewNotifier(),
@@ -363,7 +363,7 @@ func TestLifecycle_MixedAliveDeadSessions(t *testing.T) {
 	broker := &eventBroker{
 		stop:        make(chan struct{}),
 		publish:     make(chan Event, eventBufSize*4),
-		subscribe:   make(chan chan Event, eventBufSize),
+		subscribe:   make(chan eventSubscription),
 		unsubscribe: make(chan chan Event, eventBufSize),
 		send:        make(chan Event, eventBufSize),
 		notifier:    inotify.NewNotifier(),
@@ -466,7 +466,7 @@ func TestEdge_RegisterLongSilenceThenReborn(t *testing.T) {
 	broker := &eventBroker{
 		stop:        make(chan struct{}),
 		publish:     make(chan Event, eventBufSize*4),
-		subscribe:   make(chan chan Event, eventBufSize),
+		subscribe:   make(chan eventSubscription),
 		unsubscribe: make(chan chan Event, eventBufSize),
 		send:        make(chan Event, eventBufSize),
 		notifier:    inotify.NewNotifier(),
@@ -594,7 +594,7 @@ func TestEdge_ConcurrentRemove(t *testing.T) {
 	broker := &eventBroker{
 		stop:        make(chan struct{}),
 		publish:     make(chan Event, eventBufSize*10),
-		subscribe:   make(chan chan Event, eventBufSize),
+		subscribe:   make(chan eventSubscription),
 		unsubscribe: make(chan chan Event, eventBufSize),
 		send:        make(chan Event, eventBufSize),
 		notifier:    inotify.NewNotifier(),
@@ -786,7 +786,7 @@ func TestEdge_RapidFlapping(t *testing.T) {
 	broker := &eventBroker{
 		stop:        make(chan struct{}),
 		publish:     make(chan Event, eventBufSize*20),
-		subscribe:   make(chan chan Event, eventBufSize),
+		subscribe:   make(chan eventSubscription),
 		unsubscribe: make(chan chan Event, eventBufSize),
 		send:        make(chan Event, eventBufSize),
 		notifier:    inotify.NewNotifier(),
@@ -936,7 +936,7 @@ func TestEdge_MultipleDeathsInSameTicker(t *testing.T) {
 	broker := &eventBroker{
 		stop:        make(chan struct{}),
 		publish:     make(chan Event, eventBufSize*10),
-		subscribe:   make(chan chan Event, eventBufSize),
+		subscribe:   make(chan eventSubscription),
 		unsubscribe: make(chan chan Event, eventBufSize),
 		send:        make(chan Event, eventBufSize),
 		notifier:    inotify.NewNotifier(),

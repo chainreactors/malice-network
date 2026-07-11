@@ -48,12 +48,16 @@ func TestArtifactPublishAddsWebsiteContent(t *testing.T) {
 	}
 
 	calls := h.Recorder.Calls()
-	if len(calls) != 1 || calls[0].Method != "AddWebsiteContent" {
+	if len(calls) != 2 || calls[0].Method != "DownloadArtifact" || calls[1].Method != "AddWebsiteContent" {
 		t.Fatalf("calls = %#v", calls)
 	}
-	add := calls[0].Request.(*clientpb.Website)
+	download := calls[0].Request.(*clientpb.Artifact)
+	if download.Name != "demo-artifact" {
+		t.Fatalf("download artifact request = %#v", download)
+	}
+	add := calls[1].Request.(*clientpb.Website)
 	content := add.Contents["/payload.bin"]
-	if add.Name != "site-a" || content == nil || content.GetType() != consts.ArtifactWebcontent || content.GetFile() != "demo-artifact" {
+	if add.Name != "site-a" || content == nil || string(content.Content) != "artifact-bin" {
 		t.Fatalf("add website content request = %#v", add)
 	}
 }

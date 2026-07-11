@@ -114,7 +114,10 @@ func TestPollingPublishesSessionErrorAndStopsRuntime(t *testing.T) {
 	broker := core.NewBroker()
 	defer broker.Stop()
 	waitEventBrokerReady(t, broker)
-	sub := broker.Subscribe()
+	sub, err := broker.Subscribe()
+	if err != nil {
+		t.Fatalf("Subscribe error = %v", err)
+	}
 	defer broker.Unsubscribe(sub)
 	core.EventBroker = broker
 
@@ -130,7 +133,7 @@ func TestPollingPublishesSessionErrorAndStopsRuntime(t *testing.T) {
 	}
 	core.Sessions.Add(sess)
 
-	_, err := (&Server{}).Polling(context.Background(), &clientpb.Polling{
+	_, err = (&Server{}).Polling(context.Background(), &clientpb.Polling{
 		SessionId: sess.ID,
 		Id:        "polling-1",
 		Interval:  1,

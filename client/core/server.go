@@ -130,10 +130,9 @@ func NewServerWithOptions(conn *grpc.ClientConn, config *mtls.ClientConfig, supp
 	}
 	for _, event := range events.GetEvents() {
 		if suppressStartupOutput {
-			ser.ReconcileEvent(event)
 			continue
 		}
-		ser.HandlerEvent(event)
+		ser.handleEventOutput(event)
 	}
 	return ser, nil
 }
@@ -435,6 +434,9 @@ func (s *Server) EventHandler() {
 	if err != nil {
 		return
 	}
+	if _, err := eventStream.Header(); err != nil {
+		return
+	}
 	s.Update()
 	if s.Session != nil {
 		s.UpdateSession(s.GetInteractive().SessionId)
@@ -496,6 +498,13 @@ func (s *Server) HandlerEvent(event *clientpb.Event) {
 	}
 	// Reconcile state first — single entry point for all map updates
 	s.ReconcileEvent(event)
+	s.handleEventOutput(event)
+}
+
+func (s *Server) handleEventOutput(event *clientpb.Event) {
+	if s == nil || event == nil {
+		return
+	}
 
 	// Quiet mode (non-index mux pane): suppress notification events but let
 	// task events through so user-initiated commands still show results.

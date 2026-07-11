@@ -18,7 +18,7 @@ func newTestBroker() *eventBroker {
 	return &eventBroker{
 		stop:        make(chan struct{}),
 		publish:     make(chan Event, eventBufSize),
-		subscribe:   make(chan chan Event, eventBufSize),
+		subscribe:   make(chan eventSubscription),
 		unsubscribe: make(chan chan Event, eventBufSize),
 		send:        make(chan Event, eventBufSize),
 		notifier:    inotify.NewNotifier(),

@@ -2,17 +2,26 @@ package rpc
 
 import (
 	"context"
+	"strconv"
+
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
-	"strconv"
+	"google.golang.org/grpc/metadata"
 )
 
 func (rpc *Server) Events(_ *clientpb.Empty, stream clientrpc.MaliceRPC_EventsServer) error {
-	events := core.EventBroker.Subscribe()
+	events, err := core.EventBroker.Subscribe()
+	if err != nil {
+		return err
+	}
+	if err := stream.SendHeader(metadata.Pairs(consts.EventStreamReadyHeader, "true")); err != nil {
+		core.EventBroker.Unsubscribe(events)
+		return err
+	}
 	clientID := core.GetCurrentID()
 	defer func() {
 		logs.Log.Infof("client: %d disconnected", clientID)

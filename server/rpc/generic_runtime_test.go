@@ -34,16 +34,19 @@ func waitEventBrokerReady(t testing.TB, broker interface{ TryPublish(core.Event)
 }
 
 func subscribeEventBrokerReady(t testing.TB, broker interface {
-	Subscribe() chan core.Event
+	Subscribe() (chan core.Event, error)
 	Unsubscribe(chan core.Event)
 	TryPublish(core.Event) error
 }) chan core.Event {
 	t.Helper()
-	sub := broker.Subscribe()
+	sub, err := broker.Subscribe()
+	if err != nil {
+		t.Fatalf("Subscribe error = %v", err)
+	}
 	readyOp := "subscriber-ready"
 	deadline := time.After(2 * time.Second)
 	for {
-		err := broker.TryPublish(core.Event{EventType: "test", Op: readyOp})
+		err = broker.TryPublish(core.Event{EventType: "test", Op: readyOp})
 		if err != nil && !errors.Is(err, core.ErrEventBrokerQueueFull) {
 			t.Fatalf("publish subscriber readiness event: %v", err)
 		}

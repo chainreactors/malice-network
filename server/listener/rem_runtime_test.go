@@ -63,7 +63,10 @@ func TestREMHealthLoopPublishesDegradedAndRecoveredEvents(t *testing.T) {
 
 	broker := core.NewBroker()
 	defer broker.Stop()
-	sub := broker.Subscribe()
+	sub, err := broker.Subscribe()
+	if err != nil {
+		t.Fatalf("Subscribe error = %v", err)
+	}
 	defer broker.Unsubscribe(sub)
 
 	readyDeadline := time.After(2 * time.Second)

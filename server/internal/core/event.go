@@ -220,10 +220,15 @@ func (event *Event) ToProtobuf() *clientpb.Event {
 	}
 }
 
+type eventSubscription struct {
+	events chan Event
+	ready  chan struct{}
+}
+
 type eventBroker struct {
 	stop        chan struct{}
 	publish     chan Event
-	subscribe   chan chan Event
+	subscribe   chan eventSubscription
 	unsubscribe chan chan Event
 	send        chan Event
 	notifier    inotify.Notifier
@@ -254,8 +259,9 @@ func (broker *eventBroker) run() error {
 		select {
 		case <-broker.stop:
 			return nil
-		case sub := <-broker.subscribe:
-			subscribers[sub] = struct{}{}
+		case subscription := <-broker.subscribe:
+			subscribers[subscription.events] = struct{}{}
+			close(subscription.ready)
 		case sub := <-broker.unsubscribe:
 			delete(subscribers, sub)
 		case event := <-broker.publish:
@@ -315,15 +321,24 @@ func (broker *eventBroker) Stop() {
 }
 
 // Subscribe - Generate a new subscription channel
-func (broker *eventBroker) Subscribe() chan Event {
+func (broker *eventBroker) Subscribe() (chan Event, error) {
 	events := make(chan Event, eventBufSize)
-	broker.subscribe <- events
-	return events
+	ready := make(chan struct{})
+	select {
+	case broker.subscribe <- eventSubscription{events: events, ready: ready}:
+	case <-broker.stop:
+		return nil, ErrEventBrokerUnavailable
+	}
+	<-ready
+	return events, nil
 }
 
 // Unsubscribe - Remove a subscription channel
 func (broker *eventBroker) Unsubscribe(events chan Event) {
-	broker.unsubscribe <- events
+	select {
+	case broker.unsubscribe <- events:
+	case <-broker.stop:
+	}
 	//close(events)
 }
 
@@ -382,7 +397,7 @@ func NewBroker() *eventBroker {
 	broker := &eventBroker{
 		stop:        make(chan struct{}),
 		publish:     make(chan Event, eventBufSize),
-		subscribe:   make(chan chan Event, eventBufSize),
+		subscribe:   make(chan eventSubscription),
 		unsubscribe: make(chan chan Event, eventBufSize),
 		send:        make(chan Event, eventBufSize),
 		notifier:    inotify.NewNotifier(),
