@@ -207,7 +207,7 @@ func (r *forwardListenerRuntime) stop() {
 		return
 	}
 	r.stopOnce.Do(func() {
-		forwardListenerRuntimes.Delete(r.listenerID)
+		defer forwardListenerRuntimes.Delete(r.listenerID)
 		clearForwardTaskStreams(r.listenerID)
 		if r.cancel != nil {
 			r.cancel()
