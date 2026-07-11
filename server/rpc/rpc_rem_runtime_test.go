@@ -346,8 +346,13 @@ func TestRemDialControlActionsSkipPivotSync(t *testing.T) {
 func TestListRemsScopesPivotContextsByListener(t *testing.T) {
 	newRPCTestEnv(t)
 	pipelineName := "rem-list-shared"
-	listenerA, _ := seedRemRuntimeWithListener(t, "listener-rem-list-a", pipelineName)
-	listenerB, _ := seedRemRuntimeWithListener(t, "listener-rem-list-b", pipelineName)
+	listenerA, pipelineA := seedRemRuntimeWithListener(t, "listener-rem-list-a", pipelineName)
+	listenerB, pipelineB := seedRemRuntimeWithListener(t, "listener-rem-list-b", pipelineName)
+	for _, pipeline := range []*clientpb.Pipeline{pipelineA, pipelineB} {
+		if _, err := db.SavePipeline(models.FromPipelinePb(pipeline)); err != nil {
+			t.Fatalf("SavePipeline(%s) failed: %v", pipeline.ListenerId, err)
+		}
+	}
 
 	for _, tc := range []struct {
 		listenerID string
@@ -388,6 +393,105 @@ func TestListRemsScopesPivotContextsByListener(t *testing.T) {
 	}
 	if _, ok := got.GetRem().GetAgents()["agent-a"]; ok {
 		t.Fatalf("listener-a agent leaked into listener-b result: %#v", got.GetRem().GetAgents())
+	}
+}
+
+func TestListRemsIncludesRegisteredPipelineWithoutRuntimeOrContexts(t *testing.T) {
+	newRPCTestEnv(t)
+	pipeline := &clientpb.Pipeline{
+		Name:       "rem-offline",
+		ListenerId: "listener-rem-offline",
+		Type:       consts.RemPipeline,
+		Enable:     true,
+		Body: &clientpb.Pipeline_Rem{Rem: &clientpb.REM{
+			Name:    "rem-offline",
+			Console: "tcp://127.0.0.1:12345",
+		}},
+	}
+	if _, err := db.SavePipeline(models.FromPipelinePb(pipeline)); err != nil {
+		t.Fatalf("SavePipeline failed: %v", err)
+	}
+	if err := db.Session().Create(&models.Context{
+		PipelineID: pipeline.Name,
+		Type:       consts.ContextPivoting,
+		Value: output.MarshalContext(&output.PivotingContext{
+			Enable:     true,
+			Listener:   pipeline.ListenerId,
+			Pipeline:   pipeline.Name,
+			RemAgentID: "agent-stale",
+		}),
+	}).Error; err != nil {
+		t.Fatalf("Create context failed: %v", err)
+	}
+
+	resp, err := (&Server{}).ListRems(context.Background(), &clientpb.Listener{})
+	if err != nil {
+		t.Fatalf("ListRems failed: %v", err)
+	}
+	if len(resp.Pipelines) != 1 {
+		t.Fatalf("pipeline count = %d, want 1", len(resp.Pipelines))
+	}
+	got := resp.Pipelines[0]
+	if got.Name != pipeline.Name || got.ListenerId != pipeline.ListenerId {
+		t.Fatalf("pipeline = %q/%q, want %q/%q", got.ListenerId, got.Name, pipeline.ListenerId, pipeline.Name)
+	}
+	if got.Enable {
+		t.Fatal("offline REM pipeline should not be reported as runtime-active")
+	}
+	if agent := got.GetRem().GetAgents()["agent-stale"]; agent == nil || agent.Enable {
+		t.Fatalf("offline REM agent = %#v, want inactive agent", agent)
+	}
+}
+
+func TestStopRemDisablesPipelineWhenListenerIsOffline(t *testing.T) {
+	newRPCTestEnv(t)
+	pipeline := &clientpb.Pipeline{
+		Name:       "rem-offline-stop",
+		ListenerId: "listener-rem-offline-stop",
+		Type:       consts.RemPipeline,
+		Enable:     true,
+		Body:       &clientpb.Pipeline_Rem{Rem: &clientpb.REM{Name: "rem-offline-stop"}},
+	}
+	if _, err := db.SavePipeline(models.FromPipelinePb(pipeline)); err != nil {
+		t.Fatalf("SavePipeline failed: %v", err)
+	}
+
+	if _, err := (&Server{}).StopRem(context.Background(), &clientpb.CtrlPipeline{
+		Name:       pipeline.Name,
+		ListenerId: pipeline.ListenerId,
+	}); err != nil {
+		t.Fatalf("StopRem failed for offline listener: %v", err)
+	}
+	stored, err := db.FindPipelineByListener(pipeline.Name, pipeline.ListenerId)
+	if err != nil {
+		t.Fatalf("FindPipelineByListener failed: %v", err)
+	}
+	if stored.Enable {
+		t.Fatal("StopRem should disable the persisted pipeline")
+	}
+}
+
+func TestDeleteRemRemovesPipelineWhenListenerIsOffline(t *testing.T) {
+	newRPCTestEnv(t)
+	pipeline := &clientpb.Pipeline{
+		Name:       "rem-offline-delete",
+		ListenerId: "listener-rem-offline-delete",
+		Type:       consts.RemPipeline,
+		Enable:     true,
+		Body:       &clientpb.Pipeline_Rem{Rem: &clientpb.REM{Name: "rem-offline-delete"}},
+	}
+	if _, err := db.SavePipeline(models.FromPipelinePb(pipeline)); err != nil {
+		t.Fatalf("SavePipeline failed: %v", err)
+	}
+
+	if _, err := (&Server{}).DeleteRem(context.Background(), &clientpb.CtrlPipeline{
+		Name:       pipeline.Name,
+		ListenerId: pipeline.ListenerId,
+	}); err != nil {
+		t.Fatalf("DeleteRem failed for offline listener: %v", err)
+	}
+	if _, err := db.FindPipelineByListener(pipeline.Name, pipeline.ListenerId); err == nil {
+		t.Fatal("DeleteRem should remove the persisted pipeline")
 	}
 }
 

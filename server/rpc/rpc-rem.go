@@ -15,6 +15,7 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
+	"google.golang.org/protobuf/proto"
 	"gorm.io/gorm"
 )
 
@@ -159,54 +160,70 @@ func (rpc *Server) RegisterRem(ctx context.Context, req *clientpb.Pipeline) (*cl
 }
 
 func (rpc *Server) ListRems(ctx context.Context, req *clientpb.Listener) (*clientpb.Pipelines, error) {
-	var result []*clientpb.Pipeline
 	listenerFilter := ""
 	if req != nil {
 		listenerFilter = req.Id
 	}
+
+	pipelineQuery := db.NewPipelineQuery().WhereType(consts.RemPipeline)
+	if listenerFilter != "" {
+		pipelineQuery = pipelineQuery.WhereListenerID(listenerFilter)
+	}
+	pipelineModels, err := pipelineQuery.Find()
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]*clientpb.Pipeline, 0, len(pipelineModels))
+	pipelinesByKey := make(map[string]*clientpb.Pipeline, len(pipelineModels))
+	pipelineKeysByName := make(map[string][]string)
+	for _, pipelineModel := range pipelineModels {
+		key := pipelineModel.ListenerId + ":" + pipelineModel.Name
+		pipe := pipelineModel.ToProtobuf()
+		if runtime, ok := core.Listeners.FindByListener(pipelineModel.ListenerId, pipelineModel.Name); ok {
+			pipe = proto.Clone(runtime).(*clientpb.Pipeline)
+			pipe.Enable = pipelineModel.Enable && runtime.Enable
+		} else {
+			pipe.Enable = false
+		}
+		if pipe.GetRem() != nil {
+			pipe.GetRem().Agents = make(map[string]*clientpb.REMAgent)
+		}
+		pipelinesByKey[key] = pipe
+		pipelineKeysByName[pipelineModel.Name] = append(pipelineKeysByName[pipelineModel.Name], key)
+		result = append(result, pipe)
+	}
+
 	ctxs, err := db.NewContextQuery().WhereType(consts.ContextPivoting).Find()
 	if err != nil {
 		return nil, err
 	}
-	ctxMap := make(map[string][]*models.Context)
 	for _, item := range ctxs {
 		piv, _ := item.Context.(*output.PivotingContext)
-		if piv == nil {
+		if piv == nil || piv.RemAgentID == "" {
 			continue
 		}
 		if listenerFilter != "" && piv.Listener != "" && piv.Listener != listenerFilter {
 			continue
 		}
-		pipe, ok := findRuntimePipelineForPivot(item.PipelineID, piv.Listener)
-		if !ok {
+
+		pipelineName := item.PipelineID
+		if pipelineName == "" {
+			pipelineName = piv.Pipeline
+		}
+		key := ""
+		if piv.Listener != "" {
+			key = piv.Listener + ":" + pipelineName
+		} else if keys := pipelineKeysByName[pipelineName]; len(keys) == 1 {
+			key = keys[0]
+		}
+		pipe := pipelinesByKey[key]
+		if pipe == nil || pipe.GetRem() == nil {
 			continue
 		}
-		if listenerFilter != "" && pipe.ListenerId != listenerFilter {
-			continue
-		}
-		ctxMap[pipe.ListenerId+":"+pipe.Name] = append(ctxMap[pipe.ListenerId+":"+pipe.Name], item)
-	}
-	for _, pivots := range ctxMap {
-		if len(pivots) == 0 {
-			continue
-		}
-		piv, _ := pivots[0].Context.(*output.PivotingContext)
-		if piv == nil {
-			continue
-		}
-		pipe, ok := findRuntimePipelineForPivot(pivots[0].PipelineID, piv.Listener)
-		if !ok {
-			continue
-		}
-		if listenerFilter != "" && pipe.ListenerId != listenerFilter {
-			continue
-		}
-		pipe.GetRem().Agents = make(map[string]*clientpb.REMAgent)
-		for _, c := range pivots {
-			piv := c.Context.(*output.PivotingContext)
-			pipe.GetRem().Agents[piv.RemAgentID] = piv.ToRemAgent()
-		}
-		result = append(result, pipe)
+		agent := piv.ToRemAgent()
+		agent.Enable = agent.Enable && pipe.Enable
+		pipe.GetRem().Agents[piv.RemAgentID] = agent
 	}
 	return &clientpb.Pipelines{Pipelines: result}, nil
 }
@@ -269,9 +286,12 @@ func (rpc *Server) DeleteRem(ctx context.Context, req *clientpb.CtrlPipeline) (*
 	if _, err := db.FindPipelineByListener(req.Name, listenerID); err != nil {
 		return &clientpb.Empty{}, err
 	}
-	lns, err := core.Listeners.Get(listenerID)
-	if err != nil {
-		return nil, err
+	lns, runtimeErr := core.Listeners.Get(listenerID)
+	if runtimeErr != nil {
+		if err := db.DeletePipelineByListener(req.Name, listenerID); err != nil {
+			return nil, err
+		}
+		return &clientpb.Empty{}, nil
 	}
 
 	if existing := lns.GetPipeline(req.Name); existing != nil {
@@ -303,13 +323,15 @@ func (rpc *Server) StopRem(ctx context.Context, req *clientpb.CtrlPipeline) (*cl
 		return nil, err
 	}
 
-	lns, err := core.Listeners.Get(listenerID)
-	if err != nil {
-		return nil, err
-	}
-
 	if _, err := db.FindPipelineByListener(req.Name, listenerID); err != nil {
 		return nil, err
+	}
+	lns, runtimeErr := core.Listeners.Get(listenerID)
+	if runtimeErr != nil {
+		if err := db.DisablePipelineByListener(req.Name, listenerID); err != nil {
+			return nil, err
+		}
+		return &clientpb.Empty{}, nil
 	}
 
 	pipe := lns.GetPipeline(req.Name)
