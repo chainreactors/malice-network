@@ -8,6 +8,7 @@ import (
 
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
@@ -124,7 +125,8 @@ func StartPipelineCmd(cmd *cobra.Command, con *core.Console) error {
 	name := cmd.Flags().Arg(0)
 	pipelineName, listenerID, cached := resolvePipelineCtrlTarget(con, name)
 
-	if p, ok := con.Pipelines[name]; cached && ok && p.Enable {
+	p, _ := common.FindCachedPipeline(con, name, nil)
+	if cached && p != nil && p.Enable {
 		_, err := con.Rpc.StopPipeline(con.Context(), &clientpb.CtrlPipeline{
 			Name:       pipelineName,
 			ListenerId: listenerID,
@@ -231,8 +233,8 @@ func UpdatePipelineCmd(cmd *cobra.Command, con *core.Console) error {
 	if !cached {
 		return fmt.Errorf("pipeline %s is not cached; refresh client state before update", name)
 	}
-	current := con.Pipelines[name]
-	if current == nil {
+	current, err := common.FindCachedPipeline(con, name, nil)
+	if err != nil || current == nil {
 		return fmt.Errorf("pipeline %s not found", name)
 	}
 	updated := proto.Clone(current).(*clientpb.Pipeline)
@@ -257,15 +259,13 @@ func UpdatePipelineCmd(cmd *cobra.Command, con *core.Console) error {
 	if updated.Name == "" {
 		updated.Name = pipelineName
 	}
-	_, err := con.Rpc.SyncPipeline(con.Context(), updated)
+	_, err = con.Rpc.SyncPipeline(con.Context(), updated)
 	return err
 }
 
 func findPipeline(con *core.Console, key string) (*clientpb.Pipeline, error) {
-	if con != nil && con.Pipelines != nil {
-		if pipeline, ok := con.Pipelines[key]; ok && pipeline != nil {
-			return pipeline, nil
-		}
+	if pipeline, err := common.FindCachedPipeline(con, key, nil); err == nil {
+		return pipeline, nil
 	}
 	listenerID, name, ok := strings.Cut(key, ":")
 	if !ok {
@@ -303,14 +303,8 @@ func printPipelineDetail(pipeline *clientpb.Pipeline) {
 }
 
 func resolvePipelineCtrlTarget(con *core.Console, key string) (string, string, bool) {
-	if con == nil || con.Pipelines == nil {
-		if listenerID, name, ok := strings.Cut(key, ":"); ok && listenerID != "" && name != "" {
-			return name, listenerID, false
-		}
-		return key, "", false
-	}
-	pipeline, ok := con.Pipelines[key]
-	if !ok || pipeline == nil {
+	pipeline, err := common.FindCachedPipeline(con, key, nil)
+	if err != nil || pipeline == nil {
 		if listenerID, name, ok := strings.Cut(key, ":"); ok && listenerID != "" && name != "" {
 			return name, listenerID, false
 		}

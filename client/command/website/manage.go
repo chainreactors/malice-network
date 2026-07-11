@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
@@ -38,10 +39,10 @@ func WebsiteCertCmd(cmd *cobra.Command, con *core.Console) error {
 }
 
 func findWebsite(con *core.Console, key string) (*clientpb.Pipeline, error) {
-	if con != nil && con.Pipelines != nil {
-		if pipeline, ok := con.Pipelines[key]; ok && pipeline != nil && pipeline.GetWeb() != nil {
-			return pipeline, nil
-		}
+	if pipeline, err := common.FindCachedPipeline(con, key, func(candidate *clientpb.Pipeline) bool {
+		return candidate.GetWeb() != nil
+	}); err == nil {
+		return pipeline, nil
 	}
 	websiteName, listenerID, _ := resolveWebsiteTarget(con, key)
 	websites, err := con.Rpc.ListWebsites(con.Context(), &clientpb.Listener{Id: listenerID})

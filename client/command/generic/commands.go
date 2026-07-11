@@ -205,7 +205,7 @@ func Register(con *core.Console) {
 	}, nil)
 
 	con.RegisterServerFunc("pipelines", func(con *core.Console) map[string]*clientpb.Pipeline {
-		return con.Pipelines
+		return common.SnapshotCachedPipelines(con)
 	}, nil)
 
 	con.RegisterServerFunc("run", core.RunCommand, nil)

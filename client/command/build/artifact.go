@@ -231,7 +231,7 @@ func DownloadArtifactCmd(cmd *cobra.Command, con *core.Console) error {
 	go func() {
 		if f, ok := output2.SupportedFormats[format]; ok && f.SupportRemote {
 			var pipe *clientpb.Pipeline
-			for _, pipeline := range con.Pipelines {
+			for _, pipeline := range common.SnapshotCachedPipelines(con) {
 				if pipeline.Type == consts.WebsitePipeline {
 					pipe = pipeline
 					break

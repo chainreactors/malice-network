@@ -205,10 +205,10 @@ func resolveBuildRemPipelineLink(con *core.Console, remValue string) (string, er
 		return candidate.GetRem() != nil && candidate.GetRem().GetLink() != ""
 	})
 	if err != nil {
-		if con != nil && con.Pipelines != nil {
-			if cached, ok := con.Pipelines[remValue]; ok && cached.GetRem() != nil {
-				return "", fmt.Errorf("REM pipeline %q has no link address", remValue)
-			}
+		if _, cachedErr := common.FindCachedPipeline(con, remValue, func(candidate *clientpb.Pipeline) bool {
+			return candidate.GetRem() != nil
+		}); cachedErr == nil {
+			return "", fmt.Errorf("REM pipeline %q has no link address", remValue)
 		}
 		return "", fmt.Errorf("REM pipeline %q not found or not running", remValue)
 	}

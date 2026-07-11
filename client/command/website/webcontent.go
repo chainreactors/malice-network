@@ -358,11 +358,12 @@ func ListWebContentCmd(cmd *cobra.Command, con *core.Console) error {
 }
 
 func resolveWebsiteTarget(con *core.Console, key string) (string, string, bool) {
-	if con != nil && con.Pipelines != nil {
-		if pipeline, ok := con.Pipelines[key]; ok && pipeline != nil {
-			if pipeline.GetWeb() != nil {
-				return pipeline.Name, pipeline.ListenerId, true
-			}
+	if con != nil && con.Server != nil && con.ServerState != nil {
+		pipeline, err := con.ServerState.FindCachedPipeline(key, func(candidate *clientpb.Pipeline) bool {
+			return candidate.GetWeb() != nil
+		})
+		if err == nil {
+			return pipeline.Name, pipeline.ListenerId, true
 		}
 	}
 	if listenerID, name, ok := strings.Cut(key, ":"); ok && listenerID != "" && name != "" {
