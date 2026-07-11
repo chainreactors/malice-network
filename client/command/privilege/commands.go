@@ -13,6 +13,7 @@ func Commands(con *core.Console) []*cobra.Command {
 	runasCmd := &cobra.Command{
 		Use:   "runas --username [username] --domain [domain] --password [password] --path [path] --args [args] --use-profile --use-env --netonly",
 		Short: "Run a program as another user",
+		Long:  "Create a process on the Windows implant using the supplied user credentials and logon options.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return RunasCmd(cmd, con)
 		},
@@ -43,6 +44,7 @@ func Commands(con *core.Console) []*cobra.Command {
 	privsCmd := &cobra.Command{
 		Use:   "privs",
 		Short: "List available privileges",
+		Long:  "List token privileges available to the active Windows implant.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return PrivsCmd(cmd, con)
 		},
@@ -59,6 +61,7 @@ func Commands(con *core.Console) []*cobra.Command {
 	getSystemCmd := &cobra.Command{
 		Use:   "getsystem",
 		Short: "Attempt to elevate privileges",
+		Long:  "Attempt to elevate the active Windows implant to the SYSTEM account.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return GetSystemCmd(cmd, con)
 		},
@@ -75,6 +78,7 @@ func Commands(con *core.Console) []*cobra.Command {
 	rev2selfCmd := &cobra.Command{
 		Use:   "rev2self",
 		Short: "Revert to the original token",
+		Long:  "Stop impersonation and restore the implant process's original access token.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return Rev2selfCmd(cmd, con)
 		},

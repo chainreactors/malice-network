@@ -15,6 +15,10 @@ func Commands(con *core.Console) []*cobra.Command {
 	whoamiCmd := &cobra.Command{
 		Use:   consts.ModuleWhoami,
 		Short: "Print current user",
+		Long:  "Print the user identity of the active implant process.",
+		Example: `~~~
+whoami
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return WhoamiCmd(cmd, con)
 		},
@@ -27,6 +31,7 @@ func Commands(con *core.Console) []*cobra.Command {
 	killCmd := &cobra.Command{
 		Use:   consts.ModuleKill + " [pid]",
 		Short: "Kill the process by pid",
+		Long:  "Terminate a process on the implant host by process ID.",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return KillCmd(cmd, con)
@@ -47,6 +52,10 @@ kill 1234
 	psCmd := &cobra.Command{
 		Use:   consts.ModulePs,
 		Short: "List processes",
+		Long:  "List processes running on the implant host.",
+		Example: `~~~
+ps
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return PsCmd(cmd, con)
 		},
@@ -59,6 +68,12 @@ kill 1234
 	envCmd := &cobra.Command{
 		Use:   consts.ModuleEnv,
 		Short: "List environment variables",
+		Long:  "List environment variables or use subcommands to change them in the implant process.",
+		Example: `~~~
+env
+env set MALICE_MODE production
+env unset MALICE_MODE
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				return EnvCmd(cmd, con)
@@ -75,6 +90,7 @@ kill 1234
 	setEnvCmd := &cobra.Command{
 		Use:   consts.SubCommandName(consts.ModuleSetEnv) + " [env-key] [env-value]",
 		Short: "Set environment variable",
+		Long:  "Set an environment variable in the active implant process.",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return SetEnvCmd(cmd, con)
@@ -95,6 +111,7 @@ kill 1234
 	unSetEnvCmd := &cobra.Command{
 		Use:   consts.SubCommandName(consts.ModuleUnsetEnv) + " [env-key]",
 		Short: "Unset environment variable",
+		Long:  "Remove an environment variable from the active implant process.",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return UnsetEnvCmd(cmd, con)
@@ -116,6 +133,10 @@ kill 1234
 	netstatCmd := &cobra.Command{
 		Use:   consts.ModuleNetstat,
 		Short: "List network connections",
+		Long:  "List network connections visible to the active implant.",
+		Example: `~~~
+netstat
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return NetstatCmd(cmd, con)
 		},
@@ -128,6 +149,10 @@ kill 1234
 	infoCmd := &cobra.Command{
 		Use:   consts.ModuleSysInfo,
 		Short: "Get basic sys info",
+		Long:  "Collect basic operating system and host information from the active implant.",
+		Example: `~~~
+sysinfo
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return InfoCmd(cmd, con)
 		},
@@ -140,6 +165,7 @@ kill 1234
 	bypassCmd := &cobra.Command{
 		Use:   consts.ModuleBypass,
 		Short: "Bypass AMSI and ETW",
+		Long:  "Request AMSI and/or ETW bypasses in the active Windows implant.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return BypassCmd(cmd, con)
 		},

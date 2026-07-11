@@ -17,6 +17,11 @@ func Commands(con *core.Console) []*cobra.Command {
 		Use:   consts.CommandTasks,
 		Short: "List tasks",
 		Long:  "List tasks",
+		Example: `~~~
+tasks
+tasks --all
+tasks info 59
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return GetTasksCmd(cmd, con)
 		},
@@ -32,7 +37,12 @@ func Commands(con *core.Console) []*cobra.Command {
 	taskInfoCmd := &cobra.Command{
 		Use:   "info [task_id]",
 		Short: "Show task request metadata",
-		Args:  cobra.MinimumNArgs(1),
+		Long:  "Show request metadata for a task, with optional raw request data and results.",
+		Example: `~~~
+tasks info 59
+tasks info 59 --results --json
+~~~`,
+		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return TaskInfoCmd(cmd, con)
 		},
@@ -44,9 +54,14 @@ func Commands(con *core.Console) []*cobra.Command {
 	taskCmd.AddCommand(taskInfoCmd)
 
 	fetchTaskCmd := &cobra.Command{
-		Use:   consts.CommandTaskFetch,
+		Use:   consts.CommandTaskFetch + " [task_id]",
 		Short: "Fetch the details of a task",
-		Args:  cobra.MinimumNArgs(1),
+		Long:  "Fetch task results for the active session and optionally save them to a file.",
+		Example: `~~~
+fetch_task 59
+fetch_task 59 --file --output ./task-59.bin
+~~~`,
+		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return TaskFetchCmd(cmd, con)
 		},
@@ -61,6 +76,10 @@ func Commands(con *core.Console) []*cobra.Command {
 	fileCmd := &cobra.Command{
 		Use:   consts.CommandFiles,
 		Short: "List all downloaded files.",
+		Long:  "List files downloaded from the active implant and stored by the client.",
+		Example: `~~~
+files
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ListFiles(cmd, con)
 		},
@@ -69,6 +88,7 @@ func Commands(con *core.Console) []*cobra.Command {
 	cancelTaskCmd := &cobra.Command{
 		Use:   consts.ModuleCancelTask + " [task_id]",
 		Short: "Cancel a task by task_id",
+		Long:  "Request cancellation of a queued or running implant task by ID.",
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return CancelTaskCmd(cmd, con)
@@ -83,6 +103,7 @@ cancel_task <task_id>
 	listTaskCmd := &cobra.Command{
 		Use:   consts.ModuleListTask,
 		Short: "List all tasks",
+		Long:  "Ask the active implant to list its task queue.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ListTaskCmd(cmd, con)
 		},
@@ -94,6 +115,7 @@ list_task
 	queryTaskCmd := &cobra.Command{
 		Use:   consts.ModuleQueryTask + " [task_id]",
 		Short: "Query a task by task_id",
+		Long:  "Ask the active implant for the current state of a task by ID.",
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return QueryTaskCmd(cmd, con)

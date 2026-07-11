@@ -17,7 +17,11 @@ func Commands(con *core.Console) []*cobra.Command {
 	remCmd := &cobra.Command{
 		Use:   consts.CommandRemDial + " [pipeline] [args]",
 		Short: "Run rem on the implant",
-		Args:  cobra.MinimumNArgs(2),
+		Long:  "Start or control a REM agent through the active implant using a pipeline and REM arguments.",
+		Example: `~~~
+rem_dial rem-main start --port 1080
+~~~`,
+		Args: cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return RemDialCmd(cmd, con)
 		},
@@ -113,7 +117,11 @@ rportfwd rem_default --port 8080 --remote 192.168.1.1:80
 	rportforwardLocalCmd := &cobra.Command{
 		Use:   consts.CommandReversePortForwardLocal + " [pipeline] [agent]",
 		Short: "Remote port forward through the implant to client",
-		Args:  cobra.ExactArgs(2),
+		Long:  "Ask a REM agent to connect an implant-side address back to a port exposed by this client.",
+		Example: `~~~
+rportfwd_local rem-main uDM0BgG6 --port 8080 --remote 127.0.0.1:80
+~~~`,
+		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return RPortForwardLocalCmd(cmd, con)
 		},
@@ -135,7 +143,11 @@ rportfwd rem_default --port 8080 --remote 192.168.1.1:80
 	portforwardLocalCmd := &cobra.Command{
 		Use:   consts.CommandPortForwardLocal + " [pipeline] [agent]",
 		Short: "Forward local port to remote target",
-		Args:  cobra.ExactArgs(2),
+		Long:  "Forward a client-side port through the selected REM agent to a local target address.",
+		Example: `~~~
+portfwd_local rem-main uDM0BgG6 --port 8080 --local 127.0.0.1:80
+~~~`,
+		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return PortForwardLocalCmd(cmd, con)
 		},

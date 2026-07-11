@@ -63,7 +63,11 @@ tapping off
 	tappingOffCmd := &cobra.Command{
 		Use:   "off",
 		Short: "Stop streaming LLM events",
-		Args:  cobra.NoArgs,
+		Long:  "Stop real-time LLM event monitoring for the active agent session.",
+		Example: `~~~
+tapping off
+~~~`,
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return TappingOffCmd(cmd, con)
 		},
@@ -100,7 +104,11 @@ skill recon "web servers"
 	skillListCmd := &cobra.Command{
 		Use:   "list",
 		Short: "List all available skills",
-		Args:  cobra.NoArgs,
+		Long:  "List client-side skills discovered in the configured skills directory.",
+		Example: `~~~
+skill list
+~~~`,
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return SkillListCmd(cmd, con)
 		},

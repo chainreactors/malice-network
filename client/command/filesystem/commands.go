@@ -19,6 +19,9 @@ func Commands(con *core.Console) []*cobra.Command {
 		Use:   consts.ModulePwd,
 		Short: "Print working directory",
 		Long:  "print working directory in implant",
+		Example: `~~~
+pwd
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return PwdCmd(cmd, con)
 		},
@@ -47,7 +50,7 @@ cat file.txt
 		carapace.ActionValues().Usage("cat file name"))
 
 	cdCmd := &cobra.Command{
-		Use:   consts.ModuleCd,
+		Use:   consts.ModuleCd + " [path]",
 		Short: "Change directory",
 		Long:  "change the shell's current working directory in implant",
 		Args:  cobra.ExactArgs(1),
@@ -57,6 +60,9 @@ cat file.txt
 		Annotations: map[string]string{
 			"depend": consts.ModuleLs,
 		},
+		Example: `~~~
+cd /tmp
+~~~`,
 	}
 	common.BindArgCompletions(cdCmd, nil,
 		carapace.ActionValues().Usage("cd path"))
@@ -227,6 +233,7 @@ rm /tmp/file.txt
 	enumDriverCmd := &cobra.Command{
 		Use:   consts.ModuleEnumDrivers,
 		Short: "Enum Drivers",
+		Long:  "Enumerate drivers loaded on the implant host.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return EnumDriverCmd(cmd, con)
 		},

@@ -29,6 +29,10 @@ reg_explorer HKEY_CURRENT_USER\Software
 	fileCmd := &cobra.Command{
 		Use:   consts.CommandExplore,
 		Short: "file explorer",
+		Long:  "Open an interactive file explorer for the active implant.",
+		Example: `~~~
+explorer
+~~~`,
 		Annotations: map[string]string{
 			"thirdParty": "true",
 		},
