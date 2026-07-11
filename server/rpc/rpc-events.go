@@ -2,6 +2,8 @@ package rpc
 
 import (
 	"context"
+	"strconv"
+
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
@@ -9,7 +11,6 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"google.golang.org/grpc/metadata"
-	"strconv"
 )
 
 func (rpc *Server) Events(_ *clientpb.Empty, stream clientrpc.MaliceRPC_EventsServer) error {
@@ -34,6 +35,41 @@ func (rpc *Server) Events(_ *clientpb.Empty, stream clientrpc.MaliceRPC_EventsSe
 			err := stream.Send(pb)
 			if err != nil {
 				logs.Log.Warnf("%s", err.Error())
+				return err
+			}
+		}
+	}
+}
+
+func (rpc *Server) EventsV2(req *clientpb.EventSubscription, stream clientrpc.MaliceRPC_EventsV2Server) error {
+	events := core.EventBroker.SubscribeV2(core.EventSubscription{
+		StreamID:          req.GetStreamId(),
+		AfterSequence:     req.GetAfterSequence(),
+		Replay:            req.GetReplay(),
+		Topics:            req.GetTopics(),
+		IncludeHeartbeats: req.GetIncludeHeartbeats(),
+	})
+	if err := stream.SendHeader(metadata.Pairs(consts.EventStreamReadyHeader, "2")); err != nil {
+		core.EventBroker.UnsubscribeV2(events)
+		return err
+	}
+	clientID := core.GetCurrentID()
+	defer func() {
+		logs.Log.Infof("client: %d disconnected", clientID)
+		core.Clients.Remove(int(clientID))
+		core.EventBroker.UnsubscribeV2(events)
+	}()
+
+	for {
+		select {
+		case <-stream.Context().Done():
+			return nil
+		case event, ok := <-events:
+			if !ok {
+				return nil
+			}
+			if err := stream.Send(event.ToProtobuf()); err != nil {
+				logs.Log.Warnf("EventsV2 send failed: %s", err.Error())
 				return err
 			}
 		}

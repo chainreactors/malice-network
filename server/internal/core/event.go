@@ -1,6 +1,8 @@
 package core
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/url"
@@ -20,7 +22,8 @@ import (
 
 const (
 	// Size is arbitrary, just want to avoid weird cases where we'd block on channel sends
-	eventBufSize = 25
+	eventBufSize     = 25
+	eventHistorySize = 512
 )
 
 var (
@@ -183,6 +186,62 @@ type Event struct {
 	IsNotify  bool
 }
 
+// EventSubscription describes a resumable event consumer. StreamID and
+// AfterSequence form the cursor returned by a previous subscription.
+type EventSubscription struct {
+	StreamID          string
+	AfterSequence     uint64
+	Replay            bool
+	Topics            []string
+	IncludeHeartbeats bool
+}
+
+// SequencedEvent is the broker-internal representation of an EventsV2
+// envelope. Control envelopes have Ready or ResetRequired set and Event nil.
+type SequencedEvent struct {
+	StreamID       string
+	Sequence       uint64
+	OccurredAt     time.Time
+	Event          *Event
+	Replayed       bool
+	ResetRequired  bool
+	OldestSequence uint64
+	LatestSequence uint64
+	Ready          bool
+}
+
+func (event SequencedEvent) ToProtobuf() *clientpb.EventEnvelope {
+	envelope := &clientpb.EventEnvelope{
+		StreamId:       event.StreamID,
+		Sequence:       event.Sequence,
+		Replayed:       event.Replayed,
+		ResetRequired:  event.ResetRequired,
+		OldestSequence: event.OldestSequence,
+		LatestSequence: event.LatestSequence,
+		Ready:          event.Ready,
+	}
+	if !event.OccurredAt.IsZero() {
+		envelope.OccurredAtUnixMilli = event.OccurredAt.UnixMilli()
+	}
+	if event.Event != nil {
+		envelope.Event = event.Event.ToProtobuf()
+	}
+	return envelope
+}
+
+type eventV2Subscriber struct {
+	channel           chan SequencedEvent
+	topics            map[string]struct{}
+	includeHeartbeats bool
+	needsReset        bool
+}
+
+type eventV2SubscribeRequest struct {
+	options EventSubscription
+	channel chan SequencedEvent
+	ready   chan struct{}
+}
+
 func (event *Event) String() string {
 	var id string
 
@@ -232,18 +291,36 @@ type eventBroker struct {
 	cache *RingCache
 	ready sync.Map
 
+	subscribeV2     chan eventV2SubscribeRequest
+	unsubscribeV2   chan chan SequencedEvent
+	v2Once          sync.Once
+	streamID        string
+	sequence        uint64
+	history         []SequencedEvent
+	historyCapacity int
+
 	alive     atomic.Bool
 	managed   atomic.Bool
 	startOnce sync.Once
 }
 
 func (broker *eventBroker) run() error {
+	broker.ensureV2()
 	broker.alive.Store(true)
 	subscribers := map[chan Event]struct{}{}
+	v2Subscribers := map[chan SequencedEvent]*eventV2Subscriber{}
 	defer func() {
 		broker.alive.Store(false)
 		for sub := range subscribers {
 			func(ch chan Event) {
+				defer func() {
+					_ = recover()
+				}()
+				close(ch)
+			}(sub)
+		}
+		for sub := range v2Subscribers {
+			func(ch chan SequencedEvent) {
 				defer func() {
 					_ = recover()
 				}()
@@ -262,6 +339,17 @@ func (broker *eventBroker) run() error {
 			}
 		case sub := <-broker.unsubscribe:
 			delete(subscribers, sub)
+		case request := <-broker.subscribeV2:
+			subscriber := newEventV2Subscriber(request.channel, request.options)
+			ready, replay := broker.prepareV2Subscription(request.options, subscriber)
+			request.channel <- ready
+			for _, event := range replay {
+				request.channel <- event
+			}
+			v2Subscribers[request.channel] = subscriber
+			close(request.ready)
+		case sub := <-broker.unsubscribeV2:
+			delete(v2Subscribers, sub)
 		case event := <-broker.publish:
 			if event.Important {
 				logs.Log.Infof("event.%s - %s", event.EventType, event.String())
@@ -276,8 +364,171 @@ func (broker *eventBroker) run() error {
 				}
 			}
 			broker.lock.Unlock()
+
+			sequenced := broker.recordV2Event(event)
+			for channel, subscriber := range v2Subscribers {
+				if err := broker.dispatchV2(subscriber, sequenced); err != nil {
+					delete(v2Subscribers, channel)
+					logs.Log.Warnf("drop broken EventsV2 subscriber: %s", ErrorText(err))
+				}
+			}
 		}
 	}
+}
+
+func (broker *eventBroker) ensureV2() {
+	broker.v2Once.Do(func() {
+		if broker.subscribeV2 == nil {
+			broker.subscribeV2 = make(chan eventV2SubscribeRequest, eventBufSize)
+		}
+		if broker.unsubscribeV2 == nil {
+			broker.unsubscribeV2 = make(chan chan SequencedEvent, eventBufSize)
+		}
+		if broker.historyCapacity <= 0 {
+			broker.historyCapacity = eventHistorySize
+		}
+		if broker.streamID == "" {
+			broker.streamID = newEventStreamID()
+		}
+	})
+}
+
+func newEventStreamID() string {
+	var value [16]byte
+	if _, err := rand.Read(value[:]); err == nil {
+		return hex.EncodeToString(value[:])
+	}
+	return fmt.Sprintf("%x", time.Now().UnixNano())
+}
+
+func newEventV2Subscriber(channel chan SequencedEvent, options EventSubscription) *eventV2Subscriber {
+	topics := make(map[string]struct{}, len(options.Topics))
+	for _, topic := range options.Topics {
+		if topic != "" {
+			topics[topic] = struct{}{}
+		}
+	}
+	return &eventV2Subscriber{
+		channel:           channel,
+		topics:            topics,
+		includeHeartbeats: options.IncludeHeartbeats,
+	}
+}
+
+func (broker *eventBroker) prepareV2Subscription(options EventSubscription, subscriber *eventV2Subscriber) (SequencedEvent, []SequencedEvent) {
+	oldest, latest := broker.v2Bounds()
+	resetRequired := false
+
+	if options.StreamID != "" && options.StreamID != broker.streamID {
+		resetRequired = true
+	}
+	if options.StreamID == "" && options.AfterSequence != 0 {
+		resetRequired = true
+	}
+	if options.AfterSequence > latest {
+		resetRequired = true
+	}
+	if options.Replay && options.AfterSequence > 0 && oldest > 0 && options.AfterSequence < oldest-1 {
+		resetRequired = true
+	}
+
+	ready := SequencedEvent{
+		StreamID:       broker.streamID,
+		Sequence:       latest,
+		ResetRequired:  resetRequired,
+		OldestSequence: oldest,
+		LatestSequence: latest,
+		Ready:          true,
+	}
+	if !options.Replay || resetRequired {
+		return ready, nil
+	}
+
+	replay := make([]SequencedEvent, 0)
+	for _, historical := range broker.history {
+		if historical.Sequence <= options.AfterSequence || !subscriber.accepts(historical.Event) {
+			continue
+		}
+		historical.Replayed = true
+		historical.OldestSequence = oldest
+		historical.LatestSequence = latest
+		replay = append(replay, historical)
+	}
+	return ready, replay
+}
+
+func (broker *eventBroker) recordV2Event(event Event) SequencedEvent {
+	broker.sequence++
+	eventCopy := event
+	sequenced := SequencedEvent{
+		StreamID:   broker.streamID,
+		Sequence:   broker.sequence,
+		OccurredAt: time.Now(),
+		Event:      &eventCopy,
+	}
+	broker.history = append(broker.history, sequenced)
+	if overflow := len(broker.history) - broker.historyCapacity; overflow > 0 {
+		copy(broker.history, broker.history[overflow:])
+		broker.history = broker.history[:broker.historyCapacity]
+	}
+	sequenced.OldestSequence, sequenced.LatestSequence = broker.v2Bounds()
+	broker.history[len(broker.history)-1] = sequenced
+	return sequenced
+}
+
+func (broker *eventBroker) v2Bounds() (uint64, uint64) {
+	if len(broker.history) == 0 {
+		return 0, broker.sequence
+	}
+	return broker.history[0].Sequence, broker.sequence
+}
+
+func (subscriber *eventV2Subscriber) accepts(event *Event) bool {
+	if event == nil {
+		return true
+	}
+	if event.EventType == consts.EventHeartbeat && !subscriber.includeHeartbeats {
+		return false
+	}
+	if len(subscriber.topics) == 0 {
+		return true
+	}
+	_, ok := subscriber.topics[event.EventType]
+	return ok
+}
+
+func (broker *eventBroker) dispatchV2(subscriber *eventV2Subscriber, event SequencedEvent) (err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			err = RecoverError("event-v2-dispatch", recovered)
+		}
+	}()
+
+	if subscriber.needsReset {
+		oldest, latest := broker.v2Bounds()
+		reset := SequencedEvent{
+			StreamID:       broker.streamID,
+			Sequence:       latest,
+			ResetRequired:  true,
+			OldestSequence: oldest,
+			LatestSequence: latest,
+		}
+		select {
+		case subscriber.channel <- reset:
+			subscriber.needsReset = false
+		default:
+			return nil
+		}
+	}
+	if !subscriber.accepts(event.Event) {
+		return nil
+	}
+	select {
+	case subscriber.channel <- event:
+	default:
+		subscriber.needsReset = true
+	}
+	return nil
 }
 
 func (broker *eventBroker) dispatch(sub chan Event, event Event) (err error) {
@@ -295,6 +546,7 @@ func (broker *eventBroker) dispatch(sub chan Event, event Event) (err error) {
 }
 
 func (broker *eventBroker) Start() {
+	broker.ensureV2()
 	broker.startOnce.Do(func() {
 		broker.managed.Store(true)
 		go func() {
@@ -334,6 +586,30 @@ func (broker *eventBroker) Subscribe() chan Event {
 func (broker *eventBroker) Unsubscribe(events chan Event) {
 	broker.unsubscribe <- events
 	//close(events)
+}
+
+// SubscribeV2 registers a resumable event subscription. The first value in
+// the returned channel is always a Ready envelope containing stream bounds.
+func (broker *eventBroker) SubscribeV2(options EventSubscription) chan SequencedEvent {
+	broker.ensureV2()
+	capacity := broker.historyCapacity + 1
+	if capacity < eventBufSize {
+		capacity = eventBufSize
+	}
+	events := make(chan SequencedEvent, capacity)
+	ready := make(chan struct{})
+	broker.subscribeV2 <- eventV2SubscribeRequest{
+		options: options,
+		channel: events,
+		ready:   ready,
+	}
+	<-ready
+	return events
+}
+
+func (broker *eventBroker) UnsubscribeV2(events chan SequencedEvent) {
+	broker.ensureV2()
+	broker.unsubscribeV2 <- events
 }
 
 // Publish - Push a message to all subscribers
