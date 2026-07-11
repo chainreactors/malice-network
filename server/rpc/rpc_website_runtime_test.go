@@ -181,6 +181,58 @@ func TestListWebContentUsesListenerScopedWebsite(t *testing.T) {
 	}
 }
 
+func TestAddWebsiteContentPersistsRawArtifactPayload(t *testing.T) {
+	newRPCTestEnv(t)
+	server := &Server{}
+
+	if _, err := db.SavePipeline(models.FromPipelinePb(&clientpb.Pipeline{
+		Name:       "site-artifact",
+		ListenerId: "listener-a",
+		Type:       consts.WebsitePipeline,
+		Body: &clientpb.Pipeline_Web{
+			Web: &clientpb.Website{
+				Name:       "site-artifact",
+				ListenerId: "listener-a",
+				Root:       "/",
+				Port:       8080,
+			},
+		},
+	})); err != nil {
+		t.Fatalf("SavePipeline failed: %v", err)
+	}
+	content, err := server.AddWebsiteContent(context.Background(), &clientpb.Website{
+		Name:       "site-artifact",
+		ListenerId: "listener-a",
+		Contents: map[string]*clientpb.WebContent{
+			"/payload.bin": {
+				File:        "beacon-publish",
+				Path:        "/payload.bin",
+				Type:        "raw",
+				Content:     []byte("artifact-payload"),
+				ContentType: "application/octet-stream",
+				Name:        "payload",
+				Comment:     "from artifact",
+				Auth:        "none",
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("AddWebsiteContent failed: %v", err)
+	}
+	if content.GetType() != "raw" || content.GetPath() != "/payload.bin" || content.GetSize() != uint64(len("artifact-payload")) {
+		t.Fatalf("content = %#v, want materialized raw artifact content", content)
+	}
+
+	stored, err := db.FindWebContent(content.GetId())
+	if err != nil {
+		t.Fatalf("FindWebContent failed: %v", err)
+	}
+	storedPb := stored.ToProtobuf(true)
+	if string(storedPb.GetContent()) != "artifact-payload" || storedPb.GetName() != "payload" || storedPb.GetComment() != "from artifact" || storedPb.GetAuth() != "none" {
+		t.Fatalf("stored content = %#v, want artifact payload with metadata", storedPb)
+	}
+}
+
 func TestWebsiteHandlersRejectNilRequest(t *testing.T) {
 	server := &Server{}
 
@@ -503,5 +555,78 @@ func TestRegisterWebsiteRejectsColonName(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("RegisterWebsite should reject ':' in website pipeline name")
+	}
+}
+
+func TestStopWebsiteDisablesPipelineWhenListenerIsOffline(t *testing.T) {
+	newRPCTestEnv(t)
+	pipeline := &clientpb.Pipeline{
+		Name:       "site-offline-stop",
+		ListenerId: "listener-site-offline-stop",
+		Type:       consts.WebsitePipeline,
+		Enable:     true,
+		Body: &clientpb.Pipeline_Web{Web: &clientpb.Website{
+			Name:       "site-offline-stop",
+			ListenerId: "listener-site-offline-stop",
+			Root:       "/",
+			Port:       8080,
+		}},
+	}
+	if _, err := db.SavePipeline(models.FromPipelinePb(pipeline)); err != nil {
+		t.Fatalf("SavePipeline failed: %v", err)
+	}
+	core.Jobs.AddPipeline(pipeline)
+	listed, err := (&Server{}).ListWebsites(context.Background(), &clientpb.Listener{})
+	if err != nil {
+		t.Fatalf("ListWebsites failed: %v", err)
+	}
+	if len(listed.Pipelines) != 1 || listed.Pipelines[0].Enable {
+		t.Fatalf("offline website list = %#v, want one inactive pipeline", listed.Pipelines)
+	}
+
+	if _, err := (&Server{}).StopWebsite(context.Background(), &clientpb.CtrlPipeline{
+		Name:       pipeline.Name,
+		ListenerId: pipeline.ListenerId,
+	}); err != nil {
+		t.Fatalf("StopWebsite failed for offline listener: %v", err)
+	}
+	stored, err := db.FindPipelineByListener(pipeline.Name, pipeline.ListenerId)
+	if err != nil {
+		t.Fatalf("FindPipelineByListener failed: %v", err)
+	}
+	if stored.Enable {
+		t.Fatal("StopWebsite should disable the persisted pipeline")
+	}
+	if _, err := core.Jobs.GetByListener(pipeline.Name, pipeline.ListenerId); err == nil {
+		t.Fatal("StopWebsite should remove the stale runtime job")
+	}
+}
+
+func TestDeleteWebsiteRemovesPipelineWhenListenerIsOffline(t *testing.T) {
+	newRPCTestEnv(t)
+	pipeline := &clientpb.Pipeline{
+		Name:       "site-offline-delete",
+		ListenerId: "listener-site-offline-delete",
+		Type:       consts.WebsitePipeline,
+		Enable:     true,
+		Body: &clientpb.Pipeline_Web{Web: &clientpb.Website{
+			Name:       "site-offline-delete",
+			ListenerId: "listener-site-offline-delete",
+			Root:       "/",
+			Port:       8080,
+		}},
+	}
+	if _, err := db.SavePipeline(models.FromPipelinePb(pipeline)); err != nil {
+		t.Fatalf("SavePipeline failed: %v", err)
+	}
+
+	if _, err := (&Server{}).DeleteWebsite(context.Background(), &clientpb.CtrlPipeline{
+		Name:       pipeline.Name,
+		ListenerId: pipeline.ListenerId,
+	}); err != nil {
+		t.Fatalf("DeleteWebsite failed for offline listener: %v", err)
+	}
+	if _, err := db.FindPipelineByListener(pipeline.Name, pipeline.ListenerId); err == nil {
+		t.Fatal("DeleteWebsite should remove the persisted pipeline")
 	}
 }

@@ -146,7 +146,9 @@ func (rpc *Server) AddWebsiteContent(ctx context.Context, req *clientpb.Website)
 			content.WebsiteId = website.Name
 			content.ListenerId = website.ListenerId
 			content.Size = uint64(len(content.Content))
-			rpcLog.Infof("Add website content (%s) %s -> %s", content.File, content.Path, content.Type)
+			if rpcLog != nil {
+				rpcLog.Infof("Add website content (%s) %s -> %s", content.File, content.Path, content.Type)
+			}
 			contentModel, err = db.AddContent(content)
 			if err != nil {
 				return nil, err
@@ -560,19 +562,19 @@ func (rpc *Server) StopWebsite(ctx context.Context, req *clientpb.CtrlPipeline) 
 		return nil, err
 	}
 
-	listener, err := core.Listeners.Get(website.ListenerId)
-	if err != nil {
-		return nil, err
-	}
-
 	if job != nil {
-		ctrlID := listener.PushCtrl(&clientpb.JobCtrl{
-			Ctrl: consts.CtrlWebsiteStop,
-			Job:  job.ToProtobuf(),
-		})
-		status := listener.WaitCtrl(ctrlID)
-		if err := waitForCtrlStatus("stop website", req.Name, status); err != nil {
-			return nil, err
+		listener, err := core.Listeners.Get(website.ListenerId)
+		if err != nil {
+			core.Jobs.Remove(website.ListenerId, website.Name)
+		} else {
+			ctrlID := listener.PushCtrl(&clientpb.JobCtrl{
+				Ctrl: consts.CtrlWebsiteStop,
+				Job:  job.ToProtobuf(),
+			})
+			status := listener.WaitCtrl(ctrlID)
+			if err := waitForCtrlStatus("stop website", req.Name, status); err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -581,17 +583,31 @@ func (rpc *Server) StopWebsite(ctx context.Context, req *clientpb.CtrlPipeline) 
 		return nil, err
 	}
 	if job != nil {
-		listener.RemovePipeline(job.Pipeline)
+		if listener, err := core.Listeners.Get(website.ListenerId); err == nil {
+			listener.RemovePipeline(job.Pipeline)
+		} else {
+			core.Jobs.Remove(website.ListenerId, website.Name)
+		}
 	}
 	return &clientpb.Empty{}, nil
 }
 
 func (rpc *Server) ListWebsites(ctx context.Context, req *clientpb.Listener) (*clientpb.Pipelines, error) {
-	modelPipelines, err := db.ListWebsitesByListener(req.Id)
+	listenerID := ""
+	if req != nil {
+		listenerID = req.Id
+	}
+	modelPipelines, err := db.ListWebsitesByListener(listenerID)
 	if err != nil {
 		return nil, err
 	}
-	return modelPipelines.ToProtobuf(), nil
+	result := modelPipelines.ToProtobuf()
+	for _, pipeline := range result.Pipelines {
+		_, runtimeErr := core.Jobs.GetByListener(pipeline.Name, pipeline.ListenerId)
+		runtimePipeline, runtimeOK := core.Listeners.FindByListener(pipeline.ListenerId, pipeline.Name)
+		pipeline.Enable = pipeline.Enable && runtimeErr == nil && runtimeOK && runtimePipeline.Enable
+	}
+	return result, nil
 }
 
 func (rpc *Server) DeleteWebsite(ctx context.Context, req *clientpb.CtrlPipeline) (*clientpb.Empty, error) {
@@ -604,21 +620,20 @@ func (rpc *Server) DeleteWebsite(ctx context.Context, req *clientpb.CtrlPipeline
 	if err != nil {
 		return nil, err
 	}
-	listener, err := core.Listeners.Get(website.ListenerId)
-	if err != nil {
-		return nil, err
-	}
-
 	if job != nil {
-		ctrlID := listener.PushCtrl(&clientpb.JobCtrl{
-			Ctrl: consts.CtrlWebsiteStop,
-			Job:  job.ToProtobuf(),
-		})
-		status := listener.WaitCtrl(ctrlID)
-		if err := waitForCtrlStatus("delete website", req.Name, status); err != nil {
-			return nil, err
+		if listener, err := core.Listeners.Get(website.ListenerId); err == nil {
+			ctrlID := listener.PushCtrl(&clientpb.JobCtrl{
+				Ctrl: consts.CtrlWebsiteStop,
+				Job:  job.ToProtobuf(),
+			})
+			status := listener.WaitCtrl(ctrlID)
+			if err := waitForCtrlStatus("delete website", req.Name, status); err != nil {
+				return nil, err
+			}
+			listener.RemovePipeline(job.Pipeline)
+		} else {
+			core.Jobs.Remove(website.ListenerId, website.Name)
 		}
-		listener.RemovePipeline(job.Pipeline)
 	}
 
 	err = db.DeleteWebsiteByListener(website.Name, website.ListenerId)
