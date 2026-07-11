@@ -239,8 +239,9 @@ func BindBuiltinCommands(con *core.Console, root *cobra.Command) *cobra.Command 
 func BindImplantCommands(con *core.Console) console.Commands {
 	implantCommands := func() *cobra.Command {
 		implant := &cobra.Command{
-			Use:   "implant",
-			Short: "implant commands",
+			Use:           "implant",
+			Short:         "implant commands",
+			SilenceErrors: true,
 			CompletionOptions: cobra.CompletionOptions{
 				HiddenDefaultCmd: true,
 			},

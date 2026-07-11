@@ -555,9 +555,17 @@ artifact comment artifact_name ""
 		Use:   "publish [artifact_name]",
 		Short: "Publish an artifact as website content",
 		Args:  cobra.ExactArgs(1),
+		Long: `Publish an existing artifact to the website selected by --website.
+
+Use --path to select the HTTP route and --format to convert the artifact before publishing. The website flag is required.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ArtifactPublishCmd(cmd, con)
 		},
+		Example: `~~~
+artifact publish beacon --website payloads --path /beacon.bin
+
+artifact publish beacon --website payloads --format shellcode --path /beacon.bin
+~~~`,
 	}
 	common.BindFlag(publishCommand, func(f *pflag.FlagSet) {
 		f.String("website", "", "website name")
@@ -579,9 +587,19 @@ artifact comment artifact_name ""
 	pruneCommand := &cobra.Command{
 		Use:   "prune",
 		Short: "Prune artifacts by status or age",
+		Long: `Delete artifacts matching at least one selected filter.
+
+Use --failed to delete non-completed artifacts and --older-than with a Go duration such as 720h to delete old artifacts. At least one filter is required.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ArtifactPruneCmd(cmd, con)
 		},
+		Example: `~~~
+artifact prune --failed
+
+artifact prune --older-than 720h
+
+artifact prune --failed --older-than 720h
+~~~`,
 	}
 	common.BindFlag(pruneCommand, func(f *pflag.FlagSet) {
 		f.Bool("failed", false, "delete non-completed artifacts")

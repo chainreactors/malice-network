@@ -83,6 +83,10 @@ website list [listener]
 		Use:   "inspect [website_name]",
 		Short: "Inspect a website",
 		Args:  cobra.ExactArgs(1),
+		Long:  "Show listener, TLS, route, and runtime metadata for the specified website.",
+		Example: `~~~
+website inspect site-a
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return InspectWebsiteCmd(cmd, con)
 		},
@@ -138,82 +142,8 @@ website restart web_test --listener tcp_default
 		comp["listener"] = common.ListenerIDCompleter(con)
 	})
 
-	websiteTLSCmd := &cobra.Command{
-		Use:   "tls [name]",
-		Short: "Update website TLS settings",
-		Args:  cobra.ExactArgs(1),
-		Long:  "Switch a website between HTTP and HTTPS or replace its TLS certificate",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return WebsiteTLSCmd(cmd, con)
-		},
-		Example: `~~~
-// Bind an existing certificate
-website tls web_test --listener tcp_default --cert-name web_cert
-
-// Use a temporary certificate
-website tls web_test --listener tcp_default --cert /path/to/cert --key /path/to/key
-
-// Generate a temporary self-signed certificate
-website tls web_test --listener tcp_default --generate
-
-// Use and save a new certificate
-website tls web_test --listener tcp_default --cert /path/to/cert --key /path/to/key --save-cert --save-cert-name web_cert
-
-// Disable TLS and serve HTTP only
-website tls web_test --listener tcp_default --disable
-~~~`,
-	}
-
-	common.BindArgCompletions(websiteTLSCmd, nil, common.WebsiteCompleter(con))
-	common.BindFlag(websiteTLSCmd, func(f *pflag.FlagSet) {
-		f.String("listener", "", "listener ID")
-		f.Bool("disable", false, "disable TLS for this website")
-		f.String("cert-name", "", "existing certificate name")
-		f.Bool("generate", false, "generate a temporary self-signed certificate")
-		f.String("cert", "", "tls cert path")
-		f.String("key", "", "tls key path")
-		f.Bool("save-cert", false, "save inline cert and key to certificate store")
-		f.String("save-cert-name", "", "name for saved inline certificate")
-		f.String("cert-comment", "", "comment for saved inline certificate")
-	})
-
-	common.BindFlagCompletions(websiteTLSCmd, func(comp carapace.ActionMap) {
-		comp["listener"] = common.ListenerIDCompleter(con)
-		comp["cert-name"] = common.CertNameCompleter(con)
-		comp["generate"] = carapace.ActionValues().Usage("generate temporary self-signed certificate")
-		comp["cert"] = carapace.ActionFiles().Usage("path to the cert file")
-		comp["key"] = carapace.ActionFiles().Usage("path to the key file")
-		comp["save-cert-name"] = carapace.ActionValues().Usage("saved certificate name")
-	})
-
-	websiteCertCmd := &cobra.Command{
-		Use:   "cert [name]",
-		Short: "Bind or disable a website certificate",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return WebsiteCertCmd(cmd, con)
-		},
-	}
-	common.BindArgCompletions(websiteCertCmd, nil, common.WebsiteCompleter(con))
-	common.BindFlag(websiteCertCmd, func(f *pflag.FlagSet) {
-		f.String("listener", "", "listener ID")
-		f.Bool("disable", false, "disable TLS for this website")
-		f.String("cert-name", "", "existing certificate name")
-		f.Bool("generate", false, "generate a temporary self-signed certificate")
-		f.String("cert", "", "tls cert path")
-		f.String("key", "", "tls key path")
-		f.Bool("save-cert", false, "save inline cert and key to certificate store")
-		f.String("save-cert-name", "", "name for saved inline certificate")
-		f.String("cert-comment", "", "comment for saved inline certificate")
-	})
-	common.BindFlagCompletions(websiteCertCmd, func(comp carapace.ActionMap) {
-		comp["listener"] = common.ListenerIDCompleter(con)
-		comp["cert-name"] = common.CertNameCompleter(con)
-		comp["generate"] = carapace.ActionValues().Usage("generate temporary self-signed certificate")
-		comp["cert"] = carapace.ActionFiles().Usage("path to the cert file")
-		comp["key"] = carapace.ActionFiles().Usage("path to the key file")
-		comp["save-cert-name"] = carapace.ActionValues().Usage("saved certificate name")
-	})
+	websiteTLSCmd := newWebsiteTLSCommand("tls", "Update website TLS settings", con, WebsiteTLSCmd)
+	websiteCertCmd := newWebsiteTLSCommand("cert", "Bind or disable a website certificate", con, WebsiteCertCmd)
 
 	websiteStopCmd := &cobra.Command{
 		Use:   consts.CommandPipelineStop + " [name]",
@@ -421,9 +351,15 @@ website list-content web_test
 		Use:   "add [file_path]",
 		Short: "Add a website route",
 		Args:  validateWebsiteAddArgs,
+		Long:  "Add a local file_path as a website route, or use --artifact without file_path to publish a stored artifact.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return AddWebContentCmd(cmd, con)
 		},
+		Example: `~~~
+website route add /path/to/index.html --website site-a --path /index.html
+
+website route add --artifact beacon --website site-a --format shellcode --path /beacon.bin
+~~~`,
 	}
 	common.BindFlag(websiteRouteAddCmd, func(f *pflag.FlagSet) {
 		f.String("website", "", "website name (required)")
@@ -447,18 +383,26 @@ website list-content web_test
 		Use:   "remove [content_id]",
 		Short: "Remove a website route",
 		Args:  cobra.ExactArgs(1),
+		Long:  "Remove a website route by its content ID.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return RemoveWebContentCmd(cmd, con)
 		},
+		Example: `~~~
+website route remove 123e4567-e89b-12d3-a456-426614174000
+~~~`,
 	}
 	common.BindArgCompletions(websiteRouteRemoveCmd, nil, common.WebContentCompleter(con))
 	websiteRouteListCmd := &cobra.Command{
 		Use:   "list [website_name]",
 		Short: "List website routes",
 		Args:  cobra.ExactArgs(1),
+		Long:  "List all routes and content IDs for the specified website.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ListWebContentCmd(cmd, con)
 		},
+		Example: `~~~
+website route list site-a
+~~~`,
 	}
 	common.BindArgCompletions(websiteRouteListCmd, nil, common.WebsiteCompleter(con))
 	websiteRouteCmd.AddCommand(websiteRouteAddCmd, websiteRouteRemoveCmd, websiteRouteListCmd)
@@ -475,6 +419,57 @@ website list-content web_test
 		websiteRouteCmd)
 
 	return []*cobra.Command{websiteCmd}
+}
+
+func newWebsiteTLSCommand(name, short string, con *core.Console, run func(*cobra.Command, *core.Console) error) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   name + " [website_name]",
+		Short: short,
+		Args:  cobra.ExactArgs(1),
+		Long: `Update TLS for website_name. Select exactly one TLS mode:
+
+- --cert-name selects an existing stored certificate.
+- --cert/--key load an inline certificate pair and must be provided together.
+- --generate creates a temporary self-signed certificate.
+- --disable switches the website to HTTP.
+
+Use --listener when website names are ambiguous. Saving an inline or generated certificate requires both --save-cert and --save-cert-name.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return run(cmd, con)
+		},
+		Example: fmt.Sprintf(`~~~
+website %[1]s site-a --cert-name ZANY_PIN
+
+website %[1]s site-a --cert /path/to/cert.pem --key /path/to/cert.key
+
+website %[1]s site-a --generate
+
+website %[1]s site-a --cert /path/to/cert.pem --key /path/to/cert.key --save-cert --save-cert-name ZANY_PIN
+
+website %[1]s site-a --disable
+~~~`, name),
+	}
+	common.BindArgCompletions(cmd, nil, common.WebsiteCompleter(con))
+	common.BindFlag(cmd, func(f *pflag.FlagSet) {
+		f.String("listener", "", "listener ID used to disambiguate the website")
+		f.Bool("disable", false, "disable TLS for this website")
+		f.String("cert-name", "", "existing certificate name")
+		f.Bool("generate", false, "generate a temporary self-signed certificate")
+		f.String("cert", "", "TLS certificate path; requires --key")
+		f.String("key", "", "TLS private key path; requires --cert")
+		f.Bool("save-cert", false, "save generated or inline certificate to the certificate store")
+		f.String("save-cert-name", "", "name for the saved certificate; required with --save-cert")
+		f.String("cert-comment", "", "comment for the saved certificate")
+	})
+	common.BindFlagCompletions(cmd, func(comp carapace.ActionMap) {
+		comp["listener"] = common.ListenerIDCompleter(con)
+		comp["cert-name"] = common.CertNameCompleter(con)
+		comp["generate"] = carapace.ActionValues().Usage("generate temporary self-signed certificate")
+		comp["cert"] = carapace.ActionFiles().Usage("path to the certificate file")
+		comp["key"] = carapace.ActionFiles().Usage("path to the private key file")
+		comp["save-cert-name"] = carapace.ActionValues().Usage("saved certificate name")
+	})
+	return cmd
 }
 
 func validateWebsiteAddArgs(cmd *cobra.Command, args []string) error {

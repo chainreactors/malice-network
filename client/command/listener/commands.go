@@ -69,7 +69,7 @@ job
 	}
 
 	startPipelineCmd := &cobra.Command{
-		Use:   consts.CommandPipelineStart,
+		Use:   consts.CommandPipelineStart + " [pipeline_name]",
 		Short: "Start a pipeline",
 		Args:  cobra.ExactArgs(1),
 		Long:  "Start the specified pipeline.",
@@ -90,7 +90,7 @@ pipeline start tcp_test
 	})
 
 	stopPipelineCmd := &cobra.Command{
-		Use:   consts.CommandPipelineStop,
+		Use:   consts.CommandPipelineStop + " [pipeline_name]",
 		Short: "Stop a pipeline",
 		Args:  cobra.ExactArgs(1),
 		Long:  "Stop the specified pipeline.",
@@ -105,7 +105,7 @@ pipeline stop tcp_test
 	common.BindArgCompletions(stopPipelineCmd, nil, common.AllPipelineCompleter(con))
 
 	listPipelineCmd := &cobra.Command{
-		Use:   consts.CommandPipelineList,
+		Use:   consts.CommandPipelineList + " [listener_id]",
 		Short: "List pipelines",
 		Long:  "List pipelines for all listeners or for a specific listener.",
 		Args:  cobra.MaximumNArgs(1),
@@ -125,43 +125,63 @@ pipeline list listener_id
 	}
 
 	deletePipeCmd := &cobra.Command{
-		Use:   consts.CommandPipelineDelete + " [pipeline]",
+		Use:   consts.CommandPipelineDelete + " [pipeline_name]",
 		Short: "Delete a pipeline",
 		Args:  cobra.ExactArgs(1),
+		Long:  "Delete the specified pipeline definition from the server.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return DeletePipelineCmd(cmd, con)
 		},
+		Example: `~~~
+pipeline delete tcp-main
+~~~`,
 	}
 
 	common.BindArgCompletions(deletePipeCmd, nil, common.AllPipelineCompleter(con))
 
 	inspectPipelineCmd := &cobra.Command{
-		Use:   "inspect [pipeline]",
+		Use:   "inspect [pipeline_name]",
 		Short: "Inspect a pipeline",
 		Args:  cobra.ExactArgs(1),
+		Long:  "Show configuration, TLS, listener, and runtime metadata for the specified pipeline.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return InspectPipelineCmd(cmd, con)
 		},
+		Example: `~~~
+pipeline inspect tcp-main
+~~~`,
 	}
 	common.BindArgCompletions(inspectPipelineCmd, nil, common.AllPipelineCompleter(con))
 
 	restartPipelineCmd := &cobra.Command{
-		Use:   "restart [pipeline]",
+		Use:   "restart [pipeline_name]",
 		Short: "Restart a pipeline",
 		Args:  cobra.ExactArgs(1),
+		Long:  "Stop and then start the specified pipeline.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return RestartPipelineCmd(cmd, con)
 		},
+		Example: `~~~
+pipeline restart tcp-main
+~~~`,
 	}
 	common.BindArgCompletions(restartPipelineCmd, nil, common.AllPipelineCompleter(con))
 
 	updatePipelineCmd := &cobra.Command{
-		Use:   "update [pipeline]",
+		Use:   "update [pipeline_name]",
 		Short: "Update cached pipeline metadata",
 		Args:  cobra.ExactArgs(1),
+		Long:  "Update selected pipeline fields with --enable, --disable, --cert-name, or --parser, then synchronize the result to the server.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return UpdatePipelineCmd(cmd, con)
 		},
+		Example: `~~~
+pipeline update tcp-main --cert-name web-cert
+
+pipeline update tcp-main --disable
+
+pipeline update tcp-main --parser default
+~~~`,
 	}
 	common.BindFlag(updatePipelineCmd, func(f *pflag.FlagSet) {
 		f.Bool("enable", false, "enable pipeline")
@@ -177,9 +197,15 @@ pipeline list listener_id
 	healthPipelineCmd := &cobra.Command{
 		Use:   "health",
 		Short: "Show pipeline health summary",
+		Long:  "Show total, enabled, and running pipeline counts, optionally scoped by --listener.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return HealthPipelineCmd(cmd, con)
 		},
+		Example: `~~~
+pipeline health
+
+pipeline health --listener listener-a
+~~~`,
 	}
 	common.BindFlag(healthPipelineCmd, func(f *pflag.FlagSet) {
 		f.String("listener", "", "listener ID")
@@ -226,9 +252,13 @@ listener forward connect listener --host 10.0.0.5 --port 5005
 		Use:   "disconnect [listener_id]",
 		Short: "Disconnect a forward listener",
 		Args:  cobra.ExactArgs(1),
+		Long:  "Disconnect the client from the specified forward listener.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ForwardDisconnectCmd(cmd, con)
 		},
+		Example: `~~~
+listener forward disconnect listener-a
+~~~`,
 	}
 	common.BindArgCompletions(forwardDisconnectCmd, nil, common.ForwardListenerIDCompleter(con))
 
@@ -236,18 +266,28 @@ listener forward connect listener --host 10.0.0.5 --port 5005
 		Use:   "status [listener_id]",
 		Short: "Show forward listener status",
 		Args:  cobra.MaximumNArgs(1),
+		Long:  "Show status for one forward listener, or all connected forward listeners when listener_id is omitted.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ForwardStatusCmd(cmd, con)
 		},
+		Example: `~~~
+listener forward status
+
+listener forward status listener-a
+~~~`,
 	}
 	common.BindArgCompletions(forwardStatusCmd, nil, common.ForwardListenerIDCompleter(con))
 
 	forwardListCmd := &cobra.Command{
 		Use:   "list",
 		Short: "List connected forward listeners",
+		Long:  "List all forward listeners currently connected to this client.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ForwardListCmd(cmd, con)
 		},
+		Example: `~~~
+listener forward list
+~~~`,
 	}
 	forwardCmd.AddCommand(forwardConnectCmd, forwardDisconnectCmd, forwardStatusCmd, forwardListCmd)
 
@@ -277,9 +317,13 @@ listener retire listener-a --purge-config --purge-auth --yes
 		Use:   "inspect [listener_id]",
 		Short: "Inspect a listener",
 		Args:  cobra.ExactArgs(1),
+		Long:  "Show configuration and runtime metadata for the specified listener.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return InspectListenerCmd(cmd, con)
 		},
+		Example: `~~~
+listener inspect listener-a
+~~~`,
 	}
 	common.BindArgCompletions(inspectListenerCmd, nil, common.ListenerIDCompleter(con))
 

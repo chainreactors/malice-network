@@ -263,6 +263,9 @@ func FlagUsages(f *pflag.FlagSet) string {
 	var ungroupedFlags []*pflag.Flag
 
 	f.VisitAll(func(flag *pflag.Flag) {
+		if flag.Hidden {
+			return
+		}
 		if group, ok := flag.Annotations["group"]; ok && len(group) > 0 {
 			groups[group[0]] = append(groups[group[0]], flag)
 		} else {
@@ -272,11 +275,7 @@ func FlagUsages(f *pflag.FlagSet) string {
 
 	if len(ungroupedFlags) > 0 {
 		for _, flag := range ungroupedFlags {
-			if flag.Shorthand == "" {
-				fmt.Fprintf(&s, "* --%s: %s (default: `%s`)\n", flag.Name, flag.Usage, flag.DefValue)
-			} else {
-				fmt.Fprintf(&s, "* -%s, --%s: %s (default: `%s`)\n", flag.Shorthand, flag.Name, flag.Usage, flag.DefValue)
-			}
+			writeFlagUsage(&s, flag)
 		}
 		s.WriteString("\n")
 	}
@@ -285,17 +284,44 @@ func FlagUsages(f *pflag.FlagSet) string {
 		if len(flags) > 0 {
 			fmt.Fprintf(&s, "### %s\n\n", groupName)
 			for _, flag := range flags {
-				if flag.Shorthand == "" {
-					fmt.Fprintf(&s, "* --%s: %s (default: `%s`)\n", flag.Name, flag.Usage, flag.DefValue)
-				} else {
-					fmt.Fprintf(&s, "* -%s, --%s: %s (default: `%s`)\n", flag.Shorthand, flag.Name, flag.Usage, flag.DefValue)
-				}
+				writeFlagUsage(&s, flag)
 			}
 			s.WriteString("\n")
 		}
 	}
 
 	return s.String()
+}
+
+func writeFlagUsage(s *strings.Builder, flag *pflag.Flag) {
+	if flag.Shorthand == "" {
+		fmt.Fprintf(s, "* --%s: %s", flag.Name, flag.Usage)
+	} else {
+		fmt.Fprintf(s, "* -%s, --%s: %s", flag.Shorthand, flag.Name, flag.Usage)
+	}
+	if showFlagDefault(flag) {
+		fmt.Fprintf(s, " (default: `%s`)", flag.DefValue)
+	}
+	s.WriteByte('\n')
+}
+
+func showFlagDefault(flag *pflag.Flag) bool {
+	switch flag.Value.Type() {
+	case "bool":
+		return flag.DefValue != "false"
+	case "count", "float32", "float64", "int", "int8", "int16", "int32", "int64", "uint", "uint8", "uint16", "uint32", "uint64":
+		return flag.DefValue != "0"
+	case "duration":
+		return flag.DefValue != "0s"
+	case "string", "ip", "ipMask", "ipNet":
+		return flag.DefValue != ""
+	case "stringArray", "stringSlice":
+		return flag.DefValue != "[]"
+	case "stringToString":
+		return flag.DefValue != "[]" && flag.DefValue != "map[]"
+	default:
+		return flag.DefValue != "" && flag.DefValue != "<nil>"
+	}
 }
 
 func renderMarkdown(markdownContent string) string {

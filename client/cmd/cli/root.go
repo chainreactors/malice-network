@@ -12,7 +12,8 @@ import (
 
 func rootCmd(con *core.Console) (*cobra.Command, error) {
 	var cmd = &cobra.Command{
-		Use: "client",
+		Use:           "client",
+		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Propagate mux-child flag to Console.
 			if mc, _ := cmd.Flags().GetBool("mux-child"); mc {

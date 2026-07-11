@@ -103,8 +103,9 @@ cert acme_config --email new@example.com
 	common.BindFlag(acmeConfigCmd, common.AcmeConfigFlagSet)
 
 	delCmd := &cobra.Command{
-		Use:  consts.CommandCertDelete,
-		Args: cobra.ExactArgs(1),
+		Use:   consts.CommandCertDelete + " [cert_name]",
+		Short: "Delete a certificate",
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return DeleteCmd(cmd, con)
 		},
@@ -170,9 +171,13 @@ cert download cert-name -o cert_path
 		Use:   "inspect [cert_name]",
 		Short: "Inspect a certificate",
 		Args:  cobra.ExactArgs(1),
+		Long:  "Show certificate metadata, validity dates, fingerprints, and reference information.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return InspectCmd(cmd, con)
 		},
+		Example: `~~~
+cert inspect ZANY_PIN
+~~~`,
 	}
 	common.BindArgCompletions(inspectCmd, nil, common.CertNameCompleter(con))
 
@@ -180,9 +185,13 @@ cert download cert-name -o cert_path
 		Use:   "verify [cert_name]",
 		Short: "Verify certificate validity and key pairing",
 		Args:  cobra.ExactArgs(1),
+		Long:  "Verify that a stored certificate is currently valid and matches its private key.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return VerifyCmd(cmd, con)
 		},
+		Example: `~~~
+cert verify ZANY_PIN
+~~~`,
 	}
 	common.BindArgCompletions(verifyCmd, nil, common.CertNameCompleter(con))
 
@@ -190,9 +199,15 @@ cert download cert-name -o cert_path
 		Use:   "renew [cert_name]",
 		Short: "Renew an ACME certificate",
 		Args:  cobra.ExactArgs(1),
+		Long:  "Renew a stored ACME certificate, optionally overriding its domain, provider, email, or CA directory.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return RenewCmd(cmd, con)
 		},
+		Example: `~~~
+cert renew example-com
+
+cert renew example-com --domain example.com --provider cloudflare
+~~~`,
 	}
 	common.BindFlag(renewCmd, func(f *pflag.FlagSet) {
 		f.String("domain", "", "ACME domain override")
@@ -206,15 +221,20 @@ cert download cert-name -o cert_path
 		Use:   "list-refs [cert_name]",
 		Short: "List pipelines and websites referencing a certificate",
 		Args:  cobra.ExactArgs(1),
+		Long:  "List every pipeline and website that currently references the specified certificate.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ListRefsCmd(cmd, con)
 		},
+		Example: `~~~
+cert list-refs ZANY_PIN
+~~~`,
 	}
 	common.BindArgCompletions(listRefsCmd, nil, common.CertNameCompleter(con))
 
 	pruneExpiredCmd := &cobra.Command{
 		Use:   "prune",
 		Short: "Prune expired certificates",
+		Long:  "Delete expired certificates from the certificate store. Pass --expired to confirm the selection criterion.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			expiredOnly, _ := cmd.Flags().GetBool("expired")
 			if !expiredOnly {
@@ -222,6 +242,9 @@ cert download cert-name -o cert_path
 			}
 			return PruneExpiredCmd(cmd, con)
 		},
+		Example: `~~~
+cert prune --expired
+~~~`,
 	}
 	common.BindFlag(pruneExpiredCmd, func(f *pflag.FlagSet) {
 		f.Bool("expired", false, "delete expired certificates")
