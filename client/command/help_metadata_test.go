@@ -1,6 +1,8 @@
 package command_test
 
 import (
+	"fmt"
+	"sort"
 	"strings"
 	"testing"
 
@@ -116,6 +118,62 @@ func TestClientRootLetsConsoleRenderExecutionErrorsOnce(t *testing.T) {
 		if !root.SilenceErrors {
 			t.Errorf("%s root should silence Cobra errors so the console renders them once", name)
 		}
+	}
+}
+
+func TestBuiltInRunnableCommandsHaveDetailedHelp(t *testing.T) {
+	h := testsupport.NewHarness(t)
+	roots := []*cobra.Command{
+		command.BindClientsCommands(h.Console)(),
+		command.BindImplantCommands(h.Console)(),
+	}
+
+	var problems []string
+	seen := make(map[string]struct{})
+	for _, root := range roots {
+		walkBuiltInCommands(root, "golang", func(cmd *cobra.Command) {
+			if cmd == root || cmd.Hidden || !cmd.Runnable() || cmd.Name() == "help" {
+				return
+			}
+			path := strings.TrimPrefix(cmd.CommandPath(), root.Name()+" ")
+			if _, ok := seen[path]; ok {
+				return
+			}
+			seen[path] = struct{}{}
+			if strings.TrimSpace(cmd.Short) == "" {
+				problems = append(problems, fmt.Sprintf("%s: missing Short", cmd.CommandPath()))
+			}
+			if strings.TrimSpace(cmd.Long) == "" {
+				problems = append(problems, fmt.Sprintf("%s: missing Long", cmd.CommandPath()))
+			}
+			if strings.TrimSpace(cmd.Example) == "" {
+				problems = append(problems, fmt.Sprintf("%s: missing Example", cmd.CommandPath()))
+			}
+			if cmd.Args != nil && cmd.Args(cmd, nil) != nil && !strings.ContainsAny(cmd.Use, "[<") {
+				problems = append(problems, fmt.Sprintf("%s: required positional argument is absent from Use %q", cmd.CommandPath(), cmd.Use))
+			}
+		})
+	}
+
+	if len(problems) != 0 {
+		sort.Strings(problems)
+		t.Fatalf("built-in command help audit failed:\n%s", strings.Join(problems, "\n"))
+	}
+}
+
+func walkBuiltInCommands(cmd *cobra.Command, source string, visit func(*cobra.Command)) {
+	if strings.HasPrefix(cmd.Name(), "_carapace") {
+		return
+	}
+	if ownSource := cmd.Annotations["source"]; ownSource != "" {
+		source = ownSource
+	}
+	if source != "golang" {
+		return
+	}
+	visit(cmd)
+	for _, child := range cmd.Commands() {
+		walkBuiltInCommands(child, source, visit)
 	}
 }
 
