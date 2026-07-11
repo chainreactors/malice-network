@@ -58,6 +58,18 @@ func expiredLastCheckinUnix() int64 {
 	return time.Now().Add(-3 * time.Hour).Unix()
 }
 
+func TestSessionProtobufIncludesInitializedState(t *testing.T) {
+	session := newTestSession("initialized-session")
+	session.Initialized = true
+
+	if !session.ToProtobuf().GetIsInitialized() {
+		t.Fatal("ToProtobuf is_initialized = false, want true")
+	}
+	if !session.ToProtobufLite().GetIsInitialized() {
+		t.Fatal("ToProtobufLite is_initialized = false, want true")
+	}
+}
+
 // withExpression returns an option that sets the cron expression.
 func withExpression(expr string) func(*Session) {
 	return func(s *Session) { s.SessionContext.Expression = expr }

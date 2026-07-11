@@ -553,7 +553,7 @@ func (s *Session) isAlived() bool {
 }
 
 func (s *Session) ToProtobuf() *clientpb.Session {
-	return &clientpb.Session{
+	session := &clientpb.Session{
 		Type:        s.Type,
 		SessionId:   s.ID,
 		RawId:       s.RawID,
@@ -580,10 +580,12 @@ func (s *Session) ToProtobuf() *clientpb.Session {
 		KeyPair:     s.KeyPair, // 添加密钥对
 		Data:        s.Marshal(),
 	}
+	session.IsInitialized = s.Initialized
+	return session
 }
 
 func (s *Session) ToProtobufLite() *clientpb.Session {
-	return &clientpb.Session{
+	session := &clientpb.Session{
 		Type:        s.Type,
 		SessionId:   s.ID,
 		RawId:       s.RawID,
@@ -609,6 +611,8 @@ func (s *Session) ToProtobufLite() *clientpb.Session {
 		KeyPair:     s.KeyPair,
 		Data:        s.Marshal(),
 	}
+	session.IsInitialized = s.Initialized
+	return session
 }
 
 func (s *Session) Save() error {
