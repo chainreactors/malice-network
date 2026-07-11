@@ -322,6 +322,50 @@ func TestEventBrokerV2SignalsResetWhenCursorFallsBehindHistory(t *testing.T) {
 	}
 }
 
+func TestEventBrokerV2HeartbeatsDoNotEvictReplayableEvents(t *testing.T) {
+	broker := newTestBroker()
+	broker.historyCapacity = 2
+	broker.Start()
+	defer broker.Stop()
+
+	initial := broker.SubscribeV2(EventSubscription{})
+	ready := waitSequencedEvent(t, initial)
+	if err := broker.TryPublish(Event{EventType: consts.EventSession, Op: "one"}); err != nil {
+		t.Fatalf("TryPublish(one) failed: %v", err)
+	}
+	one := waitSequencedEvent(t, initial)
+	broker.UnsubscribeV2(initial)
+
+	barrier := broker.Subscribe()
+	for index := 0; index < 3; index++ {
+		if err := broker.TryPublish(Event{EventType: consts.EventHeartbeat, Op: consts.CtrlHeartbeat1s}); err != nil {
+			t.Fatalf("TryPublish(heartbeat %d) failed: %v", index, err)
+		}
+		_ = waitEvent(t, barrier)
+	}
+	if err := broker.TryPublish(Event{EventType: consts.EventSession, Op: "two"}); err != nil {
+		t.Fatalf("TryPublish(two) failed: %v", err)
+	}
+	_ = waitEvent(t, barrier)
+	broker.Unsubscribe(barrier)
+
+	reconnected := broker.SubscribeV2(EventSubscription{
+		StreamID:      ready.StreamID,
+		AfterSequence: one.Sequence,
+		Replay:        true,
+	})
+	defer broker.UnsubscribeV2(reconnected)
+
+	reconnectReady := waitSequencedEvent(t, reconnected)
+	if reconnectReady.ResetRequired {
+		t.Fatal("heartbeat-only sequence gap unexpectedly requires reset")
+	}
+	replayed := waitSequencedEvent(t, reconnected)
+	if !replayed.Replayed || replayed.Event.Op != "two" {
+		t.Fatalf("replayed event = %#v, want session event two", replayed)
+	}
+}
+
 func TestEventBrokerV2FiltersTopicsAndHeartbeats(t *testing.T) {
 	broker := newTestBroker()
 	broker.Start()

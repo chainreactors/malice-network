@@ -291,13 +291,14 @@ type eventBroker struct {
 	cache *RingCache
 	ready sync.Map
 
-	subscribeV2     chan eventV2SubscribeRequest
-	unsubscribeV2   chan chan SequencedEvent
-	v2Once          sync.Once
-	streamID        string
-	sequence        uint64
-	history         []SequencedEvent
-	historyCapacity int
+	subscribeV2            chan eventV2SubscribeRequest
+	unsubscribeV2          chan chan SequencedEvent
+	v2Once                 sync.Once
+	streamID               string
+	sequence               uint64
+	history                []SequencedEvent
+	historyCapacity        int
+	evictedThroughSequence uint64
 
 	alive     atomic.Bool
 	managed   atomic.Bool
@@ -428,7 +429,7 @@ func (broker *eventBroker) prepareV2Subscription(options EventSubscription, subs
 	if options.AfterSequence > latest {
 		resetRequired = true
 	}
-	if options.Replay && options.AfterSequence > 0 && oldest > 0 && options.AfterSequence < oldest-1 {
+	if options.Replay && options.StreamID != "" && options.AfterSequence < broker.evictedThroughSequence {
 		resetRequired = true
 	}
 
@@ -466,8 +467,13 @@ func (broker *eventBroker) recordV2Event(event Event) SequencedEvent {
 		OccurredAt: time.Now(),
 		Event:      &eventCopy,
 	}
+	if event.EventType == consts.EventHeartbeat {
+		sequenced.OldestSequence, sequenced.LatestSequence = broker.v2Bounds()
+		return sequenced
+	}
 	broker.history = append(broker.history, sequenced)
 	if overflow := len(broker.history) - broker.historyCapacity; overflow > 0 {
+		broker.evictedThroughSequence = broker.history[overflow-1].Sequence
 		copy(broker.history, broker.history[overflow:])
 		broker.history = broker.history[:broker.historyCapacity]
 	}
