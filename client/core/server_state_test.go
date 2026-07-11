@@ -9,6 +9,7 @@ import (
 	iomclient "github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestTaskMessageBufferRoundTrip(t *testing.T) {
@@ -298,6 +299,55 @@ func TestHandlerEventIgnoresNilEvent(t *testing.T) {
 	}
 	s := &Server{ServerState: state, taskMessages: make(map[string]string)}
 	s.HandlerEvent(nil)
+}
+
+func TestReplayCachedEventsDoesNotOverwriteCurrentPipelineSnapshot(t *testing.T) {
+	const (
+		pipelineName = "rem-cache-snapshot"
+		freshLink    = "simplex+sharepoint://fresh@example.test:443"
+	)
+	fresh := &clientpb.Pipeline{
+		Name:       pipelineName,
+		ListenerId: "listener-main",
+		Type:       consts.RemPipeline,
+		Body: &clientpb.Pipeline_Rem{Rem: &clientpb.REM{
+			Name:       pipelineName,
+			ListenerId: "listener-main",
+			Link:       freshLink,
+		}},
+	}
+	stale := &clientpb.Pipeline{
+		Name:       pipelineName,
+		ListenerId: "listener-main",
+		Type:       consts.RemPipeline,
+		Body: &clientpb.Pipeline_Rem{Rem: &clientpb.REM{
+			Name:       pipelineName,
+			ListenerId: "listener-main",
+		}},
+	}
+	events := []*clientpb.Event{{
+		Type: consts.EventJob,
+		Op:   consts.CtrlPipelineSync,
+		Job:  &clientpb.Job{Name: pipelineName, Pipeline: stale},
+	}}
+	for _, suppressOutput := range []bool{false, true} {
+		s := &Server{
+			ServerState: &iomclient.ServerState{
+				Pipelines: map[string]*clientpb.Pipeline{
+					pipelineName: proto.Clone(fresh).(*clientpb.Pipeline),
+				},
+			},
+			taskMessages: make(map[string]string),
+			Quiet:        true,
+		}
+
+		s.replayCachedEvents(events, suppressOutput)
+
+		if got := s.Pipelines[pipelineName].GetRem().GetLink(); got != freshLink {
+			t.Fatalf("pipeline link after cached event replay (suppressOutput=%t) = %q, want current snapshot %q",
+				suppressOutput, got, freshLink)
+		}
+	}
 }
 
 func TestHandlerSessionIgnoresMissingSession(t *testing.T) {

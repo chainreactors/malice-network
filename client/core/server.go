@@ -128,14 +128,20 @@ func NewServerWithOptions(conn *grpc.ClientConn, config *mtls.ClientConfig, supp
 	if err != nil {
 		return nil, err
 	}
-	for _, event := range events.GetEvents() {
-		if suppressStartupOutput {
-			ser.ReconcileEvent(event)
+	ser.replayCachedEvents(events.GetEvents(), suppressStartupOutput)
+	return ser, nil
+}
+
+func (s *Server) replayCachedEvents(events []*clientpb.Event, suppressOutput bool) {
+	if suppressOutput {
+		return
+	}
+	for _, event := range events {
+		if event == nil || event.Type == consts.EventTask {
 			continue
 		}
-		ser.HandlerEvent(event)
+		s.handleEventOutput(event)
 	}
-	return ser, nil
 }
 
 func (s *Server) AddDoneCallback(task *clientpb.Task, callback client.TaskCallback) {
@@ -435,6 +441,11 @@ func (s *Server) EventHandler() {
 	if err != nil {
 		return
 	}
+	// Wait until the server has installed the event subscription before taking
+	// a new snapshot. Events produced during Update then remain queued in order.
+	if _, err := eventStream.Header(); err != nil {
+		return
+	}
 	s.Update()
 	if s.Session != nil {
 		s.UpdateSession(s.GetInteractive().SessionId)
@@ -496,7 +507,13 @@ func (s *Server) HandlerEvent(event *clientpb.Event) {
 	}
 	// Reconcile state first — single entry point for all map updates
 	s.ReconcileEvent(event)
+	s.handleEventOutput(event)
+}
 
+func (s *Server) handleEventOutput(event *clientpb.Event) {
+	if s == nil || event == nil {
+		return
+	}
 	// Quiet mode (non-index mux pane): suppress notification events but let
 	// task events through so user-initiated commands still show results.
 	if s.Quiet && event.Type != consts.EventTask {

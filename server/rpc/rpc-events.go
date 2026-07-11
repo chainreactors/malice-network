@@ -8,11 +8,16 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
+	"google.golang.org/grpc/metadata"
 	"strconv"
 )
 
 func (rpc *Server) Events(_ *clientpb.Empty, stream clientrpc.MaliceRPC_EventsServer) error {
 	events := core.EventBroker.Subscribe()
+	if err := stream.SendHeader(metadata.Pairs(consts.EventStreamReadyHeader, "1")); err != nil {
+		core.EventBroker.Unsubscribe(events)
+		return err
+	}
 	clientID := core.GetCurrentID()
 	defer func() {
 		logs.Log.Infof("client: %d disconnected", clientID)

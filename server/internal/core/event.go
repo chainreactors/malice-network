@@ -230,6 +230,7 @@ type eventBroker struct {
 
 	lock  *sync.Mutex
 	cache *RingCache
+	ready sync.Map
 
 	alive     atomic.Bool
 	managed   atomic.Bool
@@ -256,6 +257,9 @@ func (broker *eventBroker) run() error {
 			return nil
 		case sub := <-broker.subscribe:
 			subscribers[sub] = struct{}{}
+			if ready, ok := broker.ready.LoadAndDelete(sub); ok {
+				close(ready.(chan struct{}))
+			}
 		case sub := <-broker.unsubscribe:
 			delete(subscribers, sub)
 		case event := <-broker.publish:
@@ -317,7 +321,12 @@ func (broker *eventBroker) Stop() {
 // Subscribe - Generate a new subscription channel
 func (broker *eventBroker) Subscribe() chan Event {
 	events := make(chan Event, eventBufSize)
+	ready := make(chan struct{})
+	broker.ready.Store(events, ready)
 	broker.subscribe <- events
+	// Do not return until run has installed the subscriber. Callers may publish
+	// immediately after Subscribe and must not lose that first event.
+	<-ready
 	return events
 }
 

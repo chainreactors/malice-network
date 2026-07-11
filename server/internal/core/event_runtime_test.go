@@ -2,6 +2,7 @@ package core
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -173,6 +174,32 @@ subscribed:
 		case <-deadline:
 			t.Fatal("broker did not continue dispatching events")
 		}
+	}
+}
+
+func TestEventBrokerSubscribeIsReadyBeforeReturn(t *testing.T) {
+	broker := newTestBroker()
+	broker.Start()
+	defer broker.Stop()
+
+	for i := 0; i < 100; i++ {
+		sub := broker.Subscribe()
+		event := Event{
+			EventType: consts.EventBroadcast,
+			Op:        fmt.Sprintf("ready-%d", i),
+		}
+		if err := broker.TryPublish(event); err != nil {
+			t.Fatalf("TryPublish failed: %v", err)
+		}
+		select {
+		case got := <-sub:
+			if got.Op != event.Op {
+				t.Fatalf("event op = %q, want %q", got.Op, event.Op)
+			}
+		case <-time.After(time.Second):
+			t.Fatalf("subscriber %d missed event published immediately after Subscribe", i)
+		}
+		broker.Unsubscribe(sub)
 	}
 }
 
