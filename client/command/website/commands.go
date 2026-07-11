@@ -343,6 +343,12 @@ website list-content web_test
 	websiteRouteCmd := &cobra.Command{
 		Use:   "route",
 		Short: "Manage website routes",
+		Long:  "Add, remove, list, and inspect website content routes.",
+		Example: `~~~
+website route list payloads
+website route inspect CONTENT_ID
+website route remove CONTENT_ID
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},

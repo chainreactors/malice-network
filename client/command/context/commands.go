@@ -22,11 +22,20 @@ func Commands(con *core.Console) []*cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ListContexts(cmd, con)
 		},
+		Example: `~~~
+context
+context download
+context credential
+~~~`,
 	}
 
 	downloadCmd := &cobra.Command{
 		Use:   "download",
 		Short: "List download contexts",
+		Long:  "List file-download contexts recorded by the server.",
+		Example: `~~~
+context download
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return GetDownloadsCmd(cmd, con)
 		},
@@ -35,6 +44,10 @@ func Commands(con *core.Console) []*cobra.Command {
 	uploadCmd := &cobra.Command{
 		Use:   "upload",
 		Short: "List upload contexts",
+		Long:  "List file-upload contexts recorded by the server.",
+		Example: `~~~
+context upload
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return GetUploadsCmd(cmd, con)
 		},
@@ -43,6 +56,10 @@ func Commands(con *core.Console) []*cobra.Command {
 	credentialCmd := &cobra.Command{
 		Use:   "credential",
 		Short: "List credential contexts",
+		Long:  "List credential contexts collected from sessions.",
+		Example: `~~~
+context credential
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return GetCredentialsCmd(cmd, con)
 		},
@@ -51,6 +68,10 @@ func Commands(con *core.Console) []*cobra.Command {
 	portCmd := &cobra.Command{
 		Use:   "port",
 		Short: "List port scan contexts",
+		Long:  "List port-scan result contexts recorded by the server.",
+		Example: `~~~
+context port
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return GetPortsCmd(cmd, con)
 		},
@@ -59,6 +80,10 @@ func Commands(con *core.Console) []*cobra.Command {
 	screenshotCmd := &cobra.Command{
 		Use:   "screenshot",
 		Short: "List screenshot contexts",
+		Long:  "List screenshot contexts recorded by the server.",
+		Example: `~~~
+context screenshot
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return GetScreenshotsCmd(cmd, con)
 		},
@@ -67,6 +92,10 @@ func Commands(con *core.Console) []*cobra.Command {
 	keyloggerCmd := &cobra.Command{
 		Use:   "keylogger",
 		Short: "List keylogger contexts",
+		Long:  "List keylogger contexts recorded by the server.",
+		Example: `~~~
+context keylogger
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return GetKeyloggersCmd(cmd, con)
 		},
@@ -75,6 +104,10 @@ func Commands(con *core.Console) []*cobra.Command {
 	mediaCmd := &cobra.Command{
 		Use:   "media",
 		Short: "List media contexts",
+		Long:  "List media capture contexts recorded by the server.",
+		Example: `~~~
+context media
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return GetMediaCmd(cmd, con)
 		},

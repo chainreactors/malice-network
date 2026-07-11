@@ -42,6 +42,10 @@ session -a
 	bindSessNewCmd := &cobra.Command{
 		Use:   consts.CommandNewBindSession + " [session]",
 		Short: "Create a new bind session",
+		Long:  "Create a session record for an existing bind implant using its target and pipeline.",
+		Example: `~~~
+session newbind bind-01 --target 10.0.0.8:5001 --pipeline bind-main
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return NewBindSessionCmd(cmd, con)
 		},
@@ -157,6 +161,9 @@ use 08d6c05a21512a79a1dfeb9d2a8f262f
 		Use:   consts.CommandBackground,
 		Short: "Return to the root context",
 		Long:  "Exit the current session and return to the root context.",
+		Example: `~~~
+background
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return BackGround(cmd, con)
 		},
@@ -190,6 +197,10 @@ obverse -r
 		Short: "Show session log history",
 		Long:  "Displays the specified number of log lines of the current session.",
 		Args:  cobra.MaximumNArgs(1),
+		Example: `~~~
+history
+history 100
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return historyCmd(cmd, con)
 		},

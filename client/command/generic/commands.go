@@ -28,6 +28,10 @@ func Commands(con *core.Console) []*cobra.Command {
 	loginCmd := &cobra.Command{
 		Use:   consts.CommandLogin,
 		Short: "Login to server",
+		Long:  "Connect to the server using the selected authentication configuration.",
+		Example: `~~~
+login --auth ./client.auth
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return LoginCmd(cmd, con)
 		},
@@ -36,6 +40,10 @@ func Commands(con *core.Console) []*cobra.Command {
 	versionCmd := &cobra.Command{
 		Use:   consts.CommandVersion,
 		Short: "show server version",
+		Long:  "Show the version reported by the connected Malice Network server.",
+		Example: `~~~
+version
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return VersionCmd(cmd, con)
 		},
@@ -44,6 +52,10 @@ func Commands(con *core.Console) []*cobra.Command {
 	exitCmd := &cobra.Command{
 		Use:   consts.CommandExit,
 		Short: "exit client",
+		Long:  "Exit the interactive client process.",
+		Example: `~~~
+exit
+~~~`,
 		Run: func(cmd *cobra.Command, args []string) {
 			fmt.Println("Exiting...")
 			os.Exit(0)
@@ -54,7 +66,12 @@ func Commands(con *core.Console) []*cobra.Command {
 	broadcastCmd := &cobra.Command{
 		Use:   consts.CommandBroadcast + " [message]",
 		Short: "Broadcast a message to all clients",
+		Long:  "Broadcast a message to every connected client, optionally forwarding it to configured notification services.",
 		Args:  cobra.MinimumNArgs(1),
+		Example: `~~~
+broadcast maintenance starts in 10 minutes
+broadcast --notify build completed
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return BroadcastCmd(cmd, con)
 		},
@@ -67,7 +84,12 @@ func Commands(con *core.Console) []*cobra.Command {
 	cmdCmd := &cobra.Command{
 		Use:   "! [command]",
 		Short: "Run a command",
+		Long:  "Run a local executable on the client host with the client's current environment.",
 		Args:  cobra.MinimumNArgs(1),
+		Example: `~~~
+! whoami
+! ls -la
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// os exec
 

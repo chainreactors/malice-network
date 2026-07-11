@@ -116,6 +116,10 @@ from server/config.yaml -> server.llm. Legacy local ask/analyze can still use lo
 		Annotations: map[string]string{
 			"static": "true",
 		},
+		Example: `~~~
+config ai enable --provider openai --model gpt-5.4
+config ai enable --opsec-check
+~~~`,
 	}
 	enableCmd.Flags().String("provider", "", "Preferred provider for agent chat/skill: openai or claude")
 	enableCmd.Flags().String("api-key", "", "Legacy local API key for direct ask/analyze only")
@@ -129,6 +133,10 @@ from server/config.yaml -> server.llm. Legacy local ask/analyze can still use lo
 	disableCmd := &cobra.Command{
 		Use:   "disable",
 		Short: "Disable AI assistant",
+		Long:  "Disable local AI preferences for this client.",
+		Example: `~~~
+config ai disable
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return AIDisableCmd(con)
 		},

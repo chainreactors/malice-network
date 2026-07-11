@@ -13,6 +13,12 @@ func Commands(con *core.Console) []*cobra.Command {
 	cmd := &cobra.Command{
 		Use:   consts.CommandMal,
 		Short: "mal commands",
+		Long:  "Manage MAL plugin manifests installed in the client.",
+		Example: `~~~
+mal list
+mal install ./example.yaml
+mal load example
+~~~`,
 		Annotations: map[string]string{
 			"thirdParty": "true",
 			"static":     "true",
@@ -26,7 +32,12 @@ func Commands(con *core.Console) []*cobra.Command {
 	installCmd := &cobra.Command{
 		Use:   consts.CommandMalInstall + " [mal_file]",
 		Short: "Install a mal manifest",
-		Args:  cobra.ExactArgs(1),
+		Long:  "Install a MAL manifest from a local file or configured remote source.",
+		Example: `~~~
+mal install ./example.yaml
+mal install ./example.yaml --version latest
+~~~`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return MalInstallCmd(cmd, con)
 		},
@@ -44,7 +55,11 @@ func Commands(con *core.Console) []*cobra.Command {
 	loadCmd := &cobra.Command{
 		Use:   consts.CommandMalLoad + " [mal]",
 		Short: "Load a mal manifest",
-		Args:  cobra.ExactArgs(1),
+		Long:  "Load an installed MAL manifest and register its commands.",
+		Example: `~~~
+mal load example
+~~~`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return MalLoadCmd(cmd, con)
 		},
@@ -57,6 +72,10 @@ func Commands(con *core.Console) []*cobra.Command {
 	cmd.AddCommand(&cobra.Command{
 		Use:   consts.CommandMalList,
 		Short: "List mal manifests",
+		Long:  "List embedded and externally installed MAL manifests.",
+		Example: `~~~
+mal list
+~~~`,
 		Annotations: map[string]string{
 			"static": "true",
 		},
@@ -68,7 +87,11 @@ func Commands(con *core.Console) []*cobra.Command {
 	cmd.AddCommand(&cobra.Command{
 		Use:   consts.CommandMalRemove + " [mal]",
 		Short: "Remove a mal manifest",
-		Args:  cobra.ExactArgs(1),
+		Long:  "Remove an externally installed MAL manifest.",
+		Example: `~~~
+mal remove example
+~~~`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return RemoveMalCmd(cmd, con)
 		},
@@ -77,15 +100,24 @@ func Commands(con *core.Console) []*cobra.Command {
 	cmd.AddCommand(&cobra.Command{
 		Use:   consts.CommandMalRefresh,
 		Short: "Refresh mal manifests",
+		Long:  "Reload installed MAL manifests from local storage.",
+		Example: `~~~
+mal refresh
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return RefreshMalCmd(cmd, con)
 		},
 	})
 
 	updateCmd := &cobra.Command{
-		Use:   consts.CommandMalUpdate,
+		Use:   consts.CommandMalUpdate + " [mal]",
 		Short: "Update a mal or all mals",
-		Args:  cobra.MaximumNArgs(1),
+		Long:  "Update one MAL manifest by name, or update every installed manifest with --all.",
+		Example: `~~~
+mal update example
+mal update --all
+~~~`,
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return UpdateMalCmd(cmd, con)
 		},

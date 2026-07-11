@@ -24,6 +24,11 @@ func Commands(con *core.Console) []*cobra.Command {
 		Annotations: map[string]string{
 			"static": "true",
 		},
+		Example: `~~~
+search screenshot
+search "credential dump" --type command
+search pivot --group implant --limit 10
+~~~`,
 	}
 
 	searchCmd.Flags().StringP("type", "t", "", "filter by type: command, plugin")

@@ -13,6 +13,7 @@ func Commands(con *core.Console) []*cobra.Command {
 	certCmd := &cobra.Command{
 		Use:   consts.CommandCert,
 		Short: "Cert list",
+		Long:  "List certificates stored on the server and manage their lifecycle.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return GetCertCmd(cmd, con)
 		},
@@ -24,6 +25,7 @@ cert
 	importCmd := &cobra.Command{
 		Use:   consts.CommandCertImport,
 		Short: "import a new cert",
+		Long:  "Import a certificate and private key into the server certificate store.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ImportCmd(cmd, con)
 		},
@@ -50,6 +52,7 @@ cert import --cert cert_file_path --key key_file_path --ca-cert ca_cert_path
 	selfSignCmd := &cobra.Command{
 		Use:   consts.CommandCertSelfSigned,
 		Short: "generate a self-signed cert",
+		Long:  "Generate a self-signed certificate and store it on the server.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return SelfSignedCmd(cmd, con)
 		},
@@ -66,6 +69,7 @@ cert self_signed --CN commonName --O "Example Organization" --C US --L "San Fran
 	acmeCmd := &cobra.Command{
 		Use:   consts.CommandCertAcme,
 		Short: "obtain an ACME certificate via DNS-01 challenge",
+		Long:  "Obtain and store an ACME certificate using a DNS-01 challenge.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return AcmeCmd(cmd, con)
 		},
@@ -86,6 +90,7 @@ cert acme --domain example.com --ca-url https://acme-staging-v02.api.letsencrypt
 	acmeConfigCmd := &cobra.Command{
 		Use:   consts.CommandCertAcmeConfig,
 		Short: "view or update ACME configuration",
+		Long:  "Show the current ACME defaults or update the supplied configuration fields.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return AcmeConfigCmd(cmd, con)
 		},
@@ -105,6 +110,7 @@ cert acme_config --email new@example.com
 	delCmd := &cobra.Command{
 		Use:   consts.CommandCertDelete + " [cert_name]",
 		Short: "Delete a certificate",
+		Long:  "Delete the specified certificate from the server certificate store.",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return DeleteCmd(cmd, con)
@@ -119,8 +125,9 @@ cert delete cert-name
 	)
 
 	updateCmd := &cobra.Command{
-		Use:   consts.CommandCertUpdate,
+		Use:   consts.CommandCertUpdate + " [cert_name]",
 		Short: "update a cert",
+		Long:  "Update the certificate material, type, or comment for a stored certificate.",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return UpdateCmd(cmd, con)
@@ -147,8 +154,9 @@ cert update cert-name --cert cert_path --key key_path --type imported
 	})
 
 	downloadCmd := &cobra.Command{
-		Use:   consts.CommandCertDownload,
+		Use:   consts.CommandCertDownload + " [cert_name]",
 		Short: "download a cert",
+		Long:  "Download the specified certificate from the server certificate store.",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return DownloadCmd(cmd, con)

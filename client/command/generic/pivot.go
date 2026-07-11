@@ -43,7 +43,12 @@ pivot log <agent_id>
 	listCmd := &cobra.Command{
 		Use:   "list",
 		Short: "List pivot agents",
-		Args:  cobra.NoArgs,
+		Long:  "List enabled pivot agents, or include disabled agents with --all.",
+		Example: `~~~
+pivot list
+pivot list --all
+~~~`,
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ListPivotCmd(cmd, con)
 		},
@@ -53,7 +58,12 @@ pivot log <agent_id>
 	statusCmd := &cobra.Command{
 		Use:   "status <agent_id>",
 		Short: "Query a pivot agent status",
-		Args:  cobra.ExactArgs(1),
+		Long:  "Request status from a managed pivot agent, optionally selecting a specific pipeline.",
+		Example: `~~~
+pivot status uDM0BgG6
+pivot status uDM0BgG6 --pipeline listener-a:rem-main
+~~~`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return PivotStatusCmd(cmd, con, args[0])
 		},
@@ -63,7 +73,11 @@ pivot log <agent_id>
 	stopCmd := &cobra.Command{
 		Use:   "stop <agent_id>",
 		Short: "Stop a managed pivot agent",
-		Args:  cobra.ExactArgs(1),
+		Long:  "Stop a managed pivot agent, optionally selecting a specific pipeline.",
+		Example: `~~~
+pivot stop uDM0BgG6
+~~~`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return PivotStopCmd(cmd, con, args[0])
 		},
@@ -73,7 +87,11 @@ pivot log <agent_id>
 	logCmd := &cobra.Command{
 		Use:   "log <agent_id>",
 		Short: "Read a pivot agent log",
-		Args:  cobra.ExactArgs(1),
+		Long:  "Read the server-side log for a managed pivot agent.",
+		Example: `~~~
+pivot log uDM0BgG6
+~~~`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return PivotLogCmd(cmd, con, args[0])
 		},

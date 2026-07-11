@@ -14,6 +14,12 @@ func Commands(con *core.Console) []*cobra.Command {
 	configCmd := &cobra.Command{
 		Use:   consts.CommandConfig,
 		Short: "Show configuration summary",
+		Long:  "Show client and server configuration summaries and manage configurable integrations.",
+		Example: `~~~
+config
+config refresh
+config github
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ConfigSummaryCmd(con)
 		},
@@ -21,6 +27,11 @@ func Commands(con *core.Console) []*cobra.Command {
 	configRefreshCmd := &cobra.Command{
 		Use:   consts.CommandRefresh,
 		Short: "Refresh config",
+		Long:  "Reload server configuration, or reload client configuration when --client is set.",
+		Example: `~~~
+config refresh
+config refresh --client
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return RefreshCmd(cmd, con)
 		},
@@ -33,6 +44,11 @@ func Commands(con *core.Console) []*cobra.Command {
 	githubCmd := &cobra.Command{
 		Use:   consts.CommandGithub,
 		Short: "Show Github config and more operations",
+		Long:  "Show the GitHub Actions build configuration and provide commands to update it.",
+		Example: `~~~
+config github
+config github update --owner example --repo implants --workflowFile build.yml
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return GetGithubConfigCmd(cmd, con)
 		},
@@ -40,6 +56,10 @@ func Commands(con *core.Console) []*cobra.Command {
 	githubUpdateCmd := &cobra.Command{
 		Use:   consts.CommandConfigUpdate,
 		Short: "Update Github config",
+		Long:  "Update GitHub repository, token, and workflow settings used by remote builds.",
+		Example: `~~~
+config github update --owner example --repo implants --workflowFile build.yml
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return UpdateGithubConfigCmd(cmd, con)
 		},
@@ -52,6 +72,11 @@ func Commands(con *core.Console) []*cobra.Command {
 	notifyCmd := &cobra.Command{
 		Use:   consts.CommandNotify,
 		Short: "Show Notify config and more operations",
+		Long:  "Show notification integration settings and provide commands to update them.",
+		Example: `~~~
+config notify
+config notify update --lark-enable --lark-webhook-url https://example.invalid/webhook
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return GetNotifyCmd(cmd, con)
 		},
@@ -60,6 +85,10 @@ func Commands(con *core.Console) []*cobra.Command {
 	notifyUpdateCmd := &cobra.Command{
 		Use:   consts.CommandConfigUpdate,
 		Short: "Update Notify config",
+		Long:  "Update Telegram, DingTalk, Lark, ServerChan, or PushPlus notification settings.",
+		Example: `~~~
+config notify update --telegram-enable --telegram-token TOKEN --telegram-chat-id 1234
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return UpdateNotifyCmd(cmd, con)
 		},

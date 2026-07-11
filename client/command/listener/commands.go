@@ -42,7 +42,11 @@ job
 	jobInspectCmd := &cobra.Command{
 		Use:   "inspect [job]",
 		Short: "Inspect a running job",
-		Args:  cobra.ExactArgs(1),
+		Long:  "Show runtime information for the specified listener job.",
+		Example: `~~~
+job inspect tcp-main
+~~~`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return InspectJobCmd(cmd, con)
 		},
@@ -50,7 +54,11 @@ job
 	jobKillCmd := &cobra.Command{
 		Use:   "kill [job]",
 		Short: "Stop a running job",
-		Args:  cobra.ExactArgs(1),
+		Long:  "Stop the specified listener job.",
+		Example: `~~~
+job kill tcp-main
+~~~`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return KillJobCmd(cmd, con)
 		},
@@ -66,6 +74,11 @@ job
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
+		Example: `~~~
+pipeline list
+pipeline inspect tcp-main
+pipeline stop tcp-main
+~~~`,
 	}
 
 	startPipelineCmd := &cobra.Command{
@@ -220,6 +233,12 @@ pipeline health --listener listener-a
 	forwardCmd := &cobra.Command{
 		Use:   "forward",
 		Short: "Manage forward listeners",
+		Long:  "Connect this client to forward listeners and inspect active forward connections.",
+		Example: `~~~
+listener forward connect listener-a --host 10.0.0.5 --port 5005
+listener forward status
+listener forward disconnect listener-a
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
@@ -227,6 +246,7 @@ pipeline health --listener listener-a
 	forwardConnectCmd := &cobra.Command{
 		Use:   "connect [listener_id]",
 		Short: "Connect to a forward listener",
+		Long:  "Connect this client to the specified forward listener endpoint.",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ForwardConnectCmd(cmd, con)
@@ -294,6 +314,7 @@ listener forward list
 	retireCmd := &cobra.Command{
 		Use:   "retire [listener_id]",
 		Short: "Retire a listener",
+		Long:  "Shut down a listener and optionally purge its configuration, authentication file, or operator.",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return RetireListenerCmd(cmd, con)
