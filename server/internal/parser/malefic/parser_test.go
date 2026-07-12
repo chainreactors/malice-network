@@ -177,6 +177,18 @@ func TestMaleficParser_Parse_EmptyPayload(t *testing.T) {
 	}
 }
 
+func TestMaleficParser_Parse_RejectsDecodedPayloadAboveLimit(t *testing.T) {
+	p := NewMaleficParser()
+	var header [binary.MaxVarintLen64]byte
+	n := binary.PutUvarint(header[:], maxDecodedPayloadSize+1)
+	payload := append(append([]byte(nil), header[:n]...), DefaultEndDelimiter)
+
+	_, err := p.Parse(payload)
+	if !errors.Is(err, ErrDecodedPayloadTooLarge) {
+		t.Fatalf("Parse error = %v, want ErrDecodedPayloadTooLarge", err)
+	}
+}
+
 func TestMaleficParser_Parse_ZeroLengthSlice(t *testing.T) {
 	p := NewMaleficParser()
 	defer func() {

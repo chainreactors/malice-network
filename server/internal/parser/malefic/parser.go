@@ -3,6 +3,7 @@ package malefic
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
@@ -24,7 +25,10 @@ const (
 	HeaderLength          = 9
 	DefaultStartDelimiter = 0xd1
 	DefaultEndDelimiter   = 0xd2
+	maxDecodedPayloadSize = uint64(2 << 30)
 )
+
+var ErrDecodedPayloadTooLarge = errors.New("decoded payload exceeds 2 GiB limit")
 
 func NewMaleficParser() *MaleficParser {
 	return &MaleficParser{
@@ -158,7 +162,12 @@ func (parser *MaleficParser) Parse(buf []byte) (*implantpb.Spites, error) {
 		}
 	}
 
-	buf, err := compress.Decompress(buf)
+	decodedLength, err := compress.DecodedLen(buf)
+	if err == nil && uint64(decodedLength) > maxDecodedPayloadSize {
+		return nil, fmt.Errorf("%w: %d bytes", ErrDecodedPayloadTooLarge, decodedLength)
+	}
+
+	buf, err = compress.Decompress(buf)
 	if err != nil {
 		logs.Log.Debugf("trying plaintext: %v", err)
 	}

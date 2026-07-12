@@ -2,6 +2,11 @@ package compress
 
 import "github.com/golang/snappy"
 
+// DecodedLen returns the uncompressed length declared by a Snappy block.
+func DecodedLen(compressedData []byte) (int, error) {
+	return snappy.DecodedLen(compressedData)
+}
+
 // Compress compresses the input data using Snappy and returns the compressed data or an error.
 func Compress(data []byte) ([]byte, error) {
 	// Use snappy compressor to compress the input data

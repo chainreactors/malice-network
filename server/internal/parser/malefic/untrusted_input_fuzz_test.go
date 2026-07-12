@@ -80,8 +80,17 @@ func FuzzMaleficParserParse(f *testing.F) {
 		// exhaust the host while still exercising malformed and bounded frames.
 		if len(payload) > 0 && payload[len(payload)-1] == DefaultEndDelimiter {
 			decodedLength, err := snappy.DecodedLen(payload[:len(payload)-1])
-			if err == nil && decodedLength > fuzzMaxPayloadLength {
-				return
+			if err == nil {
+				if uint64(decodedLength) > maxDecodedPayloadSize {
+					_, parseErr := p.Parse(payload)
+					if !errors.Is(parseErr, ErrDecodedPayloadTooLarge) {
+						t.Fatalf("oversized decoded payload error = %v, want ErrDecodedPayloadTooLarge", parseErr)
+					}
+					return
+				}
+				if decodedLength > fuzzMaxPayloadLength {
+					return
+				}
 			}
 		}
 
