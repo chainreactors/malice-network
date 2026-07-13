@@ -26,9 +26,10 @@ import (
 const forwardStreamCloseTimeout = 5 * time.Second
 
 var (
-	ErrForwardStreamClosing      = errors.New("forward stream is closing")
-	ErrForwardStreamCloseTimeout = errors.New("forward stream close timed out")
-	ErrForwardStreamPoisoned     = errors.New("forward stream has not drained")
+	ErrForwardStreamClosing         = errors.New("forward stream is closing")
+	ErrForwardStreamCloseTimeout    = errors.New("forward stream close timed out")
+	ErrForwardStreamPoisoned        = errors.New("forward stream has not drained")
+	ErrForwardStreamAlreadyAttached = errors.New("forward stream already has an active task stream")
 )
 
 type ForwardListener struct {
@@ -141,7 +142,14 @@ func (s *forwardListenerService) TaskStream(stream forwardrpc.ForwardListener_Ta
 	if err != nil {
 		return status.Error(codes.Unavailable, err.Error())
 	}
-	local.attach(stream)
+	release, err := local.attach()
+	if err != nil {
+		if errors.Is(err, ErrForwardStreamAlreadyAttached) {
+			return status.Error(codes.AlreadyExists, err.Error())
+		}
+		return status.Error(codes.Unavailable, err.Error())
+	}
+	defer release()
 	return local.serve(stream)
 }
 
@@ -359,6 +367,8 @@ type forwardLocalStream struct {
 	remoteSend sync.WaitGroup
 	closeErr   error
 	drained    chan struct{}
+	attachMu   sync.Mutex
+	attached   bool
 }
 
 func (s *forwardLocalStream) Send(resp *clientpb.SpiteResponse) error {
@@ -396,7 +406,26 @@ func (s *forwardLocalStream) Recv() (*clientpb.SpiteRequest, error) {
 	}
 }
 
-func (s *forwardLocalStream) attach(_ forwardrpc.ForwardListener_TaskStreamServer) {}
+func (s *forwardLocalStream) attach() (func(), error) {
+	s.attachMu.Lock()
+	defer s.attachMu.Unlock()
+	if s.closed.Load() {
+		return nil, ErrForwardStreamClosing
+	}
+	if s.attached {
+		return nil, ErrForwardStreamAlreadyAttached
+	}
+	s.attached = true
+
+	var once sync.Once
+	return func() {
+		once.Do(func() {
+			s.attachMu.Lock()
+			s.attached = false
+			s.attachMu.Unlock()
+		})
+	}, nil
+}
 
 func (s *forwardLocalStream) serve(stream forwardrpc.ForwardListener_TaskStreamServer) error {
 	ctx, cancel := context.WithCancel(stream.Context())

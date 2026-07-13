@@ -19,6 +19,9 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 	"gopkg.in/yaml.v3"
 )
 
@@ -323,6 +326,79 @@ func TestForwardStreamRegistryBlocksReuseUntilTimedOutSendDrains(t *testing.T) {
 			t.Fatal("registry stayed poisoned after old send drained")
 		}
 		time.Sleep(time.Millisecond)
+	}
+}
+
+func TestForwardLocalStreamAllowsOnlyOneActiveAttach(t *testing.T) {
+	stream := newForwardLocalStream(nil, "listener-attach", "pipeline-attach")
+
+	releaseFirst, err := stream.attach()
+	if err != nil {
+		t.Fatalf("first attach failed: %v", err)
+	}
+	if _, err := stream.attach(); !errors.Is(err, ErrForwardStreamAlreadyAttached) {
+		t.Fatalf("second active attach error = %v, want ErrForwardStreamAlreadyAttached", err)
+	}
+
+	releaseFirst()
+	releaseSecond, err := stream.attach()
+	if err != nil {
+		t.Fatalf("attach after release failed: %v", err)
+	}
+	defer releaseSecond()
+
+	// A stale release must not detach the newer owner.
+	releaseFirst()
+	if _, err := stream.attach(); !errors.Is(err, ErrForwardStreamAlreadyAttached) {
+		t.Fatalf("attach after stale release error = %v, want ErrForwardStreamAlreadyAttached", err)
+	}
+}
+
+func TestForwardTaskStreamRejectsSecondActiveAttach(t *testing.T) {
+	registry := newForwardStreamRegistry()
+	service := &forwardListenerService{registry: registry}
+	listenerID := "listener-task-attach"
+	pipelineID := "pipeline-task-attach"
+	firstCtx, cancelFirst := context.WithCancel(metadata.NewIncomingContext(context.Background(), metadata.Pairs(
+		"listener_id", listenerID,
+		"pipeline_id", pipelineID,
+	)))
+	first := &mockTaskStream{ctx: firstCtx}
+	firstResult := make(chan error, 1)
+	go func() { firstResult <- service.TaskStream(first) }()
+
+	deadline := time.Now().Add(time.Second)
+	for {
+		local := mustOpenForwardLocalStream(t, registry, listenerID, pipelineID)
+		local.attachMu.Lock()
+		attached := local.attached
+		local.attachMu.Unlock()
+		if attached {
+			break
+		}
+		if time.Now().After(deadline) {
+			cancelFirst()
+			t.Fatal("first TaskStream did not become active")
+		}
+		time.Sleep(time.Millisecond)
+	}
+
+	secondCtx := metadata.NewIncomingContext(context.Background(), metadata.Pairs(
+		"listener_id", listenerID,
+		"pipeline_id", pipelineID,
+	))
+	if err := service.TaskStream(&mockTaskStream{ctx: secondCtx}); status.Code(err) != codes.AlreadyExists {
+		t.Fatalf("second TaskStream error = %v, want code %s", err, codes.AlreadyExists)
+	}
+
+	cancelFirst()
+	select {
+	case err := <-firstResult:
+		if err != nil {
+			t.Fatalf("first TaskStream error = %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("first TaskStream did not stop after context cancellation")
 	}
 }
 
