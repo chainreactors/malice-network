@@ -691,6 +691,125 @@ func (s *Session) SetGroup(group string) {
 	s.stateMu.Unlock()
 }
 
+func (s *Session) SetTimer(expression string, jitter float64) {
+	if s == nil {
+		return
+	}
+	s.stateMu.Lock()
+	s.ensureSessionContextLocked()
+	s.Expression = expression
+	s.Jitter = jitter
+	s.stateMu.Unlock()
+}
+
+func (s *Session) TimerSnapshot() (string, float64) {
+	if s == nil {
+		return "", 0
+	}
+	s.stateMu.RLock()
+	defer s.stateMu.RUnlock()
+	if s.SessionContext == nil || s.SessionInfo == nil {
+		return "", 0
+	}
+	return s.Expression, s.Jitter
+}
+
+func (s *Session) ensureSessionContextLocked() {
+	if s.SessionContext == nil {
+		s.SessionContext = &client.SessionContext{}
+	}
+	if s.SessionInfo == nil {
+		s.SessionInfo = &client.SessionInfo{}
+	}
+}
+
+func (s *Session) RoutingSnapshot() (string, string) {
+	_, listenerID, pipelineID := s.ConnectionSnapshot()
+	return listenerID, pipelineID
+}
+
+func (s *Session) ConnectionSnapshot() (string, string, string) {
+	if s == nil {
+		return "", "", ""
+	}
+	s.stateMu.RLock()
+	defer s.stateMu.RUnlock()
+	return s.Target, s.ListenerID, s.PipelineID
+}
+
+func (s *Session) ReplaceAddons(addons []*implantpb.Addon) {
+	if s == nil {
+		return
+	}
+	s.stateMu.Lock()
+	s.ensureSessionContextLocked()
+	s.Addons = mergeSessionAddons(nil, addons)
+	s.stateMu.Unlock()
+}
+
+func (s *Session) MergeAddons(addons []*implantpb.Addon) {
+	if s == nil || len(addons) == 0 {
+		return
+	}
+	s.stateMu.Lock()
+	s.ensureSessionContextLocked()
+	s.Addons = mergeSessionAddons(s.Addons, addons)
+	s.stateMu.Unlock()
+}
+
+func (s *Session) AddonsSnapshot() []*implantpb.Addon {
+	if s == nil {
+		return nil
+	}
+	s.stateMu.RLock()
+	defer s.stateMu.RUnlock()
+	if s.SessionContext == nil {
+		return nil
+	}
+	return cloneSessionAddons(s.Addons)
+}
+
+func (s *Session) HasAddon(name string) bool {
+	if s == nil || name == "" {
+		return false
+	}
+	s.stateMu.RLock()
+	defer s.stateMu.RUnlock()
+	if s.SessionContext == nil {
+		return false
+	}
+	for _, addon := range s.Addons {
+		if addon != nil && addon.GetName() == name {
+			return true
+		}
+	}
+	return false
+}
+
+func mergeSessionAddons(existing, incoming []*implantpb.Addon) []*implantpb.Addon {
+	merged := make([]*implantpb.Addon, 0, len(existing)+len(incoming))
+	indexes := make(map[string]int, len(existing)+len(incoming))
+	appendOrReplace := func(addon *implantpb.Addon) {
+		if addon == nil || addon.GetName() == "" {
+			return
+		}
+		cloned := proto.Clone(addon).(*implantpb.Addon)
+		if index, ok := indexes[addon.GetName()]; ok {
+			merged[index] = cloned
+			return
+		}
+		indexes[addon.GetName()] = len(merged)
+		merged = append(merged, cloned)
+	}
+	for _, addon := range existing {
+		appendOrReplace(addon)
+	}
+	for _, addon := range incoming {
+		appendOrReplace(addon)
+	}
+	return merged
+}
+
 func (s *Session) ApplyModules(modules *implantpb.Modules, appendOnly bool) {
 	if modules == nil {
 		return

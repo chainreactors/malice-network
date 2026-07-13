@@ -121,7 +121,8 @@ func (rpc *Server) SpiteStream(stream listenerrpc.ListenerRPC_SpiteStreamServer)
 			if err := sess.Save(); err != nil {
 				logs.Log.Errorf("save session %s reborn state failed: %s", sess.ID, err.Error())
 			}
-			sess.Publish(consts.CtrlSessionReborn, fmt.Sprintf("session %s from %s reborn at %s", sess.Abstract(), sess.Target, sess.PipelineID), true, true)
+			target, _, pipelineID := sess.ConnectionSnapshot()
+			sess.Publish(consts.CtrlSessionReborn, fmt.Sprintf("session %s from %s reborn at %s", sess.Abstract(), target, pipelineID), true, true)
 		}
 
 		if size := proto.Size(msg.Spite); size <= 1000 {

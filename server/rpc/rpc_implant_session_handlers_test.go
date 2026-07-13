@@ -72,8 +72,9 @@ func TestSleepDispatchesRequestAndUpdatesSession(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Sleep failed: %v", err)
 	}
-	if sess.Expression != req.Expression || sess.Jitter != req.Jitter {
-		t.Fatalf("session timer = %q/%v, want %q/%v", sess.Expression, sess.Jitter, req.Expression, req.Jitter)
+	expression, jitter := sess.TimerSnapshot()
+	if expression != req.Expression || jitter != req.Jitter {
+		t.Fatalf("session timer = %q/%v, want %q/%v", expression, jitter, req.Expression, req.Jitter)
 	}
 
 	select {

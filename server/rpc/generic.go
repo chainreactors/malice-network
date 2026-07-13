@@ -322,14 +322,15 @@ func (rpc *Server) GenericInternal(ctx context.Context, req proto.Message, expec
 }
 
 func loadPipelineStreamForSession(sess *core.Session) (interface{}, bool) {
-	if sess == nil || sess.PipelineID == "" {
+	listenerID, pipelineID := sess.RoutingSnapshot()
+	if pipelineID == "" {
 		return nil, false
 	}
-	if streamVal, ok := pipelinesCh.Load(core.PipelineRuntimeKey(sess.ListenerID, sess.PipelineID)); ok {
+	if streamVal, ok := pipelinesCh.Load(core.PipelineRuntimeKey(listenerID, pipelineID)); ok {
 		return streamVal, true
 	}
-	if sess.ListenerID != "" && runtimePipelineNameCount(sess.PipelineID) <= 1 {
-		return pipelinesCh.Load(sess.PipelineID)
+	if listenerID != "" && runtimePipelineNameCount(pipelineID) <= 1 {
+		return pipelinesCh.Load(pipelineID)
 	}
 	return nil, false
 }
