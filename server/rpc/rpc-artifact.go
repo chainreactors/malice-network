@@ -1,10 +1,13 @@
 package rpc
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
@@ -13,10 +16,13 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 )
+
+const artifactStreamChunkSize int64 = 512 * 1024
 
 // ObjcopyPulse extracts shellcode from compiled artifact using objcopy
 func ObjcopyPulse(builder *models.Artifact, platform, arch string) ([]byte, error) {
@@ -76,6 +82,120 @@ func (rpc *Server) DownloadArtifact(ctx context.Context, req *clientpb.Artifact)
 	}
 
 	return build.ConvertArtifact(artifact, req.Format, req.Rdi)
+}
+
+// DownloadArtifactStream streams an artifact without loading the original
+// binary into memory when no output conversion is requested. Converted
+// formats preserve DownloadArtifact semantics and are emitted as chunks after
+// conversion completes.
+func (rpc *Server) DownloadArtifactStream(req *clientpb.Artifact, stream clientrpc.MaliceRPC_DownloadArtifactStreamServer) error {
+	if req == nil || req.Name == "" {
+		return fmt.Errorf("artifact name is required")
+	}
+
+	artifactModel, err := db.GetArtifactByName(req.Name)
+	if err != nil {
+		return err
+	}
+
+	if req.Format == "" || req.Format == consts.FormatExecutable {
+		file, err := os.Open(artifactModel.Path)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+
+		stat, err := file.Stat()
+		if err != nil {
+			return err
+		}
+		return sendArtifactContentStream(artifactModel.ToProtobuf(nil), stat.Size(), file, stream)
+	}
+
+	artifact, err := artifactModel.ToArtifact()
+	if err != nil {
+		return err
+	}
+	artifact, err = build.ConvertArtifact(artifact, req.Format, req.Rdi)
+	if err != nil {
+		return err
+	}
+	content := artifact.Bin
+	artifact.Bin = nil
+	return sendArtifactContentStream(artifact, int64(len(content)), bytes.NewReader(content), stream)
+}
+
+func sendArtifactContentStream(
+	header *clientpb.Artifact,
+	totalSize int64,
+	reader io.Reader,
+	stream clientrpc.MaliceRPC_DownloadArtifactStreamServer,
+) error {
+	if header == nil {
+		return fmt.Errorf("artifact stream header is required")
+	}
+	header.Bin = nil
+	if totalSize <= 0 {
+		return stream.Send(&clientpb.ArtifactChunk{
+			Header:    header,
+			TotalSize: 0,
+			Eof:       true,
+		})
+	}
+
+	if err := stream.Send(&clientpb.ArtifactChunk{
+		Header:    header,
+		TotalSize: totalSize,
+		Eof:       false,
+	}); err != nil {
+		return err
+	}
+
+	for offset := int64(0); offset < totalSize; {
+		select {
+		case <-stream.Context().Done():
+			return stream.Context().Err()
+		default:
+		}
+
+		chunkSize := artifactStreamChunkSize
+		if remaining := totalSize - offset; remaining < chunkSize {
+			chunkSize = remaining
+		}
+		chunk := make([]byte, chunkSize)
+		n, readErr := reader.Read(chunk)
+		if n == 0 {
+			if readErr == nil {
+				return io.ErrNoProgress
+			}
+			if errors.Is(readErr, io.EOF) {
+				return fmt.Errorf("read artifact content at offset %d: %w", offset, io.ErrUnexpectedEOF)
+			}
+			return readErr
+		}
+
+		nextOffset := offset + int64(n)
+		if err := stream.Send(&clientpb.ArtifactChunk{
+			Content:   chunk[:n],
+			Offset:    offset,
+			TotalSize: totalSize,
+			Eof:       nextOffset == totalSize,
+		}); err != nil {
+			return err
+		}
+		offset = nextOffset
+
+		if readErr != nil {
+			if errors.Is(readErr, io.EOF) {
+				if offset < totalSize {
+					return fmt.Errorf("read artifact content at offset %d: %w", offset, io.ErrUnexpectedEOF)
+				}
+				return nil
+			}
+			return readErr
+		}
+	}
+	return nil
 }
 
 // maxArtifactUploadSize caps user-uploaded artifact binaries. 128 MiB covers
