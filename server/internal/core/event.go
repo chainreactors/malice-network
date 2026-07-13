@@ -26,6 +26,7 @@ const (
 var (
 	ErrEventBrokerUnavailable = errors.New("event broker unavailable")
 	ErrEventBrokerQueueFull   = errors.New("event broker queue full")
+	ErrEventSubscriberSlow    = errors.New("event subscriber queue full")
 	eventBrokerRestartBackoff = 200 * time.Millisecond
 )
 
@@ -233,12 +234,12 @@ type eventBroker struct {
 	send        chan Event
 	notifier    inotify.Notifier
 
-	lock  *sync.Mutex
 	cache *RingCache
 
 	alive     atomic.Bool
 	managed   atomic.Bool
 	startOnce sync.Once
+	stopOnce  sync.Once
 }
 
 func (broker *eventBroker) run() error {
@@ -247,12 +248,7 @@ func (broker *eventBroker) run() error {
 	defer func() {
 		broker.alive.Store(false)
 		for sub := range subscribers {
-			func(ch chan Event) {
-				defer func() {
-					_ = recover()
-				}()
-				close(ch)
-			}(sub)
+			closeEventSubscriber(sub)
 		}
 	}()
 	for {
@@ -270,16 +266,22 @@ func (broker *eventBroker) run() error {
 			} else if event.EventType != consts.EventHeartbeat {
 				logs.Log.Debugf("event.%s - %s", event.EventType, event.String())
 			}
-			broker.lock.Lock()
 			for sub := range subscribers {
 				if err := broker.dispatch(sub, event); err != nil {
 					delete(subscribers, sub)
-					logs.Log.Warnf("drop broken event subscriber: %s", ErrorText(err))
+					closeEventSubscriber(sub)
+					logs.Log.Warnf("disconnect event subscriber: %s", ErrorText(err))
 				}
 			}
-			broker.lock.Unlock()
 		}
 	}
+}
+
+func closeEventSubscriber(sub chan Event) {
+	defer func() {
+		_ = recover()
+	}()
+	close(sub)
 }
 
 func (broker *eventBroker) dispatch(sub chan Event, event Event) (err error) {
@@ -290,10 +292,10 @@ func (broker *eventBroker) dispatch(sub chan Event, event Event) (err error) {
 	}()
 	select {
 	case sub <- event:
+		return nil
 	default:
-		// channel full, drop event; subscriber may catch up later
+		return ErrEventSubscriberSlow
 	}
-	return nil
 }
 
 func (broker *eventBroker) Start() {
@@ -317,7 +319,12 @@ func (broker *eventBroker) Start() {
 
 // Stop - Close the broker channel
 func (broker *eventBroker) Stop() {
-	close(broker.stop)
+	if broker == nil {
+		return
+	}
+	broker.stopOnce.Do(func() {
+		close(broker.stop)
+	})
 }
 
 // Subscribe - Generate a new subscription channel
@@ -329,8 +336,12 @@ func (broker *eventBroker) Subscribe() (chan Event, error) {
 	case <-broker.stop:
 		return nil, ErrEventBrokerUnavailable
 	}
-	<-ready
-	return events, nil
+	select {
+	case <-ready:
+		return events, nil
+	case <-broker.stop:
+		return nil, ErrEventBrokerUnavailable
+	}
 }
 
 // Unsubscribe - Remove a subscription channel
@@ -402,7 +413,6 @@ func NewBroker() *eventBroker {
 		send:        make(chan Event, eventBufSize),
 		notifier:    inotify.NewNotifier(),
 		cache:       NewMessageCache(eventBufSize),
-		lock:        &sync.Mutex{},
 	}
 	broker.Start()
 	ticker := GlobalTicker

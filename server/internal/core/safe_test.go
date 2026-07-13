@@ -23,7 +23,6 @@ func newTestBroker() *eventBroker {
 		send:        make(chan Event, eventBufSize),
 		notifier:    inotify.NewNotifier(),
 		cache:       NewMessageCache(eventBufSize),
-		lock:        &sync.Mutex{},
 	}
 }
 

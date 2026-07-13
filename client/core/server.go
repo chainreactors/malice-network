@@ -451,7 +451,13 @@ func (s *Server) EventHandler() {
 	}()
 	for {
 		event, err := eventStream.Recv()
-		if err == io.EOF || event == nil {
+		if err != nil {
+			if err != io.EOF {
+				client.Log.Warnf("event stream receive failed: %v\n", err)
+			}
+			return
+		}
+		if event == nil {
 			return
 		}
 		s.dispatchEventHooks(event)

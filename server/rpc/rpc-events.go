@@ -33,7 +33,10 @@ func (rpc *Server) Events(_ *clientpb.Empty, stream clientrpc.MaliceRPC_EventsSe
 		select {
 		case <-stream.Context().Done():
 			return nil
-		case event := <-events:
+		case event, ok := <-events:
+			if !ok {
+				return nil
+			}
 			pb := event.ToProtobuf()
 			err := stream.Send(pb)
 			if err != nil {

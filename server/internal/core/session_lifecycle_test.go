@@ -30,7 +30,6 @@ func TestLifecycle_TickerMarksDead(t *testing.T) {
 		send:        make(chan Event, eventBufSize),
 		notifier:    inotify.NewNotifier(),
 		cache:       NewMessageCache(eventBufSize),
-		lock:        &sync.Mutex{},
 	}
 	oldBroker := EventBroker
 	EventBroker = broker
@@ -93,7 +92,6 @@ func TestLifecycle_TickerKeepsAlive(t *testing.T) {
 		send:        make(chan Event, eventBufSize),
 		notifier:    inotify.NewNotifier(),
 		cache:       NewMessageCache(eventBufSize),
-		lock:        &sync.Mutex{},
 	}
 	oldBroker := EventBroker
 	EventBroker = broker
@@ -172,7 +170,6 @@ func TestLifecycle_RegisterCheckinDeadReborn(t *testing.T) {
 		send:        make(chan Event, eventBufSize),
 		notifier:    inotify.NewNotifier(),
 		cache:       NewMessageCache(eventBufSize),
-		lock:        &sync.Mutex{},
 	}
 	oldBroker := EventBroker
 	EventBroker = broker
@@ -284,7 +281,6 @@ func TestLifecycle_ConcurrentCheckinAndTicker(t *testing.T) {
 		send:        make(chan Event, eventBufSize),
 		notifier:    inotify.NewNotifier(),
 		cache:       NewMessageCache(eventBufSize),
-		lock:        &sync.Mutex{},
 	}
 	oldBroker := EventBroker
 	EventBroker = broker
@@ -368,7 +364,6 @@ func TestLifecycle_MixedAliveDeadSessions(t *testing.T) {
 		send:        make(chan Event, eventBufSize),
 		notifier:    inotify.NewNotifier(),
 		cache:       NewMessageCache(eventBufSize),
-		lock:        &sync.Mutex{},
 	}
 	oldBroker := EventBroker
 	EventBroker = broker
@@ -471,7 +466,6 @@ func TestEdge_RegisterLongSilenceThenReborn(t *testing.T) {
 		send:        make(chan Event, eventBufSize),
 		notifier:    inotify.NewNotifier(),
 		cache:       NewMessageCache(eventBufSize),
-		lock:        &sync.Mutex{},
 	}
 	oldBroker := EventBroker
 	EventBroker = broker
@@ -599,7 +593,6 @@ func TestEdge_ConcurrentRemove(t *testing.T) {
 		send:        make(chan Event, eventBufSize),
 		notifier:    inotify.NewNotifier(),
 		cache:       NewMessageCache(eventBufSize),
-		lock:        &sync.Mutex{},
 	}
 	oldBroker := EventBroker
 	EventBroker = broker
@@ -791,7 +784,6 @@ func TestEdge_RapidFlapping(t *testing.T) {
 		send:        make(chan Event, eventBufSize),
 		notifier:    inotify.NewNotifier(),
 		cache:       NewMessageCache(eventBufSize),
-		lock:        &sync.Mutex{},
 	}
 	oldBroker := EventBroker
 	EventBroker = broker
@@ -941,7 +933,6 @@ func TestEdge_MultipleDeathsInSameTicker(t *testing.T) {
 		send:        make(chan Event, eventBufSize),
 		notifier:    inotify.NewNotifier(),
 		cache:       NewMessageCache(eventBufSize),
-		lock:        &sync.Mutex{},
 	}
 	oldBroker := EventBroker
 	EventBroker = broker

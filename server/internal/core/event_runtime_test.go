@@ -77,6 +77,24 @@ func TestEventBrokerRunStopClosesSubscribers(t *testing.T) {
 	}
 }
 
+func TestEventBrokerStopIsIdempotent(t *testing.T) {
+	broker := newTestBroker()
+	broker.Stop()
+	broker.Stop()
+}
+
+func TestEventBrokerRejectsSlowSubscriber(t *testing.T) {
+	broker := newTestBroker()
+	sub := make(chan Event, eventBufSize)
+	for i := 0; i < eventBufSize; i++ {
+		sub <- Event{EventType: consts.EventBroadcast, Op: "queued"}
+	}
+	err := broker.dispatch(sub, Event{EventType: consts.EventBroadcast, Op: "overflow"})
+	if !errors.Is(err, ErrEventSubscriberSlow) {
+		t.Fatalf("dispatch error = %v, want ErrEventSubscriberSlow", err)
+	}
+}
+
 func TestEventBrokerTryPublishReturnsUnavailableWhenStopped(t *testing.T) {
 	broker := newTestBroker()
 	broker.managed.Store(true)
