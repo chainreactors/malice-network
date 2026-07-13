@@ -1243,22 +1243,6 @@ func (s *Session) DeleteResp(taskId uint32) {
 	}
 }
 
-// UpdateKeyPair 更新KeyPair并同步到SecureManager
-func (s *Session) UpdateKeyPair(keyPair *clientpb.KeyPair) {
-	var stored *clientpb.KeyPair
-	if keyPair != nil {
-		stored = proto.Clone(keyPair).(*clientpb.KeyPair)
-	}
-	s.stateMu.Lock()
-	s.SessionContext.KeyPair = stored
-	manager := s.SecureManager
-	s.stateMu.Unlock()
-	// 更新SecureManager中的KeyPair引用
-	if manager != nil {
-		manager.UpdateKeyPair(stored)
-	}
-}
-
 // SetKeepalive updates the keepalive state. Returns the previous state.
 func (s *Session) SetKeepalive(enabled bool) bool {
 	s.keepaliveMu.Lock()
@@ -1428,28 +1412,40 @@ func (s *Session) initializeSecureManager(req *clientpb.RegisterSession) error {
 }
 
 func (s *Session) UpdatePublicKey(key string) {
-	s.UpdateKeyPairFieldsAndPushCtrl(key, "")
+	s.UpdateKeyPair(key, "")
 }
 
 func (s *Session) UpdatePrivateKey(key string) {
-	s.UpdateKeyPairFieldsAndPushCtrl("", key)
+	s.UpdateKeyPair("", key)
 }
 
-func (s *Session) UpdateKeyPairFieldsAndPushCtrl(publicKey string, privateKey string) {
+// UpdateKeyPair merges the given non-empty public/private key fields into the
+// session's current key pair, syncs the SecureManager, and pushes the update to
+// the listener; an empty field leaves the existing value unchanged. The merge
+// and store run under a single write lock so concurrent field updates (e.g. a
+// re-register updating the public key while a key rotation updates both) cannot
+// read the same base snapshot and clobber each other.
+func (s *Session) UpdateKeyPair(publicKey string, privateKey string) {
+	s.stateMu.Lock()
 	next := &clientpb.KeyPair{}
-	s.stateMu.RLock()
 	if s.KeyPair != nil {
 		next.PublicKey = s.KeyPair.PublicKey
 		next.PrivateKey = s.KeyPair.PrivateKey
 	}
-	s.stateMu.RUnlock()
 	if publicKey != "" {
 		next.PublicKey = publicKey
 	}
 	if privateKey != "" {
 		next.PrivateKey = privateKey
 	}
-	s.UpdateKeyPair(next)
+	// next is freshly allocated here and shared with no caller, so no defensive
+	// clone is needed before storing it.
+	s.SessionContext.KeyPair = next
+	manager := s.SecureManager
+	s.stateMu.Unlock()
+	if manager != nil {
+		manager.UpdateKeyPair(next)
+	}
 	s.PushCtrl()
 }
 

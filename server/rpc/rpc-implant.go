@@ -550,7 +550,7 @@ func (rpc *Server) triggerKeyExchange(ctx context.Context, sess *core.Session) e
 			return
 		}
 		sess.SecureManager.ResetCounters()
-		sess.UpdateKeyPairFieldsAndPushCtrl(resp.PublicKey, keyPair.Private)
+		sess.UpdateKeyPair(resp.PublicKey, keyPair.Private)
 	})
 	return err
 }
