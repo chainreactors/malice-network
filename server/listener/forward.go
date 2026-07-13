@@ -363,6 +363,13 @@ type forwardLocalStream struct {
 	closed     atomic.Bool
 	eventMu    sync.Mutex
 	slotsOnce  sync.Once
+	// eventSlots is a semaphore holding exactly one token per free slot in the
+	// events channel. Invariant: every entry sent into events must first acquire
+	// a slot (sendEventContext) and release it exactly once on consumption or on
+	// the closed-path early return. This lets senders wait for capacity outside
+	// eventMu (cancellable) and then commit the send while holding eventMu
+	// without ever blocking on a full channel. Any new events send path MUST
+	// keep this one-slot-per-in-flight-entry accounting or it will deadlock/leak.
 	eventSlots chan struct{}
 	remoteSend sync.WaitGroup
 	closeErr   error

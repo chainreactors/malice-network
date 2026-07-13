@@ -733,6 +733,10 @@ func (broker *eventBroker) TryPublish(event Event) error {
 	select {
 	case broker.publish <- event:
 	default:
+		// History caching now happens on dequeue (recordAcceptedEvent), so an
+		// Important event dropped here is also absent from the replay history.
+		// This is an accepted trade-off under queue saturation; the drop is
+		// surfaced by Publish's error log rather than silently swallowed.
 		broker.publishMu.Unlock()
 		return ErrEventBrokerQueueFull
 	}
