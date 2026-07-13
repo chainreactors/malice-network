@@ -6,9 +6,15 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"time"
 
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/soheilhy/cmux"
+)
+
+const (
+	cmuxReadTimeout       = 10 * time.Second
+	httpReadHeaderTimeout = 10 * time.Second
 )
 
 var serveCMux = func(m cmux.CMux) error {
@@ -21,12 +27,18 @@ var serveHTTP = func(server *http.Server, ln net.Listener) error {
 
 func NewHTTPServer(handler http.Handler) *http.Server {
 	return &http.Server{
-		Handler: handler,
+		Handler:           handler,
+		ReadHeaderTimeout: httpReadHeaderTimeout,
 	}
 }
 
 func SpiltTLSListener(ln net.Listener) (cmux.CMux, net.Listener, net.Listener) {
+	return splitTLSListener(ln, cmuxReadTimeout)
+}
+
+func splitTLSListener(ln net.Listener, readTimeout time.Duration) (cmux.CMux, net.Listener, net.Listener) {
 	m := cmux.New(ln)
+	m.SetReadTimeout(readTimeout)
 	tlsL := m.Match(cmux.TLS())
 	plainL := m.Match(cmux.Any())
 	return m, tlsL, plainL

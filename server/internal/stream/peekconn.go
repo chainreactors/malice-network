@@ -1,14 +1,23 @@
 package cryptostream
 
 import (
-	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/server/internal/parser"
-	"github.com/chainreactors/malice-network/server/internal/parser/malefic"
+	"errors"
+	"fmt"
 	"io"
 	"net"
 	"sync"
 	"time"
+
+	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/server/internal/parser"
+	"github.com/chainreactors/malice-network/server/internal/parser/malefic"
 )
+
+const initialPacketReadTimeout = 10 * time.Second
+
+type readDeadlineSetter interface {
+	SetReadDeadline(time.Time) error
+}
 
 type ReadWriteCloser struct {
 	r       io.Reader
@@ -58,10 +67,26 @@ func PeekSid(conn *Conn) (uint32, error) {
 	return malefic.ParseSid(data), nil
 }
 
+// WrapPeekConn bounds the initial header read when the transport supports read
+// deadlines. Callers using other stream types must provide their own timeout.
 func WrapPeekConn(conn io.ReadWriteCloser, cryptos []Cryptor, parserName string, maxPacketLength uint32) (*Conn, error) {
+	return wrapPeekConn(conn, cryptos, parserName, maxPacketLength, initialPacketReadTimeout)
+}
+
+func wrapPeekConn(conn io.ReadWriteCloser, cryptos []Cryptor, parserName string, maxPacketLength uint32, readTimeout time.Duration) (*Conn, error) {
 	bs := make([]byte, 9)
-	_, err := io.ReadFull(conn, bs)
-	if err != nil {
+	deadlineConn, hasDeadline := conn.(readDeadlineSetter)
+	if hasDeadline {
+		if err := deadlineConn.SetReadDeadline(time.Now().Add(readTimeout)); err != nil {
+			return nil, fmt.Errorf("set initial packet read deadline: %w", err)
+		}
+	}
+	_, readErr := io.ReadFull(conn, bs)
+	var clearErr error
+	if hasDeadline {
+		clearErr = deadlineConn.SetReadDeadline(time.Time{})
+	}
+	if err := errors.Join(readErr, clearErr); err != nil {
 		return nil, err
 	}
 
@@ -71,6 +96,7 @@ func WrapPeekConn(conn io.ReadWriteCloser, cryptos []Cryptor, parserName string,
 	var c Cryptor
 	var p *parser.MessageParser
 	var i int
+	var err error
 	for i, c = range cryptos {
 		var de []byte
 		de, err = Decrypt(c, bs)
