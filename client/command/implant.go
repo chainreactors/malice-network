@@ -105,10 +105,11 @@ func makeRunners(implantCmd *cobra.Command, con *core.Console) (pre, post func(c
 			return nil
 		}
 		sid, _ := cmd.Flags().GetString("use")
-		if sid == "" && con.ActiveTarget.Session == nil {
+		activeSession := con.ActiveTarget.Get()
+		if sid == "" && activeSession == nil {
 			return fmt.Errorf("no implant to run command on")
-		} else if sid == "" && con.ActiveTarget.Session != nil {
-			sid = con.ActiveTarget.Session.SessionId
+		} else if sid == "" {
+			sid = activeSession.SessionId
 		}
 
 		var session *client.Session

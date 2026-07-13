@@ -437,9 +437,13 @@ func (s *Server) EventHandler() {
 	if _, err := eventStream.Header(); err != nil {
 		return
 	}
-	s.Update()
-	if s.Session != nil {
-		s.UpdateSession(s.GetInteractive().SessionId)
+	if err := s.Update(); err != nil {
+		client.Log.Warnf("failed to refresh server state: %v\n", err)
+	}
+	if session := s.Get(); session != nil {
+		if _, err := s.UpdateSession(session.SessionId); err != nil {
+			client.Log.Warnf("failed to refresh active session %s: %v\n", session.SessionId, err)
+		}
 	}
 	client.Log.Info("starting event loop\n")
 	defer func() {
@@ -452,7 +456,7 @@ func (s *Server) EventHandler() {
 		}
 		s.dispatchEventHooks(event)
 
-		if fn, ok := s.EventCallback[event.Op]; ok {
+		if fn, ok := s.GetEventCallback(event.Op); ok {
 			fn(event)
 		}
 		s.HandlerEvent(event)

@@ -597,13 +597,13 @@ artifact comment artifact_name ""
 func Register(con *core.Console) {
 	// EventCallback requires initialized Server; skip in doc-gen mode (genlua)
 	if con.Server != nil {
-		con.EventCallback[consts.CtrlArtifactDownload] = func(event *clientpb.Event) {
+		con.SetEventCallback(consts.CtrlArtifactDownload, func(event *clientpb.Event) {
 			err := WriteOriginArtifact(con, event.Job.Name)
 			if err != nil {
 				con.Log.Errorf("write artifact %s error: %s", event.Job.Name, err)
 				return
 			}
-		}
+		})
 	}
 	con.RegisterServerFunc("search_artifact",
 		SearchArtifact,
