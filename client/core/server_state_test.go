@@ -85,6 +85,17 @@ func TestEventHandlerRunningTracksClaimLifecycle(t *testing.T) {
 	}
 }
 
+func TestStartupHistoryIsRequestedOnlyUntilCompleted(t *testing.T) {
+	s := &Server{startupHistoryPending: true}
+	if !s.needsStartupHistory() {
+		t.Fatal("new server should request startup history")
+	}
+	s.markStartupHistoryComplete()
+	if s.needsStartupHistory() {
+		t.Fatal("completed startup history should not be requested again")
+	}
+}
+
 func TestRenderEventAppliesColoringForSessionRegister(t *testing.T) {
 	event := &clientpb.Event{
 		Type:      consts.EventSession,

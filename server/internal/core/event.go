@@ -222,8 +222,9 @@ func (event *Event) ToProtobuf() *clientpb.Event {
 }
 
 type eventSubscription struct {
-	events chan Event
-	ready  chan struct{}
+	events  chan Event
+	ready   chan struct{}
+	history chan []Event
 }
 
 type eventBroker struct {
@@ -240,6 +241,8 @@ type eventBroker struct {
 	managed   atomic.Bool
 	startOnce sync.Once
 	stopOnce  sync.Once
+	publishMu sync.Mutex
+	stopped   bool
 }
 
 func (broker *eventBroker) run() error {
@@ -254,13 +257,27 @@ func (broker *eventBroker) run() error {
 	for {
 		select {
 		case <-broker.stop:
+			broker.cacheAcceptedEvents()
 			return nil
 		case subscription := <-broker.subscribe:
+			var history []Event
+			if subscription.history != nil {
+				for _, event := range broker.GetAll() {
+					history = append(history, *event)
+				}
+			}
 			subscribers[subscription.events] = struct{}{}
+			if subscription.history != nil {
+				subscription.history <- history
+			}
 			close(subscription.ready)
 		case sub := <-broker.unsubscribe:
 			delete(subscribers, sub)
 		case event := <-broker.publish:
+			if event.Important {
+				eventCopy := event
+				broker.cache.Add(&eventCopy)
+			}
 			if event.Important {
 				logs.Log.Infof("event.%s - %s", event.EventType, event.String())
 			} else if event.EventType != consts.EventHeartbeat {
@@ -273,6 +290,20 @@ func (broker *eventBroker) run() error {
 					logs.Log.Warnf("disconnect event subscriber: %s", ErrorText(err))
 				}
 			}
+		}
+	}
+}
+
+func (broker *eventBroker) cacheAcceptedEvents() {
+	for {
+		select {
+		case event := <-broker.publish:
+			if event.Important {
+				eventCopy := event
+				broker.cache.Add(&eventCopy)
+			}
+		default:
+			return
 		}
 	}
 }
@@ -323,24 +354,43 @@ func (broker *eventBroker) Stop() {
 		return
 	}
 	broker.stopOnce.Do(func() {
+		broker.publishMu.Lock()
+		broker.stopped = true
 		close(broker.stop)
+		broker.publishMu.Unlock()
 	})
 }
 
 // Subscribe - Generate a new subscription channel
 func (broker *eventBroker) Subscribe() (chan Event, error) {
+	events, _, err := broker.subscribeEvents(false)
+	return events, err
+}
+
+func (broker *eventBroker) SubscribeWithHistory() (chan Event, []Event, error) {
+	return broker.subscribeEvents(true)
+}
+
+func (broker *eventBroker) subscribeEvents(includeHistory bool) (chan Event, []Event, error) {
 	events := make(chan Event, eventBufSize)
 	ready := make(chan struct{})
+	var history chan []Event
+	if includeHistory {
+		history = make(chan []Event, 1)
+	}
 	select {
-	case broker.subscribe <- eventSubscription{events: events, ready: ready}:
+	case broker.subscribe <- eventSubscription{events: events, ready: ready, history: history}:
 	case <-broker.stop:
-		return nil, ErrEventBrokerUnavailable
+		return nil, nil, ErrEventBrokerUnavailable
 	}
 	select {
 	case <-ready:
-		return events, nil
+		if history != nil {
+			return events, <-history, nil
+		}
+		return events, nil, nil
 	case <-broker.stop:
-		return nil, ErrEventBrokerUnavailable
+		return nil, nil, ErrEventBrokerUnavailable
 	}
 }
 
@@ -367,17 +417,22 @@ func (broker *eventBroker) TryPublish(event Event) error {
 	if broker == nil {
 		return ErrEventBrokerUnavailable
 	}
-	if event.Important {
-		broker.cache.Add(&event)
+	broker.publishMu.Lock()
+	if broker.stopped {
+		broker.publishMu.Unlock()
+		return ErrEventBrokerUnavailable
 	}
 	if broker.managed.Load() && !broker.alive.Load() {
+		broker.publishMu.Unlock()
 		return ErrEventBrokerUnavailable
 	}
 	select {
 	case broker.publish <- event:
 	default:
+		broker.publishMu.Unlock()
 		return ErrEventBrokerQueueFull
 	}
+	broker.publishMu.Unlock()
 	if event.IsNotify {
 		broker.Notify(event)
 	}

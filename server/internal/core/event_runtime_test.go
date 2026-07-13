@@ -83,6 +83,33 @@ func TestEventBrokerStopIsIdempotent(t *testing.T) {
 	broker.Stop()
 }
 
+func TestEventBrokerStopCachesAcceptedImportantEvents(t *testing.T) {
+	for i := 0; i < 100; i++ {
+		broker := newTestBroker()
+		result := make(chan error, 1)
+		go func() { result <- broker.run() }()
+		if err := broker.TryPublish(Event{
+			EventType: consts.EventBroadcast,
+			Op:        "accepted-before-stop",
+			Important: true,
+		}); err != nil {
+			t.Fatalf("iteration %d: TryPublish failed: %v", i, err)
+		}
+		broker.Stop()
+		select {
+		case err := <-result:
+			if err != nil {
+				t.Fatalf("iteration %d: broker.run error: %v", i, err)
+			}
+		case <-time.After(2 * time.Second):
+			t.Fatalf("iteration %d: broker.run did not stop", i)
+		}
+		if history := broker.GetAll(); len(history) != 1 || history[0].Op != "accepted-before-stop" {
+			t.Fatalf("iteration %d: cached history = %#v", i, history)
+		}
+	}
+}
+
 func TestEventBrokerRejectsSlowSubscriber(t *testing.T) {
 	broker := newTestBroker()
 	sub := make(chan Event, eventBufSize)
@@ -226,6 +253,65 @@ func TestEventBrokerSubscribeWaitsForRegistration(t *testing.T) {
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("registered subscriber missed the first event")
+	}
+}
+
+func TestEventBrokerSubscribeWithHistoryHasNoPublishBoundaryGap(t *testing.T) {
+	for i := 0; i < 100; i++ {
+		broker := newTestBroker()
+		go func() { _ = broker.run() }()
+
+		boundary := Event{
+			EventType: consts.EventBroadcast,
+			Op:        "boundary",
+			Important: true,
+		}
+		if err := broker.TryPublish(boundary); err != nil {
+			broker.Stop()
+			t.Fatalf("iteration %d: publish boundary event: %v", i, err)
+		}
+		events, history, err := broker.SubscribeWithHistory()
+		if err != nil {
+			broker.Stop()
+			t.Fatalf("iteration %d: subscribe with history: %v", i, err)
+		}
+		marker := Event{EventType: consts.EventBroadcast, Op: "marker"}
+		if err := broker.TryPublish(marker); err != nil {
+			broker.Stop()
+			t.Fatalf("iteration %d: publish marker: %v", i, err)
+		}
+
+		boundaryCount := 0
+		for _, event := range history {
+			if event.Op == boundary.Op {
+				boundaryCount++
+			}
+		}
+		for {
+			select {
+			case event, ok := <-events:
+				if !ok {
+					broker.Stop()
+					t.Fatalf("iteration %d: subscription closed before marker", i)
+				}
+				if event.Op == boundary.Op {
+					boundaryCount++
+				}
+				if event.Op == marker.Op {
+					if boundaryCount != 1 {
+						broker.Stop()
+						t.Fatalf("iteration %d: boundary event count = %d, want 1", i, boundaryCount)
+					}
+					broker.Unsubscribe(events)
+					broker.Stop()
+					goto nextIteration
+				}
+			case <-time.After(2 * time.Second):
+				broker.Stop()
+				t.Fatalf("iteration %d: marker event not received", i)
+			}
+		}
+	nextIteration:
 	}
 }
 

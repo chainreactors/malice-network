@@ -10,16 +10,23 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
 
 func (rpc *Server) Events(_ *clientpb.Empty, stream clientrpc.MaliceRPC_EventsServer) error {
-	events, err := core.EventBroker.Subscribe()
-	if err != nil {
-		return err
+	requestMetadata, _ := metadata.FromIncomingContext(stream.Context())
+	replayHistory := len(requestMetadata.Get(consts.EventStreamHistoryReplayHeader)) > 0
+	var events chan core.Event
+	var history []core.Event
+	var err error
+	if replayHistory {
+		events, history, err = core.EventBroker.SubscribeWithHistory()
+	} else {
+		events, err = core.EventBroker.Subscribe()
 	}
-	if err := stream.SendHeader(metadata.Pairs(consts.EventStreamReadyHeader, "true")); err != nil {
-		core.EventBroker.Unsubscribe(events)
+	if err != nil {
 		return err
 	}
 	clientID := core.GetCurrentID()
@@ -28,6 +35,18 @@ func (rpc *Server) Events(_ *clientpb.Empty, stream clientrpc.MaliceRPC_EventsSe
 		core.Clients.Remove(int(clientID))
 		core.EventBroker.Unsubscribe(events)
 	}()
+	responseHeader := metadata.Pairs(consts.EventStreamReadyHeader, "true")
+	if replayHistory {
+		responseHeader.Set(consts.EventStreamHistoryCountHeader, strconv.Itoa(len(history)))
+	}
+	if err := stream.SendHeader(responseHeader); err != nil {
+		return err
+	}
+	for _, event := range history {
+		if err := stream.Send(event.ToProtobuf()); err != nil {
+			return err
+		}
+	}
 
 	for {
 		select {
@@ -35,7 +54,7 @@ func (rpc *Server) Events(_ *clientpb.Empty, stream clientrpc.MaliceRPC_EventsSe
 			return nil
 		case event, ok := <-events:
 			if !ok {
-				return nil
+				return status.Error(codes.ResourceExhausted, "event subscriber fell behind; reconnect and resynchronize")
 			}
 			pb := event.ToProtobuf()
 			err := stream.Send(pb)
