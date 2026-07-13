@@ -172,6 +172,9 @@ func (parser *MaleficParser) Parse(buf []byte) (*implantpb.Spites, error) {
 	if uint64(decodedLength) > maxDecodedPayloadSize {
 		return nil, fmt.Errorf("%w: %d bytes", ErrDecodedPayloadTooLarge, decodedLength)
 	}
+	if err := compress.ValidateSnappyBlock(buf, decodedLength); err != nil {
+		return nil, fmt.Errorf("%w: validate block: %v", ErrInvalidCompressedPayload, err)
+	}
 
 	buf, err = compress.Decompress(buf)
 	if err != nil {
