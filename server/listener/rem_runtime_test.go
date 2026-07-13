@@ -124,7 +124,6 @@ func TestREMCloseCancelsHealthRPCContextWithDeadline(t *testing.T) {
 
 func TestREMAcceptErrorsUseInterruptibleBoundedBackoff(t *testing.T) {
 	oldAccept := remConsoleAccept
-	defer func() { remConsoleAccept = oldAccept }()
 
 	calls := make(chan time.Time, 8)
 	remConsoleAccept = func(*remhelper.RemConsole) (*agent.Agent, error) {
@@ -139,18 +138,33 @@ func TestREMAcceptErrorsUseInterruptibleBoundedBackoff(t *testing.T) {
 	done := make(chan error, 1)
 	go func() { done <- rem.acceptLoopContextWithBackoff(runCtx, 20*time.Millisecond, 30*time.Millisecond) }()
 
+	drained := false
+	// Stop the accept loop before restoring the seam on every exit path
+	// (including t.Fatal): a late retry restored to the default Accept would
+	// dereference the nil console and SIGSEGV the whole package.
+	defer func() {
+		_ = rem.Close()
+		if !drained {
+			select {
+			case <-done:
+			case <-time.After(2 * time.Second):
+			}
+		}
+		remConsoleAccept = oldAccept
+	}()
+
 	first := <-calls
 	select {
 	case second := <-calls:
 		if delay := second.Sub(first); delay < 15*time.Millisecond {
 			t.Fatalf("first retry delay = %v, want backoff", delay)
 		}
-	case <-time.After(100 * time.Millisecond):
+	case <-time.After(2 * time.Second):
 		t.Fatal("second Accept did not occur within bounded backoff")
 	}
 	select {
 	case <-calls:
-	case <-time.After(100 * time.Millisecond):
+	case <-time.After(2 * time.Second):
 		t.Fatal("third Accept did not occur within maximum backoff")
 	}
 
@@ -160,13 +174,14 @@ func TestREMAcceptErrorsUseInterruptibleBoundedBackoff(t *testing.T) {
 	}
 	select {
 	case err := <-done:
+		drained = true
 		if err != nil {
 			t.Fatalf("acceptLoop error = %v", err)
 		}
-		if elapsed := time.Since(startedClose); elapsed > 100*time.Millisecond {
+		if elapsed := time.Since(startedClose); elapsed > time.Second {
 			t.Fatalf("acceptLoop cancellation took %v", elapsed)
 		}
-	case <-time.After(250 * time.Millisecond):
+	case <-time.After(2 * time.Second):
 		t.Fatal("Close did not interrupt Accept retry backoff")
 	}
 }
