@@ -44,6 +44,14 @@ func (w errorWriter) Write([]byte) (int, error) {
 	return 0, w.err
 }
 
+type errorReader struct {
+	err error
+}
+
+func (r errorReader) Read([]byte) (int, error) {
+	return 0, r.err
+}
+
 type testAddr string
 
 func (a testAddr) Network() string { return "tcp" }
@@ -54,6 +62,32 @@ type testConnRWC struct {
 }
 
 func (c testConnRWC) RemoteAddr() net.Addr { return testAddr("127.0.0.1:0") }
+
+type deadlineRecordingRWC struct {
+	io.ReadWriteCloser
+	mu             sync.Mutex
+	deadlines      []time.Time
+	deadlineErrors []error
+}
+
+func (c *deadlineRecordingRWC) RemoteAddr() net.Addr { return testAddr("127.0.0.1:0") }
+
+func (c *deadlineRecordingRWC) SetReadDeadline(deadline time.Time) error {
+	c.mu.Lock()
+	call := len(c.deadlines)
+	c.deadlines = append(c.deadlines, deadline)
+	defer c.mu.Unlock()
+	if call < len(c.deadlineErrors) {
+		return c.deadlineErrors[call]
+	}
+	return nil
+}
+
+func (c *deadlineRecordingRWC) readDeadlines() []time.Time {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return append([]time.Time(nil), c.deadlines...)
+}
 
 func TestConnectionReceiveLoopFailureMarksConnectionDead(t *testing.T) {
 	conn := &Connection{
@@ -106,6 +140,108 @@ func TestConnectionSendReturnsWriteError(t *testing.T) {
 	err := conn.Send(context.Background(), streamConn)
 	if !errors.Is(err, want) {
 		t.Fatalf("Send error = %v, want %v", err, want)
+	}
+}
+
+func TestConnectionBuildResponseBoundsPayloadRead(t *testing.T) {
+	rwc := &deadlineRecordingRWC{
+		ReadWriteCloser: cryptostream.WrapReadWriteCloser(bytes.NewReader([]byte{1, 2}), io.Discard, nil),
+	}
+	packetParser := testPacketParser{}
+	streamConn := &cryptostream.Conn{
+		ReadWriteCloser: rwc,
+		Parser: &parser.MessageParser{
+			Implant:      "test",
+			PacketParser: packetParser,
+		},
+	}
+	connection := &Connection{
+		SessionID:  "payload-deadline",
+		PipelineID: "missing-forward",
+		Parser:     streamConn.Parser,
+	}
+
+	before := time.Now()
+	if err := connection.buildResponse(streamConn, 2); err != nil {
+		t.Fatalf("buildResponse failed: %v", err)
+	}
+	deadlines := rwc.readDeadlines()
+	if len(deadlines) != 2 {
+		t.Fatalf("read deadline calls = %d, want 2", len(deadlines))
+	}
+	if deadlines[0].Before(before.Add(payloadReadBaseTimeout)) {
+		t.Fatalf("payload read deadline = %v, want at least base timeout", deadlines[0])
+	}
+	if !deadlines[1].IsZero() {
+		t.Fatalf("cleared read deadline = %v, want zero", deadlines[1])
+	}
+}
+
+func TestPayloadReadTimeoutScalesWithDeclaredLength(t *testing.T) {
+	if got := payloadReadTimeout(1); got != payloadReadBaseTimeout+time.Second {
+		t.Fatalf("timeout for 1 byte = %v", got)
+	}
+	if got := payloadReadTimeout(payloadReadMinBytesPerSecond * 2); got != payloadReadBaseTimeout+2*time.Second {
+		t.Fatalf("timeout for two transfer units = %v", got)
+	}
+}
+
+func TestConnectionBuildResponseReportsDeadlineFailures(t *testing.T) {
+	setErr := errors.New("set deadline failed")
+	readErr := errors.New("read failed")
+	clearErr := errors.New("clear deadline failed")
+	tests := []struct {
+		name           string
+		reader         io.Reader
+		deadlineErrors []error
+		wantErrors     []error
+	}{
+		{
+			name:           "set deadline",
+			reader:         bytes.NewReader([]byte{1, 2}),
+			deadlineErrors: []error{setErr},
+			wantErrors:     []error{setErr},
+		},
+		{
+			name:           "clear deadline",
+			reader:         bytes.NewReader([]byte{1, 2}),
+			deadlineErrors: []error{nil, clearErr},
+			wantErrors:     []error{clearErr},
+		},
+		{
+			name:           "read and clear deadline",
+			reader:         errorReader{err: readErr},
+			deadlineErrors: []error{nil, clearErr},
+			wantErrors:     []error{readErr, clearErr},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rwc := &deadlineRecordingRWC{
+				ReadWriteCloser: cryptostream.WrapReadWriteCloser(tt.reader, io.Discard, nil),
+				deadlineErrors:  tt.deadlineErrors,
+			}
+			streamConn := &cryptostream.Conn{
+				ReadWriteCloser: rwc,
+				Parser: &parser.MessageParser{
+					Implant:      "test",
+					PacketParser: testPacketParser{},
+				},
+			}
+			connection := &Connection{
+				SessionID:  "payload-deadline-error",
+				PipelineID: "missing-forward",
+				Parser:     streamConn.Parser,
+			}
+
+			err := connection.buildResponse(streamConn, 2)
+			for _, wantErr := range tt.wantErrors {
+				if !errors.Is(err, wantErr) {
+					t.Fatalf("buildResponse error = %v, want error %v", err, wantErr)
+				}
+			}
+		})
 	}
 }
 

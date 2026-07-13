@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
@@ -391,6 +392,10 @@ func (h *httpReadWriter) Write(p []byte) (n int, err error) {
 
 func (h *httpReadWriter) Close() error {
 	return nil
+}
+
+func (h *httpReadWriter) SetReadDeadline(deadline time.Time) error {
+	return http.NewResponseController(h.writer).SetReadDeadline(deadline)
 }
 
 func (h *httpReadWriter) RemoteAddr() net.Addr {

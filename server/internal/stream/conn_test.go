@@ -8,6 +8,7 @@ import (
 	"net"
 	"sync"
 	"testing"
+	"time"
 )
 
 func TestCryptoConnConcurrentReadsSerializeOverflowBuffer(t *testing.T) {
@@ -50,6 +51,17 @@ func TestCryptoConnConcurrentReadsSerializeOverflowBuffer(t *testing.T) {
 type simpleRWC struct {
 	buf    *bytes.Buffer
 	closed bool
+}
+
+type deadlineRWC struct {
+	*simpleRWC
+	readDeadline time.Time
+	readErr      error
+}
+
+func (d *deadlineRWC) SetReadDeadline(deadline time.Time) error {
+	d.readDeadline = deadline
+	return d.readErr
 }
 
 func (s *simpleRWC) Read(p []byte) (int, error) {
@@ -405,6 +417,41 @@ func TestCryptoRWC_WriteRead(t *testing.T) {
 	}
 	if !bytes.Equal(result[:n], original) {
 		t.Fatalf("RWC round trip mismatch: got %q, want %q", result[:n], original)
+	}
+}
+
+func TestCryptoRWCDeadlineMethodsReportUnsupported(t *testing.T) {
+	t.Parallel()
+	cryptor := NewXorEncryptor([]byte{0}, []byte{0})
+	conn := NewCryptoRWC(&simpleRWC{buf: &bytes.Buffer{}}, cryptor)
+	deadline := time.Now().Add(time.Second)
+	if err := conn.SetDeadline(deadline); !errors.Is(err, errors.ErrUnsupported) {
+		t.Fatalf("SetDeadline error = %v, want errors.ErrUnsupported", err)
+	}
+	if err := conn.SetReadDeadline(deadline); !errors.Is(err, errors.ErrUnsupported) {
+		t.Fatalf("SetReadDeadline error = %v, want errors.ErrUnsupported", err)
+	}
+	if err := conn.SetWriteDeadline(deadline); !errors.Is(err, errors.ErrUnsupported) {
+		t.Fatalf("SetWriteDeadline error = %v, want errors.ErrUnsupported", err)
+	}
+}
+
+func TestCryptoRWCReadDeadlineDelegatesAndReturnsError(t *testing.T) {
+	t.Parallel()
+	wantErr := errors.New("deadline failed")
+	rwc := &deadlineRWC{
+		simpleRWC: &simpleRWC{buf: &bytes.Buffer{}},
+		readErr:   wantErr,
+	}
+	conn := NewCryptoRWC(rwc, NewXorEncryptor([]byte{0}, []byte{0}))
+	deadline := time.Now().Add(time.Second)
+
+	err := conn.SetReadDeadline(deadline)
+	if !errors.Is(err, wantErr) {
+		t.Fatalf("SetReadDeadline error = %v, want %v", err, wantErr)
+	}
+	if !rwc.readDeadline.Equal(deadline) {
+		t.Fatalf("delegated deadline = %v, want %v", rwc.readDeadline, deadline)
 	}
 }
 
