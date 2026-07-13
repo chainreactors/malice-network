@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync"
@@ -20,13 +21,14 @@ var (
 )
 
 type Listener struct {
-	Name       string
-	IP         string
-	active     atomic.Bool
-	pipelines  map[string]*clientpb.Pipeline
-	pipelineMu sync.RWMutex
-	Ctrl       chan *clientpb.JobCtrl
-	CtrlJob    *sync.Map
+	Name           string
+	IP             string
+	active         atomic.Bool
+	pipelines      map[string]*clientpb.Pipeline
+	pipelineMu     sync.RWMutex
+	Ctrl           chan *clientpb.JobCtrl
+	CtrlJob        *sync.Map
+	deferredEvents sync.Map
 }
 
 // DefaultCtrlTimeout is the maximum time to wait for a listener control response.
@@ -54,14 +56,64 @@ func (l *Listener) Active() bool {
 // If the listener's Ctrl channel is full (listener not consuming), it logs a warning
 // and returns 0 instead of blocking forever.
 func (l *Listener) PushCtrl(ctrl *clientpb.JobCtrl) uint32 {
+	return l.PushCtrlContext(context.Background(), ctrl)
+}
+
+// PushCtrlContext sends a control message and stops waiting when the caller is canceled.
+func (l *Listener) PushCtrlContext(ctx context.Context, ctrl *clientpb.JobCtrl) uint32 {
+	return l.pushCtrlContext(ctx, ctrl, false)
+}
+
+// PushCtrlDeferredEvent queues a control whose success event will be published
+// by the caller after its authoritative state has been persisted.
+func (l *Listener) PushCtrlDeferredEvent(ctx context.Context, ctrl *clientpb.JobCtrl) uint32 {
+	return l.pushCtrlContext(ctx, ctrl, true)
+}
+
+func (l *Listener) pushCtrlContext(ctx context.Context, ctrl *clientpb.JobCtrl, deferEvent bool) uint32 {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if err := ctx.Err(); err != nil {
+		logs.Log.Warnf("listener %s: PushCtrl canceled before queueing: %v", l.Name, err)
+		return 0
+	}
 	ctrl.Id = NextCtrlID()
+	if deferEvent {
+		l.deferredEvents.Store(ctrl.Id, struct{}{})
+	}
+	discardDeferredEvent := func() {
+		if deferEvent {
+			l.deferredEvents.Delete(ctrl.Id)
+		}
+	}
+	timer := time.NewTimer(DefaultCtrlTimeout)
+	defer timer.Stop()
 	select {
 	case l.Ctrl <- ctrl:
 		return ctrl.Id
-	case <-time.After(DefaultCtrlTimeout):
+	case <-ctx.Done():
+		discardDeferredEvent()
+		logs.Log.Warnf("listener %s: PushCtrl canceled before queueing: %v", l.Name, ctx.Err())
+		return 0
+	case <-timer.C:
+		discardDeferredEvent()
 		logs.Log.Warnf("listener %s: PushCtrl timed out (channel full, listener may be disconnected)", l.Name)
 		return 0
 	}
+}
+
+// ConsumeDeferredEvent reports whether the control's success event is owned by
+// a persistence-aware caller. The marker is retained across WaitCtrl timeouts
+// until a late status arrives or the listener disconnects.
+func (l *Listener) ConsumeDeferredEvent(ctrlID uint32) bool {
+	_, ok := l.deferredEvents.LoadAndDelete(ctrlID)
+	return ok
+}
+
+// DiscardDeferredEvent removes a marker for a control that could not be sent.
+func (l *Listener) DiscardDeferredEvent(ctrlID uint32) {
+	l.deferredEvents.Delete(ctrlID)
 }
 
 // WaitCtrl waits for a control response from the listener. Returns nil if the
@@ -144,18 +196,21 @@ func (l *listeners) Add(listener *Listener) {
 	})
 }
 
-// Remove - Remove a listener
-func (l *listeners) Remove(listener *Listener) {
-	_, ok := l.LoadAndDelete(listener.Name)
-	if ok {
-		EventBroker.Publish(Event{
-			EventType: consts.EventListener,
-			Op:        consts.CtrlListenerStop,
-			Listener:  listener.ToProtobuf(),
-			Important: true,
-			Message:   fmt.Sprintf("listener %s stopped", listener.Name),
-		})
+// Remove removes the exact listener instance and publishes its stopped state.
+// A stale stream must never delete a replacement registered under the same name.
+func (l *listeners) Remove(listener *Listener) bool {
+	if listener == nil || !l.CompareAndDelete(listener.Name, listener) {
+		return false
 	}
+	listener.stop()
+	EventBroker.Publish(Event{
+		EventType: consts.EventListener,
+		Op:        consts.CtrlListenerStop,
+		Listener:  listener.ToProtobuf(),
+		Important: true,
+		Message:   fmt.Sprintf("listener %s stopped", listener.Name),
+	})
+	return true
 }
 
 func (l *listeners) Find(pid string) (*clientpb.Pipeline, bool) {
@@ -265,16 +320,22 @@ func (l *listeners) Stop(name string) error {
 	if !ok {
 		return errors.New("listener not found")
 	}
-	listener := val.(*Listener)
-	listener.active.Store(false)
+	val.(*Listener).stop()
+	return nil
+}
+
+func (l *Listener) stop() {
+	l.active.Store(false)
+	l.deferredEvents.Range(func(key, _ any) bool {
+		l.deferredEvents.Delete(key)
+		return true
+	})
 
 	// Clean up all pipelines and their associated jobs.
-	for _, pipe := range listener.AllPipelines() {
+	for _, pipe := range l.AllPipelines() {
 		Jobs.Remove(pipe.ListenerId, pipe.Name)
 	}
-	listener.pipelineMu.Lock()
-	listener.pipelines = make(map[string]*clientpb.Pipeline)
-	listener.pipelineMu.Unlock()
-
-	return nil
+	l.pipelineMu.Lock()
+	l.pipelines = make(map[string]*clientpb.Pipeline)
+	l.pipelineMu.Unlock()
 }

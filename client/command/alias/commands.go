@@ -80,12 +80,19 @@ Each command will have the --process flag defined, which allows you to specify t
 			cmd.Help()
 			return
 		},
+		Example: `~~~
+alias list
+alias load /tmp/chrome-dump
+~~~`,
 	}
 
 	aliasListCmd := &cobra.Command{
 		Use:   consts.CommandAliasList,
 		Short: "List all aliases",
 		Long:  "See Docs at https://sliver.sh/docs?name=Aliases%20and%20Extensions",
+		Example: `~~~
+alias list
+~~~`,
 		Annotations: map[string]string{
 			"thirdParty": "true",
 			"static":     "true",

@@ -22,10 +22,14 @@ func Commands(con *core.Console) []*cobra.Command {
 			}
 			return cmd.Help()
 		},
+		Example: `~~~
+audit session 08d6c05a --output json
+audit 08d6c05a --file ./session-audit.json
+~~~`,
 	}
 
 	sessionCommand := &cobra.Command{
-		Use:   consts.CommandSession,
+		Use:   consts.CommandSession + " [session_id]",
 		Short: "Download a session audit log",
 		Long:  "Download the audit log for the specified session.",
 		Args: func(cmd *cobra.Command, args []string) error {
@@ -37,6 +41,10 @@ func Commands(con *core.Console) []*cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return AuditSessionCmd(cmd, con)
 		},
+		Example: `~~~
+audit session 08d6c05a
+audit session 08d6c05a --output html --file ./audit.html
+~~~`,
 	}
 
 	common.BindArgCompletions(sessionCommand, nil, common.AllSessionIDCompleter(con))

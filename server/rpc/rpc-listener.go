@@ -179,15 +179,13 @@ func (rpc *Server) JobStream(stream listenerrpc.ListenerRPC_JobStreamServer) err
 		for _, pipe := range lns.AllPipelines() {
 			deletePipelineStream(pipe.ListenerId, pipe.Name)
 		}
-		// Fully remove listener + pipelines + jobs.
-		// Use Stop (which doesn't publish events) + delete from map directly,
-		// because Remove publishes an event and the broker may not be available
-		// during shutdown.
-		if err := core.Listeners.Stop(listenerID); err != nil {
-			logs.Log.Debugf("listener %s stop during cleanup: %v", listenerID, err)
+		// Remove only this stream's listener instance. Remove is identity-safe and
+		// publishes the runtime stop after the listener has left authoritative state.
+		if core.Listeners.Remove(lns) {
+			logs.Log.Warnf("listener %s JobStream disconnected, fully cleaned", listenerID)
+		} else {
+			logs.Log.Debugf("listener %s JobStream cleanup skipped replacement instance", listenerID)
 		}
-		core.Listeners.Map.Delete(listenerID)
-		logs.Log.Warnf("listener %s JobStream disconnected, fully cleaned", listenerID)
 	}()
 
 	recvMsgCh := make(chan *clientpb.JobStatus)
@@ -203,6 +201,7 @@ func (rpc *Server) JobStream(stream listenerrpc.ListenerRPC_JobStreamServer) err
 				lns.CtrlJob.Store(msg.Id, nil)
 				if err := stream.Send(msg); err != nil {
 					lns.CtrlJob.Delete(msg.Id)
+					lns.DiscardDeferredEvent(msg.Id)
 					return fmt.Errorf("send job ctrl failed: %w", err)
 				}
 			}
@@ -258,6 +257,7 @@ func (rpc *Server) JobStream(stream listenerrpc.ListenerRPC_JobStreamServer) err
 }
 
 func handleJobStatus(lns *core.Listener, msg *clientpb.JobStatus) {
+	deferredEvent := lns.ConsumeDeferredEvent(msg.CtrlId)
 	if _, ok := lns.CtrlJob.Load(msg.CtrlId); ok {
 		lns.CtrlJob.Store(msg.CtrlId, msg)
 		core.GoGuarded("listener-job-status-cleanup", func() error {
@@ -270,6 +270,9 @@ func handleJobStatus(lns *core.Listener, msg *clientpb.JobStatus) {
 		return
 	}
 	if msg.Status == consts.CtrlStatusSuccess {
+		if deferredEvent && publishesAfterPersistence(msg.Ctrl) {
+			return
+		}
 		core.EventBroker.Publish(core.Event{
 			EventType: consts.EventJob,
 			Op:        msg.Ctrl,
@@ -286,6 +289,23 @@ func handleJobStatus(lns *core.Listener, msg *clientpb.JobStatus) {
 		IsNotify:  true,
 		Important: true,
 	})
+}
+
+func publishesAfterPersistence(operation string) bool {
+	switch operation {
+	case consts.CtrlPipelineStart,
+		consts.CtrlPipelineStop,
+		consts.CtrlRemStart,
+		consts.CtrlRemStop,
+		consts.CtrlWebsiteStart,
+		consts.CtrlWebsiteStop,
+		consts.CtrlWebContentAdd,
+		consts.CtrlWebContentUpdate,
+		consts.CtrlWebContentRemove:
+		return true
+	default:
+		return false
+	}
 }
 
 func deliverSpiteResponse(ch chan *implantpb.Spite, spite *implantpb.Spite) (err error) {

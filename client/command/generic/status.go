@@ -16,6 +16,10 @@ func StatusCommand(con *core.Console) *cobra.Command {
 	return &cobra.Command{
 		Use:   "status",
 		Short: "Show runtime status overview",
+		Long:  "Show connection information, cached resource counts, and local service status.",
+		Example: `~~~
+status
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return StatusCmd(con)
 		},

@@ -15,6 +15,7 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
+	"google.golang.org/protobuf/proto"
 	"gorm.io/gorm"
 )
 
@@ -119,6 +120,18 @@ func pivotBelongsToPipeline(pivot *output.PivotingContext, pipeline *clientpb.Pi
 	return false
 }
 
+func publishPivotLifecycleEvent(pivot *output.PivotingContext) {
+	if pivot == nil {
+		return
+	}
+	core.EventBroker.Publish(core.Event{
+		EventType: consts.EventPivot,
+		Op:        "pivot_" + pivot.InboundSide,
+		Message:   pivot.Abstract(),
+		Important: true,
+	})
+}
+
 func (rpc *Server) RegisterRem(ctx context.Context, req *clientpb.Pipeline) (*clientpb.Empty, error) {
 	if req == nil || req.GetRem() == nil {
 		return nil, types.ErrMissingRequestField
@@ -154,59 +167,76 @@ func (rpc *Server) RegisterRem(ctx context.Context, req *clientpb.Pipeline) (*cl
 	if err != nil {
 		return nil, err
 	}
+	publishPipelineLifecycleEvent(consts.CtrlRemRegister, req)
 
 	return &clientpb.Empty{}, nil
 }
 
 func (rpc *Server) ListRems(ctx context.Context, req *clientpb.Listener) (*clientpb.Pipelines, error) {
-	var result []*clientpb.Pipeline
 	listenerFilter := ""
 	if req != nil {
 		listenerFilter = req.Id
 	}
+
+	pipelineQuery := db.NewPipelineQuery().WhereType(consts.RemPipeline)
+	if listenerFilter != "" {
+		pipelineQuery = pipelineQuery.WhereListenerID(listenerFilter)
+	}
+	pipelineModels, err := pipelineQuery.Find()
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]*clientpb.Pipeline, 0, len(pipelineModels))
+	pipelinesByKey := make(map[string]*clientpb.Pipeline, len(pipelineModels))
+	pipelineKeysByName := make(map[string][]string)
+	for _, pipelineModel := range pipelineModels {
+		key := pipelineModel.ListenerId + ":" + pipelineModel.Name
+		pipe := pipelineModel.ToProtobuf()
+		if runtime, ok := core.Listeners.FindByListener(pipelineModel.ListenerId, pipelineModel.Name); ok {
+			pipe = proto.Clone(runtime).(*clientpb.Pipeline)
+			pipe.Enable = pipelineModel.Enable && runtime.Enable
+		} else {
+			pipe.Enable = false
+		}
+		if pipe.GetRem() != nil {
+			pipe.GetRem().Agents = make(map[string]*clientpb.REMAgent)
+		}
+		pipelinesByKey[key] = pipe
+		pipelineKeysByName[pipelineModel.Name] = append(pipelineKeysByName[pipelineModel.Name], key)
+		result = append(result, pipe)
+	}
+
 	ctxs, err := db.NewContextQuery().WhereType(consts.ContextPivoting).Find()
 	if err != nil {
 		return nil, err
 	}
-	ctxMap := make(map[string][]*models.Context)
 	for _, item := range ctxs {
 		piv, _ := item.Context.(*output.PivotingContext)
-		if piv == nil {
+		if piv == nil || piv.RemAgentID == "" {
 			continue
 		}
 		if listenerFilter != "" && piv.Listener != "" && piv.Listener != listenerFilter {
 			continue
 		}
-		pipe, ok := findRuntimePipelineForPivot(item.PipelineID, piv.Listener)
-		if !ok {
+
+		pipelineName := item.PipelineID
+		if pipelineName == "" {
+			pipelineName = piv.Pipeline
+		}
+		key := ""
+		if piv.Listener != "" {
+			key = piv.Listener + ":" + pipelineName
+		} else if keys := pipelineKeysByName[pipelineName]; len(keys) == 1 {
+			key = keys[0]
+		}
+		pipe := pipelinesByKey[key]
+		if pipe == nil || pipe.GetRem() == nil {
 			continue
 		}
-		if listenerFilter != "" && pipe.ListenerId != listenerFilter {
-			continue
-		}
-		ctxMap[pipe.ListenerId+":"+pipe.Name] = append(ctxMap[pipe.ListenerId+":"+pipe.Name], item)
-	}
-	for _, pivots := range ctxMap {
-		if len(pivots) == 0 {
-			continue
-		}
-		piv, _ := pivots[0].Context.(*output.PivotingContext)
-		if piv == nil {
-			continue
-		}
-		pipe, ok := findRuntimePipelineForPivot(pivots[0].PipelineID, piv.Listener)
-		if !ok {
-			continue
-		}
-		if listenerFilter != "" && pipe.ListenerId != listenerFilter {
-			continue
-		}
-		pipe.GetRem().Agents = make(map[string]*clientpb.REMAgent)
-		for _, c := range pivots {
-			piv := c.Context.(*output.PivotingContext)
-			pipe.GetRem().Agents[piv.RemAgentID] = piv.ToRemAgent()
-		}
-		result = append(result, pipe)
+		agent := piv.ToRemAgent()
+		agent.Enable = agent.Enable && pipe.Enable
+		pipe.GetRem().Agents[piv.RemAgentID] = agent
 	}
 	return &clientpb.Pipelines{Pipelines: result}, nil
 }
@@ -227,7 +257,11 @@ func (rpc *Server) StartRem(ctx context.Context, req *clientpb.CtrlPipeline) (*c
 	}
 
 	if existing := lns.GetPipeline(req.Name); existing != nil && existing.Enable {
-		_ = db.EnablePipelineByListener(req.Name, listenerID)
+		if err := db.EnablePipelineByListener(req.Name, listenerID); err != nil {
+			return nil, err
+		}
+		existing.Enable = true
+		publishPipelineLifecycleEvent(consts.CtrlRemStart, existing)
 		return &clientpb.Empty{}, nil
 	}
 
@@ -238,7 +272,7 @@ func (rpc *Server) StartRem(ctx context.Context, req *clientpb.CtrlPipeline) (*c
 		Name:     rem.Name,
 	}
 
-	ctrlID := lns.PushCtrl(&clientpb.JobCtrl{
+	ctrlID := lns.PushCtrlDeferredEvent(ctx, &clientpb.JobCtrl{
 		Ctrl: consts.CtrlRemStart,
 		Job:  job.ToProtobuf(),
 	})
@@ -252,11 +286,12 @@ func (rpc *Server) StartRem(ctx context.Context, req *clientpb.CtrlPipeline) (*c
 	if err := db.EnablePipelineByListener(rem.Name, listenerID); err != nil {
 		return nil, err
 	}
+	rem.Enable = true
 	// Do not call core.Jobs.AddPipeline(rem) here: the listener's
 	// handleStartRem already invoked SyncPipeline with the runtime-
 	// populated pipeline (Link, Subscribe, Port). Calling AddPipeline
 	// again with the stale DB snapshot would overwrite those values.
-
+	publishPipelineLifecycleEvent(consts.CtrlRemStart, rem)
 	return &clientpb.Empty{}, nil
 }
 
@@ -266,16 +301,21 @@ func (rpc *Server) DeleteRem(ctx context.Context, req *clientpb.CtrlPipeline) (*
 		return nil, err
 	}
 
-	if _, err := db.FindPipelineByListener(req.Name, listenerID); err != nil {
+	remDB, err := db.FindPipelineByListener(req.Name, listenerID)
+	if err != nil {
 		return &clientpb.Empty{}, err
 	}
-	lns, err := core.Listeners.Get(listenerID)
-	if err != nil {
-		return nil, err
+	lns, runtimeErr := core.Listeners.Get(listenerID)
+	if runtimeErr != nil {
+		if err := db.DeletePipelineByListener(req.Name, listenerID); err != nil {
+			return nil, err
+		}
+		publishPipelineLifecycleEvent(consts.CtrlRemDelete, remDB.ToProtobuf())
+		return &clientpb.Empty{}, nil
 	}
 
 	if existing := lns.GetPipeline(req.Name); existing != nil {
-		ctrlID := lns.PushCtrl(&clientpb.JobCtrl{
+		ctrlID := lns.PushCtrlDeferredEvent(ctx, &clientpb.JobCtrl{
 			Ctrl: consts.CtrlRemStop,
 			Job: &clientpb.Job{
 				Id:       core.NextJobID(),
@@ -294,6 +334,7 @@ func (rpc *Server) DeleteRem(ctx context.Context, req *clientpb.CtrlPipeline) (*
 	if err != nil {
 		return nil, err
 	}
+	publishPipelineLifecycleEvent(consts.CtrlRemDelete, remDB.ToProtobuf())
 	return &clientpb.Empty{}, nil
 }
 
@@ -303,13 +344,19 @@ func (rpc *Server) StopRem(ctx context.Context, req *clientpb.CtrlPipeline) (*cl
 		return nil, err
 	}
 
-	lns, err := core.Listeners.Get(listenerID)
+	remDB, err := db.FindPipelineByListener(req.Name, listenerID)
 	if err != nil {
 		return nil, err
 	}
-
-	if _, err := db.FindPipelineByListener(req.Name, listenerID); err != nil {
-		return nil, err
+	lns, runtimeErr := core.Listeners.Get(listenerID)
+	if runtimeErr != nil {
+		if err := db.DisablePipelineByListener(req.Name, listenerID); err != nil {
+			return nil, err
+		}
+		persisted := remDB.ToProtobuf()
+		persisted.Enable = false
+		publishPipelineLifecycleEvent(consts.CtrlRemStop, persisted)
+		return &clientpb.Empty{}, nil
 	}
 
 	pipe := lns.GetPipeline(req.Name)
@@ -320,7 +367,7 @@ func (rpc *Server) StopRem(ctx context.Context, req *clientpb.CtrlPipeline) (*cl
 			Pipeline: pipe,
 		}
 
-		ctrlID := lns.PushCtrl(&clientpb.JobCtrl{
+		ctrlID := lns.PushCtrlDeferredEvent(ctx, &clientpb.JobCtrl{
 			Ctrl: consts.CtrlRemStop,
 			Job:  job.ToProtobuf(),
 		})
@@ -338,6 +385,9 @@ func (rpc *Server) StopRem(ctx context.Context, req *clientpb.CtrlPipeline) (*cl
 	if pipe != nil {
 		lns.RemovePipeline(pipe)
 	}
+	persisted := remDB.ToProtobuf()
+	persisted.Enable = false
+	publishPipelineLifecycleEvent(consts.CtrlRemStop, persisted)
 	return &clientpb.Empty{}, nil
 }
 
@@ -498,11 +548,7 @@ func (rpc *Server) RemAgentCtrl(ctx context.Context, req *clientpb.REMAgent) (*c
 		pipe.GetRem().Agents = make(map[string]*clientpb.REMAgent)
 	}
 	pipe.GetRem().Agents[agent.Id] = agent
-	core.EventBroker.Publish(core.Event{
-		EventType: consts.EventPivot,
-		Op:        "pivot_" + pivot.InboundSide,
-		Message:   pivot.Abstract(),
-	})
+	publishPivotLifecycleEvent(pivot)
 	return &clientpb.Empty{}, nil
 }
 
@@ -587,6 +633,7 @@ func (rpc *Server) HealthCheckRem(ctx context.Context, req *clientpb.Pipeline) (
 			continue
 		}
 		knownAgents[piv.RemAgentID] = struct{}{}
+		changed := false
 		if _, ok := agents[piv.RemAgentID]; !ok && piv.Enable {
 			piv.Enable = false
 			c.Value = piv.Marshal()
@@ -594,6 +641,7 @@ func (rpc *Server) HealthCheckRem(ctx context.Context, req *clientpb.Pipeline) (
 			if err != nil {
 				return nil, err
 			}
+			changed = true
 		} else if ok && !piv.Enable {
 			piv.Enable = true
 			c.Value = piv.Marshal()
@@ -601,6 +649,10 @@ func (rpc *Server) HealthCheckRem(ctx context.Context, req *clientpb.Pipeline) (
 			if err != nil {
 				return nil, err
 			}
+			changed = true
+		}
+		if changed {
+			publishPivotLifecycleEvent(piv)
 		}
 	}
 
@@ -619,12 +671,7 @@ func (rpc *Server) HealthCheckRem(ctx context.Context, req *clientpb.Pipeline) (
 		if err != nil {
 			return nil, err
 		}
-		core.EventBroker.Publish(core.Event{
-			EventType: consts.EventPivot,
-			Op:        "pivot_" + pivot.InboundSide,
-			Message:   pivot.Abstract(),
-			Important: true,
-		})
+		publishPivotLifecycleEvent(pivot)
 	}
 
 	return &clientpb.Empty{}, nil

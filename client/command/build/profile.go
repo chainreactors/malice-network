@@ -186,10 +186,8 @@ func printProfileMetadata(profile *clientpb.Profile) {
 }
 
 func resolveProfilePipelineFlags(con *core.Console, pipelineID, listenerID string) (string, string) {
-	if con != nil && con.Pipelines != nil {
-		if pipeline, ok := con.Pipelines[pipelineID]; ok && pipeline != nil {
-			return pipeline.Name, pipeline.ListenerId
-		}
+	if pipeline, err := common.FindCachedPipeline(con, pipelineID, nil); err == nil {
+		return pipeline.Name, pipeline.ListenerId
 	}
 	scopedListenerID, scopedPipelineID, ok := strings.Cut(pipelineID, ":")
 	if ok && scopedListenerID != "" && scopedPipelineID != "" {

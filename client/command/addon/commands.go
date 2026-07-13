@@ -19,13 +19,17 @@ func Commands(con *core.Console) []*cobra.Command {
 	listaddonCmd := &cobra.Command{
 		Use:   consts.ModuleListAddon + " [addon]",
 		Short: "List all addons",
+		Long:  "List addons currently loaded in the active implant.",
+		Example: `~~~
+list_addon
+~~~`,
 		Run: func(cmd *cobra.Command, args []string) {
 			AddonListCmd(cmd, con)
 			return
 		},
 	}
 	loadaddonCmd := &cobra.Command{
-		Use:   consts.ModuleLoadAddon,
+		Use:   consts.ModuleLoadAddon + " [file_path]",
 		Short: "Load an addon",
 		Long:  `Load an executable into the implant's memory for reuse`,
 		Args:  cobra.MinimumNArgs(1),
@@ -59,8 +63,9 @@ load_addon gogo.exe -n gogo -m execute_exe
 	})
 
 	execAddonCmd := &cobra.Command{
-		Use:   consts.ModuleExecuteAddon,
+		Use:   consts.ModuleExecuteAddon + " [addon_name] [arguments...]",
 		Short: "Execute the loaded addon",
+		Long:  "Execute an addon already loaded in the active implant and pass any remaining arguments to it.",
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			ExecuteAddonCmd(cmd, con)

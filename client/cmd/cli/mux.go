@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/tui/mux"
 	"github.com/spf13/cobra"
@@ -125,7 +126,7 @@ func startMux(cmd *cobra.Command, con *core.Console) error {
 					SessionAlive:  alive,
 					SessionTotal:  len(cachedSessions),
 					ListenerCount: len(cachedListeners),
-					PipelineCount: len(con.Pipelines),
+					PipelineCount: len(common.SnapshotCachedPipelines(con)),
 					Sessions:      sessions,
 				})
 			}

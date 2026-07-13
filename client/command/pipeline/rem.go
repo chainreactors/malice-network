@@ -135,7 +135,7 @@ func RemUpdateIntervalCmd(cmd *cobra.Command, con *core.Console) error {
 
 	// Resolve via session-id if provided
 	if sessionID != "" {
-		session, ok := con.Sessions[sessionID]
+		session, ok := con.GetLocalSession(sessionID)
 		if !ok {
 			return fmt.Errorf("session %s not found", sessionID)
 		}
@@ -144,14 +144,14 @@ func RemUpdateIntervalCmd(cmd *cobra.Command, con *core.Console) error {
 		if session.ListenerId != "" {
 			pipelineKey = session.ListenerId + ":" + session.PipelineId
 		}
-		pipe, ok := con.Pipelines[pipelineKey]
-		if ok {
+		pipe, cacheErr := common.FindCachedPipeline(con, pipelineKey, nil)
+		if cacheErr == nil {
 			pipelineID = pipelineKey
 		}
-		if !ok {
-			pipe, ok = con.Pipelines[pipelineID]
+		if cacheErr != nil {
+			pipe, cacheErr = common.FindCachedPipeline(con, pipelineID, nil)
 		}
-		if !ok {
+		if cacheErr != nil {
 			return fmt.Errorf("pipeline %s not found for session %s", pipelineID, sessionID)
 		}
 		rem := pipe.GetRem()

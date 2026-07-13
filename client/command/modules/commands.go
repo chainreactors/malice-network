@@ -19,11 +19,16 @@ func Commands(con *core.Console) []*cobra.Command {
 	moduleCmd := &cobra.Command{
 		Use:   consts.CommandModule,
 		Short: "Module management",
+		Long:  "List, load, unload, refresh, and clear module bundles in the active implant.",
 	}
 
 	listCmd := &cobra.Command{
 		Use:   "list",
 		Short: "List modules",
+		Long:  "List modules and bundle ownership reported by the active implant.",
+		Example: `~~~
+module list
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ListModulesCmd(cmd, con)
 		},
@@ -32,6 +37,7 @@ func Commands(con *core.Console) []*cobra.Command {
 	loadCmd := &cobra.Command{
 		Use:   "load [module_file]",
 		Short: "Load module",
+		Long:  "Build or select a module bundle and load it into the active implant.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return LoadModuleCmd(cmd, con)
 		},
@@ -68,7 +74,11 @@ execute_addon,clear,ps,powershell...
 	unloadCmd := &cobra.Command{
 		Use:   "unload [bundle_name]",
 		Short: "Unload a module bundle by name",
-		Args:  cobra.ExactArgs(1),
+		Long:  "Unload the specified module bundle from the active implant.",
+		Example: `~~~
+module unload basic
+~~~`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return UnloadModuleCmd(cmd, con)
 		},
@@ -79,6 +89,10 @@ execute_addon,clear,ps,powershell...
 	refreshCmd := &cobra.Command{
 		Use:   "refresh",
 		Short: "Refresh module",
+		Long:  "Refresh the client module list from the active implant.",
+		Example: `~~~
+module refresh
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return RefreshModuleCmd(cmd, con)
 		},
@@ -87,6 +101,10 @@ execute_addon,clear,ps,powershell...
 	clearCmd := &cobra.Command{
 		Use:   "clear",
 		Short: "Clear all modules",
+		Long:  "Unload all dynamically loaded modules from the active implant.",
+		Example: `~~~
+module clear
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ClearCmd(cmd, con)
 		},

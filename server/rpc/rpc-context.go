@@ -152,10 +152,11 @@ func (rpc *Server) AddScreenShot(ctx context.Context, req *clientpb.Context) (*c
 }
 
 func (rpc *Server) AddContext(ctx context.Context, req *clientpb.Context) (*clientpb.Empty, error) {
-	_, err := db.SaveContext(req)
+	ictx, err := db.SaveContext(req)
 	if err != nil {
 		return nil, err
 	}
+	core.PushContextEvent(req.Type, ictx)
 	return &clientpb.Empty{}, nil
 }
 
@@ -180,10 +181,11 @@ func (rpc *Server) AddDownload(ctx context.Context, req *clientpb.Context) (*cli
 	}
 	_ = download
 
-	_, err = db.SaveContext(bindResolvedTask(req, task))
+	dctx, err := db.SaveContext(bindResolvedTask(req, task))
 	if err != nil {
 		return nil, err
 	}
+	core.PushContextEvent(consts.ContextDownload, dctx)
 
 	return &clientpb.Empty{}, nil
 }
@@ -273,6 +275,7 @@ func (rpc *Server) DeleteContext(ctx context.Context, req *clientpb.Context) (*c
 	if err := db.DeleteContext(ictx.ID.String()); err != nil {
 		return nil, fmt.Errorf("failed to delete context: %w", err)
 	}
+	core.PushContextEvent(consts.CtrlContextDelete, ictx)
 
 	return &clientpb.Empty{}, nil
 }

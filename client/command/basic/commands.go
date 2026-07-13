@@ -22,7 +22,12 @@ func Commands(con *core.Console) []*cobra.Command {
 	sleepCmd := &cobra.Command{
 		Use:   consts.ModuleSleep + " [expression]",
 		Short: "change implant sleep config",
+		Long:  "Change the implant callback interval using a duration or cron expression and optional jitter.",
 		Args:  cobra.ExactArgs(1),
+		Example: `~~~
+sleep 10s
+sleep "*/30 * * * * *" --jitter 0.2
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return SleepCmd(cmd, con)
 		},
@@ -35,6 +40,10 @@ func Commands(con *core.Console) []*cobra.Command {
 	suicideCmd := &cobra.Command{
 		Use:   consts.ModuleSuicide,
 		Short: "kill implant",
+		Long:  "Terminate the active implant session.",
+		Example: `~~~
+suicide
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return SuicideCmd(cmd, con)
 		},
@@ -43,6 +52,10 @@ func Commands(con *core.Console) []*cobra.Command {
 	getCmd := &cobra.Command{
 		Use:   consts.ModulePing,
 		Short: "send one bind ping",
+		Long:  "Send one ping request to an active bind implant.",
+		Example: `~~~
+ping
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return GetCmd(cmd, con)
 		},
@@ -52,8 +65,9 @@ func Commands(con *core.Console) []*cobra.Command {
 	}
 
 	waitCmd := &cobra.Command{
-		Use:   consts.CommandWait,
+		Use:   consts.CommandWait + " [task_id]",
 		Short: "wait for task to finish",
+		Long:  "Wait until the specified bind task finishes and print its result.",
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return WaitCmd(cmd, con)
@@ -75,6 +89,12 @@ wait 59
 	pollingCmd := &cobra.Command{
 		Use:   consts.CommandPolling + " [start|stop|status]",
 		Short: "manage bind polling",
+		Long:  "Start, stop, or inspect automatic polling for an active bind implant.",
+		Example: `~~~
+polling start --interval 2
+polling status
+polling stop
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return PollingCmd(cmd, con)
 		},
@@ -86,6 +106,10 @@ wait 59
 	pollingStartCmd := &cobra.Command{
 		Use:   "start",
 		Short: "start bind polling",
+		Long:  "Start automatic task polling for the active bind implant.",
+		Example: `~~~
+polling start --interval 2
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return PollingStartCmd(cmd, con)
 		},
@@ -93,6 +117,10 @@ wait 59
 	pollingStopCmd := &cobra.Command{
 		Use:   "stop",
 		Short: "stop bind polling",
+		Long:  "Stop automatic task polling for the active bind implant.",
+		Example: `~~~
+polling stop
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return PollingStopCmd(cmd, con)
 		},
@@ -100,6 +128,10 @@ wait 59
 	pollingStatusCmd := &cobra.Command{
 		Use:   "status",
 		Short: "show bind polling status",
+		Long:  "Show whether automatic polling is running for the active bind implant.",
+		Example: `~~~
+polling status
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return PollingStatusCmd(cmd, con)
 		},
@@ -109,6 +141,10 @@ wait 59
 	recoverCmd := &cobra.Command{
 		Use:   consts.CommandRecover,
 		Short: "recover session",
+		Long:  "Recover the active session state and resume communication with its implant.",
+		Example: `~~~
+recover
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return RecoverCmd(cmd, con)
 		},
@@ -117,6 +153,10 @@ wait 59
 	initCmd := &cobra.Command{
 		Use:   consts.ModuleInit,
 		Short: "init session",
+		Long:  "Initialize communication state for the active bind implant session.",
+		Example: `~~~
+init
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return InitCmd(cmd, con)
 		},
@@ -149,6 +189,9 @@ info b1ab9056
 		Use:   consts.ModuleSwitch,
 		Short: "switch session",
 		Long:  "Switch session to another server pipeline by pipeline id",
+		Example: `~~~
+switch --pipeline tcp-main
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return SwitchCmd(cmd, con)
 		},
@@ -165,7 +208,12 @@ info b1ab9056
 	keepaliveCmd := &cobra.Command{
 		Use:   consts.ModuleKeepalive + " [enable/disable]",
 		Short: "toggle duplex keepalive mode",
-		Args:  cobra.ExactArgs(1),
+		Long:  "Enable or disable duplex keepalive mode for the active bind implant.",
+		Example: `~~~
+keepalive enable
+keepalive disable
+~~~`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return KeepaliveCmd(cmd, con)
 		},

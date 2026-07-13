@@ -16,6 +16,7 @@ func LocalRPCConfigCommand(con *core.Console) *cobra.Command {
 	localrpcCmd := &cobra.Command{
 		Use:   "localrpc",
 		Short: "Show Local RPC server configuration",
+		Long:  "Show and manage the local RPC server exposed by this client process.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return LocalRPCShowCmd(con)
 		},
@@ -40,6 +41,11 @@ config localrpc disable
 	enableCmd := &cobra.Command{
 		Use:   "enable",
 		Short: "Enable Local RPC server",
+		Long:  "Enable and start the local RPC server, optionally changing its listen address.",
+		Example: `~~~
+config localrpc enable
+config localrpc enable --addr 127.0.0.1:16004
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return LocalRPCEnableCmd(cmd, con)
 		},
@@ -52,6 +58,10 @@ config localrpc disable
 	disableCmd := &cobra.Command{
 		Use:   "disable",
 		Short: "Disable Local RPC server",
+		Long:  "Stop the local RPC server and disable it in client settings.",
+		Example: `~~~
+config localrpc disable
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return LocalRPCDisableCmd(con)
 		},

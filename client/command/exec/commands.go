@@ -90,6 +90,10 @@ execute gogo.exe -- -i 127.0.0.1 -p http
 		Annotations: map[string]string{
 			"depend": consts.ModuleExecute,
 		},
+		Example: `~~~
+shell whoami
+shell --shell /bin/bash -- id
+~~~`,
 	}
 
 	common.BindArgCompletions(shellCmd, nil,
@@ -558,6 +562,7 @@ bof dir.x64.o -- wstr:"C:\\Windows\\System32"
 	powerpickCmd := &cobra.Command{
 		Use:   consts.ModulePowerpick + " [args]",
 		Short: "unmanaged powershell on implant process (Windows Only)",
+		Long:  "Run unmanaged PowerShell inside the active Windows implant, optionally loading a local script first.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ExecutePowershellCmd(cmd, con)
 		},

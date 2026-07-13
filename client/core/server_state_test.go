@@ -9,6 +9,7 @@ import (
 	iomclient "github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestTaskMessageBufferRoundTrip(t *testing.T) {
@@ -130,8 +131,9 @@ func TestReconcileEventTracksWebsiteLifecycle(t *testing.T) {
 	}
 
 	website := &clientpb.Pipeline{
-		Name: "site-alpha",
-		Type: consts.WebsitePipeline,
+		Name:   "site-alpha",
+		Type:   consts.WebsitePipeline,
+		Enable: true,
 		Body: &clientpb.Pipeline_Web{
 			Web: &clientpb.Website{
 				Name:     "site-alpha",
@@ -143,7 +145,7 @@ func TestReconcileEventTracksWebsiteLifecycle(t *testing.T) {
 	}
 
 	state.ReconcileEvent(&clientpb.Event{
-		Type: consts.EventJob,
+		Type: consts.EventWebsite,
 		Op:   consts.CtrlWebsiteStart,
 		Job: &clientpb.Job{
 			Pipeline: website,
@@ -154,16 +156,30 @@ func TestReconcileEventTracksWebsiteLifecycle(t *testing.T) {
 		t.Fatal("website start event should populate client pipeline cache")
 	}
 
+	stoppedWebsite := proto.Clone(website).(*clientpb.Pipeline)
+	stoppedWebsite.Enable = false
 	state.ReconcileEvent(&clientpb.Event{
-		Type: consts.EventJob,
+		Type: consts.EventWebsite,
 		Op:   consts.CtrlWebsiteStop,
 		Job: &clientpb.Job{
-			Pipeline: website,
+			Pipeline: stoppedWebsite,
+		},
+	})
+
+	if got := state.Pipelines["site-alpha"]; got == nil || got.Enable {
+		t.Fatalf("website stop event should retain a disabled cache entry, got %#v", got)
+	}
+
+	state.ReconcileEvent(&clientpb.Event{
+		Type: consts.EventWebsite,
+		Op:   consts.CtrlWebsiteDelete,
+		Job: &clientpb.Job{
+			Pipeline: stoppedWebsite,
 		},
 	})
 
 	if _, ok := state.Pipelines["site-alpha"]; ok {
-		t.Fatal("website stop event should remove client pipeline cache entry")
+		t.Fatal("website delete event should remove client pipeline cache entry")
 	}
 }
 
@@ -176,11 +192,13 @@ func TestReconcileEventScopesDuplicatePipelineNames(t *testing.T) {
 		Name:       "shared-pipe",
 		ListenerId: "listener-a",
 		Type:       consts.TCPPipeline,
+		Enable:     true,
 	}
 	pipelineB := &clientpb.Pipeline{
 		Name:       "shared-pipe",
 		ListenerId: "listener-b",
 		Type:       consts.TCPPipeline,
+		Enable:     true,
 	}
 
 	state.ReconcileEvent(&clientpb.Event{
@@ -207,15 +225,29 @@ func TestReconcileEventScopesDuplicatePipelineNames(t *testing.T) {
 		t.Fatalf("listener B scoped key missing, got %#v", got)
 	}
 
+	stoppedPipelineB := proto.Clone(pipelineB).(*clientpb.Pipeline)
+	stoppedPipelineB.Enable = false
 	state.ReconcileEvent(&clientpb.Event{
 		Type: consts.EventJob,
 		Op:   consts.CtrlPipelineStop,
-		Job:  &clientpb.Job{Pipeline: pipelineB},
+		Job:  &clientpb.Job{Pipeline: stoppedPipelineB},
+	})
+	if got := state.Pipelines[iomclient.PipelineCacheKey(pipelineB)]; got == nil || got.Enable {
+		t.Fatalf("stopped scoped pipeline should remain disabled, got %#v", got)
+	}
+	if _, ok := state.Pipelines["shared-pipe"]; ok {
+		t.Fatal("bare pipeline key should remain absent while duplicate names are registered")
+	}
+
+	state.ReconcileEvent(&clientpb.Event{
+		Type: consts.EventJob,
+		Op:   consts.CtrlPipelineDelete,
+		Job:  &clientpb.Job{Pipeline: stoppedPipelineB},
 	})
 	if _, ok := state.Pipelines[iomclient.PipelineCacheKey(pipelineB)]; ok {
-		t.Fatal("stopped scoped pipeline should be removed")
+		t.Fatal("deleted scoped pipeline should be removed")
 	}
-	if got := state.Pipelines["shared-pipe"]; got == nil || got.ListenerId != "listener-a" {
+	if got := state.Pipelines["shared-pipe"]; got == nil || got.ListenerId != "listener-a" || !got.Enable {
 		t.Fatalf("remaining unique pipeline should be promoted to bare key, got %#v", got)
 	}
 }
@@ -309,6 +341,55 @@ func TestHandlerEventIgnoresNilEvent(t *testing.T) {
 	}
 	s := &Server{ServerState: state, taskMessages: make(map[string]string)}
 	s.HandlerEvent(nil)
+}
+
+func TestReplayCachedEventsDoesNotOverwriteCurrentPipelineSnapshot(t *testing.T) {
+	const (
+		pipelineName = "rem-cache-snapshot"
+		freshLink    = "simplex+sharepoint://fresh@example.test:443"
+	)
+	fresh := &clientpb.Pipeline{
+		Name:       pipelineName,
+		ListenerId: "listener-main",
+		Type:       consts.RemPipeline,
+		Body: &clientpb.Pipeline_Rem{Rem: &clientpb.REM{
+			Name:       pipelineName,
+			ListenerId: "listener-main",
+			Link:       freshLink,
+		}},
+	}
+	stale := &clientpb.Pipeline{
+		Name:       pipelineName,
+		ListenerId: "listener-main",
+		Type:       consts.RemPipeline,
+		Body: &clientpb.Pipeline_Rem{Rem: &clientpb.REM{
+			Name:       pipelineName,
+			ListenerId: "listener-main",
+		}},
+	}
+	events := []*clientpb.Event{{
+		Type: consts.EventJob,
+		Op:   consts.CtrlPipelineSync,
+		Job:  &clientpb.Job{Name: pipelineName, Pipeline: stale},
+	}}
+	for _, suppressOutput := range []bool{false, true} {
+		s := &Server{
+			ServerState: &iomclient.ServerState{
+				Pipelines: map[string]*clientpb.Pipeline{
+					pipelineName: proto.Clone(fresh).(*clientpb.Pipeline),
+				},
+			},
+			taskMessages: make(map[string]string),
+			Quiet:        true,
+		}
+
+		s.replayCachedEvents(events, suppressOutput)
+
+		if got := s.Pipelines[pipelineName].GetRem().GetLink(); got != freshLink {
+			t.Fatalf("pipeline link after cached event replay (suppressOutput=%t) = %q, want current snapshot %q",
+				suppressOutput, got, freshLink)
+		}
+	}
 }
 
 func TestHandlerSessionIgnoresMissingSession(t *testing.T) {

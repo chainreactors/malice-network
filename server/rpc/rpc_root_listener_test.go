@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/rootpb"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
@@ -55,5 +56,24 @@ func TestRemoveListenerRejectsActiveForwardRuntime(t *testing.T) {
 	}
 	if _, err := db.FindOperatorByName("active-forward-listener"); err != nil {
 		t.Fatalf("listener operator should still exist after rejected remove: %v", err)
+	}
+}
+
+func TestRemoveListenerPublishesIdentityLifecycleEvent(t *testing.T) {
+	_ = newRPCTestEnv(t)
+	seedForwardListenerOperator(t, "inactive-listener", "inactive-listener-fp")
+	events := subscribeEventBrokerReady(t, core.EventBroker)
+	defer core.EventBroker.Unsubscribe(events)
+
+	resp, err := (&Server{}).RemoveListener(context.Background(), &rootpb.Operator{
+		Args: []string{"inactive-listener"},
+	})
+	if err != nil || resp == nil || resp.Status != 0 {
+		t.Fatalf("RemoveListener response = %#v, error = %v", resp, err)
+	}
+
+	event := waitForLifecycleEvent(t, events, consts.CtrlListenerRemove)
+	if event.EventType != consts.EventListener || event.Listener.GetId() != "inactive-listener" {
+		t.Fatalf("unexpected listener identity event: %#v", event)
 	}
 }

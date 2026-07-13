@@ -21,6 +21,10 @@ func Commands(con *core.Console) []*cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			ArmoryCmd(cmd, con)
 		},
+		Example: `~~~
+armory
+armory --ignore-cache
+~~~`,
 	}
 	common.Bind("connection", true, armoryCmd, func(f *pflag.FlagSet) {
 		f.BoolP("insecure", "I", false, "skip tls certificate validation")
@@ -60,6 +64,10 @@ armory install rubeus
 		Run: func(cmd *cobra.Command, args []string) {
 			ArmoryUpdateCmd(cmd, con)
 		},
+		Example: `~~~
+armory update
+armory update --armory Default
+~~~`,
 	}
 	common.Bind("name", false, armoryUpdateCmd, func(f *pflag.FlagSet) {
 		f.StringP("armory", "a", "Default", "name of armory to install package from")
@@ -77,6 +85,9 @@ armory install rubeus
 		Run: func(cmd *cobra.Command, args []string) {
 			ArmorySearchCmd(cmd, con)
 		},
+		Example: `~~~
+armory search rubeus
+~~~`,
 	}
 
 	common.BindArgCompletions(armorySearchCmd, nil, carapace.ActionValues().Usage("a name regular expression"))

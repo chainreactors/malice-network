@@ -25,11 +25,17 @@ func Commands(con *core.Console) []*cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
+		Example: `~~~
+profile list
+profile show my_profile
+profile new --name my_profile --pipeline tcp-main
+~~~`,
 	}
 
 	listCmd := &cobra.Command{
 		Use:   consts.CommandProfileList,
 		Short: "List build profiles",
+		Long:  "List build profiles stored on the server.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ProfileShowCmd(cmd, con)
 		},
@@ -40,7 +46,7 @@ profile list
 	}
 
 	loadProfileCmd := &cobra.Command{
-		Use:   consts.CommandProfileLoad,
+		Use:   consts.CommandProfileLoad + " [profile_path]",
 		Short: "Load an existing implant profile",
 		Long: `
 The **profile load** command requires a valid configuration file path (e.g., **config.yaml** ) to load settings. This file specifies attributes necessary for generating the compile profile.
@@ -78,6 +84,7 @@ profile load /path/to/profile.zip --name my_profile --pipeline pipeline_name
 	newProfileCmd := &cobra.Command{
 		Use:   consts.CommandProfileNew,
 		Short: "Create a build profile from defaults",
+		Long:  "Create a build profile from default implant settings and the selected pipeline configuration.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ProfileNewCmd(cmd, con)
 		},
@@ -101,8 +108,9 @@ profile new --name rem_profile_demo --pipeline tcp_default --rem rem_default
 	})
 
 	deleteProfileCmd := &cobra.Command{
-		Use:   consts.CommandProfileDelete,
+		Use:   consts.CommandProfileDelete + " [profile_name]",
 		Short: "Delete a build profile from the server",
+		Long:  "Delete the specified build profile from the server.",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ProfileDeleteCmd(cmd, con)
@@ -117,7 +125,7 @@ profile delete profile_name
 		common.ProfileCompleter(con))
 
 	showProfileCmd := &cobra.Command{
-		Use:   consts.CommandProfileShow,
+		Use:   consts.CommandProfileShow + " [profile_name]",
 		Short: "Show detailed profile information",
 		Long:  "Display a profile's metadata, implant.yaml, prelude.yaml, and resources list.",
 		Args:  cobra.ExactArgs(1),
@@ -360,7 +368,7 @@ build pulse --target x86_64-pc-windows-gnu --profile tcp_default --artifact-id 1
 	})
 
 	logCmd := &cobra.Command{
-		Use:   consts.CommandBuildLog,
+		Use:   consts.CommandBuildLog + " [artifact_name]",
 		Short: "Show build log",
 		Long:  `Displays the log for the specified number of rows`,
 		Args:  cobra.ExactArgs(1),
@@ -411,8 +419,10 @@ artifact download MAGIC_TOOL
 ~~~`,
 	}
 	showArtifactCmd := &cobra.Command{
-		Use:   consts.CommandArtifactShow,
+		Use:   consts.CommandArtifactShow + " [artifact_name]",
 		Short: "Show artifact metadata and profile",
+		Long:  "Show metadata for the specified artifact and optionally include its build profile.",
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ArtifactShowCmd(cmd, con)
 		},
@@ -434,6 +444,7 @@ artifact show artifact_name --profile
 	inspectArtifactCmd := &cobra.Command{
 		Use:   "inspect [artifact_name]",
 		Short: "Inspect artifact metadata",
+		Long:  "Show metadata for the specified artifact and optionally include its build profile.",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ArtifactShowCmd(cmd, con)
@@ -441,6 +452,10 @@ artifact show artifact_name --profile
 		Annotations: map[string]string{
 			"static": "true",
 		},
+		Example: `~~~
+artifact inspect artifact_name
+artifact inspect artifact_name --profile
+~~~`,
 	}
 	common.BindFlag(inspectArtifactCmd, func(f *pflag.FlagSet) {
 		f.Bool("profile", false, "show profile")
@@ -448,7 +463,7 @@ artifact show artifact_name --profile
 	common.BindArgCompletions(inspectArtifactCmd, nil, common.ArtifactCompleter(con))
 
 	downloadCmd := &cobra.Command{
-		Use:   consts.CommandArtifactDownload,
+		Use:   consts.CommandArtifactDownload + " [artifact_name]",
 		Short: "Download a build output file from the server",
 		Long: `Download a specific build output file from the server by specifying its unique artifact name.
 `,
@@ -478,7 +493,7 @@ artifact show artifact_name --profile
 	})
 
 	uploadCmd := &cobra.Command{
-		Use:   consts.CommandArtifactUpload,
+		Use:   consts.CommandArtifactUpload + " [file_path]",
 		Short: "Upload a build output file to the server",
 		Long: `Upload a custom artifact to the server for storage or further use.
 
@@ -515,7 +530,7 @@ artifact upload /path/to/beacon.dll --type beacon --target x86_64-pc-windows-gnu
 	})
 
 	deleteCommand := &cobra.Command{
-		Use:   consts.CommandArtifactDelete,
+		Use:   consts.CommandArtifactDelete + " [artifact_name]",
 		Short: "Delete an artifact from the server",
 		Long: `Delete a specify artifact in the server.
 
@@ -555,9 +570,17 @@ artifact comment artifact_name ""
 		Use:   "publish [artifact_name]",
 		Short: "Publish an artifact as website content",
 		Args:  cobra.ExactArgs(1),
+		Long: `Publish an existing artifact to the website selected by --website.
+
+Use --path to select the HTTP route and --format to convert the artifact before publishing. The website flag is required.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ArtifactPublishCmd(cmd, con)
 		},
+		Example: `~~~
+artifact publish beacon --website payloads --path /beacon.bin
+
+artifact publish beacon --website payloads --format shellcode --path /beacon.bin
+~~~`,
 	}
 	common.BindFlag(publishCommand, func(f *pflag.FlagSet) {
 		f.String("website", "", "website name")
@@ -579,9 +602,19 @@ artifact comment artifact_name ""
 	pruneCommand := &cobra.Command{
 		Use:   "prune",
 		Short: "Prune artifacts by status or age",
+		Long: `Delete artifacts matching at least one selected filter.
+
+Use --failed to delete non-completed artifacts and --older-than with a Go duration such as 720h to delete old artifacts. At least one filter is required.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ArtifactPruneCmd(cmd, con)
 		},
+		Example: `~~~
+artifact prune --failed
+
+artifact prune --older-than 720h
+
+artifact prune --failed --older-than 720h
+~~~`,
 	}
 	common.BindFlag(pruneCommand, func(f *pflag.FlagSet) {
 		f.Bool("failed", false, "delete non-completed artifacts")

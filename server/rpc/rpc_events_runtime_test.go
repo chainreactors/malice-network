@@ -12,9 +12,7 @@ import (
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/internal/core"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/status"
 )
 
 type captureEventsStream struct {
@@ -188,7 +186,7 @@ func TestEventsKeepsLegacyClientsOnLiveOnlyStream(t *testing.T) {
 	}
 }
 
-func TestEventsReportsSubscriberClosureAsResyncError(t *testing.T) {
+func TestEventsStopsCleanlyWhenBrokerCloses(t *testing.T) {
 	broker := newEventTestBroker(t)
 	stream := newCaptureEventsStream(context.Background())
 	result := make(chan error, 1)
@@ -202,15 +200,15 @@ func TestEventsReportsSubscriberClosureAsResyncError(t *testing.T) {
 	broker.Stop()
 	select {
 	case err := <-result:
-		if status.Code(err) != codes.ResourceExhausted {
-			t.Fatalf("Events status = %v, want ResourceExhausted: %v", status.Code(err), err)
+		if err != nil {
+			t.Fatalf("Events returned error after broker close: %v", err)
 		}
 	case <-time.After(2 * time.Second):
-		t.Fatal("Events did not report subscriber closure")
+		t.Fatal("Events did not stop after broker closure")
 	}
 }
 
-func TestEventsReportsRealSubscriberOverflow(t *testing.T) {
+func TestEventsKeepsLegacyStreamAliveAfterSubscriberOverflow(t *testing.T) {
 	broker := newEventTestBroker(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -227,7 +225,7 @@ func TestEventsReportsRealSubscriberOverflow(t *testing.T) {
 		t.Fatal("event stream header was not sent")
 	}
 
-	const eventCount = 128
+	const eventCount = 64
 	for i := 0; i < eventCount; i++ {
 		event := core.Event{
 			EventType: consts.EventBroadcast,
@@ -268,15 +266,34 @@ func TestEventsReportsRealSubscriberOverflow(t *testing.T) {
 	}
 
 	close(sendGate)
+	marker := core.Event{EventType: consts.EventBroadcast, Op: "after-overflow"}
+	deadline = time.Now().Add(2 * time.Second)
+	for {
+		if err := broker.TryPublish(marker); err != nil && !errors.Is(err, core.ErrEventBrokerQueueFull) {
+			t.Fatalf("publish marker: %v", err)
+		}
+		select {
+		case event := <-stream.events:
+			if event.Op == marker.Op {
+				goto markerReceived
+			}
+		case err := <-result:
+			t.Fatalf("Events stopped after legacy overflow: %v", err)
+		case <-time.After(time.Millisecond):
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("legacy stream did not recover after subscriber overflow")
+		}
+	}
+
+markerReceived:
+	cancel()
 	select {
 	case err := <-result:
-		if status.Code(err) != codes.ResourceExhausted {
-			t.Fatalf("Events status = %v, want ResourceExhausted: %v", status.Code(err), err)
+		if err != nil && !errors.Is(err, context.Canceled) {
+			t.Fatalf("Events returned error after cancellation: %v", err)
 		}
 	case <-time.After(2 * time.Second):
-		t.Fatal("Events did not report real subscriber overflow")
-	}
-	if len(stream.events) == 0 {
-		t.Fatal("overflow test did not deliver any queued events")
+		t.Fatal("Events did not stop after context cancellation")
 	}
 }

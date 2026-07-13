@@ -222,7 +222,7 @@ func ResourceCompleter(con *core.Console) carapace.Action {
 func PipelineCompleter(con *core.Console, use string) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
-		for name, pipe := range con.Pipelines {
+		for name, pipe := range SnapshotCachedPipelines(con) {
 			if use == "" || pipe.Type == use {
 				results = append(results, name, fmt.Sprintf("pipeline %s, type %s, listener %s", name, pipe.Type, pipe.ListenerId))
 			}
@@ -369,7 +369,7 @@ func SyncCompleter(con *core.Console) carapace.Action {
 func AllPipelineCompleter(con *core.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
-		for key, pipeline := range con.Pipelines {
+		for key, pipeline := range SnapshotCachedPipelines(con) {
 			if pipeline == nil {
 				continue
 			}
@@ -432,7 +432,7 @@ func ModulesCompleter() carapace.Action {
 func WebsiteCompleter(con *core.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
-		for _, pipeline := range con.Pipelines {
+		for _, pipeline := range SnapshotCachedPipelines(con) {
 			if web := pipeline.GetWeb(); web != nil {
 				results = append(results, pipeline.Name,
 					fmt.Sprintf("port: %d, root: %s", web.Port, web.Root))
@@ -447,7 +447,7 @@ func WebContentCompleter(con *core.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
 		// List all contents from all websites since content ID is globally unique
-		for _, pipeline := range con.Pipelines {
+		for _, pipeline := range SnapshotCachedPipelines(con) {
 			if web := pipeline.GetWeb(); web != nil {
 				for path, content := range web.Contents {
 					results = append(results, content.Id,
@@ -465,7 +465,7 @@ func WebContentCompleter(con *core.Console) carapace.Action {
 func RemPipelineCompleter(con *core.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
-		for key, pipeline := range con.Pipelines {
+		for key, pipeline := range SnapshotCachedPipelines(con) {
 			if pipeline == nil {
 				continue
 			}
@@ -486,7 +486,7 @@ func RemPipelineCompleter(con *core.Console) carapace.Action {
 func HttpPipelineCompleter(con *core.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
-		for _, pipeline := range con.Pipelines {
+		for _, pipeline := range SnapshotCachedPipelines(con) {
 			if http := pipeline.GetHttp(); http != nil {
 				results = append(results, pipeline.Name,
 					fmt.Sprintf(" host: %s:%d", http.Host, http.Port))
@@ -500,7 +500,7 @@ func HttpPipelineCompleter(con *core.Console) carapace.Action {
 func RemAgentCompleter(con *core.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
-		for _, pipeline := range con.Pipelines {
+		for _, pipeline := range SnapshotCachedPipelines(con) {
 			if rem := pipeline.GetRem(); rem != nil {
 				ctxs, err := con.Rpc.GetContexts(con.Context(), &clientpb.Context{
 					Type: consts.ContextPivoting,

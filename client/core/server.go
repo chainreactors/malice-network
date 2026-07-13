@@ -151,6 +151,18 @@ func NewServerWithOptions(conn *grpc.ClientConn, config *mtls.ClientConfig, supp
 	return ser, nil
 }
 
+func (s *Server) replayCachedEvents(events []*clientpb.Event, suppressOutput bool) {
+	if suppressOutput {
+		return
+	}
+	for _, event := range events {
+		if event == nil || event.Type == consts.EventTask {
+			continue
+		}
+		s.handleEventOutput(event)
+	}
+}
+
 func (s *Server) AddDoneCallback(task *clientpb.Task, callback client.TaskCallback) {
 	s.DoneCallbacks.Store(fmt.Sprintf("%s-%d", task.SessionId, task.TaskId), callback)
 }
@@ -499,11 +511,7 @@ func (s *Server) EventHandler() {
 				client.Log.Warnf("failed to load event history: %v\n", historyErr)
 				return
 			}
-			if !s.suppressStartupOutput {
-				for _, event := range history.GetEvents() {
-					s.handleEventOutput(event)
-				}
-			}
+			s.replayCachedEvents(history.GetEvents(), s.suppressStartupOutput)
 		}
 		for i := 0; i < historyCount; i++ {
 			event, recvErr := eventStream.Recv()
@@ -511,7 +519,7 @@ func (s *Server) EventHandler() {
 				client.Log.Warnf("event history receive failed: %v\n", recvErr)
 				return
 			}
-			if !s.suppressStartupOutput {
+			if !s.suppressStartupOutput && event != nil && event.Type != consts.EventTask {
 				s.handleEventOutput(event)
 			}
 		}
@@ -590,12 +598,10 @@ func (s *Server) HandlerEvent(event *clientpb.Event) {
 	s.ReconcileEvent(event)
 	s.handleEventOutput(event)
 }
-
 func (s *Server) handleEventOutput(event *clientpb.Event) {
 	if s == nil || event == nil {
 		return
 	}
-
 	// Quiet mode (non-index mux pane): suppress notification events but let
 	// task events through so user-initiated commands still show results.
 	if s.Quiet && event.Type != consts.EventTask {

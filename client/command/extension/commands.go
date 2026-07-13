@@ -18,12 +18,19 @@ func Commands(con *core.Console) []*cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
+		Example: `~~~
+extension list
+extension load ./credman/
+~~~`,
 	}
 
 	extensionListCmd := &cobra.Command{
 		Use:   consts.CommandExtensionList,
 		Short: "List all extensions",
 		Long:  "See Docs at https://sliver.sh/docs?name=Aliases%20and%20Extensions",
+		Example: `~~~
+extension list
+~~~`,
 		Run: func(cmd *cobra.Command, args []string) {
 			ExtensionsCmd(cmd, con)
 		},

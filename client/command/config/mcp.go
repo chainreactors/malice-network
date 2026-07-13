@@ -16,6 +16,7 @@ func MCPConfigCommand(con *core.Console) *cobra.Command {
 	mcpCmd := &cobra.Command{
 		Use:   "mcp",
 		Short: "Show MCP server configuration",
+		Long:  "Show and manage the MCP server exposed by this client process.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return MCPShowCmd(con)
 		},
@@ -40,6 +41,11 @@ config mcp disable
 	enableCmd := &cobra.Command{
 		Use:   "enable",
 		Short: "Enable MCP server",
+		Long:  "Enable and start the MCP server, optionally changing its listen address.",
+		Example: `~~~
+config mcp enable
+config mcp enable --addr 127.0.0.1:6006
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return MCPEnableCmd(cmd, con)
 		},
@@ -52,6 +58,10 @@ config mcp disable
 	disableCmd := &cobra.Command{
 		Use:   "disable",
 		Short: "Disable MCP server",
+		Long:  "Stop the MCP server and disable it in client settings.",
+		Example: `~~~
+config mcp disable
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return MCPDisableCmd(con)
 		},

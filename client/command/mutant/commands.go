@@ -22,6 +22,11 @@ func Commands(con *core.Console) []*cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
+		Example: `~~~
+mutant encode --input payload.bin --encoding xor --output payload.enc
+mutant patch --input beacon.exe --config runtime.json --output beacon-patched.exe
+mutant bdf --input carrier.exe --payload payload.bin --output patched.exe
+~~~`,
 	}
 
 	// Donut command - standalone, not under mutant
@@ -218,6 +223,11 @@ func Commands(con *core.Console) []*cobra.Command {
 	patchCmd := &cobra.Command{
 		Use:   "patch",
 		Short: "Patch runtime config blob in compiled binaries",
+		Long:  "Patch a compiled binary with a runtime config file or settings generated from implant.yaml.",
+		Example: `~~~
+mutant patch --input beacon.exe --config runtime.json --output beacon-patched.exe
+mutant patch --input beacon.exe --from-implant implant.yaml --set sleep=10
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return PatchCmd(cmd, con)
 		},
@@ -236,6 +246,10 @@ func Commands(con *core.Console) []*cobra.Command {
 	objcopyCmd := &cobra.Command{
 		Use:   "objcopy",
 		Short: "Object copy utility for binary extraction",
+		Long:  "Convert or extract a local object file through the remote malefic-mutant objcopy tool.",
+		Example: `~~~
+mutant objcopy --input payload.o --format binary --output payload.bin
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ObjcopyCmd(cmd, con)
 		},
@@ -251,6 +265,11 @@ func Commands(con *core.Console) []*cobra.Command {
 	encodeCmd := &cobra.Command{
 		Use:   "encode",
 		Short: "Payload encoding tool",
+		Long:  "Encode a payload with a selected malefic-mutant encoding and output format, or list available encodings.",
+		Example: `~~~
+mutant encode --list
+mutant encode --input payload.bin --encoding xor --format bin --output payload.enc
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return EncodeCmd(cmd, con)
 		},
@@ -268,6 +287,11 @@ func Commands(con *core.Console) []*cobra.Command {
 	entropyCmd := &cobra.Command{
 		Use:   "entropy",
 		Short: "Measure and reduce PE Shannon entropy",
+		Long:  "Measure PE entropy or reduce it toward a target threshold using the selected strategy.",
+		Example: `~~~
+mutant entropy --input beacon.exe --measure-only
+mutant entropy --input beacon.exe --threshold 5.5 --output beacon-low-entropy.exe
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return EntropyCmd(cmd, con)
 		},
@@ -289,10 +313,34 @@ func Commands(con *core.Console) []*cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
+		Long: "Bind a secondary PE to a primary PE, extract the embedded payload, or check whether one exists.",
+		Example: `~~~
+mutant binder bind --primary loader.exe --secondary payload.exe --output bound.exe
+mutant binder check --input bound.exe
+mutant binder extract --input bound.exe --output payload.exe
+~~~`,
 	}
-	binderBindCmd := &cobra.Command{Use: "bind", Short: "Bind a secondary PE onto a primary PE", RunE: func(cmd *cobra.Command, args []string) error { return BinderCmd(cmd, con) }}
-	binderExtractCmd := &cobra.Command{Use: "extract", Short: "Extract an embedded secondary PE", RunE: func(cmd *cobra.Command, args []string) error { return BinderCmd(cmd, con) }}
-	binderCheckCmd := &cobra.Command{Use: "check", Short: "Check for an embedded payload", RunE: func(cmd *cobra.Command, args []string) error { return BinderCmd(cmd, con) }}
+	binderBindCmd := &cobra.Command{
+		Use:     "bind",
+		Short:   "Bind a secondary PE onto a primary PE",
+		Long:    "Embed a secondary PE payload into a primary PE and write a new bound executable.",
+		Example: "~~~\nmutant binder bind --primary loader.exe --secondary payload.exe --output bound.exe\n~~~",
+		RunE:    func(cmd *cobra.Command, args []string) error { return BinderCmd(cmd, con) },
+	}
+	binderExtractCmd := &cobra.Command{
+		Use:     "extract",
+		Short:   "Extract an embedded secondary PE",
+		Long:    "Extract a secondary PE payload from a previously bound executable.",
+		Example: "~~~\nmutant binder extract --input bound.exe --output payload.exe\n~~~",
+		RunE:    func(cmd *cobra.Command, args []string) error { return BinderCmd(cmd, con) },
+	}
+	binderCheckCmd := &cobra.Command{
+		Use:     "check",
+		Short:   "Check for an embedded payload",
+		Long:    "Check whether a PE contains a payload produced by the binder tool.",
+		Example: "~~~\nmutant binder check --input bound.exe\n~~~",
+		RunE:    func(cmd *cobra.Command, args []string) error { return BinderCmd(cmd, con) },
+	}
 	binderBindCmd.Flags().StringP("primary", "p", "", "Primary PE file")
 	binderBindCmd.Flags().StringP("secondary", "s", "", "Secondary PE file")
 	binderBindCmd.Flags().StringP("output", "o", "", "Output file path")
@@ -310,9 +358,26 @@ func Commands(con *core.Console) []*cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
+		Long: "Replace the icon resources in a PE file or extract its icon as an ICO file.",
+		Example: `~~~
+mutant icon replace --input app.exe --ico app.ico --output branded.exe
+mutant icon extract --input app.exe --output app.ico
+~~~`,
 	}
-	iconReplaceCmd := &cobra.Command{Use: "replace", Short: "Replace PE icon", RunE: func(cmd *cobra.Command, args []string) error { return IconCmd(cmd, con) }}
-	iconExtractCmd := &cobra.Command{Use: "extract", Short: "Extract PE icon", RunE: func(cmd *cobra.Command, args []string) error { return IconCmd(cmd, con) }}
+	iconReplaceCmd := &cobra.Command{
+		Use:     "replace",
+		Short:   "Replace PE icon",
+		Long:    "Replace PE icon resources using a local ICO file.",
+		Example: "~~~\nmutant icon replace --input app.exe --ico app.ico --output branded.exe\n~~~",
+		RunE:    func(cmd *cobra.Command, args []string) error { return IconCmd(cmd, con) },
+	}
+	iconExtractCmd := &cobra.Command{
+		Use:     "extract",
+		Short:   "Extract PE icon",
+		Long:    "Extract icon resources from a PE file into an ICO file.",
+		Example: "~~~\nmutant icon extract --input app.exe --output app.ico\n~~~",
+		RunE:    func(cmd *cobra.Command, args []string) error { return IconCmd(cmd, con) },
+	}
 	iconReplaceCmd.Flags().StringP("input", "i", "", "Input PE file")
 	iconReplaceCmd.Flags().String("ico", "", "ICO file")
 	iconReplaceCmd.Flags().StringP("output", "o", "", "Output PE file")
@@ -325,6 +390,12 @@ func Commands(con *core.Console) []*cobra.Command {
 	mutateCmd := &cobra.Command{
 		Use:   "mutate",
 		Short: "Generate mutated artifacts offline",
+		Long:  "Generate one or more offline payload variants using selected encoding, format, and PE mutation options.",
+		Example: `~~~
+mutant mutate --list
+mutant mutate --input beacon.exe --output beacon-mutated.exe --encoding xor
+mutant mutate --input beacon.exe --out-dir ./variants --count 5 --format pe
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return MutateCmd(cmd, con)
 		},
@@ -360,6 +431,11 @@ func Commands(con *core.Console) []*cobra.Command {
 	bdfCmd := &cobra.Command{
 		Use:   "bdf",
 		Short: "Patch PE binary with shellcode",
+		Long:  "Inject shellcode into a PE using code caves or a new section, or only inspect available code caves.",
+		Example: `~~~
+mutant bdf --input carrier.exe --payload payload.bin --output patched.exe
+mutant bdf --input carrier.exe --find-caves
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return BdfCmd(cmd, con)
 		},
@@ -388,9 +464,27 @@ func Commands(con *core.Console) []*cobra.Command {
 	})
 	bindToolTimeout(bdfCmd)
 
-	watermarkCmd := &cobra.Command{Use: "watermark", Short: "PE watermark embedding and reading", RunE: func(cmd *cobra.Command, args []string) error { return cmd.Help() }}
-	watermarkWriteCmd := &cobra.Command{Use: "write", Short: "Write watermark into a PE file", RunE: func(cmd *cobra.Command, args []string) error { return WatermarkCmd(cmd, con) }}
-	watermarkReadCmd := &cobra.Command{Use: "read", Short: "Read watermark from a PE file", RunE: func(cmd *cobra.Command, args []string) error { return WatermarkCmd(cmd, con) }}
+	watermarkCmd := &cobra.Command{
+		Use:     "watermark",
+		Short:   "PE watermark embedding and reading",
+		Long:    "Write watermark data into a PE file or read an existing watermark using a selected method.",
+		Example: "~~~\nmutant watermark write --input app.exe --output marked.exe --method overlay --watermark campaign-01\nmutant watermark read --input marked.exe --method overlay\n~~~",
+		RunE:    func(cmd *cobra.Command, args []string) error { return cmd.Help() },
+	}
+	watermarkWriteCmd := &cobra.Command{
+		Use:     "write",
+		Short:   "Write watermark into a PE file",
+		Long:    "Write watermark data into a PE file using the specified method.",
+		Example: "~~~\nmutant watermark write --input app.exe --output marked.exe --method overlay --watermark campaign-01\n~~~",
+		RunE:    func(cmd *cobra.Command, args []string) error { return WatermarkCmd(cmd, con) },
+	}
+	watermarkReadCmd := &cobra.Command{
+		Use:     "read",
+		Short:   "Read watermark from a PE file",
+		Long:    "Read watermark data from a PE file using the specified method and optional size hint.",
+		Example: "~~~\nmutant watermark read --input marked.exe --method overlay\n~~~",
+		RunE:    func(cmd *cobra.Command, args []string) error { return WatermarkCmd(cmd, con) },
+	}
 	watermarkWriteCmd.Flags().StringP("input", "i", "", "Input PE file")
 	watermarkWriteCmd.Flags().StringP("output", "o", "", "Output PE file")
 	watermarkWriteCmd.Flags().StringP("method", "m", "", "Watermark method")
@@ -402,9 +496,27 @@ func Commands(con *core.Console) []*cobra.Command {
 	bindToolTimeout(watermarkReadCmd)
 	watermarkCmd.AddCommand(watermarkWriteCmd, watermarkReadCmd)
 
-	lnkCmd := &cobra.Command{Use: "lnk", Short: "Generate evasion LNK shortcut files", RunE: func(cmd *cobra.Command, args []string) error { return cmd.Help() }}
-	lnkExecCmd := &cobra.Command{Use: "exec", Short: "Generate command execution LNK", RunE: func(cmd *cobra.Command, args []string) error { return LnkCmd(cmd, con) }}
-	lnkEmbedCmd := &cobra.Command{Use: "embed", Short: "Generate LNK with embedded payload", RunE: func(cmd *cobra.Command, args []string) error { return LnkCmd(cmd, con) }}
+	lnkCmd := &cobra.Command{
+		Use:     "lnk",
+		Short:   "Generate evasion LNK shortcut files",
+		Long:    "Generate a Windows shortcut that executes a command or embeds and extracts a payload.",
+		Example: "~~~\nmutant lnk exec --command calc.exe --output calc.lnk\nmutant lnk embed --input payload.exe --output document.lnk --method certutil\n~~~",
+		RunE:    func(cmd *cobra.Command, args []string) error { return cmd.Help() },
+	}
+	lnkExecCmd := &cobra.Command{
+		Use:     "exec",
+		Short:   "Generate command execution LNK",
+		Long:    "Generate a Windows shortcut that invokes a command through the selected target executable.",
+		Example: "~~~\nmutant lnk exec --command calc.exe --target C:\\Windows\\System32\\cmd.exe --output calc.lnk\n~~~",
+		RunE:    func(cmd *cobra.Command, args []string) error { return LnkCmd(cmd, con) },
+	}
+	lnkEmbedCmd := &cobra.Command{
+		Use:     "embed",
+		Short:   "Generate LNK with embedded payload",
+		Long:    "Generate a Windows shortcut containing an encoded payload and its extraction command.",
+		Example: "~~~\nmutant lnk embed --input payload.exe --output document.lnk --method certutil\n~~~",
+		RunE:    func(cmd *cobra.Command, args []string) error { return LnkCmd(cmd, con) },
+	}
 	lnkExecCmd.Flags().StringP("command", "c", "", "Command to execute")
 	lnkExecCmd.Flags().StringP("target", "t", "", "LOLBin target path")
 	lnkExecCmd.Flags().StringP("output", "o", "", "Output LNK file")
@@ -428,6 +540,11 @@ func Commands(con *core.Console) []*cobra.Command {
 	relinkCmd := &cobra.Command{
 		Use:   "relink",
 		Short: "PE post-link randomization",
+		Long:  "Apply deterministic or random post-link PE mutations, or print the planned mutations with --dry-run.",
+		Example: `~~~
+mutant relink --input app.exe --output app-randomized.exe
+mutant relink --input app.exe --seed 42 --dry-run
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return RelinkCmd(cmd, con)
 		},
@@ -444,6 +561,11 @@ func Commands(con *core.Console) []*cobra.Command {
 	hijackCmd := &cobra.Command{
 		Use:   "hijack",
 		Short: "Trace-based DLL hijack code cave injection",
+		Long:  "Analyze a DLL or inject shellcode at a trace-selected call site and code cave.",
+		Example: `~~~
+mutant hijack --input version.dll --analyze
+mutant hijack --input version.dll --payload payload.bin --output version-patched.dll --verify
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return HijackCmd(cmd, con)
 		},
@@ -462,7 +584,12 @@ func Commands(con *core.Console) []*cobra.Command {
 	runCmd := &cobra.Command{
 		Use:   "run -- <tool args>",
 		Short: "Run a raw malefic-mutant tool command",
-		Args:  cobra.ArbitraryArgs,
+		Long:  "Run raw malefic-mutant arguments on the server and map local files to tool inputs or outputs.",
+		Example: `~~~
+mutant run -- encode --list
+mutant run --input-file input.bin:./payload.bin --output-file output.bin:./encoded.bin -- encode -i input.bin -o output.bin
+~~~`,
+		Args: cobra.ArbitraryArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return MutantRunCmd(cmd, con)
 		},

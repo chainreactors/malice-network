@@ -91,6 +91,7 @@ http --listener listener --tls --cert /path/to/cert --key /path/to/key
 	bindCmd := &cobra.Command{
 		Use:   consts.CommandPipelineBind,
 		Short: "Register a new bind pipeline and start it",
+		Long:  "Register and start a bind pipeline for the specified listener.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return NewBindPipelineCmd(cmd, con)
 		},
@@ -163,7 +164,7 @@ rem new rem_test --listener listener_id -c tcp://127.0.0.1:19966
 	newRemCmd.MarkFlagRequired("listener")
 
 	startRemCmd := &cobra.Command{
-		Use:   consts.CommandRemStart,
+		Use:   consts.CommandRemStart + " [rem_name]",
 		Short: "Start a REM",
 		Args:  cobra.ExactArgs(1),
 		Long:  "Start a REM with the specified name",
@@ -179,7 +180,7 @@ rem start rem_test
 		common.RemPipelineCompleter(con))
 
 	stopRemCmd := &cobra.Command{
-		Use:   consts.CommandRemStop,
+		Use:   consts.CommandRemStop + " [rem_name]",
 		Short: "Stop a REM",
 		Args:  cobra.ExactArgs(1),
 		Long:  "Stop a REM with the specified name",
@@ -195,8 +196,9 @@ rem stop rem_test
 		common.RemPipelineCompleter(con))
 
 	deleteRemCmd := &cobra.Command{
-		Use:   consts.CommandPipelineDelete,
+		Use:   consts.CommandPipelineDelete + " [rem_name]",
 		Short: "Delete a REM",
+		Long:  "Delete the specified REM pipeline definition.",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return DeleteRemCmd(cmd, con)
@@ -217,6 +219,7 @@ rem delete rem_test
 	updateIntervalCmd := &cobra.Command{
 		Use:   "interval [interval_ms]",
 		Short: "Dynamically change REM agent polling interval",
+		Long:  "Change the polling interval for a REM agent selected by session, agent, or pipeline identifiers.",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return RemUpdateIntervalCmd(cmd, con)

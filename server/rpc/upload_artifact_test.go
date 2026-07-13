@@ -2,10 +2,14 @@ package rpc
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 )
 
@@ -70,6 +74,8 @@ func TestUpdateArtifact_UpdatesComment(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SaveUploadedArtifact: %v", err)
 	}
+	events := subscribeEventBrokerReady(t, core.EventBroker)
+	defer core.EventBroker.Unsubscribe(events)
 
 	updated, err := srv.UpdateArtifact(context.Background(), &clientpb.Artifact{
 		Id:      artifact.ID,
@@ -88,6 +94,34 @@ func TestUpdateArtifact_UpdatesComment(t *testing.T) {
 	}
 	if found.Comment != "new rpc comment" {
 		t.Fatalf("stored comment = %q, want %q", found.Comment, "new rpc comment")
+	}
+	event := waitForLifecycleEvent(t, events, consts.CtrlArtifactUpdate)
+	if event.EventType != consts.EventBuild || event.Job.GetName() != artifact.Name {
+		t.Fatalf("unexpected artifact update event: %#v", event)
+	}
+}
+
+func TestDeleteArtifactPublishesLifecycleEvent(t *testing.T) {
+	newRPCTestEnv(t)
+	artifact, err := db.SaveUploadedArtifact(&clientpb.Artifact{Name: "rpc-delete-event", Type: "beacon"})
+	if err != nil {
+		t.Fatalf("SaveUploadedArtifact: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(artifact.Path), 0o700); err != nil {
+		t.Fatalf("MkdirAll artifact path: %v", err)
+	}
+	if err := os.WriteFile(artifact.Path, []byte("artifact"), 0o600); err != nil {
+		t.Fatalf("WriteFile artifact: %v", err)
+	}
+	events := subscribeEventBrokerReady(t, core.EventBroker)
+	defer core.EventBroker.Unsubscribe(events)
+
+	if _, err := (&Server{}).DeleteArtifact(context.Background(), &clientpb.Artifact{Name: artifact.Name}); err != nil {
+		t.Fatalf("DeleteArtifact: %v", err)
+	}
+	event := waitForLifecycleEvent(t, events, consts.CtrlArtifactDelete)
+	if event.EventType != consts.EventBuild || event.Job.GetName() != artifact.Name {
+		t.Fatalf("unexpected artifact delete event: %#v", event)
 	}
 }
 

@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"testing"
@@ -10,6 +11,33 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/implanttypes"
 )
+
+func TestListenerPushCtrlContextHonorsCanceledContextWhenQueueFull(t *testing.T) {
+	listener := NewListener("listener-context", "127.0.0.1")
+	for index := 0; index < cap(listener.Ctrl); index++ {
+		listener.Ctrl <- &clientpb.JobCtrl{Ctrl: consts.CtrlPipelineStart}
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	started := time.Now()
+	ctrlID := listener.PushCtrlContext(ctx, &clientpb.JobCtrl{Ctrl: consts.CtrlPipelineStop})
+	if ctrlID != 0 {
+		t.Fatalf("control ID = %d, want 0 for canceled queue operation", ctrlID)
+	}
+	if elapsed := time.Since(started); elapsed > 100*time.Millisecond {
+		t.Fatalf("canceled PushCtrlContext took %v, want prompt return", elapsed)
+	}
+
+	available := NewListener("listener-context-available", "127.0.0.1")
+	ctrlID = available.PushCtrlContext(ctx, &clientpb.JobCtrl{Ctrl: consts.CtrlPipelineStop})
+	if ctrlID != 0 {
+		t.Fatalf("control ID = %d, want 0 for an already canceled context with queue capacity", ctrlID)
+	}
+	if len(available.Ctrl) != 0 {
+		t.Fatal("PushCtrlContext should not queue control after the context is already canceled")
+	}
+}
 
 func TestListenerPushCtrlAssignsIDAndWaitCtrlReturnsStatus(t *testing.T) {
 	listener := NewListener("listener-runtime", "127.0.0.1")
@@ -35,6 +63,32 @@ func TestListenerPushCtrlAssignsIDAndWaitCtrlReturnsStatus(t *testing.T) {
 	}
 	if status.CtrlId != id {
 		t.Fatalf("WaitCtrl ctrl id = %d, want %d", status.CtrlId, id)
+	}
+}
+
+func TestListenerDeferredEventMarkerLifecycle(t *testing.T) {
+	listener := NewListener("listener-deferred-event", "127.0.0.1")
+	ctrlID := listener.PushCtrlDeferredEvent(context.Background(), &clientpb.JobCtrl{
+		Ctrl: consts.CtrlPipelineStart,
+	})
+	if ctrlID == 0 {
+		t.Fatal("PushCtrlDeferredEvent returned 0")
+	}
+	<-listener.Ctrl
+	if !listener.ConsumeDeferredEvent(ctrlID) {
+		t.Fatal("queued deferred control should have an event marker")
+	}
+	if listener.ConsumeDeferredEvent(ctrlID) {
+		t.Fatal("deferred event marker should be consumed only once")
+	}
+
+	stoppedCtrlID := listener.PushCtrlDeferredEvent(context.Background(), &clientpb.JobCtrl{
+		Ctrl: consts.CtrlPipelineStop,
+	})
+	<-listener.Ctrl
+	listener.stop()
+	if listener.ConsumeDeferredEvent(stoppedCtrlID) {
+		t.Fatal("listener stop should discard outstanding deferred event markers")
 	}
 }
 

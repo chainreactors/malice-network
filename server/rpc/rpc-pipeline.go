@@ -28,6 +28,21 @@ func waitForCtrlStatus(action, name string, status *clientpb.JobStatus) error {
 	return fmt.Errorf("%s %s failed: unknown error", action, name)
 }
 
+func publishPipelineLifecycleEvent(operation string, pipeline *clientpb.Pipeline) {
+	if pipeline == nil {
+		return
+	}
+	core.EventBroker.Publish(core.Event{
+		EventType: consts.EventJob,
+		Op:        operation,
+		Job: &clientpb.Job{
+			Name:     pipeline.Name,
+			Pipeline: pipeline,
+		},
+		Important: true,
+	})
+}
+
 // resolveListenerID resolves the listener ID from a CtrlPipeline request.
 // If listener_id is not provided, it queries the database by pipeline name.
 // Returns an error if no pipeline is found, or if multiple pipelines share the same name.
@@ -78,6 +93,7 @@ func (rpc *Server) RegisterPipeline(ctx context.Context, req *clientpb.Pipeline)
 	if err := registerDefaultProfileForPipeline(req); err != nil {
 		logs.Log.Errorf("new profile %s failed %v", req.Name, err)
 	}
+	publishPipelineLifecycleEvent(consts.CtrlPipelineRegister, req)
 	return &clientpb.Empty{}, nil
 }
 
@@ -137,7 +153,12 @@ func (rpc *Server) ListPipelines(ctx context.Context, req *clientpb.Listener) (*
 	if err != nil {
 		return nil, err
 	}
-	return pipelines.ToProtobuf(), nil
+	result := pipelines.ToProtobuf()
+	for _, pipeline := range result.GetPipelines() {
+		runtime, ok := core.Listeners.FindByListener(pipeline.GetListenerId(), pipeline.GetName())
+		pipeline.Enable = pipeline.GetEnable() && ok && runtime.GetEnable()
+	}
+	return result, nil
 }
 
 func (rpc *Server) StartPipeline(ctx context.Context, req *clientpb.CtrlPipeline) (*clientpb.Empty, error) {
@@ -181,7 +202,11 @@ func (rpc *Server) StartPipeline(ctx context.Context, req *clientpb.CtrlPipeline
 	}
 
 	if existing := lns.GetPipeline(req.Name); existing != nil && existing.Enable {
-		_ = db.EnablePipelineByListener(req.Name, listenerID)
+		if err := db.EnablePipelineByListener(req.Name, listenerID); err != nil {
+			return nil, err
+		}
+		existing.Enable = true
+		publishPipelineLifecycleEvent(consts.CtrlPipelineStart, existing)
 		return &clientpb.Empty{}, nil
 	}
 
@@ -192,7 +217,7 @@ func (rpc *Server) StartPipeline(ctx context.Context, req *clientpb.CtrlPipeline
 		Name:     req.Name,
 	}
 
-	ctrlID := lns.PushCtrl(&clientpb.JobCtrl{
+	ctrlID := lns.PushCtrlDeferredEvent(ctx, &clientpb.JobCtrl{
 		Ctrl: consts.CtrlPipelineStart,
 		Job:  job.ToProtobuf()})
 
@@ -206,7 +231,9 @@ func (rpc *Server) StartPipeline(ctx context.Context, req *clientpb.CtrlPipeline
 	if err := db.EnablePipelineByListener(pipeline.Name, listenerID); err != nil {
 		return nil, err
 	}
+	pipeline.Enable = true
 	core.Jobs.AddPipeline(pipeline)
+	publishPipelineLifecycleEvent(consts.CtrlPipelineStart, pipeline)
 	return &clientpb.Empty{}, nil
 }
 
@@ -243,7 +270,7 @@ func (rpc *Server) StopPipeline(ctx context.Context, req *clientpb.CtrlPipeline)
 			Name:     req.Name,
 			Pipeline: pipe,
 		}
-		ctrlID := lns.PushCtrl(&clientpb.JobCtrl{
+		ctrlID := lns.PushCtrlDeferredEvent(ctx, &clientpb.JobCtrl{
 			Ctrl: consts.CtrlPipelineStop,
 			Job:  job.ToProtobuf(),
 		})
@@ -259,6 +286,9 @@ func (rpc *Server) StopPipeline(ctx context.Context, req *clientpb.CtrlPipeline)
 	if pipe != nil {
 		lns.RemovePipeline(pipe)
 	}
+	persisted := pipelineDB.ToProtobuf()
+	persisted.Enable = false
+	publishPipelineLifecycleEvent(consts.CtrlPipelineStop, persisted)
 	return &clientpb.Empty{}, nil
 }
 
@@ -285,7 +315,7 @@ func (rpc *Server) DeletePipeline(ctx context.Context, req *clientpb.CtrlPipelin
 	}
 
 	if pipe := lns.GetPipeline(req.Name); pipe != nil {
-		ctrlID := lns.PushCtrl(&clientpb.JobCtrl{
+		ctrlID := lns.PushCtrlDeferredEvent(ctx, &clientpb.JobCtrl{
 			Ctrl: consts.CtrlPipelineStop,
 			Job: &clientpb.Job{
 				Id:       core.NextJobID(),
@@ -304,5 +334,6 @@ func (rpc *Server) DeletePipeline(ctx context.Context, req *clientpb.CtrlPipelin
 	if err != nil {
 		return nil, err
 	}
+	publishPipelineLifecycleEvent(consts.CtrlPipelineDelete, pipelineDB.ToProtobuf())
 	return &clientpb.Empty{}, nil
 }

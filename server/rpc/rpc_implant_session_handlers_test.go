@@ -92,6 +92,10 @@ func TestSleepDispatchesRequestAndUpdatesSession(t *testing.T) {
 		Body: &implantpb.Spite_Empty{Empty: &implantpb.Empty{}},
 	})
 	waitForTaskDone(t, sess.Tasks.Get(task.TaskId), "sleep task")
+	waitForCondition(t, 2*time.Second, func() bool {
+		_, pending := sess.GetResp(task.TaskId)
+		return !pending
+	}, "sleep response handler to finish cleanup")
 }
 
 func TestKeepaliveEnablesSessionAfterResponse(t *testing.T) {
@@ -127,9 +131,11 @@ func TestKeepaliveEnablesSessionAfterResponse(t *testing.T) {
 		Body: &implantpb.Spite_Common{Common: &implantpb.CommonBody{Name: consts.ModuleKeepalive}},
 	})
 	waitForTaskDone(t, sess.Tasks.Get(task.TaskId), "keepalive task")
-	if !sess.IsKeepaliveEnabled() {
-		t.Fatal("keepalive stayed disabled after task completion")
-	}
+	waitForCondition(t, 2*time.Second, sess.IsKeepaliveEnabled, "keepalive to become enabled")
+	waitForCondition(t, 2*time.Second, func() bool {
+		_, pending := sess.GetResp(task.TaskId)
+		return !pending
+	}, "keepalive response handler to finish cleanup")
 }
 
 func TestInfoUpdatesSessionSysinfoFromResponse(t *testing.T) {
@@ -156,6 +162,10 @@ func TestInfoUpdatesSessionSysinfoFromResponse(t *testing.T) {
 		}},
 	})
 	waitForTaskDone(t, sess.Tasks.Get(task.TaskId), "info task")
+	waitForCondition(t, 2*time.Second, func() bool {
+		_, pending := sess.GetResp(task.TaskId)
+		return !pending
+	}, "info response handler to finish cleanup")
 	pb := sess.ToProtobufLite()
 	if pb.Os == nil || pb.Os.Name != "linux" || pb.Os.Arch != "x64" {
 		t.Fatalf("session sysinfo = %#v, want linux/x64", pb.Os)

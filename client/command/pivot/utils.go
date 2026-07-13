@@ -35,10 +35,10 @@ func GetRemLink(con *core.Console, pipe string) (string, error) {
 		return pipeline.GetRem() != nil && pipeline.GetRem().GetLink() != ""
 	})
 	if err != nil {
-		if con != nil && con.Pipelines != nil {
-			if remPipe, ok := con.Pipelines[pipe]; ok && remPipe.GetRem() != nil {
-				return "", fmt.Errorf("REM pipeline %q has no link address (not started?)", pipe)
-			}
+		if _, cachedErr := common.FindCachedPipeline(con, pipe, func(candidate *clientpb.Pipeline) bool {
+			return candidate.GetRem() != nil
+		}); cachedErr == nil {
+			return "", fmt.Errorf("REM pipeline %q has no link address (not started?)", pipe)
 		}
 		return "", err
 	}

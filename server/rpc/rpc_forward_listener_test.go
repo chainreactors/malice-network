@@ -596,6 +596,34 @@ func TestStartForwardListenerClientRejectsActiveCoreListenerCollision(t *testing
 	}
 }
 
+func TestStaleForwardRuntimeStopKeepsReplacementState(t *testing.T) {
+	newRPCTestEnv(t)
+	withIsolatedPipelinesCh(t)
+	t.Cleanup(resetForwardListenerRuntimes)
+
+	const listenerID = "forward-runtime-replacement"
+	replacementListener := core.NewListener(listenerID, "10.0.0.9")
+	core.Listeners.Add(replacementListener)
+	replacementRuntime := &forwardListenerRuntime{listenerID: listenerID, ownsListener: true}
+	forwardListenerRuntimes.Store(listenerID, replacementRuntime)
+	pipelineKey := core.PipelineRuntimeKey(listenerID, "replacement-pipeline")
+	replacementStream := &testRPCServerStream{}
+	pipelinesCh.Store(pipelineKey, replacementStream)
+
+	staleRuntime := &forwardListenerRuntime{listenerID: listenerID, ownsListener: true}
+	staleRuntime.stop()
+
+	if got, ok := forwardListenerRuntimes.Load(listenerID); !ok || got != replacementRuntime {
+		t.Fatalf("replacement runtime = %#v, present=%v; stale stop removed it", got, ok)
+	}
+	if got, err := core.Listeners.Get(listenerID); err != nil || got != replacementListener || !got.Active() {
+		t.Fatalf("replacement listener = %#v, error=%v; stale stop changed it", got, err)
+	}
+	if got, ok := pipelinesCh.Load(pipelineKey); !ok || got != replacementStream {
+		t.Fatalf("replacement pipeline stream = %#v, present=%v; stale stop removed it", got, ok)
+	}
+}
+
 func seedForwardAdminOperator(t testing.TB, name, fingerprint string) {
 	t.Helper()
 	if err := db.CreateOperator(&models.Operator{

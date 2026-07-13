@@ -19,12 +19,12 @@ import (
 	"github.com/chainreactors/malice-network/client/command/context"
 	"github.com/chainreactors/malice-network/client/command/extension"
 	"github.com/chainreactors/malice-network/client/command/generic"
-	"github.com/chainreactors/malice-network/client/command/search"
 	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/command/listener"
 	"github.com/chainreactors/malice-network/client/command/mal"
 	"github.com/chainreactors/malice-network/client/command/mutant"
 	"github.com/chainreactors/malice-network/client/command/pipeline"
+	"github.com/chainreactors/malice-network/client/command/search"
 	"github.com/chainreactors/malice-network/client/command/sessions"
 	"github.com/chainreactors/malice-network/client/command/website"
 )
@@ -101,8 +101,9 @@ func ConsoleRunnerCmd(con *core.Console, cmd *cobra.Command) (pre, post func(cmd
 func BindClientsCommands(con *core.Console) console.Commands {
 	clientCommands := func() *cobra.Command {
 		client := &cobra.Command{
-			Use:   "client",
-			Short: "client commands",
+			Use:           "client",
+			Short:         "client commands",
+			SilenceErrors: true,
 			CompletionOptions: cobra.CompletionOptions{
 				HiddenDefaultCmd: true,
 			},

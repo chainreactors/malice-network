@@ -131,6 +131,7 @@ func saveTaskContextsFromContent(task *core.Task, meta contextRequestMeta, conte
 			Op:        c.Type(),
 			Task:      task.ToProtobuf(),
 			Message:   fmt.Sprintf("new %s context: %s", c.Type(), model.ID),
+			Important: true,
 		})
 	}
 }
