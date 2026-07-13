@@ -46,6 +46,12 @@ const (
 	remHealthCheckTimeout = 10 * time.Second
 	remAcceptRetryMin     = 10 * time.Millisecond
 	remAcceptRetryMax     = time.Second
+	// remStartCloseTimeout bounds how long Close waits for an in-flight Start to
+	// abort, so shutdown cannot wedge if the underlying console Listen hangs.
+	// Console.Listen is normally a fast local bind; this only fires when it is
+	// stuck on an unresponsive remote link, so it is kept small to keep shutdown
+	// responsive rather than sized for network latency.
+	remStartCloseTimeout = 10 * time.Second
 )
 
 type remStartState struct {
@@ -233,8 +239,12 @@ func (rem *REM) Close() error {
 		if cancel != nil {
 			cancel()
 		}
-		<-startState.done
-		return startState.cleanupErr
+		select {
+		case <-startState.done:
+			return startState.cleanupErr
+		case <-time.After(remStartCloseTimeout):
+			return fmt.Errorf("rem %s close timed out waiting for startup to abort", rem.Name)
+		}
 	}
 	rem.stateMu.Unlock()
 	if cancel != nil {
