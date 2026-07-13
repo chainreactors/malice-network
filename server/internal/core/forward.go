@@ -117,6 +117,18 @@ func (f *forwarders) Remove(id string) error {
 	return f.removeIfSame(id, fw)
 }
 
+// RemoveIfSame atomically detaches fw when it is still the registered
+// generation for id, then aborts only that generation. It intentionally does
+// not call Pipeline.Close so callers can finish an in-flight start rollback
+// before releasing their lifecycle gate. A replacement is always preserved.
+func (f *forwarders) RemoveIfSame(id string, fw *Forward) error {
+	if fw == nil {
+		return nil
+	}
+	f.forwarders.CompareAndDelete(id, fw)
+	return fw.Abort()
+}
+
 func (f *forwarders) removeIfSame(id string, fw *Forward) error {
 	if fw == nil {
 		return nil
@@ -174,7 +186,6 @@ func NewForward(rpc ForwardClient, pipeline Pipeline) (*Forward, error) {
 type Forward struct {
 	ctx    context.Context
 	cancel context.CancelFunc
-	count  int
 	Pipeline
 	ListenerId string
 	Stream     ForwardStream
@@ -204,7 +215,6 @@ func (f *Forward) Add(msg *Message) {
 	}
 	select {
 	case f.implantC <- msg:
-		f.count++
 	case <-f.done:
 		logs.Log.Warnf("forward %s closed, dropping message from %s", f.ID(), msg.SessionID)
 	}
@@ -260,10 +270,6 @@ func (f *Forward) AbortContext(ctx context.Context) error {
 		}
 	})
 	return f.abortErr
-}
-
-func (f *Forward) Count() int {
-	return f.count
 }
 
 func (f *Forward) Context(sid string) context.Context {

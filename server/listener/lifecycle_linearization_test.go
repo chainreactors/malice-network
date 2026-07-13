@@ -2,7 +2,11 @@ package listener
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
+	"net"
+	"net/http"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -23,6 +27,42 @@ type linearizedStartRPC struct {
 	calls        atomic.Int32
 	firstEntered chan struct{}
 	releaseFirst chan struct{}
+}
+
+type committedStartStream struct {
+	done chan struct{}
+	once sync.Once
+}
+
+func newCommittedStartStream() *committedStartStream {
+	return &committedStartStream{done: make(chan struct{})}
+}
+
+func (*committedStartStream) Send(*clientpb.SpiteResponse) error { return nil }
+func (s *committedStartStream) Recv() (*clientpb.SpiteRequest, error) {
+	<-s.done
+	return nil, context.Canceled
+}
+func (s *committedStartStream) CloseSend() error {
+	s.once.Do(func() { close(s.done) })
+	return nil
+}
+
+type committedStartRPC struct {
+	stream *committedStartStream
+}
+
+func (c *committedStartRPC) OpenForwardStream(context.Context, core.Pipeline) (core.ForwardStream, error) {
+	return c.stream, nil
+}
+func (*committedStartRPC) Register(context.Context, *clientpb.RegisterSession, ...grpc.CallOption) (*clientpb.Empty, error) {
+	return &clientpb.Empty{}, nil
+}
+func (*committedStartRPC) Checkin(context.Context, *implantpb.Ping, ...grpc.CallOption) (*clientpb.Empty, error) {
+	return &clientpb.Empty{}, nil
+}
+func (*committedStartRPC) GetArtifact(context.Context, *clientpb.Artifact, ...grpc.CallOption) (*clientpb.Artifact, error) {
+	return nil, errors.New("artifact unavailable")
 }
 
 func (c *linearizedStartRPC) OpenForwardStream(context.Context, core.Pipeline) (core.ForwardStream, error) {
@@ -107,6 +147,134 @@ func TestHTTPPipelineCloseLinearizesWithInFlightStart(t *testing.T) {
 		t.Fatalf("NewHttpPipeline failed: %v", err)
 	}
 	assertCloseWaitsForStart(t, pipeline.Start, pipeline.Close, rpc.firstEntered, func() { close(rpc.releaseFirst) })
+}
+
+func TestTCPPipelineStartsServingAfterForwardAndStateCommit(t *testing.T) {
+	oldListen, oldCmux := tcpListen, tcpStartCmux
+	ln := newRollbackListener()
+	tcpListen = func(string, string) (net.Listener, error) { return ln, nil }
+	t.Cleanup(func() { tcpListen, tcpStartCmux = oldListen, oldCmux })
+
+	const listenerID = "committed-listener"
+	const pipelineID = "committed-tcp"
+	key := core.PipelineRuntimeKey(listenerID, pipelineID)
+	_ = core.Forwarders.Remove(key)
+	t.Cleanup(func() { _ = core.Forwarders.Remove(key) })
+
+	stream := newCommittedStartStream()
+	pipeline, err := NewTcpPipeline(&committedStartRPC{stream: stream}, &clientpb.Pipeline{
+		Name: pipelineID, ListenerId: listenerID, Tls: &clientpb.TLS{Enable: true}, Secure: &clientpb.Secure{},
+		Body: &clientpb.Pipeline_Tcp{Tcp: &clientpb.TCPPipeline{Host: "127.0.0.1"}},
+	})
+	if err != nil {
+		t.Fatalf("NewTcpPipeline failed: %v", err)
+	}
+	tcpStartCmux = func(got net.Listener, _ *tls.Config, _ func(net.Conn), _ core.GoErrorHandler) (net.Listener, error) {
+		pipeline.stateMu.RLock()
+		stateCommitted := pipeline.Enable && pipeline.starting && pipeline.ln == got
+		pipeline.stateMu.RUnlock()
+		if core.Forwarders.Get(key) == nil || !stateCommitted {
+			t.Errorf("TCP serving started before forward/state commit: forward=%v stateCommitted=%t", core.Forwarders.Get(key) != nil, stateCommitted)
+		}
+		return got, nil
+	}
+
+	if err := pipeline.Start(); err != nil {
+		t.Fatalf("Start failed: %v", err)
+	}
+}
+
+func TestHTTPPipelineStartsServingAfterForwardAndStateCommit(t *testing.T) {
+	oldListen, oldCmux := httpListen, httpStartWithCmux
+	ln := newRollbackListener()
+	httpListen = func(string, string) (net.Listener, error) { return ln, nil }
+	t.Cleanup(func() { httpListen, httpStartWithCmux = oldListen, oldCmux })
+
+	const listenerID = "committed-listener"
+	const pipelineID = "committed-http"
+	key := core.PipelineRuntimeKey(listenerID, pipelineID)
+	_ = core.Forwarders.Remove(key)
+	t.Cleanup(func() { _ = core.Forwarders.Remove(key) })
+
+	stream := newCommittedStartStream()
+	pipeline, err := NewHttpPipeline(&committedStartRPC{stream: stream}, &clientpb.Pipeline{
+		Name: pipelineID, ListenerId: listenerID, Tls: &clientpb.TLS{Enable: true, Cert: &clientpb.Cert{}}, Secure: &clientpb.Secure{},
+		Body: &clientpb.Pipeline_Http{Http: &clientpb.HTTPPipeline{Host: "127.0.0.1", Params: "{}"}},
+	})
+	if err != nil {
+		t.Fatalf("NewHttpPipeline failed: %v", err)
+	}
+	httpStartWithCmux = func(gotPipeline *HTTPPipeline, got net.Listener, _ *http.ServeMux) error {
+		gotPipeline.stateMu.RLock()
+		stateCommitted := gotPipeline.Enable && gotPipeline.starting && gotPipeline.srv == got
+		gotPipeline.stateMu.RUnlock()
+		if core.Forwarders.Get(key) == nil || !stateCommitted {
+			t.Errorf("HTTP serving started before forward/state commit: forward=%v stateCommitted=%t", core.Forwarders.Get(key) != nil, stateCommitted)
+		}
+		return nil
+	}
+
+	if err := pipeline.Start(); err != nil {
+		t.Fatalf("Start failed: %v", err)
+	}
+}
+
+func TestTCPPipelineServeFailureKeepsStartInFlight(t *testing.T) {
+	oldListen, oldCmux := tcpListen, tcpStartCmux
+	ln := newRollbackListener()
+	tcpListen = func(string, string) (net.Listener, error) { return ln, nil }
+	t.Cleanup(func() { tcpListen, tcpStartCmux = oldListen, oldCmux })
+
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	var calls atomic.Int32
+	tcpStartCmux = func(net.Listener, *tls.Config, func(net.Conn), core.GoErrorHandler) (net.Listener, error) {
+		if calls.Add(1) == 1 {
+			close(entered)
+			<-release
+			return nil, errFirstStart
+		}
+		return nil, errSecondStart
+	}
+	pipeline, err := NewTcpPipeline(&committedStartRPC{stream: newCommittedStartStream()}, &clientpb.Pipeline{
+		Name: "serve-failure-tcp", ListenerId: "serve-failure-listener", Tls: &clientpb.TLS{Enable: true}, Secure: &clientpb.Secure{},
+		Body: &clientpb.Pipeline_Tcp{Tcp: &clientpb.TCPPipeline{Host: "127.0.0.1"}},
+	})
+	if err != nil {
+		t.Fatalf("NewTcpPipeline failed: %v", err)
+	}
+	t.Cleanup(func() { _ = core.Forwarders.Remove(core.PipelineRuntimeKey(pipeline.ListenerID, pipeline.ID())) })
+
+	assertCloseWaitsForStart(t, pipeline.Start, pipeline.Close, entered, func() { close(release) })
+}
+
+func TestHTTPPipelineServeFailureKeepsStartInFlight(t *testing.T) {
+	oldListen, oldCmux := httpListen, httpStartWithCmux
+	ln := newRollbackListener()
+	httpListen = func(string, string) (net.Listener, error) { return ln, nil }
+	t.Cleanup(func() { httpListen, httpStartWithCmux = oldListen, oldCmux })
+
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	var calls atomic.Int32
+	httpStartWithCmux = func(*HTTPPipeline, net.Listener, *http.ServeMux) error {
+		if calls.Add(1) == 1 {
+			close(entered)
+			<-release
+			return errFirstStart
+		}
+		return errSecondStart
+	}
+	pipeline, err := NewHttpPipeline(&committedStartRPC{stream: newCommittedStartStream()}, &clientpb.Pipeline{
+		Name: "serve-failure-http", ListenerId: "serve-failure-listener", Tls: &clientpb.TLS{Enable: true, Cert: &clientpb.Cert{}}, Secure: &clientpb.Secure{},
+		Body: &clientpb.Pipeline_Http{Http: &clientpb.HTTPPipeline{Host: "127.0.0.1", Params: "{}"}},
+	})
+	if err != nil {
+		t.Fatalf("NewHttpPipeline failed: %v", err)
+	}
+	t.Cleanup(func() { _ = core.Forwarders.Remove(core.PipelineRuntimeKey(pipeline.ListenerID, pipeline.ID())) })
+
+	assertCloseWaitsForStart(t, pipeline.Start, pipeline.Close, entered, func() { close(release) })
 }
 
 func TestREMCloseLinearizesWithInFlightStart(t *testing.T) {

@@ -102,6 +102,17 @@ func assertRollbackState(t *testing.T, pipeline core.Pipeline, stream *rollbackF
 	}
 }
 
+func addReplacementForward(t *testing.T, pipeline core.Pipeline, stream *rollbackForwardStream) *core.Forward {
+	t.Helper()
+	forward, err := core.NewForward(&rollbackPipelineRPC{stream: stream}, pipeline)
+	if err != nil {
+		t.Fatalf("create replacement forward: %v", err)
+	}
+	forward.ListenerId = pipeline.ToProtobuf().ListenerId
+	core.Forwarders.Add(forward)
+	return forward
+}
+
 func TestTCPPipelineRollsBackForwardWhenListenFails(t *testing.T) {
 	oldListen := tcpListen
 	tcpListen = func(string, string) (net.Listener, error) { return nil, errListenerInitialization }
@@ -305,5 +316,71 @@ func TestHTTPPipelineRollsBackForwardWhenCmuxFails(t *testing.T) {
 	assertRollbackState(t, pipeline, stream)
 	if got := ln.closeCalls.Load(); got != 1 {
 		t.Fatalf("listener Close calls = %d, want 1", got)
+	}
+}
+
+func TestTCPPipelineFailedStartPreservesReplacementForward(t *testing.T) {
+	oldListen, oldCmux := tcpListen, tcpStartCmux
+	ln := newRollbackListener()
+	tcpListen = func(string, string) (net.Listener, error) { return ln, nil }
+	t.Cleanup(func() { tcpListen, tcpStartCmux = oldListen, oldCmux })
+
+	stream := &rollbackForwardStream{}
+	pipeline, err := NewTcpPipeline(&rollbackPipelineRPC{stream: stream}, &clientpb.Pipeline{
+		Name: "rollback-tcp-replacement", ListenerId: "rollback-listener", Tls: &clientpb.TLS{Enable: true}, Secure: &clientpb.Secure{},
+		Body: &clientpb.Pipeline_Tcp{Tcp: &clientpb.TCPPipeline{Host: "127.0.0.1"}},
+	})
+	if err != nil {
+		t.Fatalf("NewTcpPipeline failed: %v", err)
+	}
+	key := core.PipelineRuntimeKey(pipeline.ListenerID, pipeline.ID())
+	var replacement *core.Forward
+	tcpStartCmux = func(net.Listener, *tls.Config, func(net.Conn), core.GoErrorHandler) (net.Listener, error) {
+		replacement = addReplacementForward(t, pipeline, &rollbackForwardStream{})
+		return nil, errListenerInitialization
+	}
+	t.Cleanup(func() { _ = core.Forwarders.Remove(key) })
+
+	if err := pipeline.Start(); !errors.Is(err, errListenerInitialization) {
+		t.Fatalf("Start error = %v, want %v", err, errListenerInitialization)
+	}
+	if got := core.Forwarders.Get(key); got != replacement {
+		t.Fatalf("replacement forward = %#v, want %#v", got, replacement)
+	}
+	if got := stream.closeCalls.Load(); got != 1 {
+		t.Fatalf("failed generation CloseSend calls = %d, want 1", got)
+	}
+}
+
+func TestHTTPPipelineFailedStartPreservesReplacementForward(t *testing.T) {
+	oldListen, oldCmux := httpListen, httpStartWithCmux
+	ln := newRollbackListener()
+	httpListen = func(string, string) (net.Listener, error) { return ln, nil }
+	t.Cleanup(func() { httpListen, httpStartWithCmux = oldListen, oldCmux })
+
+	stream := &rollbackForwardStream{}
+	pipeline, err := NewHttpPipeline(&rollbackPipelineRPC{stream: stream}, &clientpb.Pipeline{
+		Name: "rollback-http-replacement", ListenerId: "rollback-listener", Tls: &clientpb.TLS{Enable: true, Cert: &clientpb.Cert{}}, Secure: &clientpb.Secure{},
+		Body: &clientpb.Pipeline_Http{Http: &clientpb.HTTPPipeline{Host: "127.0.0.1", Params: (&implanttypes.PipelineParams{}).String()}},
+	})
+	if err != nil {
+		t.Fatalf("NewHttpPipeline failed: %v", err)
+	}
+	key := core.PipelineRuntimeKey(pipeline.ListenerID, pipeline.ID())
+	var replacement *core.Forward
+	httpStartWithCmux = func(*HTTPPipeline, net.Listener, *http.ServeMux) error {
+		replacement = addReplacementForward(t, pipeline, &rollbackForwardStream{})
+		return errListenerInitialization
+	}
+	t.Cleanup(func() { _ = core.Forwarders.Remove(key) })
+
+	if err := pipeline.Start(); !errors.Is(err, errListenerInitialization) {
+		t.Fatalf("Start error = %v, want %v", err, errListenerInitialization)
+	}
+	if got := core.Forwarders.Get(key); got != replacement {
+		t.Fatalf("replacement forward = %#v, want %#v", got, replacement)
+	}
+	if got := stream.closeCalls.Load(); got != 1 {
+		t.Fatalf("failed generation CloseSend calls = %d, want 1", got)
 	}
 }

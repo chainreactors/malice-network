@@ -117,21 +117,34 @@ func (pipeline *TCPPipeline) Start() (err error) {
 	}
 	forward.ListenerId = pipeline.ListenerID
 	committed := false
+	registered := false
 	defer func() {
 		if !committed {
-			err = errors.Join(err, forward.Abort())
+			if registered {
+				err = errors.Join(err, pipeline.rollbackCommittedStart(forward))
+			} else {
+				err = errors.Join(err, forward.Abort())
+			}
 			pipeline.abortStart()
 		}
 	}()
 
-	ln, err := pipeline.handler()
+	ln, tlsConfig, err := pipeline.prepareListener()
 	if err != nil {
 		return err
 	}
 	if !pipeline.commitStart(ln, forward) {
 		return closePipelineListener(ln)
 	}
+	registered = true
+	if err := pipeline.startServing(ln, tlsConfig); err != nil {
+		return err
+	}
+	if !pipeline.finishStart() {
+		return nil
+	}
 	committed = true
+	pipeline.startForwardRecv(forward)
 	logs.Log.Infof("pipeline.tcp - start host=%s port=%d parser=%s tls=%t",
 		pipeline.Host, pipeline.Port, pipeline.Parser, pipeline.TLSConfig.Enable)
 	return nil
@@ -184,6 +197,23 @@ func (pipeline *TCPPipeline) commitStart(ln net.Listener, forward *core.Forward)
 	}
 	pipeline.ln = ln
 	core.Forwarders.Add(forward)
+	return true
+}
+
+func (pipeline *TCPPipeline) finishStart() bool {
+	pipeline.stateMu.Lock()
+	defer pipeline.stateMu.Unlock()
+	if !pipeline.Enable {
+		return false
+	}
+	pipeline.starting = false
+	done := pipeline.startDone
+	pipeline.startDone = nil
+	close(done)
+	return true
+}
+
+func (pipeline *TCPPipeline) startForwardRecv(forward *core.Forward) {
 	core.GoGuarded("tcp-forward-recv:"+pipeline.Name, func() error {
 		for {
 			msg, err := forward.Stream.Recv()
@@ -196,33 +226,38 @@ func (pipeline *TCPPipeline) commitStart(ln net.Listener, forward *core.Forward)
 			dispatchForwardTaskRequest("tcp", pipeline.Name, msg)
 		}
 	}, pipeline.runtimeErrorHandler("forward recv loop"))
-	pipeline.starting = false
-	done := pipeline.startDone
-	pipeline.startDone = nil
-	close(done)
-	return true
 }
 
-func (pipeline *TCPPipeline) handler() (net.Listener, error) {
+func (pipeline *TCPPipeline) prepareListener() (net.Listener, *tls.Config, error) {
 	ln, err := tcpListen("tcp", fmt.Sprintf("%s:%d", pipeline.Host, pipeline.Port))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	// 如果启用了 TLS，使用 cmux 实现 TLS 和非 TLS 的端口复用
-	if pipeline.TLSConfig != nil && pipeline.TLSConfig.Enable {
-		cmuxListener, err := pipeline.handleWithCmux(ln)
-		if err != nil {
-			return nil, errors.Join(err, closePipelineListener(ln))
+	var tlsConfig *tls.Config
+	if pipeline.TLSConfig != nil && pipeline.TLSConfig.Enable && pipeline.TLSConfig.Cert != nil {
+		if pipeline.TLSConfig.MTLS && pipeline.TLSConfig.CA != nil {
+			tlsConfig, err = certutils.GetMTlsConfig(pipeline.TLSConfig.Cert, pipeline.TLSConfig.CA)
+			logs.Log.Infof("pipeline.tcp - mtls_enabled pipeline=%s", pipeline.Name)
+		} else {
+			tlsConfig, err = certutils.GetTlsConfig(pipeline.TLSConfig.Cert)
 		}
-		return cmuxListener, nil
+		if err != nil {
+			return nil, nil, errors.Join(err, closePipelineListener(ln))
+		}
 	}
+	return ln, tlsConfig, nil
+}
 
-	// 非 TLS 模式，使用原有逻辑
+func (pipeline *TCPPipeline) startServing(ln net.Listener, tlsConfig *tls.Config) error {
+	if pipeline.TLSConfig != nil && pipeline.TLSConfig.Enable {
+		_, err := tcpStartCmux(ln, tlsConfig, pipeline.HandleConnection, pipeline.runtimeErrorHandler("cmux"))
+		return err
+	}
 	core.GoGuarded("tcp-accept:"+pipeline.Name, func() error {
 		return pipeline.startAcceptLoop(ln, "tcp pipeline")
 	}, pipeline.runtimeErrorHandler("accept loop"))
-	return ln, nil
+	return nil
 }
 
 func closePipelineListener(ln net.Listener) error {
@@ -236,23 +271,14 @@ func closePipelineListener(ln net.Listener) error {
 	return err
 }
 
-// handleWithCmux 使用 cmux 实现 TLS 和非 TLS 的端口复用
-func (pipeline *TCPPipeline) handleWithCmux(ln net.Listener) (net.Listener, error) {
-	var tlsConfig *tls.Config
-	if pipeline.TLSConfig.Cert != nil {
-		var err error
-		if pipeline.TLSConfig.MTLS && pipeline.TLSConfig.CA != nil {
-			tlsConfig, err = certutils.GetMTlsConfig(pipeline.TLSConfig.Cert, pipeline.TLSConfig.CA)
-			logs.Log.Infof("pipeline.tcp - mtls_enabled pipeline=%s", pipeline.Name)
-		} else {
-			tlsConfig, err = certutils.GetTlsConfig(pipeline.TLSConfig.Cert)
-		}
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return tcpStartCmux(ln, tlsConfig, pipeline.HandleConnection, pipeline.runtimeErrorHandler("cmux"))
+func (pipeline *TCPPipeline) rollbackCommittedStart(forward *core.Forward) error {
+	forwardErr := core.Forwarders.RemoveIfSame(forward.RuntimeKey(), forward)
+	pipeline.stateMu.Lock()
+	ln := pipeline.ln
+	pipeline.ln = nil
+	pipeline.Enable = false
+	pipeline.stateMu.Unlock()
+	return errors.Join(forwardErr, closePipelineListener(ln))
 }
 
 // startAcceptLoop 启动连接接受循环 (用于非 cmux 模式)
