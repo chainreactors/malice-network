@@ -57,7 +57,9 @@ type MessageParser struct {
 	PacketParser
 }
 
-const payloadReadChunkSize = 64 * 1024
+const maxPayloadReadSize = uint32(512<<20) + 1
+
+var ErrPayloadTooLarge = errors.New("encoded payload exceeds 512 MiB limit")
 
 // WithSecure 为 MessageParser 添加安全支持
 func (mp *MessageParser) WithSecure(keyPair *clientpb.KeyPair) {
@@ -105,27 +107,15 @@ func (parser *MessageParser) ReadPacket(conn io.ReadWriteCloser) (uint32, *impla
 }
 
 func readPayload(conn io.Reader, length uint32) ([]byte, error) {
+	if length > maxPayloadReadSize {
+		return nil, fmt.Errorf("%w: %d bytes", ErrPayloadTooLarge, length)
+	}
 	if length == 0 {
 		return []byte{}, nil
 	}
-
-	chunkLength := payloadReadChunkSize
-	if uint32(chunkLength) > length {
-		chunkLength = int(length)
-	}
-	chunk := make([]byte, chunkLength)
-	payload := make([]byte, 0, chunkLength)
-	remaining := uint64(length)
-	for remaining > 0 {
-		readLength := len(chunk)
-		if uint64(readLength) > remaining {
-			readLength = int(remaining)
-		}
-		if _, err := io.ReadFull(conn, chunk[:readLength]); err != nil {
-			return nil, err
-		}
-		payload = append(payload, chunk[:readLength]...)
-		remaining -= uint64(readLength)
+	payload := make([]byte, int(length))
+	if _, err := io.ReadFull(conn, payload); err != nil {
+		return nil, err
 	}
 	return payload, nil
 }

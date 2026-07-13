@@ -49,14 +49,19 @@ func FuzzMaleficParserReadHeader(f *testing.F) {
 			}
 			return
 		}
-		// A complete header may be rejected by current or future boundary checks.
-		// If it is accepted, its decoded fields must still be internally consistent.
-		if err != nil {
+		declaredLength := binary.LittleEndian.Uint32(data[MsgSessionEnd:HeaderLength])
+		if declaredLength == ^uint32(0) {
+			if err == nil {
+				t.Fatal("overflowing framed length was accepted")
+			}
 			return
+		}
+		if err != nil {
+			t.Fatalf("valid header returned error: %v", err)
 		}
 
 		wantSID := binary.LittleEndian.Uint32(data[MsgSessionStart:MsgSessionEnd])
-		wantLength := binary.LittleEndian.Uint32(data[MsgSessionEnd:HeaderLength]) + 1
+		wantLength := declaredLength + 1
 		if sid != wantSID || length != wantLength {
 			t.Fatalf("ReadHeader() = (%d, %d), want (%d, %d)", sid, length, wantSID, wantLength)
 		}

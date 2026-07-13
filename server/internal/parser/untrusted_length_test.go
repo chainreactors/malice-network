@@ -33,9 +33,9 @@ func (c *headerThenEOFConn) Read(p []byte) (int, error) {
 func (c *headerThenEOFConn) Write(p []byte) (int, error) { return len(p), nil }
 func (c *headerThenEOFConn) Close() error                { return nil }
 
-func TestReadPacket_DeclaredLengthUsesBoundedReadBuffer(t *testing.T) {
+func TestReadPacket_DeclaredLengthBelowLimitReadsDeclaredPayload(t *testing.T) {
 	const configuredLimit = uint32(1024)
-	declaredLength := uint32(payloadReadChunkSize * 4)
+	declaredLength := uint32(256 * 1024)
 
 	header := make([]byte, malefic.HeaderLength)
 	header[malefic.MsgStart] = malefic.DefaultStartDelimiter
@@ -53,8 +53,30 @@ func TestReadPacket_DeclaredLengthUsesBoundedReadBuffer(t *testing.T) {
 	if !errors.Is(err, io.EOF) {
 		t.Fatalf("ReadPacket error = %v, want EOF after the header", err)
 	}
-	if conn.maxReadRequest > payloadReadChunkSize {
-		t.Fatalf("ReadPacket requested a %d-byte read buffer, want at most %d", conn.maxReadRequest, payloadReadChunkSize)
+	if conn.maxReadRequest != int(declaredLength+1) {
+		t.Fatalf("ReadPacket requested a %d-byte read buffer, want %d", conn.maxReadRequest, declaredLength+1)
+	}
+}
+
+func TestReadPacket_RejectsDeclaredLengthAboveWireLimit(t *testing.T) {
+	declaredLength := uint32(512<<20) + 1
+	header := make([]byte, malefic.HeaderLength)
+	header[malefic.MsgStart] = malefic.DefaultStartDelimiter
+	binary.LittleEndian.PutUint32(header[malefic.MsgSessionStart:malefic.MsgSessionEnd], 1)
+	binary.LittleEndian.PutUint32(header[malefic.MsgSessionEnd:], declaredLength)
+
+	p, err := NewParser(consts.ImplantMalefic)
+	if err != nil {
+		t.Fatalf("NewParser returned an unexpected error: %v", err)
+	}
+	conn := &headerThenEOFConn{header: header}
+
+	_, _, err = p.ReadPacket(conn)
+	if !errors.Is(err, ErrPayloadTooLarge) {
+		t.Fatalf("ReadPacket error = %v, want ErrPayloadTooLarge", err)
+	}
+	if conn.maxReadRequest != malefic.HeaderLength {
+		t.Fatalf("ReadPacket attempted a payload read of %d bytes after rejecting the header", conn.maxReadRequest)
 	}
 }
 
@@ -66,7 +88,7 @@ func TestReadPacket_AcceptsValidFrameLargerThanPacketLength(t *testing.T) {
 	}
 	p.WithMaxPacketLength(configuredPacketLength)
 
-	stdout := make([]byte, payloadReadChunkSize*2)
+	stdout := make([]byte, 128*1024)
 	x := uint32(1)
 	for i := range stdout {
 		x ^= x << 13

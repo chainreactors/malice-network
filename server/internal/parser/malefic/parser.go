@@ -28,7 +28,10 @@ const (
 	maxDecodedPayloadSize = uint64(2 << 30)
 )
 
-var ErrDecodedPayloadTooLarge = errors.New("decoded payload exceeds 2 GiB limit")
+var (
+	ErrDecodedPayloadTooLarge   = errors.New("decoded payload exceeds 2 GiB limit")
+	ErrInvalidCompressedPayload = errors.New("invalid Snappy payload")
+)
 
 func NewMaleficParser() *MaleficParser {
 	return &MaleficParser{
@@ -163,13 +166,16 @@ func (parser *MaleficParser) Parse(buf []byte) (*implantpb.Spites, error) {
 	}
 
 	decodedLength, err := compress.DecodedLen(buf)
-	if err == nil && uint64(decodedLength) > maxDecodedPayloadSize {
+	if err != nil {
+		return nil, fmt.Errorf("%w: read decoded length: %v", ErrInvalidCompressedPayload, err)
+	}
+	if uint64(decodedLength) > maxDecodedPayloadSize {
 		return nil, fmt.Errorf("%w: %d bytes", ErrDecodedPayloadTooLarge, decodedLength)
 	}
 
 	buf, err = compress.Decompress(buf)
 	if err != nil {
-		logs.Log.Debugf("trying plaintext: %v", err)
+		return nil, fmt.Errorf("%w: decompress: %v", ErrInvalidCompressedPayload, err)
 	}
 
 	spites := &implantpb.Spites{}
