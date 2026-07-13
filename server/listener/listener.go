@@ -549,9 +549,17 @@ func (lns *listener) startPipeline(pipelinepb *clientpb.Pipeline) (core.Pipeline
 		return nil, fmt.Errorf("pipeline is nil")
 	}
 
-	// Idempotency: if pipeline already exists locally, treat start as a no-op.
+	// Keep active pipelines idempotent, but replace a runtime that previously
+	// failed and marked itself disabled.
 	if existing := lns.pipelines.Get(pipelinepb.Name); existing != nil {
-		return existing, nil
+		state := existing.ToProtobuf()
+		if state != nil && state.Enable {
+			return existing, nil
+		}
+		if err := errors.Join(existing.Close(), lns.cleanupForwardPipelineRuntime(existing.ID())); err != nil {
+			return nil, fmt.Errorf("cleanup stale pipeline %s: %w", existing.ID(), err)
+		}
+		lns.pipelines.Delete(existing.ID())
 	}
 
 	var p core.Pipeline
@@ -781,6 +789,9 @@ func (lns *listener) handleStartRem(job *clientpb.Job) error {
 		}
 		// Dead pipeline (crashed via runtimeErrorHandler) — remove the stale
 		// entry so we can create a fresh one below.
+		if err := existing.Close(); err != nil {
+			return fmt.Errorf("cleanup stale REM pipeline %s: %w", existing.ID(), err)
+		}
 		lns.pipelines.Delete(existing.ID())
 	}
 
@@ -794,9 +805,9 @@ func (lns *listener) handleStartRem(job *clientpb.Job) error {
 		return err
 	}
 
-	_, err = lns.Rpc.SyncPipeline(lns.Context(), rem.ToProtobuf())
-	if err != nil {
-		return err
+	_, syncErr := lns.Rpc.SyncPipeline(lns.Context(), rem.ToProtobuf())
+	if syncErr != nil {
+		return errors.Join(syncErr, rem.Close())
 	}
 
 	lns.pipelines.Add(rem)
