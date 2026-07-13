@@ -1441,11 +1441,13 @@ func (s *Session) UpdateKeyPair(publicKey string, privateKey string) {
 	// next is freshly allocated here and shared with no caller, so no defensive
 	// clone is needed before storing it.
 	s.SessionContext.KeyPair = next
-	manager := s.SecureManager
-	s.stateMu.Unlock()
-	if manager != nil {
-		manager.UpdateKeyPair(next)
+	if s.SecureManager != nil {
+		// Keep the session and manager updates in the same critical section so
+		// concurrent callers cannot publish an older manager value after a newer
+		// session value has already been stored.
+		s.SecureManager.UpdateKeyPair(next)
 	}
+	s.stateMu.Unlock()
 	s.PushCtrl()
 }
 
