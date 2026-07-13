@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"strconv"
 	"sync"
@@ -19,6 +20,10 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
 )
+
+const forwardShutdownTimeout = 5 * time.Second
+
+var ErrForwardShutdownTimeout = errors.New("forward shutdown timed out")
 
 func forwardRawIDBytes(rawID uint32) []byte {
 	data := make([]byte, 4)
@@ -109,13 +114,18 @@ func (f *forwarders) Remove(id string) error {
 	if fw == nil {
 		return nil
 	}
-	f.forwarders.Delete(id)
-	fw.shutdown()
-	err := fw.Close()
-	if err != nil {
-		return err
+	return f.removeIfSame(id, fw)
+}
+
+func (f *forwarders) removeIfSame(id string, fw *Forward) error {
+	if fw == nil {
+		return nil
 	}
-	return nil
+	if !f.forwarders.CompareAndDelete(id, fw) {
+		return fw.Abort()
+	}
+	abortErr := fw.Abort()
+	return errors.Join(abortErr, fw.Close())
 }
 
 func (f *forwarders) Send(id string, msg *Message) {
@@ -213,16 +223,40 @@ func (f *Forward) shutdown() {
 // Abort closes an uncommitted forward without touching the global registry or
 // closing its pipeline. It is safe to call more than once.
 func (f *Forward) Abort() error {
+	ctx, cancel := context.WithTimeout(context.Background(), forwardShutdownTimeout)
+	defer cancel()
+	return f.AbortContext(ctx)
+}
+
+func (f *Forward) AbortContext(ctx context.Context) error {
 	if f == nil {
 		return nil
 	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	f.abortOnce.Do(func() {
 		f.shutdown()
+		streamClosed := make(chan error, 1)
 		if stream, ok := f.Stream.(interface{ CloseSend() error }); ok {
-			f.abortErr = stream.CloseSend()
+			go func() {
+				streamClosed <- stream.CloseSend()
+			}()
+		} else {
+			streamClosed <- nil
+		}
+		select {
+		case f.abortErr = <-streamClosed:
+		case <-ctx.Done():
+			f.abortErr = fmt.Errorf("%w while closing stream: %v", ErrForwardShutdownTimeout, ctx.Err())
+			return
 		}
 		if f.handlerDone != nil {
-			<-f.handlerDone
+			select {
+			case <-f.handlerDone:
+			case <-ctx.Done():
+				f.abortErr = errors.Join(f.abortErr, fmt.Errorf("%w: %v", ErrForwardShutdownTimeout, ctx.Err()))
+			}
 		}
 	})
 	return f.abortErr

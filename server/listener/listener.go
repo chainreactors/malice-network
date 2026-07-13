@@ -598,10 +598,14 @@ func (lns *listener) cleanupForwardPipelineRuntime(pipelineID string) error {
 	if pipelineID == "" {
 		return nil
 	}
+	var release func()
+	var streamErr error
 	if rpc, ok := lns.pipelineRPC.(*forwardPipelineRPC); ok {
-		rpc.removeStream(lns.ID(), pipelineID)
+		release, streamErr = rpc.retireStream(lns.ID(), pipelineID)
+		defer release()
 	}
-	return core.Forwarders.Remove(core.PipelineRuntimeKey(lns.ID(), pipelineID))
+	forwardErr := core.Forwarders.Remove(core.PipelineRuntimeKey(lns.ID(), pipelineID))
+	return errors.Join(streamErr, forwardErr)
 }
 
 func (lns *listener) handleStartWebsite(job *clientpb.Job) error {
@@ -770,7 +774,7 @@ func (lns *listener) handleStartRem(job *clientpb.Job) error {
 	// Idempotency: REM already started in this listener process.
 	if existing := lns.pipelines.Get(pipe.Name); existing != nil {
 		remPipeline, ok := existing.(*REM)
-		if ok && remPipeline.Enable {
+		if ok && remPipeline.enabled() {
 			// Still healthy — just sync its current state.
 			_, err := lns.Rpc.SyncPipeline(lns.Context(), existing.ToProtobuf())
 			return err

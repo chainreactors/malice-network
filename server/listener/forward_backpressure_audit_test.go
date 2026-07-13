@@ -46,7 +46,7 @@ func (s *auditRequestTaskStream) SendMsg(interface{}) error    { return nil }
 func (s *auditRequestTaskStream) RecvMsg(interface{}) error    { return nil }
 
 func TestAuditForwardRegistryUsesBoundedQueues(t *testing.T) {
-	stream := newForwardStreamRegistry().get("audit-listener", "audit-pipeline")
+	stream := mustOpenForwardLocalStream(t, newForwardStreamRegistry(), "audit-listener", "audit-pipeline")
 	if got := cap(stream.requests); got != 255 {
 		t.Fatalf("request queue capacity = %d, want 255", got)
 	}

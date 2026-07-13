@@ -102,14 +102,10 @@ func (pipeline *TCPPipeline) Close() error {
 	if ln == nil {
 		return nil
 	}
-	err := ln.Close()
-	if err != nil && !errors.Is(err, net.ErrClosed) {
-		return err
-	}
-	return nil
+	return closePipelineListener(ln)
 }
 
-func (pipeline *TCPPipeline) Start() error {
+func (pipeline *TCPPipeline) Start() (err error) {
 	if !pipeline.beginStart() {
 		return nil
 	}
@@ -123,7 +119,7 @@ func (pipeline *TCPPipeline) Start() error {
 	committed := false
 	defer func() {
 		if !committed {
-			_ = forward.Abort()
+			err = errors.Join(err, forward.Abort())
 			pipeline.abortStart()
 		}
 	}()
@@ -133,8 +129,7 @@ func (pipeline *TCPPipeline) Start() error {
 		return err
 	}
 	if !pipeline.commitStart(ln, forward) {
-		_ = ln.Close()
-		return nil
+		return closePipelineListener(ln)
 	}
 	committed = true
 	logs.Log.Infof("pipeline.tcp - start host=%s port=%d parser=%s tls=%t",
@@ -218,8 +213,7 @@ func (pipeline *TCPPipeline) handler() (net.Listener, error) {
 	if pipeline.TLSConfig != nil && pipeline.TLSConfig.Enable {
 		cmuxListener, err := pipeline.handleWithCmux(ln)
 		if err != nil {
-			_ = ln.Close()
-			return nil, err
+			return nil, errors.Join(err, closePipelineListener(ln))
 		}
 		return cmuxListener, nil
 	}
@@ -229,6 +223,17 @@ func (pipeline *TCPPipeline) handler() (net.Listener, error) {
 		return pipeline.startAcceptLoop(ln, "tcp pipeline")
 	}, pipeline.runtimeErrorHandler("accept loop"))
 	return ln, nil
+}
+
+func closePipelineListener(ln net.Listener) error {
+	if ln == nil {
+		return nil
+	}
+	err := ln.Close()
+	if errors.Is(err, net.ErrClosed) {
+		return nil
+	}
+	return err
 }
 
 // handleWithCmux 使用 cmux 实现 TLS 和非 TLS 的端口复用

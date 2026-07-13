@@ -22,6 +22,15 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+func mustOpenForwardLocalStream(t testing.TB, registry *forwardStreamRegistry, listenerID, pipelineID string) *forwardLocalStream {
+	t.Helper()
+	stream, err := registry.open(listenerID, pipelineID)
+	if err != nil {
+		t.Fatalf("open forward stream failed: %v", err)
+	}
+	return stream
+}
+
 func reserveForwardPort(t testing.TB) uint16 {
 	t.Helper()
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
@@ -190,7 +199,7 @@ func TestForwardStreamRegistryKeepsStreamUntilPipelineStop(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = started.Close() })
 
-	beforeDisconnect := registry.get(listenerID, pipelineID)
+	beforeDisconnect := mustOpenForwardLocalStream(t, registry, listenerID, pipelineID)
 	taskStream := &mockTaskStream{
 		ctx:     context.Background(),
 		recvErr: io.EOF,
@@ -198,7 +207,7 @@ func TestForwardStreamRegistryKeepsStreamUntilPipelineStop(t *testing.T) {
 	if err := beforeDisconnect.serve(taskStream); err != nil {
 		t.Fatalf("serve EOF error = %v", err)
 	}
-	if afterDisconnect := registry.get(listenerID, pipelineID); afterDisconnect != beforeDisconnect {
+	if afterDisconnect := mustOpenForwardLocalStream(t, registry, listenerID, pipelineID); afterDisconnect != beforeDisconnect {
 		t.Fatal("TaskStream disconnect should keep the existing registry stream")
 	}
 
@@ -210,7 +219,7 @@ func TestForwardStreamRegistryKeepsStreamUntilPipelineStop(t *testing.T) {
 	if status == nil || status.Status != consts.CtrlStatusSuccess {
 		t.Fatalf("stop status = %#v, want success", status)
 	}
-	afterStop := registry.get(listenerID, pipelineID)
+	afterStop := mustOpenForwardLocalStream(t, registry, listenerID, pipelineID)
 	if afterStop == beforeDisconnect {
 		t.Fatal("pipeline stop should remove the old registry stream")
 	}
@@ -221,6 +230,121 @@ func TestForwardStreamRegistryKeepsStreamUntilPipelineStop(t *testing.T) {
 		}
 	case <-time.After(time.Second):
 		t.Fatal("old stream Recv did not unblock after pipeline stop")
+	}
+}
+
+func TestForwardStreamRegistryRejectsOpenWhileRetiring(t *testing.T) {
+	registry := newForwardStreamRegistry()
+	oldStream := mustOpenForwardLocalStream(t, registry, "listener-retire", "pipeline-retire")
+
+	release, err := registry.retire("listener-retire", "pipeline-retire")
+	if err != nil {
+		t.Fatalf("retire failed: %v", err)
+	}
+	if _, err := registry.open("listener-retire", "pipeline-retire"); !errors.Is(err, ErrForwardStreamClosing) {
+		t.Fatalf("open while retiring error = %v, want ErrForwardStreamClosing", err)
+	}
+	select {
+	case err := <-recvForwardStream(oldStream):
+		if !errors.Is(err, io.EOF) {
+			t.Fatalf("retired stream Recv error = %v, want EOF", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("retired stream Recv did not unblock")
+	}
+
+	release()
+	fresh, err := registry.open("listener-retire", "pipeline-retire")
+	if err != nil {
+		t.Fatalf("open after retirement failed: %v", err)
+	}
+	if fresh == oldStream {
+		t.Fatal("open after retirement reused the retired stream")
+	}
+}
+
+func TestForwardStreamRegistryBlocksReuseUntilTimedOutSendDrains(t *testing.T) {
+	registry := newForwardStreamRegistry()
+	listenerID := "listener-poisoned"
+	pipelineID := "pipeline-poisoned"
+	oldStream := mustOpenForwardLocalStream(t, registry, listenerID, pipelineID)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	remote := &barrierForwardTaskStream{
+		ctx:         ctx,
+		sendEntered: make(chan struct{}),
+		releaseSend: make(chan struct{}),
+	}
+	serveResult := make(chan error, 1)
+	go func() { serveResult <- oldStream.serve(remote) }()
+	if err := oldStream.sendEvent(&clientpb.SpiteRequest{ListenerId: listenerID}); err != nil {
+		t.Fatalf("sendEvent failed: %v", err)
+	}
+	select {
+	case <-remote.sendEntered:
+	case <-time.After(time.Second):
+		t.Fatal("remote Send was not entered")
+	}
+
+	closeCtx, closeCancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer closeCancel()
+	releaseRetirement, err := registry.retireContext(closeCtx, listenerID, pipelineID)
+	if !errors.Is(err, ErrForwardStreamCloseTimeout) {
+		t.Fatalf("retireContext error = %v, want ErrForwardStreamCloseTimeout", err)
+	}
+	releaseRetirement()
+	if _, err := registry.open(listenerID, pipelineID); !errors.Is(err, ErrForwardStreamPoisoned) {
+		t.Fatalf("open before old send drained error = %v, want ErrForwardStreamPoisoned", err)
+	}
+
+	close(remote.releaseSend)
+	select {
+	case err := <-serveResult:
+		if err != nil {
+			t.Fatalf("serve error after release = %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("serve did not return after release")
+	}
+
+	deadline := time.Now().Add(time.Second)
+	for {
+		fresh, err := registry.open(listenerID, pipelineID)
+		if err == nil {
+			if fresh == oldStream {
+				t.Fatal("registry reused the drained old stream")
+			}
+			break
+		}
+		if !errors.Is(err, ErrForwardStreamPoisoned) {
+			t.Fatalf("open after drain error = %v", err)
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("registry stayed poisoned after old send drained")
+		}
+		time.Sleep(time.Millisecond)
+	}
+}
+
+func TestForwardPipelineRPCDoesNotCreateStreamForCanceledContext(t *testing.T) {
+	registry := newForwardStreamRegistry()
+	rpc := &forwardPipelineRPC{listenerID: "listener-canceled", registry: registry}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err := rpc.Register(ctx, &clientpb.RegisterSession{
+		ListenerId: "listener-canceled",
+		PipelineId: "pipeline-canceled",
+	})
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("Register error = %v, want context.Canceled", err)
+	}
+
+	registry.mu.Lock()
+	streamCount := len(registry.streams)
+	registry.mu.Unlock()
+	if streamCount != 0 {
+		t.Fatalf("registry stream count = %d, want 0", streamCount)
 	}
 }
 
@@ -249,12 +373,12 @@ func TestForwardStreamRegistryCleanupOnListenerClose(t *testing.T) {
 		Secure:     &clientpb.Secure{},
 	}
 	lns.pipelines.Add(NewCustomPipeline(pipeline))
-	beforeClose := registry.get(listenerID, pipelineID)
+	beforeClose := mustOpenForwardLocalStream(t, registry, listenerID, pipelineID)
 
 	if err := lns.Close(); err != nil {
 		t.Fatalf("listener Close failed: %v", err)
 	}
-	afterClose := registry.get(listenerID, pipelineID)
+	afterClose := mustOpenForwardLocalStream(t, registry, listenerID, pipelineID)
 	if afterClose == beforeClose {
 		t.Fatal("listener Close should remove the old registry stream")
 	}

@@ -126,13 +126,10 @@ func (pipeline *HTTPPipeline) Close() error {
 	if ln == nil {
 		return nil
 	}
-	if err := ln.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
-		return err
-	}
-	return nil
+	return closePipelineListener(ln)
 }
 
-func (pipeline *HTTPPipeline) Start() error {
+func (pipeline *HTTPPipeline) Start() (err error) {
 	if !pipeline.beginStart() {
 		return nil
 	}
@@ -146,7 +143,7 @@ func (pipeline *HTTPPipeline) Start() error {
 	committed := false
 	defer func() {
 		if !committed {
-			_ = forward.Abort()
+			err = errors.Join(err, forward.Abort())
 			pipeline.abortStart()
 		}
 	}()
@@ -162,8 +159,7 @@ func (pipeline *HTTPPipeline) Start() error {
 	if pipeline.TLSConfig != nil && pipeline.TLSConfig.Enable && pipeline.TLSConfig.Cert != nil {
 		err := httpStartWithCmux(pipeline, ln, mux)
 		if err != nil {
-			_ = ln.Close()
-			return err
+			return errors.Join(err, closePipelineListener(ln))
 		}
 	} else {
 		// 非 TLS 模式，使用原有逻辑
@@ -176,8 +172,7 @@ func (pipeline *HTTPPipeline) Start() error {
 		}, pipeline.runtimeErrorHandler("serve loop"))
 	}
 	if !pipeline.commitStart(ln, forward) {
-		_ = ln.Close()
-		return nil
+		return closePipelineListener(ln)
 	}
 	committed = true
 

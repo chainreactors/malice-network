@@ -23,6 +23,14 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+const forwardStreamCloseTimeout = 5 * time.Second
+
+var (
+	ErrForwardStreamClosing      = errors.New("forward stream is closing")
+	ErrForwardStreamCloseTimeout = errors.New("forward stream close timed out")
+	ErrForwardStreamPoisoned     = errors.New("forward stream has not drained")
+)
+
 type ForwardListener struct {
 	lns      *listener
 	server   *grpc.Server
@@ -129,7 +137,10 @@ func (s *forwardListenerService) TaskStream(stream forwardrpc.ForwardListener_Ta
 	if err != nil {
 		return err
 	}
-	local := s.registry.get(listenerID, pipelineID)
+	local, err := s.registry.open(listenerID, pipelineID)
+	if err != nil {
+		return status.Error(codes.Unavailable, err.Error())
+	}
 	local.attach(stream)
 	return local.serve(stream)
 }
@@ -140,19 +151,28 @@ type forwardPipelineRPC struct {
 }
 
 func (c *forwardPipelineRPC) OpenForwardStream(ctx context.Context, pipeline core.Pipeline) (core.ForwardStream, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	listenerID := c.listenerID
 	if pb := pipeline.ToProtobuf(); pb != nil && pb.ListenerId != "" {
 		listenerID = pb.ListenerId
 	}
-	return c.registry.get(listenerID, pipeline.ID()), nil
+	return c.registry.open(listenerID, pipeline.ID())
 }
 
 func (c *forwardPipelineRPC) Register(ctx context.Context, in *clientpb.RegisterSession, _ ...grpc.CallOption) (*clientpb.Empty, error) {
 	if in == nil {
 		return nil, fmt.Errorf("register session is nil")
 	}
-	stream := c.registry.get(in.ListenerId, in.PipelineId)
-	return &clientpb.Empty{}, stream.sendEvent(&clientpb.SpiteRequest{
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	stream, err := c.registry.open(in.ListenerId, in.PipelineId)
+	if err != nil {
+		return nil, err
+	}
+	return &clientpb.Empty{}, stream.sendEventContext(ctx, &clientpb.SpiteRequest{
 		ListenerId: in.ListenerId,
 		Session: &clientpb.Session{
 			SessionId:  in.SessionId,
@@ -170,14 +190,20 @@ func (c *forwardPipelineRPC) Register(ctx context.Context, in *clientpb.Register
 }
 
 func (c *forwardPipelineRPC) Checkin(ctx context.Context, in *implantpb.Ping, _ ...grpc.CallOption) (*clientpb.Empty, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	sessionID, _ := metadataValue(ctx, "session_id")
 	listenerID, _ := metadataValue(ctx, "listener_id")
 	pipelineID, _ := metadataValue(ctx, "pipeline_id")
 	if listenerID == "" {
 		listenerID = c.listenerID
 	}
-	stream := c.registry.get(listenerID, pipelineID)
-	return &clientpb.Empty{}, stream.sendEvent(&clientpb.SpiteRequest{
+	stream, err := c.registry.open(listenerID, pipelineID)
+	if err != nil {
+		return nil, err
+	}
+	return &clientpb.Empty{}, stream.sendEventContext(ctx, &clientpb.SpiteRequest{
 		ListenerId: listenerID,
 		Session: &clientpb.Session{
 			SessionId:  sessionID,
@@ -195,49 +221,131 @@ func (c *forwardPipelineRPC) GetArtifact(context.Context, *clientpb.Artifact, ..
 	return nil, status.Error(codes.Unimplemented, "artifact fetch is not supported by forward listener transport")
 }
 
-func (c *forwardPipelineRPC) removeStream(listenerID, pipelineID string) {
-	c.registry.remove(listenerID, pipelineID)
+func (c *forwardPipelineRPC) retireStream(listenerID, pipelineID string) (func(), error) {
+	return c.registry.retire(listenerID, pipelineID)
 }
 
 type forwardStreamRegistry struct {
-	mu      sync.Mutex
-	streams map[string]*forwardLocalStream
+	mu       sync.Mutex
+	streams  map[string]*forwardLocalStream
+	retiring map[string]int
+	poisoned map[string]*forwardLocalStream
 }
 
 func newForwardStreamRegistry() *forwardStreamRegistry {
-	return &forwardStreamRegistry{streams: make(map[string]*forwardLocalStream)}
+	return &forwardStreamRegistry{
+		streams:  make(map[string]*forwardLocalStream),
+		retiring: make(map[string]int),
+		poisoned: make(map[string]*forwardLocalStream),
+	}
 }
 
-func (r *forwardStreamRegistry) get(listenerID, pipelineID string) *forwardLocalStream {
+func (r *forwardStreamRegistry) open(listenerID, pipelineID string) (*forwardLocalStream, error) {
 	key := core.PipelineRuntimeKey(listenerID, pipelineID)
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if stream := r.streams[key]; stream != nil {
-		return stream
+		return stream, nil
 	}
-	stream := &forwardLocalStream{
+	if r.retiring[key] > 0 {
+		return nil, fmt.Errorf("%w: %s", ErrForwardStreamClosing, key)
+	}
+	if r.poisoned[key] != nil {
+		return nil, fmt.Errorf("%w: %s", ErrForwardStreamPoisoned, key)
+	}
+	stream := newForwardLocalStream(r, listenerID, pipelineID)
+	r.streams[key] = stream
+	return stream, nil
+}
+
+func newForwardLocalStream(registry *forwardStreamRegistry, listenerID, pipelineID string) *forwardLocalStream {
+	return &forwardLocalStream{
+		registry:   registry,
 		listenerID: listenerID,
 		pipelineID: pipelineID,
 		requests:   make(chan *clientpb.SpiteRequest, 255),
 		events:     make(chan *clientpb.SpiteRequest, 255),
 		done:       make(chan struct{}),
 	}
-	r.streams[key] = stream
-	return stream
 }
 
-func (r *forwardStreamRegistry) remove(listenerID, pipelineID string) {
+func (r *forwardStreamRegistry) retire(listenerID, pipelineID string) (func(), error) {
+	ctx, cancel := context.WithTimeout(context.Background(), forwardStreamCloseTimeout)
+	defer cancel()
+	return r.retireContext(ctx, listenerID, pipelineID)
+}
+
+func (r *forwardStreamRegistry) retireContext(ctx context.Context, listenerID, pipelineID string) (func(), error) {
 	key := core.PipelineRuntimeKey(listenerID, pipelineID)
 	r.mu.Lock()
+	r.retiring[key]++
 	stream := r.streams[key]
 	delete(r.streams, key)
 	r.mu.Unlock()
-	if stream != nil {
-		stream.close()
+
+	var once sync.Once
+	release := func() {
+		once.Do(func() {
+			r.mu.Lock()
+			defer r.mu.Unlock()
+			r.retiring[key]--
+			if r.retiring[key] == 0 {
+				delete(r.retiring, key)
+			}
+		})
 	}
+	if stream != nil {
+		err := stream.closeContext(ctx)
+		r.poisonIfUndrained(key, stream, err)
+		return release, err
+	}
+	return release, nil
+}
+
+func (r *forwardStreamRegistry) discard(stream *forwardLocalStream) error {
+	if r == nil || stream == nil {
+		return nil
+	}
+	key := core.PipelineRuntimeKey(stream.listenerID, stream.pipelineID)
+	r.mu.Lock()
+	if r.streams[key] != stream {
+		r.mu.Unlock()
+		return stream.close()
+	}
+	r.retiring[key]++
+	delete(r.streams, key)
+	r.mu.Unlock()
+
+	err := stream.close()
+	r.poisonIfUndrained(key, stream, err)
+	r.mu.Lock()
+	r.retiring[key]--
+	if r.retiring[key] == 0 {
+		delete(r.retiring, key)
+	}
+	r.mu.Unlock()
+	return err
+}
+
+func (r *forwardStreamRegistry) poisonIfUndrained(key string, stream *forwardLocalStream, closeErr error) {
+	if !errors.Is(closeErr, ErrForwardStreamCloseTimeout) || stream.drained == nil {
+		return
+	}
+	r.mu.Lock()
+	r.poisoned[key] = stream
+	r.mu.Unlock()
+	go func() {
+		<-stream.drained
+		r.mu.Lock()
+		if r.poisoned[key] == stream {
+			delete(r.poisoned, key)
+		}
+		r.mu.Unlock()
+	}()
 }
 
 type forwardLocalStream struct {
+	registry   *forwardStreamRegistry
 	listenerID string
 	pipelineID string
 	requests   chan *clientpb.SpiteRequest
@@ -249,6 +357,8 @@ type forwardLocalStream struct {
 	slotsOnce  sync.Once
 	eventSlots chan struct{}
 	remoteSend sync.WaitGroup
+	closeErr   error
+	drained    chan struct{}
 }
 
 func (s *forwardLocalStream) Send(resp *clientpb.SpiteResponse) error {
@@ -265,6 +375,13 @@ func (s *forwardLocalStream) Send(resp *clientpb.SpiteResponse) error {
 		Task:  &clientpb.Task{TaskId: resp.TaskId, SessionId: resp.SessionId},
 		Spite: resp.Spite,
 	})
+}
+
+func (s *forwardLocalStream) CloseSend() error {
+	if s.registry != nil {
+		return s.registry.discard(s)
+	}
+	return s.close()
 }
 
 func (s *forwardLocalStream) Recv() (*clientpb.SpiteRequest, error) {
@@ -337,7 +454,16 @@ func (s *forwardLocalStream) serve(stream forwardrpc.ForwardListener_TaskStreamS
 	return err
 }
 
-func (s *forwardLocalStream) close() {
+func (s *forwardLocalStream) close() error {
+	ctx, cancel := context.WithTimeout(context.Background(), forwardStreamCloseTimeout)
+	defer cancel()
+	return s.closeContext(ctx)
+}
+
+func (s *forwardLocalStream) closeContext(ctx context.Context) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	s.closeOnce.Do(func() {
 		s.eventMu.Lock()
 		s.closed.Store(true)
@@ -345,13 +471,34 @@ func (s *forwardLocalStream) close() {
 			close(s.done)
 		}
 		s.eventMu.Unlock()
-		s.remoteSend.Wait()
+
+		s.drained = make(chan struct{})
+		go func() {
+			s.remoteSend.Wait()
+			close(s.drained)
+		}()
+		select {
+		case <-s.drained:
+		case <-ctx.Done():
+			s.closeErr = fmt.Errorf("%w: %s:%s: %v", ErrForwardStreamCloseTimeout, s.listenerID, s.pipelineID, ctx.Err())
+		}
 	})
+	return s.closeErr
 }
 
 func (s *forwardLocalStream) sendEvent(event *clientpb.SpiteRequest) error {
+	return s.sendEventContext(context.Background(), event)
+}
+
+func (s *forwardLocalStream) sendEventContext(ctx context.Context, event *clientpb.SpiteRequest) error {
 	if event == nil {
 		return nil
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if err := ctx.Err(); err != nil {
+		return err
 	}
 	timer := time.NewTimer(10 * time.Second)
 	defer timer.Stop()
@@ -359,9 +506,12 @@ func (s *forwardLocalStream) sendEvent(event *clientpb.SpiteRequest) error {
 	select {
 	case <-slots:
 		s.eventMu.Lock()
-		if s.closed.Load() {
+		if s.closed.Load() || ctx.Err() != nil {
 			s.eventMu.Unlock()
 			s.releaseEventSlot()
+			if err := ctx.Err(); err != nil {
+				return err
+			}
 			return io.ErrClosedPipe
 		}
 		s.events <- event
@@ -369,6 +519,8 @@ func (s *forwardLocalStream) sendEvent(event *clientpb.SpiteRequest) error {
 		return nil
 	case <-s.done:
 		return io.ErrClosedPipe
+	case <-ctx.Done():
+		return ctx.Err()
 	case <-timer.C:
 		return fmt.Errorf("forward stream %s:%s event queue full", s.listenerID, s.pipelineID)
 	}

@@ -146,3 +146,41 @@ func TestForwardCloseWaitsForInFlightRemoteSend(t *testing.T) {
 		t.Fatal("serve did not return after close")
 	}
 }
+
+func TestForwardCloseContextReturnsWhenRemoteSendDoesNotStop(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	stream := newAuditForwardLocalStream(1, 1)
+	remote := &barrierForwardTaskStream{
+		ctx:         ctx,
+		sendEntered: make(chan struct{}),
+		releaseSend: make(chan struct{}),
+	}
+	serveResult := make(chan error, 1)
+	go func() { serveResult <- stream.serve(remote) }()
+
+	if err := stream.sendEvent(&clientpb.SpiteRequest{ListenerId: "in-flight-timeout"}); err != nil {
+		t.Fatalf("sendEvent failed: %v", err)
+	}
+	select {
+	case <-remote.sendEntered:
+	case <-time.After(time.Second):
+		t.Fatal("remote Send was not entered")
+	}
+
+	closeCtx, closeCancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer closeCancel()
+	if err := stream.closeContext(closeCtx); !errors.Is(err, ErrForwardStreamCloseTimeout) {
+		t.Fatalf("closeContext error = %v, want ErrForwardStreamCloseTimeout", err)
+	}
+
+	close(remote.releaseSend)
+	select {
+	case err := <-serveResult:
+		if err != nil {
+			t.Fatalf("serve error after close = %v, want nil", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("serve did not return after timed close")
+	}
+}
