@@ -25,8 +25,10 @@ jobs:
       - name: Show Go version
         run: go version
 
-      - name: Go mod tidy
-        run: go mod tidy
+      - name: Verify Go module files
+        run: |
+          go mod tidy
+          git diff --exit-code -- go.mod go.sum
 
       - name: Install embedded build assets
         run: go run ./scripts/pre_install.go
@@ -59,18 +61,28 @@ jobs:
       - name: Show Go version
         run: go version
 
-      - name: Go mod tidy
-        run: go mod tidy
+      - name: Verify Go module files
+        run: |
+          go mod tidy
+          git diff --exit-code -- go.mod go.sum
 
       - name: Install embedded build assets
         run: go run ./scripts/pre_install.go
 
-      - name: Race detection — core, parser, stream
+      - name: Race detection — client, core, parser, RPC, listener, stream
         run: >-
           go test -race -count=1 -timeout 300s
+          ./client/core/...
           ./server/internal/core
           ./server/internal/parser/...
           ./server/internal/stream
+          ./server/listener
+          ./server/rpc
+
+      - name: Parser fuzz smoke tests
+        run: |
+          go test ./server/internal/parser/malefic -run=^$ -fuzz=^FuzzMaleficParserReadHeader$ -fuzztime=5s
+          go test ./server/internal/parser/malefic -run=^$ -fuzz=^FuzzMaleficParserParse$ -fuzztime=5s
 
   mock_implant:
     runs-on: ubuntu-22.04
@@ -89,8 +101,10 @@ jobs:
       - name: Show Go version
         run: go version
 
-      - name: Go mod tidy
-        run: go mod tidy
+      - name: Verify Go module files
+        run: |
+          go mod tidy
+          git diff --exit-code -- go.mod go.sum
 
       - name: Install embedded build assets
         run: go run ./scripts/pre_install.go
@@ -122,8 +136,10 @@ jobs:
       - name: Show Go version
         run: go version
 
-      - name: Go mod tidy
-        run: go mod tidy
+      - name: Verify Go module files
+        run: |
+          go mod tidy
+          git diff --exit-code -- go.mod go.sum
 
       - name: Install embedded build assets
         run: go run ./scripts/pre_install.go

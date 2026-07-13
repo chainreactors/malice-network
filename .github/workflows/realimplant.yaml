@@ -41,6 +41,9 @@ jobs:
       - name: Go mod tidy
         run: go mod tidy
 
+      - name: Verify Go module files
+        run: git diff --exit-code -- go.mod go.sum
+
       - name: Real implant E2E tests
         shell: pwsh
         run: |
