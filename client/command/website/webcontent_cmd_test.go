@@ -208,37 +208,60 @@ func TestAddWebContentCmdSupportsArtifactFlag(t *testing.T) {
 	if err := AddWebContentCmd(cmd, con); err != nil {
 		t.Fatalf("AddWebContentCmd failed: %v", err)
 	}
-	if len(rpc.calls) != 1 {
-		t.Fatalf("call count = %d, want 1", len(rpc.calls))
+	if len(rpc.calls) != 2 {
+		t.Fatalf("call count = %d, want 2", len(rpc.calls))
 	}
-	add := rpc.calls[0].request.(*clientpb.Website)
+	download := rpc.calls[0].request.(*clientpb.Artifact)
+	if download.Name != "beacon" || download.Format != "raw" {
+		t.Fatalf("download request = %#v, want beacon/raw", download)
+	}
+	add := rpc.calls[1].request.(*clientpb.Website)
 	content := add.GetContents()["/payload.bin"]
-	if rpc.calls[0].method != "AddWebsiteContent" || add.Name != "site-a" || add.ListenerId != "listener-a" || content == nil {
-		t.Fatalf("add call = %s %#v, content %#v, want scoped website payload", rpc.calls[0].method, add, content)
-	}
-	if len(content.Content) != 0 || content.Type != consts.ArtifactWebcontent || content.File != "beacon" || content.Url != "format=raw" || content.ContentType != "application/octet-stream" || content.Name != "payload" {
-		t.Fatalf("content = %#v, want server-side artifact reference", content)
+	if content == nil || content.ContentType != "application/octet-stream" || content.Name != "payload" {
+		t.Fatalf("content = %#v, want artifact website content", content)
 	}
 }
 
-func TestAddArtifactContentAddsServerSideArtifactReference(t *testing.T) {
+func TestAddArtifactContentDownloadsAndAddsWebsiteContent(t *testing.T) {
 	rpc := &websiteTestRPC{}
 	con := newWebsiteTestConsole(rpc)
 	con.Pipelines["listener-a:site-a"] = scopedWebsitePipeline("site-a", "listener-a")
 
-	if _, err := AddArtifactContent(con, "beacon", "listener-a:site-a", "shellcode", "", "/payload.bin", "application/octet-stream", "payload", "from artifact", "none"); err != nil {
+	if _, err := AddArtifactContent(con, "beacon", "listener-a:site-a", "shellcode", "rdi-test", "/payload.bin", "application/octet-stream", "payload", "from artifact", "none"); err != nil {
 		t.Fatalf("AddArtifactContent failed: %v", err)
 	}
-	if len(rpc.calls) != 1 {
-		t.Fatalf("call count = %d, want 1", len(rpc.calls))
+	if len(rpc.calls) != 2 {
+		t.Fatalf("call count = %d, want 2", len(rpc.calls))
 	}
-	add := rpc.calls[0].request.(*clientpb.Website)
+	download := rpc.calls[0].request.(*clientpb.Artifact)
+	if rpc.calls[0].method != "DownloadArtifact" || download.Name != "beacon" || download.Format != "raw" || download.Rdi != "rdi-test" {
+		t.Fatalf("download call = %s %#v, want beacon/raw with RDI", rpc.calls[0].method, download)
+	}
+	add := rpc.calls[1].request.(*clientpb.Website)
 	content := add.GetContents()["/payload.bin"]
-	if rpc.calls[0].method != "AddWebsiteContent" || add.Name != "site-a" || add.ListenerId != "listener-a" || content == nil {
-		t.Fatalf("add call = %s %#v, content %#v, want scoped website payload", rpc.calls[0].method, add, content)
+	if rpc.calls[1].method != "AddWebsiteContent" || add.Name != "site-a" || add.ListenerId != "listener-a" || content == nil {
+		t.Fatalf("add call = %s %#v, content %#v, want scoped website payload", rpc.calls[1].method, add, content)
 	}
-	if len(content.Content) != 0 || content.Type != consts.ArtifactWebcontent || content.File != "beacon" || content.Name != "payload" || content.Comment != "from artifact" || content.Auth != "none" {
-		t.Fatalf("content = %#v, want server-side artifact reference with metadata", content)
+	if string(content.Content) != "artifact-binary" || content.Name != "payload" || content.Comment != "from artifact" || content.Auth != "none" {
+		t.Fatalf("content = %#v, want artifact bytes with metadata", content)
+	}
+}
+
+func TestDefaultArtifactWebPathDoesNotDuplicateExtension(t *testing.T) {
+	tests := []struct {
+		name     string
+		artifact *clientpb.Artifact
+		want     string
+	}{
+		{name: "existing extension", artifact: &clientpb.Artifact{Name: "payload.exe", Format: ".exe"}, want: "/payload.exe"},
+		{name: "append extension", artifact: &clientpb.Artifact{Name: "payload", Format: ".exe"}, want: "/payload.exe"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := defaultArtifactWebPath(tt.artifact, "fallback", ""); got != tt.want {
+				t.Fatalf("defaultArtifactWebPath() = %q, want %q", got, tt.want)
+			}
+		})
 	}
 }
 

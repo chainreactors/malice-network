@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -464,6 +465,128 @@ func TestSessionRequestWithStreamWriterReturnsErrorAfterSendFailure(t *testing.T
 	case <-time.After(2 * time.Second):
 		t.Fatal("timed out waiting for response channel to close")
 	}
+}
+
+func TestSessionSysInfoSnapshotConcurrent(t *testing.T) {
+	sess := newTestSession("sysinfo-snapshot")
+	sess.UpdateSysInfo(&implantpb.SysInfo{
+		Os:          &implantpb.Os{Name: "linux", Arch: "amd64", Username: "user-a"},
+		Process:     &implantpb.Process{Name: "agent-a", Arch: "amd64"},
+		IsPrivilege: true,
+		Filepath:    "/tmp/agent-a",
+		Workdir:     "/tmp/a",
+	})
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 500; i++ {
+			suffix := "a"
+			isPrivilege := true
+			if i%2 == 0 {
+				suffix = "b"
+				isPrivilege = false
+			}
+			sess.UpdateSysInfo(&implantpb.SysInfo{
+				Os:          &implantpb.Os{Name: "linux", Arch: "amd64", Username: "user-" + suffix},
+				Process:     &implantpb.Process{Name: "agent-" + suffix, Arch: "amd64"},
+				IsPrivilege: isPrivilege,
+				Filepath:    "/tmp/agent-" + suffix,
+				Workdir:     "/tmp/" + suffix,
+			})
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 500; i++ {
+			pb := sess.ToProtobufLite()
+			if pb.Os == nil || pb.Process == nil {
+				t.Errorf("ToProtobufLite returned incomplete sysinfo: %#v", pb)
+				return
+			}
+			suffix := "a"
+			wantPrivilege := true
+			if pb.Filepath == "/tmp/agent-b" {
+				suffix = "b"
+				wantPrivilege = false
+			}
+			if pb.Filepath != "/tmp/agent-"+suffix || pb.Workdir != "/tmp/"+suffix ||
+				pb.Os.Username != "user-"+suffix || pb.Process.Name != "agent-"+suffix ||
+				pb.IsPrivilege != wantPrivilege {
+				t.Errorf("ToProtobufLite mixed sysinfo generations: %#v", pb)
+				return
+			}
+		}
+	}()
+	wg.Wait()
+}
+
+func TestSessionStateSnapshotConcurrentWithUpdate(t *testing.T) {
+	cleanup := installTestDBMocks()
+	defer cleanup()
+
+	sess := newTestSession("state-snapshot")
+	sess.UpdateSysInfo(&implantpb.SysInfo{})
+	register := func(suffix string) *clientpb.RegisterSession {
+		return &clientpb.RegisterSession{
+			PipelineId: "pipeline-" + suffix,
+			ListenerId: "listener-" + suffix,
+			RegisterData: &implantpb.Register{
+				Name:   "agent-" + suffix,
+				Proxy:  "proxy-" + suffix,
+				Module: []string{"module-" + suffix},
+				Addons: []*implantpb.Addon{{Name: "addon-" + suffix}},
+				Timer:  &implantpb.Timer{Expression: "*/5 * * * *", Jitter: 0.1},
+				Sysinfo: &implantpb.SysInfo{
+					Os:       &implantpb.Os{Name: "linux", Arch: "amd64", Username: "user-" + suffix},
+					Process:  &implantpb.Process{Name: "process-" + suffix, Arch: "amd64"},
+					Filepath: "/tmp/agent-" + suffix,
+					Workdir:  "/tmp/" + suffix,
+				},
+			},
+		}
+	}
+
+	sess.Update(register("a"))
+	const iterations = 500
+	start := make(chan struct{})
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		<-start
+		for i := 0; i < iterations; i++ {
+			suffix := "a"
+			if i%2 == 0 {
+				suffix = "b"
+			}
+			sess.Update(register(suffix))
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		<-start
+		for i := 0; i < iterations; i++ {
+			pb := sess.ToProtobufLite()
+			suffix := strings.TrimPrefix(pb.Name, "agent-")
+			if suffix != "a" && suffix != "b" {
+				t.Errorf("unexpected session generation: %#v", pb)
+				return
+			}
+			if pb.PipelineId != "pipeline-"+suffix || pb.ListenerId != "listener-"+suffix ||
+				pb.Proxy != "proxy-"+suffix || len(pb.Modules) != 1 || pb.Modules[0] != "module-"+suffix ||
+				pb.Os == nil || pb.Os.Username != "user-"+suffix || pb.Process == nil || pb.Process.Name != "process-"+suffix {
+				t.Errorf("session snapshot mixed generations: %#v", pb)
+				return
+			}
+			_ = sess.ToProtobuf()
+			_ = sess.ToModel()
+		}
+	}()
+
+	close(start)
+	wg.Wait()
 }
 
 // ---------- Task management ----------

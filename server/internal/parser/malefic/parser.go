@@ -3,6 +3,7 @@ package malefic
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
@@ -24,6 +25,12 @@ const (
 	HeaderLength          = 9
 	DefaultStartDelimiter = 0xd1
 	DefaultEndDelimiter   = 0xd2
+	maxDecodedPayloadSize = uint64(2 << 30)
+)
+
+var (
+	ErrDecodedPayloadTooLarge   = errors.New("decoded payload exceeds 2 GiB limit")
+	ErrInvalidCompressedPayload = errors.New("invalid Snappy payload")
 )
 
 func NewMaleficParser() *MaleficParser {
@@ -34,11 +41,11 @@ func NewMaleficParser() *MaleficParser {
 }
 
 type MaleficParser struct {
-	StartDelimiter   byte
-	EndDelimiter     byte
-	MaxPacketLength  uint32
-	keyPair          *clientpb.KeyPair // Age 密钥对，用于加解密
-	privateKeys      []string
+	StartDelimiter  byte
+	EndDelimiter    byte
+	MaxPacketLength uint32
+	keyPair         *clientpb.KeyPair // Age 密钥对，用于加解密
+	privateKeys     []string
 }
 
 // maxPacketLen returns the per-pipeline limit or falls back to global config.
@@ -104,13 +111,21 @@ func (parser *MaleficParser) readHeader(conn io.ReadWriteCloser) (uint32, uint32
 	}
 	sessionId := ParseSid(header)
 	length := binary.LittleEndian.Uint32(header[MsgSessionEnd:])
-	maxLen := parser.maxPacketLen()
-	if maxLen > 0 && length > maxLen+consts.KB*16 {
-		logs.Log.Warnf("[parser] large packet from session %x: %d bytes (limit %d), accepting anyway",
-			sessionId, length, maxLen)
+	framedLength := uint64(length) + 1
+	if framedLength > uint64(^uint32(0)) {
+		return 0, 0, fmt.Errorf("packet length %d for session %x overflows framed uint32 length", length, sessionId)
 	}
 
-	return sessionId, length + 1, nil
+	maxLen := parser.maxPacketLen()
+	if maxLen > 0 {
+		warningThreshold := uint64(maxLen) + uint64(consts.KB)*16
+		if uint64(length) > warningThreshold {
+			logs.Log.Warnf("[parser] large packet from session %x: %d bytes (chunk size %d), accepting anyway",
+				sessionId, length, maxLen)
+		}
+	}
+
+	return sessionId, uint32(framedLength), nil
 }
 
 func (parser *MaleficParser) ReadHeader(conn io.ReadWriteCloser) (uint32, uint32, error) {
@@ -150,9 +165,20 @@ func (parser *MaleficParser) Parse(buf []byte) (*implantpb.Spites, error) {
 		}
 	}
 
-	buf, err := compress.Decompress(buf)
+	decodedLength, err := compress.DecodedLen(buf)
 	if err != nil {
-		logs.Log.Debugf("trying plaintext: %v", err)
+		return nil, fmt.Errorf("%w: read decoded length: %v", ErrInvalidCompressedPayload, err)
+	}
+	if uint64(decodedLength) > maxDecodedPayloadSize {
+		return nil, fmt.Errorf("%w: %d bytes", ErrDecodedPayloadTooLarge, decodedLength)
+	}
+	if err := compress.ValidateSnappyBlock(buf, decodedLength); err != nil {
+		return nil, fmt.Errorf("%w: validate block: %v", ErrInvalidCompressedPayload, err)
+	}
+
+	buf, err = compress.Decompress(buf)
+	if err != nil {
+		return nil, fmt.Errorf("%w: decompress: %v", ErrInvalidCompressedPayload, err)
 	}
 
 	spites := &implantpb.Spites{}

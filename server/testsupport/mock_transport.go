@@ -56,9 +56,7 @@ func StartInProcessListener(t testing.TB, h *ControlPlaneHarness, listenerName s
 	}
 
 	t.Cleanup(func() {
-		if serverlistener.Listener != nil {
-			_ = serverlistener.Listener.Close()
-		}
+		_ = serverlistener.CloseCurrentListener()
 	})
 }
 

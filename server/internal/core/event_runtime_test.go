@@ -54,22 +54,12 @@ func TestEventBrokerRunStopClosesSubscribers(t *testing.T) {
 		resultCh <- broker.run()
 	}()
 
-	broker.subscribe <- sub
-	deadline := time.After(2 * time.Second)
-subscribed:
-	for {
-		broker.publish <- Event{
-			EventType: consts.EventBroadcast,
-			Op:        "ready",
-			Message:   "ready",
-		}
-		select {
-		case <-sub:
-			break subscribed
-		case <-time.After(20 * time.Millisecond):
-		case <-deadline:
-			t.Fatal("subscriber did not receive initial event")
-		}
+	ready := make(chan struct{})
+	broker.subscribe <- eventSubscription{events: sub, ready: ready}
+	select {
+	case <-ready:
+	case <-time.After(2 * time.Second):
+		t.Fatal("subscriber was not registered")
 	}
 	close(broker.stop)
 
@@ -85,6 +75,61 @@ subscribed:
 	_, ok := <-sub
 	if ok {
 		t.Fatal("expected subscriber channel to be closed")
+	}
+}
+
+func TestEventBrokerStopIsIdempotent(t *testing.T) {
+	broker := newTestBroker()
+	broker.Stop()
+	broker.Stop()
+}
+
+func TestEventBrokerStopCachesAcceptedImportantEvents(t *testing.T) {
+	for i := 0; i < 100; i++ {
+		broker := newTestBroker()
+		result := make(chan error, 1)
+		go func() { result <- broker.run() }()
+		if err := broker.TryPublish(Event{
+			EventType: consts.EventBroadcast,
+			Op:        "accepted-before-stop",
+			Important: true,
+		}); err != nil {
+			t.Fatalf("iteration %d: TryPublish failed: %v", i, err)
+		}
+		broker.Stop()
+		select {
+		case err := <-result:
+			if err != nil {
+				t.Fatalf("iteration %d: broker.run error: %v", i, err)
+			}
+		case <-time.After(2 * time.Second):
+			t.Fatalf("iteration %d: broker.run did not stop", i)
+		}
+		if history := broker.GetAll(); len(history) != 1 || history[0].Op != "accepted-before-stop" {
+			t.Fatalf("iteration %d: cached history = %#v", i, history)
+		}
+	}
+}
+
+func TestEventBrokerKeepsSlowLegacySubscriberConnected(t *testing.T) {
+	broker := newTestBroker()
+	sub := make(chan Event, eventBufSize)
+	for i := 0; i < eventBufSize; i++ {
+		sub <- Event{EventType: consts.EventBroadcast, Op: "queued"}
+	}
+	err := broker.dispatch(sub, Event{EventType: consts.EventBroadcast, Op: "overflow"})
+	if err != nil {
+		t.Fatalf("dispatch overflow error = %v, want nil", err)
+	}
+	for i := 0; i < eventBufSize; i++ {
+		<-sub
+	}
+	want := Event{EventType: consts.EventBroadcast, Op: "recovered"}
+	if err := broker.dispatch(sub, want); err != nil {
+		t.Fatalf("dispatch after recovery error = %v", err)
+	}
+	if got := <-sub; got.Op != want.Op {
+		t.Fatalf("event after recovery = %q, want %q", got.Op, want.Op)
 	}
 }
 
@@ -119,7 +164,9 @@ func TestEventBrokerStartSurvivesBrokenSubscriber(t *testing.T) {
 
 	closedSub := make(chan Event, 1)
 	close(closedSub)
-	broker.subscribe <- closedSub
+	closedReady := make(chan struct{})
+	broker.subscribe <- eventSubscription{events: closedSub, ready: closedReady}
+	<-closedReady
 	if err := broker.TryPublish(Event{
 		EventType: consts.EventBroadcast,
 		Op:        "panic",
@@ -128,7 +175,10 @@ func TestEventBrokerStartSurvivesBrokenSubscriber(t *testing.T) {
 		t.Fatalf("TryPublish panic trigger error = %v", err)
 	}
 
-	sub := broker.Subscribe()
+	sub, err := broker.Subscribe()
+	if err != nil {
+		t.Fatalf("Subscribe error = %v", err)
+	}
 	defer broker.Unsubscribe(sub)
 
 	deadline = time.After(2 * time.Second)
@@ -177,13 +227,138 @@ subscribed:
 	}
 }
 
+func TestEventBrokerSubscribeWaitsForRegistration(t *testing.T) {
+	broker := newTestBroker()
+	returned := make(chan chan Event, 1)
+	go func() {
+		sub, _ := broker.Subscribe()
+		returned <- sub
+	}()
+
+	select {
+	case <-returned:
+		t.Fatal("Subscribe returned before the broker registered the subscriber")
+	case <-time.After(50 * time.Millisecond):
+	}
+
+	go func() {
+		_ = broker.run()
+	}()
+	defer broker.Stop()
+
+	var sub chan Event
+	select {
+	case sub = <-returned:
+	case <-time.After(2 * time.Second):
+		t.Fatal("Subscribe did not return after registration")
+	}
+
+	want := Event{EventType: consts.EventBroadcast, Op: "after-ready"}
+	if err := broker.TryPublish(want); err != nil {
+		t.Fatalf("TryPublish error = %v", err)
+	}
+	select {
+	case got := <-sub:
+		if got.Op != want.Op {
+			t.Fatalf("event op = %q, want %q", got.Op, want.Op)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("registered subscriber missed the first event")
+	}
+}
+
+func TestEventBrokerSubscribeWithHistoryHasNoPublishBoundaryGap(t *testing.T) {
+	for i := 0; i < 100; i++ {
+		broker := newTestBroker()
+		go func() { _ = broker.run() }()
+
+		boundary := Event{
+			EventType: consts.EventBroadcast,
+			Op:        "boundary",
+			Important: true,
+		}
+		if err := broker.TryPublish(boundary); err != nil {
+			broker.Stop()
+			t.Fatalf("iteration %d: publish boundary event: %v", i, err)
+		}
+		events, history, err := broker.SubscribeWithHistory()
+		if err != nil {
+			broker.Stop()
+			t.Fatalf("iteration %d: subscribe with history: %v", i, err)
+		}
+		marker := Event{EventType: consts.EventBroadcast, Op: "marker"}
+		if err := broker.TryPublish(marker); err != nil {
+			broker.Stop()
+			t.Fatalf("iteration %d: publish marker: %v", i, err)
+		}
+
+		boundaryCount := 0
+		for _, event := range history {
+			if event.Op == boundary.Op {
+				boundaryCount++
+			}
+		}
+		for {
+			select {
+			case event, ok := <-events:
+				if !ok {
+					broker.Stop()
+					t.Fatalf("iteration %d: subscription closed before marker", i)
+				}
+				if event.Op == boundary.Op {
+					boundaryCount++
+				}
+				if event.Op == marker.Op {
+					if boundaryCount != 1 {
+						broker.Stop()
+						t.Fatalf("iteration %d: boundary event count = %d, want 1", i, boundaryCount)
+					}
+					broker.Unsubscribe(events)
+					broker.Stop()
+					goto nextIteration
+				}
+			case <-time.After(2 * time.Second):
+				broker.Stop()
+				t.Fatalf("iteration %d: marker event not received", i)
+			}
+		}
+	nextIteration:
+	}
+}
+
+func TestEventBrokerSubscribeAfterStopReturnsUnavailable(t *testing.T) {
+	broker := newTestBroker()
+	broker.Stop()
+	if _, err := broker.Subscribe(); !errors.Is(err, ErrEventBrokerUnavailable) {
+		t.Fatalf("Subscribe error = %v, want %v", err, ErrEventBrokerUnavailable)
+	}
+}
+
+func TestEventBrokerSubscribeRacingStopDoesNotHang(t *testing.T) {
+	for i := 0; i < 100; i++ {
+		broker := newTestBroker()
+		go func() { _ = broker.run() }()
+		result := make(chan error, 1)
+		go func() {
+			_, err := broker.Subscribe()
+			result <- err
+		}()
+		broker.Stop()
+		select {
+		case <-result:
+		case <-time.After(2 * time.Second):
+			t.Fatalf("Subscribe hung while racing Stop at iteration %d", i)
+		}
+	}
+}
+
 func TestEventBrokerSubscribeIsReadyBeforeReturn(t *testing.T) {
 	broker := newTestBroker()
 	broker.Start()
 	defer broker.Stop()
 
 	for i := 0; i < 100; i++ {
-		sub := broker.Subscribe()
+		sub := mustSubscribeEvent(t, broker)
 		event := Event{
 			EventType: consts.EventBroadcast,
 			Op:        fmt.Sprintf("ready-%d", i),
@@ -208,7 +383,7 @@ func TestEventBrokerV2DeliversReadyThenOrderedEvents(t *testing.T) {
 	broker.Start()
 	defer broker.Stop()
 
-	sub := broker.SubscribeV2(EventSubscription{})
+	sub := mustSubscribeEventV2(t, broker, EventSubscription{})
 	defer broker.UnsubscribeV2(sub)
 
 	ready := waitSequencedEvent(t, sub)
@@ -243,7 +418,7 @@ func TestEventBrokerV2ReplaysEventsAfterCursor(t *testing.T) {
 	broker.Start()
 	defer broker.Stop()
 
-	initial := broker.SubscribeV2(EventSubscription{})
+	initial := mustSubscribeEventV2(t, broker, EventSubscription{})
 	ready := waitSequencedEvent(t, initial)
 	if err := broker.TryPublish(Event{EventType: consts.EventSession, Op: "one", Important: true}); err != nil {
 		t.Fatalf("TryPublish(one) failed: %v", err)
@@ -255,14 +430,14 @@ func TestEventBrokerV2ReplaysEventsAfterCursor(t *testing.T) {
 	_ = waitSequencedEvent(t, initial)
 	broker.UnsubscribeV2(initial)
 
-	barrier := broker.Subscribe()
+	barrier := mustSubscribeEvent(t, broker)
 	if err := broker.TryPublish(Event{EventType: consts.EventSession, Op: "three", Important: true}); err != nil {
 		t.Fatalf("TryPublish(three) failed: %v", err)
 	}
 	_ = waitEvent(t, barrier)
 	broker.Unsubscribe(barrier)
 
-	reconnected := broker.SubscribeV2(EventSubscription{
+	reconnected := mustSubscribeEventV2(t, broker, EventSubscription{
 		StreamID:      ready.StreamID,
 		AfterSequence: one.Sequence,
 		Replay:        true,
@@ -289,7 +464,7 @@ func TestEventBrokerV2SignalsResetWhenCursorFallsBehindHistory(t *testing.T) {
 	broker.Start()
 	defer broker.Stop()
 
-	initial := broker.SubscribeV2(EventSubscription{})
+	initial := mustSubscribeEventV2(t, broker, EventSubscription{})
 	ready := waitSequencedEvent(t, initial)
 	if err := broker.TryPublish(Event{EventType: consts.EventSession, Op: "one", Important: true}); err != nil {
 		t.Fatalf("TryPublish(one) failed: %v", err)
@@ -297,7 +472,7 @@ func TestEventBrokerV2SignalsResetWhenCursorFallsBehindHistory(t *testing.T) {
 	one := waitSequencedEvent(t, initial)
 	broker.UnsubscribeV2(initial)
 
-	barrier := broker.Subscribe()
+	barrier := mustSubscribeEvent(t, broker)
 	for _, op := range []string{"two", "three", "four"} {
 		if err := broker.TryPublish(Event{EventType: consts.EventSession, Op: op, Important: true}); err != nil {
 			t.Fatalf("TryPublish(%s) failed: %v", op, err)
@@ -306,7 +481,7 @@ func TestEventBrokerV2SignalsResetWhenCursorFallsBehindHistory(t *testing.T) {
 	}
 	broker.Unsubscribe(barrier)
 
-	reconnected := broker.SubscribeV2(EventSubscription{
+	reconnected := mustSubscribeEventV2(t, broker, EventSubscription{
 		StreamID:      ready.StreamID,
 		AfterSequence: one.Sequence,
 		Replay:        true,
@@ -328,7 +503,7 @@ func TestEventBrokerV2HeartbeatsDoNotEvictReplayableEvents(t *testing.T) {
 	broker.Start()
 	defer broker.Stop()
 
-	initial := broker.SubscribeV2(EventSubscription{})
+	initial := mustSubscribeEventV2(t, broker, EventSubscription{})
 	ready := waitSequencedEvent(t, initial)
 	if err := broker.TryPublish(Event{EventType: consts.EventSession, Op: "one", Important: true}); err != nil {
 		t.Fatalf("TryPublish(one) failed: %v", err)
@@ -336,7 +511,7 @@ func TestEventBrokerV2HeartbeatsDoNotEvictReplayableEvents(t *testing.T) {
 	one := waitSequencedEvent(t, initial)
 	broker.UnsubscribeV2(initial)
 
-	barrier := broker.Subscribe()
+	barrier := mustSubscribeEvent(t, broker)
 	for index := 0; index < 3; index++ {
 		if err := broker.TryPublish(Event{EventType: consts.EventHeartbeat, Op: consts.CtrlHeartbeat1s}); err != nil {
 			t.Fatalf("TryPublish(heartbeat %d) failed: %v", index, err)
@@ -349,7 +524,7 @@ func TestEventBrokerV2HeartbeatsDoNotEvictReplayableEvents(t *testing.T) {
 	_ = waitEvent(t, barrier)
 	broker.Unsubscribe(barrier)
 
-	reconnected := broker.SubscribeV2(EventSubscription{
+	reconnected := mustSubscribeEventV2(t, broker, EventSubscription{
 		StreamID:      ready.StreamID,
 		AfterSequence: one.Sequence,
 		Replay:        true,
@@ -372,7 +547,7 @@ func TestEventBrokerV2TransientEventsDoNotEvictReplayableEvents(t *testing.T) {
 	broker.Start()
 	defer broker.Stop()
 
-	initial := broker.SubscribeV2(EventSubscription{})
+	initial := mustSubscribeEventV2(t, broker, EventSubscription{})
 	ready := waitSequencedEvent(t, initial)
 	if err := broker.TryPublish(Event{EventType: consts.EventSession, Op: "one", Important: true}); err != nil {
 		t.Fatalf("TryPublish(one) failed: %v", err)
@@ -380,7 +555,7 @@ func TestEventBrokerV2TransientEventsDoNotEvictReplayableEvents(t *testing.T) {
 	one := waitSequencedEvent(t, initial)
 	broker.UnsubscribeV2(initial)
 
-	barrier := broker.Subscribe()
+	barrier := mustSubscribeEvent(t, broker)
 	for index := 0; index < 5; index++ {
 		if err := broker.TryPublish(Event{EventType: consts.EventSession, Op: consts.CtrlSessionCheckin}); err != nil {
 			t.Fatalf("TryPublish(checkin %d) failed: %v", index, err)
@@ -393,7 +568,7 @@ func TestEventBrokerV2TransientEventsDoNotEvictReplayableEvents(t *testing.T) {
 	_ = waitEvent(t, barrier)
 	broker.Unsubscribe(barrier)
 
-	reconnected := broker.SubscribeV2(EventSubscription{
+	reconnected := mustSubscribeEventV2(t, broker, EventSubscription{
 		StreamID:      ready.StreamID,
 		AfterSequence: one.Sequence,
 		Replay:        true,
@@ -418,11 +593,11 @@ func TestEventBrokerV2ReplaysPersistedSessionUpdate(t *testing.T) {
 	EventBroker = broker
 	defer func() { EventBroker = oldBroker }()
 
-	initial := broker.SubscribeV2(EventSubscription{})
+	initial := mustSubscribeEventV2(t, broker, EventSubscription{})
 	ready := waitSequencedEvent(t, initial)
 	broker.UnsubscribeV2(initial)
 
-	barrier := broker.Subscribe()
+	barrier := mustSubscribeEvent(t, broker)
 	session := newTestSession("session-update-replay")
 	session.PushUpdate("note updated")
 	if event := waitEvent(t, barrier); !event.Important {
@@ -430,7 +605,7 @@ func TestEventBrokerV2ReplaysPersistedSessionUpdate(t *testing.T) {
 	}
 	broker.Unsubscribe(barrier)
 
-	reconnected := broker.SubscribeV2(EventSubscription{
+	reconnected := mustSubscribeEventV2(t, broker, EventSubscription{
 		StreamID:      ready.StreamID,
 		AfterSequence: ready.Sequence,
 		Replay:        true,
@@ -471,7 +646,7 @@ func TestEventBrokerV2FiltersTopicsAndHeartbeats(t *testing.T) {
 	broker.Start()
 	defer broker.Stop()
 
-	sub := broker.SubscribeV2(EventSubscription{Topics: []string{consts.EventSession}})
+	sub := mustSubscribeEventV2(t, broker, EventSubscription{Topics: []string{consts.EventSession}})
 	defer broker.UnsubscribeV2(sub)
 	_ = waitSequencedEvent(t, sub)
 
@@ -489,6 +664,24 @@ func TestEventBrokerV2FiltersTopicsAndHeartbeats(t *testing.T) {
 	if event.Event.EventType != consts.EventSession {
 		t.Fatalf("event type = %q, want %q", event.Event.EventType, consts.EventSession)
 	}
+}
+
+func mustSubscribeEvent(t *testing.T, broker *eventBroker) chan Event {
+	t.Helper()
+	events, err := broker.Subscribe()
+	if err != nil {
+		t.Fatalf("Subscribe failed: %v", err)
+	}
+	return events
+}
+
+func mustSubscribeEventV2(t *testing.T, broker *eventBroker, options EventSubscription) chan SequencedEvent {
+	t.Helper()
+	events, err := broker.SubscribeV2(options)
+	if err != nil {
+		t.Fatalf("SubscribeV2 failed: %v", err)
+	}
+	return events
 }
 
 func waitSequencedEvent(t *testing.T, ch <-chan SequencedEvent) SequencedEvent {

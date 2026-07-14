@@ -57,6 +57,10 @@ type MessageParser struct {
 	PacketParser
 }
 
+const maxPayloadReadSize = uint32(512<<20) + 1
+
+var ErrPayloadTooLarge = errors.New("encoded payload exceeds 512 MiB limit")
+
 // WithSecure 为 MessageParser 添加安全支持
 func (mp *MessageParser) WithSecure(keyPair *clientpb.KeyPair) {
 	switch mp.Implant {
@@ -80,8 +84,7 @@ func (mp *MessageParser) WithMaxPacketLength(n uint32) {
 }
 
 func (parser *MessageParser) ReadMessage(conn io.ReadWriteCloser, length uint32) (*implantpb.Spites, error) {
-	buf := make([]byte, length)
-	_, err := io.ReadFull(conn, buf)
+	buf, err := readPayload(conn, length)
 	if err != nil {
 		return nil, err
 	}
@@ -94,14 +97,27 @@ func (parser *MessageParser) ReadPacket(conn io.ReadWriteCloser) (uint32, *impla
 		return 0, nil, err
 	}
 
-	buf := make([]byte, length)
-	_, err = io.ReadFull(conn, buf)
+	buf, err := readPayload(conn, length)
 	if err != nil {
 		return 0, nil, err
 	}
 
 	msg, err := parser.Parse(buf)
 	return sessionId, msg, err
+}
+
+func readPayload(conn io.Reader, length uint32) ([]byte, error) {
+	if length > maxPayloadReadSize {
+		return nil, fmt.Errorf("%w: %d bytes", ErrPayloadTooLarge, length)
+	}
+	if length == 0 {
+		return []byte{}, nil
+	}
+	payload := make([]byte, int(length))
+	if _, err := io.ReadFull(conn, payload); err != nil {
+		return nil, err
+	}
+	return payload, nil
 }
 
 func (parser *MessageParser) WritePacket(conn net.Conn, msg *implantpb.Spites, sid uint32) error {

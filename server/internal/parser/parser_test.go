@@ -160,10 +160,7 @@ func TestReadPacket_RoundTrip(t *testing.T) {
 	}
 }
 
-// TestReadPacket_DiscardParseError documents the bug on line 104 of parser.go:
-// ReadPacket returns nil error even when Parse fails because the return
-// statement is `return sessionId, msg, nil` instead of `return sessionId, msg, err`.
-func TestReadPacket_DiscardParseError(t *testing.T) {
+func TestReadPacket_ReturnsParseError(t *testing.T) {
 	parser, err := NewParser("malefic")
 	if err != nil {
 		t.Fatalf("failed to create parser: %v", err)
@@ -176,7 +173,7 @@ func TestReadPacket_DiscardParseError(t *testing.T) {
 	// but we make the body garbage so protobuf unmarshal fails.
 	sid := uint32(1)
 	payloadBody := []byte{0xFF, 0xFE, 0xFD} // garbage protobuf data
-	payload := append(payloadBody, 0xd2)     // valid end delimiter
+	payload := append(payloadBody, 0xd2)    // valid end delimiter
 
 	header := make([]byte, 9)
 	header[0] = 0xd1 // start delimiter
@@ -204,21 +201,15 @@ func TestReadPacket_DiscardParseError(t *testing.T) {
 
 	gotSid, msg, err := parser.ReadPacket(serverConn)
 
-	// BUG: err is nil even though Parse should have failed on garbage protobuf data.
-	// The msg will be nil (unmarshal failure) but the error is swallowed.
-	if err != nil {
-		// If this branch is reached, the bug has been fixed.
-		t.Logf("Bug appears fixed: ReadPacket now returns parse error: %v", err)
-		return
+	if err == nil {
+		t.Fatal("ReadPacket discarded the parse error")
 	}
-
-	// Document the bug: error is nil but msg is also nil.
-	if msg == nil {
-		t.Log("BUG CONFIRMED: ReadPacket returned nil message AND nil error. " +
-			"Line 104 discards the parse error (returns nil instead of err).")
+	if msg != nil {
+		t.Fatalf("ReadPacket message = %#v, want nil after parse failure", msg)
 	}
-
-	_ = gotSid
+	if gotSid != sid {
+		t.Fatalf("ReadPacket session ID = %d, want %d", gotSid, sid)
+	}
 }
 
 // --- WritePacket tests ---
@@ -331,5 +322,17 @@ func TestReadMessage_ValidPayload(t *testing.T) {
 	}
 	if len(result.Spites) != 1 || result.Spites[0].TaskId != 7 {
 		t.Fatalf("unexpected result: %+v", result)
+	}
+}
+
+func TestReadMessage_RejectsPayloadAboveWireLimit(t *testing.T) {
+	parser, err := NewParser("malefic")
+	if err != nil {
+		t.Fatalf("failed to create parser: %v", err)
+	}
+
+	_, err = parser.ReadMessage(&rwcBuf{bytes.NewBuffer(nil)}, maxPayloadReadSize+1)
+	if !errors.Is(err, ErrPayloadTooLarge) {
+		t.Fatalf("ReadMessage error = %v, want ErrPayloadTooLarge", err)
 	}
 }

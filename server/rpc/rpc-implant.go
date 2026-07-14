@@ -42,8 +42,9 @@ func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) 
 		if err != nil {
 			return nil, err
 		}
-		sess.Publish(consts.CtrlSessionRegister, fmt.Sprintf("new session %s from %s start at %s", sess.Abstract(), sess.Target, sess.PipelineID), true, true)
-		logs.Log.Importantf("new session %s from %s", sess.ID, sess.PipelineID)
+		target, _, pipelineID := sess.ConnectionSnapshot()
+		sess.Publish(consts.CtrlSessionRegister, fmt.Sprintf("new session %s from %s start at %s", sess.Abstract(), target, pipelineID), true, true)
+		logs.Log.Importantf("new session %s from %s", sess.ID, pipelineID)
 		core.Sessions.Add(sess)
 	} else {
 		if err := validateReRegisterPipeline(req); err != nil {
@@ -52,7 +53,8 @@ func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) 
 		logs.Log.Infof("session %s re-register", sess.ID)
 		sess.SetLastCheckin(getTimestamp(ctx))
 		sess.Update(req)
-		sess.Publish(consts.CtrlSessionUpdate, fmt.Sprintf("%s from %s re-registered at %s", sess.Abstract(), sess.Target, sess.PipelineID), true, true)
+		target, _, pipelineID := sess.ConnectionSnapshot()
+		sess.Publish(consts.CtrlSessionUpdate, fmt.Sprintf("%s from %s re-registered at %s", sess.Abstract(), target, pipelineID), true, true)
 		core.Sessions.Add(sess)
 	}
 
@@ -147,7 +149,8 @@ func (rpc *Server) Checkin(ctx context.Context, req *implantpb.Ping) (*clientpb.
 		logs.Log.Errorf("save session %s checkin failed: %s", sess.ID, err.Error())
 	}
 	if reborn {
-		sess.Publish(consts.CtrlSessionReborn, fmt.Sprintf("session %s from %s reborn at %s", sess.Abstract(), sess.Target, sess.PipelineID), true, true)
+		target, _, pipelineID := sess.ConnectionSnapshot()
+		sess.Publish(consts.CtrlSessionReborn, fmt.Sprintf("session %s from %s reborn at %s", sess.Abstract(), target, pipelineID), true, true)
 	}
 	sess.Publish(consts.CtrlSessionCheckin, "", false, false)
 
@@ -179,8 +182,7 @@ func (rpc *Server) Sleep(ctx context.Context, req *implantpb.Timer) (*clientpb.T
 
 	greq.HandlerResponse(ch, types.MsgEmpty)
 	if session, err := getSession(ctx); err == nil {
-		session.Jitter = req.Jitter
-		session.Expression = req.Expression
+		session.SetTimer(req.Expression, req.Jitter)
 		if err := session.SaveAndNotify(""); err != nil {
 			return nil, err
 		}
@@ -330,7 +332,8 @@ func bindPollingRunning(sessionID string) bool {
 func sendBindPing(sess *core.Session) error {
 	streamVal, ok := loadPipelineStreamForSession(sess)
 	if !ok || streamVal == nil {
-		return fmt.Errorf("bind pipeline %s unavailable for session %s", sess.PipelineID, sess.ID)
+		_, pipelineID := sess.RoutingSnapshot()
+		return fmt.Errorf("bind pipeline %s unavailable for session %s", pipelineID, sess.ID)
 	}
 	return sess.Request(
 		&clientpb.SpiteRequest{Session: sess.ToProtobufLite(), Task: nil, Spite: types.BuildPingSpite()},
@@ -547,7 +550,7 @@ func (rpc *Server) triggerKeyExchange(ctx context.Context, sess *core.Session) e
 			return
 		}
 		sess.SecureManager.ResetCounters()
-		sess.UpdateKeyPairFieldsAndPushCtrl(resp.PublicKey, keyPair.Private)
+		sess.UpdateKeyPair(resp.PublicKey, keyPair.Private)
 	})
 	return err
 }

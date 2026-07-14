@@ -72,8 +72,9 @@ func TestSleepDispatchesRequestAndUpdatesSession(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Sleep failed: %v", err)
 	}
-	if sess.Expression != req.Expression || sess.Jitter != req.Jitter {
-		t.Fatalf("session timer = %q/%v, want %q/%v", sess.Expression, sess.Jitter, req.Expression, req.Jitter)
+	expression, jitter := sess.TimerSnapshot()
+	if expression != req.Expression || jitter != req.Jitter {
+		t.Fatalf("session timer = %q/%v, want %q/%v", expression, jitter, req.Expression, req.Jitter)
 	}
 
 	select {
@@ -91,10 +92,7 @@ func TestSleepDispatchesRequestAndUpdatesSession(t *testing.T) {
 	deliverTaskResponse(t, sess, task.TaskId, &implantpb.Spite{
 		Body: &implantpb.Spite_Empty{Empty: &implantpb.Empty{}},
 	})
-	waitForCondition(t, 2*time.Second, func() bool {
-		stored := sess.Tasks.Get(task.TaskId)
-		return stored != nil && stored.Finished()
-	}, "sleep task to finish")
+	waitForTaskDone(t, sess.Tasks.Get(task.TaskId), "sleep task")
 	waitForCondition(t, 2*time.Second, func() bool {
 		_, pending := sess.GetResp(task.TaskId)
 		return !pending
@@ -133,6 +131,7 @@ func TestKeepaliveEnablesSessionAfterResponse(t *testing.T) {
 		Name: consts.ModuleKeepalive,
 		Body: &implantpb.Spite_Common{Common: &implantpb.CommonBody{Name: consts.ModuleKeepalive}},
 	})
+	waitForTaskDone(t, sess.Tasks.Get(task.TaskId), "keepalive task")
 	waitForCondition(t, 2*time.Second, sess.IsKeepaliveEnabled, "keepalive to become enabled")
 	waitForCondition(t, 2*time.Second, func() bool {
 		_, pending := sess.GetResp(task.TaskId)
@@ -163,12 +162,14 @@ func TestInfoUpdatesSessionSysinfoFromResponse(t *testing.T) {
 			Process: &implantpb.Process{Name: "agent.bin"},
 		}},
 	})
+	waitForTaskDone(t, sess.Tasks.Get(task.TaskId), "info task")
 	waitForCondition(t, 2*time.Second, func() bool {
 		_, pending := sess.GetResp(task.TaskId)
 		return !pending
 	}, "info response handler to finish cleanup")
-	if sess.Os == nil || sess.Os.Name != "linux" || sess.Os.Arch != "x64" {
-		t.Fatalf("session OS = %#v, want normalized linux/x64", sess.Os)
+	pb := sess.ToProtobufLite()
+	if pb.Os == nil || pb.Os.Name != "linux" || pb.Os.Arch != "x64" {
+		t.Fatalf("session sysinfo = %#v, want linux/x64", pb.Os)
 	}
 }
 
@@ -443,4 +444,22 @@ func waitForCondition(t testing.TB, timeout time.Duration, cond func() bool, des
 		time.Sleep(25 * time.Millisecond)
 	}
 	t.Fatalf("timed out waiting for %s", description)
+}
+
+func waitForTaskDone(t testing.TB, task *core.Task, description string) {
+	t.Helper()
+	if task == nil {
+		t.Fatalf("%s was not stored", description)
+	}
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		if task.IsClosed() {
+			if !task.Finished() {
+				t.Fatalf("%s closed but stayed running", description)
+			}
+			return
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	t.Fatalf("timed out waiting for %s to finish", description)
 }

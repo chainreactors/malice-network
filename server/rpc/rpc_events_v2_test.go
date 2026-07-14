@@ -93,6 +93,7 @@ func TestGetEventHonorsLatestEventLimit(t *testing.T) {
 			Important: true,
 		})
 	}
+	waitHistorySize(t, core.EventBroker, 3)
 
 	limited, err := (&Server{}).GetEvent(context.Background(), &clientpb.Int{Limit: 2})
 	if err != nil {

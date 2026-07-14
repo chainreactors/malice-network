@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -245,6 +246,63 @@ func TestEnsureForwardTaskStreamDoesNotOpenDuplicateConcurrentStreams(t *testing
 		t.Fatalf("TaskStream opened %d times, want 1", got)
 	}
 	cancel()
+}
+
+func TestResetForwardListenerRuntimesWaitsForInFlightStop(t *testing.T) {
+	resetForwardListenerRuntimes()
+	withIsolatedListenersAndJobs(t)
+
+	const listenerID = "forward-stop-reset-race"
+	core.Listeners.Add(core.NewListener(listenerID, "127.0.0.1"))
+	stopEntered := make(chan struct{})
+	releaseStop := make(chan struct{})
+	var releaseOnce sync.Once
+	release := func() { releaseOnce.Do(func() { close(releaseStop) }) }
+	t.Cleanup(release)
+
+	runtime := &forwardListenerRuntime{
+		listenerID:   listenerID,
+		ownsListener: true,
+		cancel: func() {
+			close(stopEntered)
+			<-releaseStop
+		},
+	}
+	forwardListenerRuntimes.Store(listenerID, runtime)
+
+	stopDone := make(chan struct{})
+	go func() {
+		runtime.stop()
+		close(stopDone)
+	}()
+	select {
+	case <-stopEntered:
+	case <-time.After(time.Second):
+		t.Fatal("runtime stop did not reach the deterministic barrier")
+	}
+
+	resetDone := make(chan struct{})
+	go func() {
+		resetForwardListenerRuntimes()
+		close(resetDone)
+	}()
+	select {
+	case <-resetDone:
+		t.Fatal("reset returned while the runtime stop was still in flight")
+	case <-time.After(25 * time.Millisecond):
+	}
+
+	release()
+	select {
+	case <-stopDone:
+	case <-time.After(time.Second):
+		t.Fatal("runtime stop did not finish after releasing the barrier")
+	}
+	select {
+	case <-resetDone:
+	case <-time.After(time.Second):
+		t.Fatal("reset did not finish after runtime stop completed")
+	}
 }
 
 type blockingForwardTaskClient struct {

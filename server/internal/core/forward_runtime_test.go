@@ -6,6 +6,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
@@ -37,6 +38,47 @@ func (testForwardStream) Recv() (*clientpb.SpiteRequest, error) {
 	return nil, errors.New("not used")
 }
 
+type abortForwardStream struct {
+	closeCalls atomic.Int32
+}
+
+type blockingCloseForwardStream struct {
+	started chan struct{}
+	release chan struct{}
+	done    chan struct{}
+}
+
+func (*blockingCloseForwardStream) Send(*clientpb.SpiteResponse) error { return nil }
+func (*blockingCloseForwardStream) Recv() (*clientpb.SpiteRequest, error) {
+	return nil, errors.New("not used")
+}
+func (s *blockingCloseForwardStream) CloseSend() error {
+	defer close(s.done)
+	close(s.started)
+	<-s.release
+	return nil
+}
+
+func (*abortForwardStream) Send(*clientpb.SpiteResponse) error { return nil }
+func (*abortForwardStream) Recv() (*clientpb.SpiteRequest, error) {
+	return nil, errors.New("not used")
+}
+func (s *abortForwardStream) CloseSend() error {
+	s.closeCalls.Add(1)
+	return nil
+}
+
+type abortForwardClient struct {
+	*testForwardRPC
+	stream *abortForwardStream
+	ctx    context.Context
+}
+
+func (c *abortForwardClient) OpenForwardStream(ctx context.Context, _ Pipeline) (ForwardStream, error) {
+	c.ctx = ctx
+	return c.stream, nil
+}
+
 type testPipeline struct {
 	id       string
 	closeErr error
@@ -50,6 +92,86 @@ func (p testPipeline) Close() error { return p.closeErr }
 
 func (p testPipeline) ToProtobuf() *clientpb.Pipeline {
 	return &clientpb.Pipeline{Name: p.id}
+}
+
+func TestForwardAbortClosesStreamCancelsContextAndStopsHandler(t *testing.T) {
+	stream := &abortForwardStream{}
+	client := &abortForwardClient{testForwardRPC: &testForwardRPC{}, stream: stream}
+	forward, err := NewForward(client, testPipeline{id: "pipe-abort"})
+	if err != nil {
+		t.Fatalf("NewForward failed: %v", err)
+	}
+
+	if err := forward.Abort(); err != nil {
+		t.Fatalf("Abort failed: %v", err)
+	}
+	if err := forward.Abort(); err != nil {
+		t.Fatalf("second Abort failed: %v", err)
+	}
+	if got := stream.closeCalls.Load(); got != 1 {
+		t.Fatalf("CloseSend calls = %d, want 1", got)
+	}
+	select {
+	case <-client.ctx.Done():
+	default:
+		t.Fatal("OpenForwardStream context was not canceled")
+	}
+	select {
+	case <-forward.handlerDone:
+	default:
+		t.Fatal("forward handler was still running after Abort returned")
+	}
+	if got := Forwarders.Get(forward.RuntimeKey()); got != nil {
+		t.Fatalf("aborted forward remained in registry: %#v", got)
+	}
+}
+
+func TestForwardAbortContextReturnsWhenHandlerDoesNotStop(t *testing.T) {
+	forward := &Forward{
+		Pipeline:    testPipeline{id: "pipe-timeout"},
+		Stream:      testForwardStream{},
+		done:        make(chan struct{}),
+		handlerDone: make(chan struct{}),
+	}
+	forward.alive.Store(true)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancel()
+	if err := forward.AbortContext(ctx); !errors.Is(err, ErrForwardShutdownTimeout) {
+		t.Fatalf("AbortContext error = %v, want ErrForwardShutdownTimeout", err)
+	}
+}
+
+func TestForwardAbortContextReturnsWhenCloseSendDoesNotStop(t *testing.T) {
+	stream := &blockingCloseForwardStream{
+		started: make(chan struct{}),
+		release: make(chan struct{}),
+		done:    make(chan struct{}),
+	}
+	forward := &Forward{
+		Pipeline: testPipeline{id: "pipe-close-timeout"},
+		Stream:   stream,
+		done:     make(chan struct{}),
+	}
+	forward.alive.Store(true)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancel()
+	err := forward.AbortContext(ctx)
+	if !errors.Is(err, ErrForwardShutdownTimeout) {
+		t.Fatalf("AbortContext error = %v, want ErrForwardShutdownTimeout", err)
+	}
+	select {
+	case <-stream.started:
+	default:
+		t.Fatal("CloseSend was not called")
+	}
+	close(stream.release)
+	select {
+	case <-stream.done:
+	case <-time.After(time.Second):
+		t.Fatal("CloseSend did not finish after release")
+	}
 }
 
 func TestForwardHandlerReturnsStreamSendError(t *testing.T) {
@@ -94,6 +216,41 @@ func TestForwardersRemoveDeletesOnCloseError(t *testing.T) {
 	}
 	if got := store.Get(forward.ID()); got != nil {
 		t.Fatalf("expected forwarder to be deleted, got %#v", got)
+	}
+}
+
+func TestForwardersRemoveIfSamePreservesReplacement(t *testing.T) {
+	store := &forwarders{forwarders: &sync.Map{}}
+	oldForward := &Forward{
+		Pipeline: testPipeline{id: "shared"},
+		Stream:   testForwardStream{},
+		done:     make(chan struct{}),
+	}
+	newForward := &Forward{
+		Pipeline: testPipeline{id: "shared"},
+		Stream:   testForwardStream{},
+		done:     make(chan struct{}),
+	}
+	oldForward.alive.Store(true)
+	newForward.alive.Store(true)
+	store.Add(oldForward)
+	store.Add(newForward)
+
+	if err := store.removeIfSame("shared", oldForward); err != nil {
+		t.Fatalf("removeIfSame returned error: %v", err)
+	}
+	if got := store.Get("shared"); got != newForward {
+		t.Fatalf("replacement forward = %#v, want %#v", got, newForward)
+	}
+	select {
+	case <-oldForward.done:
+	default:
+		t.Fatal("stale forward was not aborted")
+	}
+	select {
+	case <-newForward.done:
+		t.Fatal("replacement forward was aborted")
+	default:
 	}
 }
 

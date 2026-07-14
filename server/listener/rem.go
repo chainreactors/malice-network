@@ -26,7 +26,38 @@ var remHealthCheck = func(client listenerrpc.ListenerRPCClient, ctx context.Cont
 	return err
 }
 
-var remSleep = time.Sleep
+var remConsoleListen = func(con *rem.RemConsole) error {
+	return con.Listen(con.ConsoleURL)
+}
+
+var remConsoleClose = func(con *rem.RemConsole) error {
+	return con.Close()
+}
+
+var remConsoleAccept = func(con *rem.RemConsole) (*agent.Agent, error) {
+	return con.Accept()
+}
+
+var remConsoleHandler = func(con *rem.RemConsole, ag *agent.Agent) {
+	con.Handler(ag)
+}
+
+const (
+	remHealthCheckTimeout = 10 * time.Second
+	remAcceptRetryMin     = 10 * time.Millisecond
+	remAcceptRetryMax     = time.Second
+	// remStartCloseTimeout bounds how long Close waits for an in-flight Start to
+	// abort, so shutdown cannot wedge if the underlying console Listen hangs.
+	// Console.Listen is normally a fast local bind; this only fires when it is
+	// stuck on an unresponsive remote link, so it is kept small to keep shutdown
+	// responsive rather than sized for network latency.
+	remStartCloseTimeout = 10 * time.Second
+)
+
+type remStartState struct {
+	done       chan struct{}
+	cleanupErr error
+}
 
 func NewRem(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline) (*REM, error) {
 	remConfig := pipeline.GetRem()
@@ -54,13 +85,19 @@ func NewRem(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline) (*RE
 }
 
 type REM struct {
-	con        *rem.RemConsole
-	rpc        listenerrpc.ListenerRPCClient
-	remConfig  *clientpb.REM
-	ListenerID string
-	Name       string
-	Enable     bool
-	CertName   string
+	stateMu        sync.RWMutex
+	starting       bool
+	startState     *remStartState
+	runCtx         context.Context
+	runCancel      context.CancelFunc
+	healthInterval time.Duration
+	con            *rem.RemConsole
+	rpc            listenerrpc.ListenerRPCClient
+	remConfig      *clientpb.REM
+	ListenerID     string
+	Name           string
+	Enable         bool
+	CertName       string
 	*core.PipelineConfig
 	ownAgents sync.Map // agent.ID → struct{}: tracks agents belonging to this pipeline
 }
@@ -70,22 +107,31 @@ func (rem *REM) ID() string {
 }
 
 func (rem *REM) Start() error {
-	if rem.Enable {
+	if !rem.beginStart() {
 		return nil
 	}
 
-	err := rem.con.Listen(rem.con.ConsoleURL)
+	err := remConsoleListen(rem.con)
 	if err != nil {
+		rem.abortStart(nil)
 		return err
 	}
-	rem.Enable = true
+	if !rem.enabled() {
+		cleanupErr := remConsoleClose(rem.con)
+		rem.abortStart(cleanupErr)
+		return cleanupErr
+	}
 	logs.Log.Important(rem.con.Link())
-	core.GoGuarded("rem-accept:"+rem.Name, rem.acceptLoop, rem.runtimeErrorHandler("accept loop"))
-	core.GoGuarded("rem-health:"+rem.Name, rem.healthLoop, rem.runtimeErrorHandler("health loop"))
+	if !rem.commitStart() {
+		cleanupErr := remConsoleClose(rem.con)
+		rem.abortStart(cleanupErr)
+		return cleanupErr
+	}
 	return nil
 }
 
 func (rem *REM) ToProtobuf() *clientpb.Pipeline {
+	enabled := rem.enabled()
 	link := rem.getLink()
 	subscribe := rem.getSubscribe()
 	host := ""
@@ -121,7 +167,7 @@ func (rem *REM) ToProtobuf() *clientpb.Pipeline {
 
 	return &clientpb.Pipeline{
 		Name:       rem.Name,
-		Enable:     rem.Enable,
+		Enable:     enabled,
 		ListenerId: rem.ListenerID,
 		Parser:     parserName,
 		Type:       consts.RemPipeline,
@@ -181,55 +227,166 @@ func (rem *REM) getSubscribe() (subscribe string) {
 }
 
 func (rem *REM) Close() error {
+	rem.stateMu.Lock()
+	wasActive := rem.Enable
 	rem.Enable = false
-	if rem.con == nil {
+	cancel := rem.runCancel
+	rem.runCancel = nil
+	rem.runCtx = nil
+	if rem.starting {
+		startState := rem.startState
+		rem.stateMu.Unlock()
+		if cancel != nil {
+			cancel()
+		}
+		select {
+		case <-startState.done:
+			return startState.cleanupErr
+		case <-time.After(remStartCloseTimeout):
+			return fmt.Errorf("rem %s close timed out waiting for startup to abort", rem.Name)
+		}
+	}
+	rem.stateMu.Unlock()
+	if cancel != nil {
+		cancel()
+	}
+	if !wasActive || rem.con == nil {
 		return nil
 	}
-	return rem.con.Close()
+	return remConsoleClose(rem.con)
 }
 
-func (rem *REM) acceptLoop() error {
-	for rem.Enable {
-		ag, err := rem.con.Accept()
+func (rem *REM) enabled() bool {
+	rem.stateMu.RLock()
+	defer rem.stateMu.RUnlock()
+	return rem.Enable
+}
+
+func (rem *REM) beginStart() bool {
+	for {
+		rem.stateMu.Lock()
+		if rem.starting {
+			done := rem.startState.done
+			rem.stateMu.Unlock()
+			<-done
+			continue
+		}
+		if rem.Enable {
+			rem.stateMu.Unlock()
+			return false
+		}
+		rem.Enable = true
+		rem.starting = true
+		rem.startState = &remStartState{done: make(chan struct{})}
+		rem.runCtx, rem.runCancel = context.WithCancel(context.Background())
+		rem.stateMu.Unlock()
+		return true
+	}
+}
+
+func (rem *REM) abortStart(cleanupErr error) {
+	rem.stateMu.Lock()
+	rem.starting = false
+	rem.Enable = false
+	startState := rem.startState
+	rem.startState = nil
+	cancel := rem.runCancel
+	rem.runCancel = nil
+	rem.runCtx = nil
+	if startState != nil {
+		startState.cleanupErr = cleanupErr
+		close(startState.done)
+	}
+	rem.stateMu.Unlock()
+	if cancel != nil {
+		cancel()
+	}
+}
+
+func (rem *REM) commitStart() bool {
+	rem.stateMu.Lock()
+	defer rem.stateMu.Unlock()
+	if !rem.Enable {
+		return false
+	}
+	runCtx := rem.runCtx
+	core.GoGuarded("rem-accept:"+rem.Name, func() error {
+		return rem.acceptLoopContext(runCtx)
+	}, rem.runtimeErrorHandler("accept loop"))
+	core.GoGuarded("rem-health:"+rem.Name, func() error {
+		return rem.healthLoopContext(runCtx)
+	}, rem.runtimeErrorHandler("health loop"))
+	rem.starting = false
+	startState := rem.startState
+	rem.startState = nil
+	close(startState.done)
+	return true
+}
+
+func (rem *REM) acceptLoopContext(runCtx context.Context) error {
+	return rem.acceptLoopContextWithBackoff(runCtx, remAcceptRetryMin, remAcceptRetryMax)
+}
+
+func (rem *REM) acceptLoopContextWithBackoff(runCtx context.Context, retryDelay, retryMax time.Duration) error {
+	if runCtx == nil {
+		runCtx = context.Background()
+	}
+	retryMinimum := retryDelay
+	for rem.enabled() {
+		ag, err := remConsoleAccept(rem.con)
 		if err != nil {
-			if !rem.Enable {
+			if !rem.enabled() || runCtx.Err() != nil {
 				return nil
 			}
 			// Accept errors are typically transient (timeout, client disconnect).
 			// Log and continue rather than killing the entire pipeline — the next
 			// client reconnect should succeed once the simplex channel is healthy.
 			logs.Log.Errorf("rem %s accept error (will retry): %v", rem.Name, err)
+			if !waitREMRetry(runCtx, retryDelay) {
+				return nil
+			}
+			retryDelay = nextREMRetryDelay(retryDelay, retryMax)
 			continue
 		}
+		if !rem.enabled() || runCtx.Err() != nil {
+			return nil
+		}
+		retryDelay = retryMinimum
 
 		rem.ownAgents.Store(ag.ID, struct{}{})
 
 		// Trigger an immediate health check so the new agent's PivotingContext
 		// is created in DB right away instead of waiting for the periodic loop.
-		if err := remHealthCheck(rem.rpc, context.Background(), rem.ToProtobuf()); err != nil {
+		if err := rem.healthCheck(runCtx); err != nil {
 			logs.Log.Warnf("rem %s post-accept health check failed: %v", rem.Name, err)
+		}
+		if !rem.enabled() || runCtx.Err() != nil {
+			rem.ownAgents.Delete(ag.ID)
+			return nil
 		}
 
 		core.GoGuarded("rem-agent:"+rem.Name, func() error {
-			rem.con.Handler(ag)
-			rem.ownAgents.Delete(ag.ID)
+			rem.handleAgent(ag)
 			return nil
 		}, core.LogGuardedError("rem-agent:"+rem.Name))
 	}
 	return nil
 }
 
-func (rem *REM) healthLoop() error {
+func (rem *REM) healthLoopContext(runCtx context.Context) error {
 	const (
 		healthFailureThreshold = 3
 		opHealthDegraded       = "health-check-failed"
 		opHealthRecovered      = "health-check-recovered"
 	)
+	if runCtx == nil {
+		runCtx = context.Background()
+	}
 
 	consecutiveFailures := 0
 	unhealthy := false
-	for rem.Enable {
-		if err := remHealthCheck(rem.rpc, context.Background(), rem.ToProtobuf()); err != nil {
+	for rem.enabled() {
+		if err := rem.healthCheck(runCtx); err != nil {
 			consecutiveFailures++
 			logs.Log.Errorf("rem %s health check failed (%d/%d): %v", rem.Name, consecutiveFailures, healthFailureThreshold, err)
 			if consecutiveFailures >= healthFailureThreshold && !unhealthy {
@@ -258,9 +415,56 @@ func (rem *REM) healthLoop() error {
 			consecutiveFailures = 0
 			unhealthy = false
 		}
-		remSleep(30 * time.Second)
+		interval := rem.healthInterval
+		if interval <= 0 {
+			interval = 30 * time.Second
+		}
+		timer := time.NewTimer(interval)
+		select {
+		case <-timer.C:
+		case <-runCtx.Done():
+			if !timer.Stop() {
+				select {
+				case <-timer.C:
+				default:
+				}
+			}
+			return nil
+		}
 	}
 	return nil
+}
+
+func (rem *REM) healthCheck(runCtx context.Context) error {
+	if runCtx == nil {
+		runCtx = context.Background()
+	}
+	ctx, cancel := context.WithTimeout(runCtx, remHealthCheckTimeout)
+	defer cancel()
+	return remHealthCheck(rem.rpc, ctx, rem.ToProtobuf())
+}
+
+func nextREMRetryDelay(current, maximum time.Duration) time.Duration {
+	if current >= maximum || current > maximum/2 {
+		return maximum
+	}
+	return current * 2
+}
+
+func waitREMRetry(runCtx context.Context, delay time.Duration) bool {
+	timer := time.NewTimer(delay)
+	defer timer.Stop()
+	select {
+	case <-timer.C:
+		return true
+	case <-runCtx.Done():
+		return false
+	}
+}
+
+func (rem *REM) handleAgent(ag *agent.Agent) {
+	defer rem.ownAgents.Delete(ag.ID)
+	remConsoleHandler(rem.con, ag)
 }
 
 func (rem *REM) runtimeErrorHandler(scope string) core.GoErrorHandler {
@@ -268,10 +472,7 @@ func (rem *REM) runtimeErrorHandler(scope string) core.GoErrorHandler {
 	return core.CombineErrorHandlers(
 		core.LogGuardedError(label),
 		func(err error) {
-			rem.Enable = false
-			if rem.con != nil {
-				_ = rem.con.Close()
-			}
+			_ = rem.Close()
 			if core.EventBroker != nil {
 				core.EventBroker.Publish(core.Event{
 					EventType: consts.EventListener,
@@ -303,10 +504,10 @@ func (lns *listener) handlerRemAgentCtrl(job *clientpb.Job) error {
 	rem.(*REM).ownAgents.Store(a.ID, struct{}{})
 	job.Body = &clientpb.Job_RemAgent{
 		RemAgent: &clientpb.REMAgent{
-			Id:     a.Name(),
+			Id:          a.Name(),
 			InboundSide: a.InboundSide,
-			Local:  a.LocalURL.String(),
-			Remote: a.RemoteURL.String(),
+			Local:       a.LocalURL.String(),
+			Remote:      a.RemoteURL.String(),
 		},
 	}
 	return nil

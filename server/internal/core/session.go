@@ -37,9 +37,7 @@ var (
 	//                         example when the command is not supported on the platform
 	ErrUnknownMessageType = errors.New("unknown message type")
 
-	// ErrImplantSendTimeout - The implant did not respond prior to timeout deadline
-	ErrImplantSendTimeout = errors.New("implant timeout")
-	ErrSpiteStreamClosed  = errors.New("spite stream writer closed")
+	ErrSpiteStreamClosed = errors.New("spite stream writer closed")
 
 	// DB function variables — swappable in tests for mocking
 	sessionDBSave        = func(s *models.Session) error { return db.SaveSessionModel(s) }
@@ -273,6 +271,7 @@ type Session struct {
 	keepaliveMu      sync.Mutex
 	keepaliveEnabled bool
 	anyMu            sync.RWMutex
+	stateMu          sync.RWMutex
 
 	Ctx    context.Context
 	Cancel context.CancelFunc
@@ -355,6 +354,8 @@ func (w *SpiteStreamWriter) finish(err error) {
 }
 
 func (s *Session) Abstract() string {
+	s.stateMu.RLock()
+	defer s.stateMu.RUnlock()
 	if s.Os == nil {
 		return fmt.Sprintf("%s(%s)", s.Name, s.ID)
 	} else {
@@ -495,6 +496,12 @@ func (s *Session) expectedCheckinDeadline() (time.Time, bool) {
 	if s == nil {
 		return time.Time{}, false
 	}
+	s.stateMu.RLock()
+	defer s.stateMu.RUnlock()
+	return s.expectedCheckinDeadlineLocked()
+}
+
+func (s *Session) expectedCheckinDeadlineLocked() (time.Time, bool) {
 	lastCheckin := s.LastCheckinUnix()
 	if lastCheckin <= 0 {
 		return time.Time{}, false
@@ -538,10 +545,16 @@ func (s *Session) isAliveAt(now time.Time) bool {
 	if s == nil {
 		return false
 	}
+	s.stateMu.RLock()
+	defer s.stateMu.RUnlock()
+	return s.isAliveAtLocked(now)
+}
+
+func (s *Session) isAliveAtLocked(now time.Time) bool {
 	if s.Type == consts.BindPipeline {
 		return true
 	}
-	deadline, ok := s.expectedCheckinDeadline()
+	deadline, ok := s.expectedCheckinDeadlineLocked()
 	if !ok {
 		return true
 	}
@@ -553,66 +566,65 @@ func (s *Session) isAlived() bool {
 }
 
 func (s *Session) ToProtobuf() *clientpb.Session {
-	session := &clientpb.Session{
-		Type:        s.Type,
-		SessionId:   s.ID,
-		RawId:       s.RawID,
-		Note:        s.Note,
-		Name:        s.Name,
-		GroupName:   s.Group,
-		IsAlive:     s.isAlived(),
-		IsPrivilege: s.IsPrivilege,
-		Target:      s.Target,
-		PipelineId:  s.PipelineID,
-		ListenerId:  s.ListenerID,
-		Os:          s.Os,
-		Process:     s.Process,
-		LastCheckin: s.LastCheckinUnix(),
-		Filepath:    s.SessionContext.Filepath,
-		Workdir:     s.SessionContext.WorkDir,
-		Locate:      s.SessionContext.Locale,
-		Proxy:       s.SessionContext.ProxyURL,
-		Timer:       &implantpb.Timer{Expression: s.Expression, Jitter: s.Jitter},
-		CreatedAt:   s.CreatedAt.Unix(),
-		Tasks:       s.Tasks.ToProtobuf(),
-		Modules:     s.Modules,
-		Addons:      s.Addons,
-		KeyPair:     s.KeyPair, // 添加密钥对
-		Data:        s.Marshal(),
-	}
-	session.IsInitialized = s.Initialized
-	return session
+	pb := s.ToProtobufLite()
+	pb.Tasks = s.Tasks.ToProtobuf()
+	return pb
 }
 
 func (s *Session) ToProtobufLite() *clientpb.Session {
-	session := &clientpb.Session{
-		Type:        s.Type,
-		SessionId:   s.ID,
-		RawId:       s.RawID,
-		Note:        s.Note,
-		Name:        s.Name,
-		GroupName:   s.Group,
-		IsAlive:     s.isAlived(),
-		IsPrivilege: s.IsPrivilege,
-		Target:      s.Target,
-		PipelineId:  s.PipelineID,
-		ListenerId:  s.ListenerID,
-		Os:          s.Os,
-		Process:     s.Process,
-		LastCheckin: s.LastCheckinUnix(),
-		Filepath:    s.SessionContext.Filepath,
-		Workdir:     s.SessionContext.WorkDir,
-		Locate:      s.SessionContext.Locale,
-		Proxy:       s.SessionContext.ProxyURL,
-		Timer:       &implantpb.Timer{Expression: s.Expression, Jitter: s.Jitter},
-		CreatedAt:   s.CreatedAt.Unix(),
-		Modules:     s.Modules,
-		Addons:      s.Addons,
-		KeyPair:     s.KeyPair,
-		Data:        s.Marshal(),
+	s.stateMu.RLock()
+	defer s.stateMu.RUnlock()
+	return s.toProtobufLiteLocked(time.Now())
+}
+
+func (s *Session) toProtobufLiteLocked(now time.Time) *clientpb.Session {
+	modules := append([]string(nil), s.Modules...)
+	addons := cloneSessionAddons(s.Addons)
+	var keyPair *clientpb.KeyPair
+	if s.KeyPair != nil {
+		keyPair = proto.Clone(s.KeyPair).(*clientpb.KeyPair)
 	}
-	session.IsInitialized = s.Initialized
-	return session
+
+	return &clientpb.Session{
+		Type:          s.Type,
+		SessionId:     s.ID,
+		RawId:         s.RawID,
+		Note:          s.Note,
+		Name:          s.Name,
+		GroupName:     s.Group,
+		IsAlive:       s.isAliveAtLocked(now),
+		IsPrivilege:   s.IsPrivilege,
+		Target:        s.Target,
+		PipelineId:    s.PipelineID,
+		ListenerId:    s.ListenerID,
+		Os:            cloneSysInfoOS(s.Os),
+		Process:       cloneSysInfoProcess(s.Process),
+		LastCheckin:   s.LastCheckinUnix(),
+		Filepath:      s.SessionContext.Filepath,
+		Workdir:       s.SessionContext.WorkDir,
+		Locate:        s.SessionContext.Locale,
+		Proxy:         s.SessionContext.ProxyURL,
+		Timer:         &implantpb.Timer{Expression: s.Expression, Jitter: s.Jitter},
+		CreatedAt:     s.CreatedAt.Unix(),
+		Modules:       modules,
+		Addons:        addons,
+		KeyPair:       keyPair,
+		Data:          s.Marshal(),
+		IsInitialized: s.Initialized,
+	}
+}
+
+func cloneSessionAddons(addons []*implantpb.Addon) []*implantpb.Addon {
+	if addons == nil {
+		return nil
+	}
+	cloned := make([]*implantpb.Addon, len(addons))
+	for i, addon := range addons {
+		if addon != nil {
+			cloned[i] = proto.Clone(addon).(*implantpb.Addon)
+		}
+	}
+	return cloned
 }
 
 func (s *Session) Save() error {
@@ -620,6 +632,8 @@ func (s *Session) Save() error {
 }
 
 func (s *Session) ToModel() *models.Session {
+	s.stateMu.RLock()
+	name := s.Name
 	sessModel := &models.Session{
 		SessionID:   s.ID,
 		RawID:       s.RawID,
@@ -630,11 +644,12 @@ func (s *Session) ToModel() *models.Session {
 		Type:        s.Type,
 		PipelineID:  s.PipelineID,
 		ListenerID:  s.ListenerID,
-		IsAlive:     s.isAlived(),
+		IsAlive:     s.isAliveAtLocked(time.Now()),
 		LastCheckin: s.LastCheckinUnix(),
 		DataString:  s.Marshal(),
 	}
-	artifact, err := sessionDBGetArtifact(s.Name)
+	s.stateMu.RUnlock()
+	artifact, err := sessionDBGetArtifact(name)
 	if err == nil && artifact.ProfileName != "" {
 		if _, profileErr := sessionDBGetProfile(artifact.ProfileName); profileErr == nil {
 			sessModel.ProfileName = artifact.ProfileName
@@ -664,6 +679,169 @@ func (s *Session) SaveAndNotify(msg string) error {
 	return nil
 }
 
+func (s *Session) SetNote(note string) {
+	s.stateMu.Lock()
+	s.Note = note
+	s.stateMu.Unlock()
+}
+
+func (s *Session) SetGroup(group string) {
+	s.stateMu.Lock()
+	s.Group = group
+	s.stateMu.Unlock()
+}
+
+func (s *Session) SetTimer(expression string, jitter float64) {
+	if s == nil {
+		return
+	}
+	s.stateMu.Lock()
+	s.ensureSessionContextLocked()
+	s.Expression = expression
+	s.Jitter = jitter
+	s.stateMu.Unlock()
+}
+
+func (s *Session) TimerSnapshot() (string, float64) {
+	if s == nil {
+		return "", 0
+	}
+	s.stateMu.RLock()
+	defer s.stateMu.RUnlock()
+	if s.SessionContext == nil || s.SessionInfo == nil {
+		return "", 0
+	}
+	return s.Expression, s.Jitter
+}
+
+func (s *Session) ensureSessionContextLocked() {
+	if s.SessionContext == nil {
+		s.SessionContext = &client.SessionContext{}
+	}
+	if s.SessionInfo == nil {
+		s.SessionInfo = &client.SessionInfo{}
+	}
+}
+
+func (s *Session) RoutingSnapshot() (string, string) {
+	_, listenerID, pipelineID := s.ConnectionSnapshot()
+	return listenerID, pipelineID
+}
+
+func (s *Session) ConnectionSnapshot() (string, string, string) {
+	if s == nil {
+		return "", "", ""
+	}
+	s.stateMu.RLock()
+	defer s.stateMu.RUnlock()
+	return s.Target, s.ListenerID, s.PipelineID
+}
+
+func (s *Session) ReplaceAddons(addons []*implantpb.Addon) {
+	if s == nil {
+		return
+	}
+	s.stateMu.Lock()
+	s.ensureSessionContextLocked()
+	s.Addons = mergeSessionAddons(nil, addons)
+	s.stateMu.Unlock()
+}
+
+func (s *Session) MergeAddons(addons []*implantpb.Addon) {
+	if s == nil || len(addons) == 0 {
+		return
+	}
+	s.stateMu.Lock()
+	s.ensureSessionContextLocked()
+	s.Addons = mergeSessionAddons(s.Addons, addons)
+	s.stateMu.Unlock()
+}
+
+func (s *Session) AddonsSnapshot() []*implantpb.Addon {
+	if s == nil {
+		return nil
+	}
+	s.stateMu.RLock()
+	defer s.stateMu.RUnlock()
+	if s.SessionContext == nil {
+		return nil
+	}
+	return cloneSessionAddons(s.Addons)
+}
+
+func (s *Session) HasAddon(name string) bool {
+	if s == nil || name == "" {
+		return false
+	}
+	s.stateMu.RLock()
+	defer s.stateMu.RUnlock()
+	if s.SessionContext == nil {
+		return false
+	}
+	for _, addon := range s.Addons {
+		if addon != nil && addon.GetName() == name {
+			return true
+		}
+	}
+	return false
+}
+
+func mergeSessionAddons(existing, incoming []*implantpb.Addon) []*implantpb.Addon {
+	merged := make([]*implantpb.Addon, 0, len(existing)+len(incoming))
+	indexes := make(map[string]int, len(existing)+len(incoming))
+	appendOrReplace := func(addon *implantpb.Addon) {
+		if addon == nil || addon.GetName() == "" {
+			return
+		}
+		cloned := proto.Clone(addon).(*implantpb.Addon)
+		if index, ok := indexes[addon.GetName()]; ok {
+			merged[index] = cloned
+			return
+		}
+		indexes[addon.GetName()] = len(merged)
+		merged = append(merged, cloned)
+	}
+	for _, addon := range existing {
+		appendOrReplace(addon)
+	}
+	for _, addon := range incoming {
+		appendOrReplace(addon)
+	}
+	return merged
+}
+
+func (s *Session) ApplyModules(modules *implantpb.Modules, appendOnly bool) {
+	if modules == nil {
+		return
+	}
+	s.stateMu.Lock()
+	defer s.stateMu.Unlock()
+
+	if appendOnly {
+		s.Modules = append(s.Modules, modules.GetModules()...)
+		if bundleMap := modules.GetBundleMap(); len(bundleMap) > 0 {
+			if s.BundleMap == nil {
+				s.BundleMap = make(map[string]string)
+			}
+			for key, value := range bundleMap {
+				s.BundleMap[key] = value
+			}
+		}
+		return
+	}
+
+	s.Modules = append([]string(nil), modules.GetModules()...)
+	bundleMap := modules.GetBundleMap()
+	if bundleMap == nil {
+		s.BundleMap = nil
+		return
+	}
+	s.BundleMap = make(map[string]string, len(bundleMap))
+	for key, value := range bundleMap {
+		s.BundleMap[key] = value
+	}
+}
+
 // GetPipelineEncryptionKey returns the transport encryption key from the
 // session's pipeline config. Returns "" if not found.
 func (s *Session) GetPipelineEncryptionKey() string {
@@ -688,16 +866,27 @@ func (s *Session) GetPacketLength() int {
 }
 
 func (s *Session) findPipeline() (*clientpb.Pipeline, bool) {
-	if s == nil || s.PipelineID == "" {
+	if s == nil {
 		return nil, false
 	}
-	if s.ListenerID != "" {
-		return Listeners.FindByListener(s.ListenerID, s.PipelineID)
+	s.stateMu.RLock()
+	pipelineID := s.PipelineID
+	listenerID := s.ListenerID
+	s.stateMu.RUnlock()
+	if pipelineID == "" {
+		return nil, false
 	}
-	return Listeners.Find(s.PipelineID)
+	if listenerID != "" {
+		return Listeners.FindByListener(listenerID, pipelineID)
+	}
+	return Listeners.Find(pipelineID)
 }
 
 func (s *Session) Update(req *clientpb.RegisterSession) {
+	if req == nil || req.RegisterData == nil {
+		return
+	}
+	s.stateMu.Lock()
 	s.Name = req.RegisterData.Name
 	s.PipelineID = req.PipelineId
 	s.ListenerID = req.ListenerId
@@ -706,15 +895,18 @@ func (s *Session) Update(req *clientpb.RegisterSession) {
 		s.Expression = req.RegisterData.Timer.Expression
 		s.Jitter = req.RegisterData.Timer.Jitter
 	}
-	s.SessionContext.Update(req)
-
+	s.Modules = append([]string(nil), req.RegisterData.Module...)
+	s.Addons = cloneSessionAddons(req.RegisterData.Addons)
 	// SecureManager现在使用固定的100次交互计数，不需要更新间隔
 
+	shouldPublishInit := false
 	if req.RegisterData.Sysinfo != nil {
-		if !s.Initialized {
-			s.Publish(consts.CtrlSessionInit, fmt.Sprintf("session %s init", s.ID), true, true)
-		}
-		s.UpdateSysInfo(req.RegisterData.Sysinfo)
+		shouldPublishInit = !s.Initialized
+		s.updateSysInfoLocked(req.RegisterData.Sysinfo)
+	}
+	s.stateMu.Unlock()
+	if shouldPublishInit {
+		s.Publish(consts.CtrlSessionInit, fmt.Sprintf("session %s init", s.ID), true, true)
 	}
 
 	err := s.Save()
@@ -727,6 +919,18 @@ func (s *Session) UpdateSysInfo(info *implantpb.SysInfo) {
 	if info == nil {
 		return
 	}
+	s.stateMu.Lock()
+	defer s.stateMu.Unlock()
+	s.updateSysInfoLocked(info)
+}
+
+func (s *Session) SetWorkDir(workDir string) {
+	s.stateMu.Lock()
+	s.WorkDir = workDir
+	s.stateMu.Unlock()
+}
+
+func (s *Session) updateSysInfoLocked(info *implantpb.SysInfo) {
 	s.Initialized = true
 	osInfo := mergeSysInfoOS(s.Os, info.GetOs())
 	processInfo := mergeSysInfoProcess(s.Process, info.GetProcess())
@@ -887,15 +1091,20 @@ func hasSignatureMetadata(value *implantpb.Process) bool {
 }
 
 func (s *Session) FillSysInfo() {
-	artifact, err := sessionDBGetArtifact(s.Name)
+	s.stateMu.RLock()
+	name := s.Name
+	s.stateMu.RUnlock()
+	artifact, err := sessionDBGetArtifact(name)
 	if err != nil {
-		logs.Log.Errorf("failed to find atrtifact %s: %s", s.Name, err)
+		logs.Log.Errorf("failed to find atrtifact %s: %s", name, err)
 		return
 	}
+	s.stateMu.Lock()
 	s.Os = &implantpb.Os{
 		Name: artifact.Os,
 		Arch: artifact.Arch,
 	}
+	s.stateMu.Unlock()
 }
 
 func (s *Session) Publish(Op string, msg string, notify bool, important bool) {
@@ -930,17 +1139,6 @@ func (s *Session) NewTask(name string, total int) *Task {
 // Request
 func (s *Session) Request(msg *clientpb.SpiteRequest, stream grpc.ServerStream) error {
 	return stream.SendMsg(msg)
-}
-
-func (s *Session) RequestAndWait(msg *clientpb.SpiteRequest, stream grpc.ServerStream, timeout time.Duration) (*implantpb.Spite, error) {
-	ch := make(chan *implantpb.Spite, 16)
-	s.StoreResp(msg.Task.TaskId, ch)
-	err := s.Request(msg, stream)
-	if err != nil {
-		return nil, err
-	}
-	resp := <-ch
-	return resp, nil
 }
 
 // RequestWithStream - 'async' means that the response is not returned immediately, but is returned through the channel 'ch
@@ -1042,15 +1240,6 @@ func (s *Session) DeleteResp(taskId uint32) {
 	val, loaded := s.responses.LoadAndDelete(taskId)
 	if loaded {
 		close(val.(chan *implantpb.Spite))
-	}
-}
-
-// UpdateKeyPair 更新KeyPair并同步到SecureManager
-func (s *Session) UpdateKeyPair(keyPair *clientpb.KeyPair) {
-	s.SessionContext.KeyPair = keyPair
-	// 更新SecureManager中的KeyPair引用
-	if s.SecureManager != nil {
-		s.SecureManager.UpdateKeyPair(keyPair)
 	}
 }
 
@@ -1223,14 +1412,21 @@ func (s *Session) initializeSecureManager(req *clientpb.RegisterSession) error {
 }
 
 func (s *Session) UpdatePublicKey(key string) {
-	s.UpdateKeyPairFieldsAndPushCtrl(key, "")
+	s.UpdateKeyPair(key, "")
 }
 
 func (s *Session) UpdatePrivateKey(key string) {
-	s.UpdateKeyPairFieldsAndPushCtrl("", key)
+	s.UpdateKeyPair("", key)
 }
 
-func (s *Session) UpdateKeyPairFieldsAndPushCtrl(publicKey string, privateKey string) {
+// UpdateKeyPair merges the given non-empty public/private key fields into the
+// session's current key pair, syncs the SecureManager, and pushes the update to
+// the listener; an empty field leaves the existing value unchanged. The merge
+// and store run under a single write lock so concurrent field updates (e.g. a
+// re-register updating the public key while a key rotation updates both) cannot
+// read the same base snapshot and clobber each other.
+func (s *Session) UpdateKeyPair(publicKey string, privateKey string) {
+	s.stateMu.Lock()
 	next := &clientpb.KeyPair{}
 	if s.KeyPair != nil {
 		next.PublicKey = s.KeyPair.PublicKey
@@ -1242,7 +1438,16 @@ func (s *Session) UpdateKeyPairFieldsAndPushCtrl(publicKey string, privateKey st
 	if privateKey != "" {
 		next.PrivateKey = privateKey
 	}
-	s.UpdateKeyPair(next)
+	// next is freshly allocated here and shared with no caller, so no defensive
+	// clone is needed before storing it.
+	s.SessionContext.KeyPair = next
+	if s.SecureManager != nil {
+		// Keep the session and manager updates in the same critical section so
+		// concurrent callers cannot publish an older manager value after a newer
+		// session value has already been stored.
+		s.SecureManager.UpdateKeyPair(next)
+	}
+	s.stateMu.Unlock()
 	s.PushCtrl()
 }
 

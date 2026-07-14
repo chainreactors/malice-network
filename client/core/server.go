@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"strconv"
 	"sync"
+	"time"
 
 	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
@@ -17,9 +19,12 @@ import (
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 )
 
 var ErrLuaVMDead = fmt.Errorf("lua vm is dead")
+
+const eventStreamHeaderTimeout = 10 * time.Second
 
 func wrapToTaskContext(event *clientpb.Event) *clientpb.TaskContext {
 	return &clientpb.TaskContext{
@@ -31,13 +36,15 @@ func wrapToTaskContext(event *clientpb.Event) *clientpb.TaskContext {
 
 type Server struct {
 	*client.ServerState
-	taskMessageMu      sync.Mutex
-	taskMessages       map[string]string
-	eventHookMu        sync.RWMutex
-	eventHookIDs       map[client.EventCondition][]uint64
-	nextEventHookID    uint64
-	eventHandlerMu     sync.Mutex
-	eventHandlerActive bool
+	taskMessageMu         sync.Mutex
+	taskMessages          map[string]string
+	eventHookMu           sync.RWMutex
+	eventHookIDs          map[client.EventCondition][]uint64
+	nextEventHookID       uint64
+	eventHandlerMu        sync.Mutex
+	eventHandlerActive    bool
+	suppressStartupOutput bool
+	startupHistoryPending bool
 
 	// Quiet suppresses console event output while still updating internal state.
 	Quiet bool
@@ -74,6 +81,18 @@ func (s *Server) EventHandlerRunning() bool {
 	s.eventHandlerMu.Lock()
 	defer s.eventHandlerMu.Unlock()
 	return s.eventHandlerActive
+}
+
+func (s *Server) needsStartupHistory() bool {
+	s.eventHandlerMu.Lock()
+	defer s.eventHandlerMu.Unlock()
+	return s.startupHistoryPending
+}
+
+func (s *Server) markStartupHistoryComplete() {
+	s.eventHandlerMu.Lock()
+	s.startupHistoryPending = false
+	s.eventHandlerMu.Unlock()
 }
 
 func taskMessageKey(sessionID string, taskID uint32) string {
@@ -123,12 +142,12 @@ func NewServerWithOptions(conn *grpc.ClientConn, config *mtls.ClientConfig, supp
 	if err != nil {
 		return nil, err
 	}
-	ser := &Server{ServerState: s, taskMessages: make(map[string]string)}
-	events, err := ser.GetEvent(context.Background(), &clientpb.Int{})
-	if err != nil {
-		return nil, err
+	ser := &Server{
+		ServerState:           s,
+		taskMessages:          make(map[string]string),
+		suppressStartupOutput: suppressStartupOutput,
+		startupHistoryPending: true,
 	}
-	ser.replayCachedEvents(events.GetEvents(), suppressStartupOutput)
 	return ser, nil
 }
 
@@ -437,18 +456,82 @@ func (s *Server) EventHandler() {
 	}
 	defer s.releaseEventHandler()
 
-	eventStream, err := s.Rpc.Events(context.Background(), &clientpb.Empty{})
+	replayStartupHistory := s.needsStartupHistory()
+	eventBaseContext, cancelEventStream := context.WithCancel(context.Background())
+	defer cancelEventStream()
+	eventContext := eventBaseContext
+	if replayStartupHistory {
+		eventContext = metadata.NewOutgoingContext(eventContext, metadata.Pairs(
+			consts.EventStreamHistoryReplayHeader, "true",
+		))
+	}
+	eventStream, err := s.Rpc.Events(eventContext, &clientpb.Empty{})
 	if err != nil {
 		return
 	}
-	// Wait until the server has installed the event subscription before taking
-	// a new snapshot. Events produced during Update then remain queued in order.
-	if _, err := eventStream.Header(); err != nil {
+	type headerResult struct {
+		header metadata.MD
+		err    error
+	}
+	headerCh := make(chan headerResult, 1)
+	go func() {
+		header, headerErr := eventStream.Header()
+		headerCh <- headerResult{header: header, err: headerErr}
+	}()
+	headerTimer := time.NewTimer(eventStreamHeaderTimeout)
+	defer headerTimer.Stop()
+	var header metadata.MD
+	select {
+	case result := <-headerCh:
+		if result.err != nil {
+			return
+		}
+		header = result.header
+	case <-headerTimer.C:
+		client.Log.Warnf("event stream header timed out after %s\n", eventStreamHeaderTimeout)
 		return
 	}
-	s.Update()
-	if s.Session != nil {
-		s.UpdateSession(s.GetInteractive().SessionId)
+	if replayStartupHistory {
+		historyCount := 0
+		if values := header.Get(consts.EventStreamHistoryCountHeader); len(values) > 0 {
+			parsed, parseErr := strconv.Atoi(values[0])
+			if parseErr != nil || parsed < 0 {
+				client.Log.Warnf("invalid event history count %q\n", values[0])
+				return
+			}
+			historyCount = parsed
+		} else {
+			// Older servers cannot provide an atomic history/live cut. Fetching
+			// history after subscription avoids loss but may replay a concurrent
+			// important event once; this is an intentional compatibility fallback.
+			historyContext, cancelHistory := context.WithTimeout(eventBaseContext, eventStreamHeaderTimeout)
+			history, historyErr := s.GetEvent(historyContext, &clientpb.Int{})
+			cancelHistory()
+			if historyErr != nil {
+				client.Log.Warnf("failed to load event history: %v\n", historyErr)
+				return
+			}
+			s.replayCachedEvents(history.GetEvents(), s.suppressStartupOutput)
+		}
+		for i := 0; i < historyCount; i++ {
+			event, recvErr := eventStream.Recv()
+			if recvErr != nil {
+				client.Log.Warnf("event history receive failed: %v\n", recvErr)
+				return
+			}
+			if !s.suppressStartupOutput && event != nil && event.Type != consts.EventTask {
+				s.handleEventOutput(event)
+			}
+		}
+		s.markStartupHistoryComplete()
+	}
+	if err := s.Update(); err != nil {
+		client.Log.Warnf("failed to refresh server state: %v\n", err)
+	}
+	if session := s.Get(); session != nil {
+		if _, err := s.UpdateSession(session.SessionId); err != nil {
+			client.Log.Warnf("failed to refresh active session %s: %v\n", session.SessionId, err)
+		}
 	}
 	client.Log.Info("starting event loop\n")
 	defer func() {
@@ -456,12 +539,18 @@ func (s *Server) EventHandler() {
 	}()
 	for {
 		event, err := eventStream.Recv()
-		if err == io.EOF || event == nil {
+		if err != nil {
+			if err != io.EOF {
+				client.Log.Warnf("event stream receive failed: %v\n", err)
+			}
+			return
+		}
+		if event == nil {
 			return
 		}
 		s.dispatchEventHooks(event)
 
-		if fn, ok := s.EventCallback[event.Op]; ok {
+		if fn, ok := s.GetEventCallback(event.Op); ok {
 			fn(event)
 		}
 		s.HandlerEvent(event)
@@ -509,7 +598,6 @@ func (s *Server) HandlerEvent(event *clientpb.Event) {
 	s.ReconcileEvent(event)
 	s.handleEventOutput(event)
 }
-
 func (s *Server) handleEventOutput(event *clientpb.Event) {
 	if s == nil || event == nil {
 		return

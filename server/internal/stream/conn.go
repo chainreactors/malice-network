@@ -2,9 +2,12 @@ package cryptostream
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 	"io"
 	"net"
 	"sync"
+	"time"
 )
 
 func NewCryptoConn(conn net.Conn, cryptor Cryptor) *CryptoConn {
@@ -76,6 +79,36 @@ func (sc *CryptoConn) Read(data []byte) (int, error) {
 
 func (sc *CryptoConn) Close() error {
 	return sc.ReadWriteCloser.Close()
+}
+
+func (sc *CryptoConn) SetDeadline(deadline time.Time) error {
+	if sc.Conn != nil {
+		return sc.Conn.SetDeadline(deadline)
+	}
+	if conn, ok := sc.ReadWriteCloser.(interface{ SetDeadline(time.Time) error }); ok {
+		return conn.SetDeadline(deadline)
+	}
+	return fmt.Errorf("set deadline: %w", errors.ErrUnsupported)
+}
+
+func (sc *CryptoConn) SetReadDeadline(deadline time.Time) error {
+	if sc.Conn != nil {
+		return sc.Conn.SetReadDeadline(deadline)
+	}
+	if conn, ok := sc.ReadWriteCloser.(interface{ SetReadDeadline(time.Time) error }); ok {
+		return conn.SetReadDeadline(deadline)
+	}
+	return fmt.Errorf("set read deadline: %w", errors.ErrUnsupported)
+}
+
+func (sc *CryptoConn) SetWriteDeadline(deadline time.Time) error {
+	if sc.Conn != nil {
+		return sc.Conn.SetWriteDeadline(deadline)
+	}
+	if conn, ok := sc.ReadWriteCloser.(interface{ SetWriteDeadline(time.Time) error }); ok {
+		return conn.SetWriteDeadline(deadline)
+	}
+	return fmt.Errorf("set write deadline: %w", errors.ErrUnsupported)
 }
 
 func (sc *CryptoConn) encrypt(data []byte) ([]byte, error) {

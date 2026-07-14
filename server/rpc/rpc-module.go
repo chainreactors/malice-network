@@ -19,20 +19,7 @@ func applyModulesResponse(sess *core.Session, spite *implantpb.Spite, appendOnly
 	if modules == nil {
 		return
 	}
-	if appendOnly {
-		sess.Modules = append(sess.Modules, modules.Modules...)
-		if bundleMap := modules.GetBundleMap(); len(bundleMap) > 0 {
-			if sess.BundleMap == nil {
-				sess.BundleMap = make(map[string]string)
-			}
-			for k, v := range bundleMap {
-				sess.BundleMap[k] = v
-			}
-		}
-	} else {
-		sess.Modules = modules.Modules
-		sess.BundleMap = modules.GetBundleMap()
-	}
+	sess.ApplyModules(modules, appendOnly)
 	sess.SaveAndNotify("")
 }
 

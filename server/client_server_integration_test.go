@@ -100,7 +100,7 @@ func TestClientServerControlPlaneIntegration(t *testing.T) {
 	testsupport.WaitForEvent(t, stopEvents, "stop pipeline event")
 
 	testsupport.WaitForCondition(t, 5*time.Second, func() bool {
-		_, ok := server.Pipelines[pipeline.Name]
-		return !ok
-	}, "event reconciliation to remove stopped pipeline")
+		cached, err := server.FindCachedPipeline(pipeline.Name, nil)
+		return err == nil && !cached.GetEnable()
+	}, "event reconciliation to retain stopped pipeline as disabled")
 }

@@ -25,9 +25,34 @@ import (
 )
 
 var (
-	Listener *listener
+	currentListener  *listener
+	listenerGlobalMu sync.Mutex
 	// ListenerSessions 在 listener 层维护的 Sessions map (rawID -> Session)
 )
+
+func setCurrentListener(lns *listener) {
+	listenerGlobalMu.Lock()
+	currentListener = lns
+	listenerGlobalMu.Unlock()
+}
+
+func clearCurrentListener(lns *listener) {
+	listenerGlobalMu.Lock()
+	if currentListener == lns {
+		currentListener = nil
+	}
+	listenerGlobalMu.Unlock()
+}
+
+func CloseCurrentListener() error {
+	listenerGlobalMu.Lock()
+	lns := currentListener
+	listenerGlobalMu.Unlock()
+	if lns == nil {
+		return nil
+	}
+	return lns.Close()
+}
 
 var openListenerJobStream = func(client listenerrpc.ListenerRPCClient, ctx context.Context) (listenerrpc.ListenerRPC_JobStreamClient, error) {
 	return client.JobStream(ctx)
@@ -73,7 +98,7 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig, ser
 		return err
 	}
 	core.GoGuarded("listener-job-stream:"+lns.ID(), lns.Handler, core.LogGuardedError("listener-job-stream:"+lns.ID()))
-	Listener = lns
+	setCurrentListener(lns)
 
 	for _, tcpPipeline := range cfg.TcpPipelines {
 		pipeline, err := tcpPipeline.ToProtobuf(lns.Name)
@@ -267,9 +292,7 @@ func (lns *listener) close() error {
 		}
 	}
 
-	if Listener == lns {
-		Listener = nil
-	}
+	clearCurrentListener(lns)
 
 	return errors.Join(errs...)
 }
@@ -526,9 +549,17 @@ func (lns *listener) startPipeline(pipelinepb *clientpb.Pipeline) (core.Pipeline
 		return nil, fmt.Errorf("pipeline is nil")
 	}
 
-	// Idempotency: if pipeline already exists locally, treat start as a no-op.
+	// Keep active pipelines idempotent, but replace a runtime that previously
+	// failed and marked itself disabled.
 	if existing := lns.pipelines.Get(pipelinepb.Name); existing != nil {
-		return existing, nil
+		state := existing.ToProtobuf()
+		if state != nil && state.Enable {
+			return existing, nil
+		}
+		if err := errors.Join(existing.Close(), lns.cleanupForwardPipelineRuntime(existing.ID())); err != nil {
+			return nil, fmt.Errorf("cleanup stale pipeline %s: %w", existing.ID(), err)
+		}
+		lns.pipelines.Delete(existing.ID())
 	}
 
 	var p core.Pipeline
@@ -575,10 +606,14 @@ func (lns *listener) cleanupForwardPipelineRuntime(pipelineID string) error {
 	if pipelineID == "" {
 		return nil
 	}
+	var release func()
+	var streamErr error
 	if rpc, ok := lns.pipelineRPC.(*forwardPipelineRPC); ok {
-		rpc.removeStream(lns.ID(), pipelineID)
+		release, streamErr = rpc.retireStream(lns.ID(), pipelineID)
+		defer release()
 	}
-	return core.Forwarders.Remove(core.PipelineRuntimeKey(lns.ID(), pipelineID))
+	forwardErr := core.Forwarders.Remove(core.PipelineRuntimeKey(lns.ID(), pipelineID))
+	return errors.Join(streamErr, forwardErr)
 }
 
 func (lns *listener) handleStartWebsite(job *clientpb.Job) error {
@@ -747,13 +782,16 @@ func (lns *listener) handleStartRem(job *clientpb.Job) error {
 	// Idempotency: REM already started in this listener process.
 	if existing := lns.pipelines.Get(pipe.Name); existing != nil {
 		remPipeline, ok := existing.(*REM)
-		if ok && remPipeline.Enable {
+		if ok && remPipeline.enabled() {
 			// Still healthy — just sync its current state.
 			_, err := lns.Rpc.SyncPipeline(lns.Context(), existing.ToProtobuf())
 			return err
 		}
 		// Dead pipeline (crashed via runtimeErrorHandler) — remove the stale
 		// entry so we can create a fresh one below.
+		if err := existing.Close(); err != nil {
+			return fmt.Errorf("cleanup stale REM pipeline %s: %w", existing.ID(), err)
+		}
 		lns.pipelines.Delete(existing.ID())
 	}
 
@@ -767,9 +805,9 @@ func (lns *listener) handleStartRem(job *clientpb.Job) error {
 		return err
 	}
 
-	_, err = lns.Rpc.SyncPipeline(lns.Context(), rem.ToProtobuf())
-	if err != nil {
-		return err
+	_, syncErr := lns.Rpc.SyncPipeline(lns.Context(), rem.ToProtobuf())
+	if syncErr != nil {
+		return errors.Join(syncErr, rem.Close())
 	}
 
 	lns.pipelines.Add(rem)

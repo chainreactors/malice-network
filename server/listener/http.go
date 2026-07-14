@@ -14,12 +14,21 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"sync"
+	"time"
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/parser/pulse"
 	cryptostream "github.com/chainreactors/malice-network/server/internal/stream"
+)
+
+var (
+	httpListen        = net.Listen
+	httpStartWithCmux = func(pipeline *HTTPPipeline, ln net.Listener, mux *http.ServeMux) error {
+		return pipeline.startWithCmux(ln, mux)
+	}
 )
 
 func NewHttpPipeline(rpc pipelineRPCClient, pipeline *clientpb.Pipeline) (*HTTPPipeline, error) {
@@ -47,14 +56,17 @@ func NewHttpPipeline(rpc pipelineRPCClient, pipeline *clientpb.Pipeline) (*HTTPP
 }
 
 type HTTPPipeline struct {
-	srv      net.Listener
-	rpc      pipelineRPCClient
-	Name     string
-	Port     uint16
-	Host     string
-	Enable   bool
-	Target   []string
-	CertName string
+	stateMu   sync.RWMutex
+	starting  bool
+	startDone chan struct{}
+	srv       net.Listener
+	rpc       pipelineRPCClient
+	Name      string
+	Port      uint16
+	Host      string
+	Enable    bool
+	Target    []string
+	CertName  string
 	*core.PipelineConfig
 	Headers    map[string][]string
 	ErrorPage  []byte
@@ -63,6 +75,9 @@ type HTTPPipeline struct {
 }
 
 func (pipeline *HTTPPipeline) ToProtobuf() *clientpb.Pipeline {
+	pipeline.stateMu.RLock()
+	enabled := pipeline.Enable
+	pipeline.stateMu.RUnlock()
 	params := (&implanttypes.PipelineParams{
 		Headers:    pipeline.Headers,
 		ErrorPage:  string(pipeline.ErrorPage),
@@ -72,7 +87,7 @@ func (pipeline *HTTPPipeline) ToProtobuf() *clientpb.Pipeline {
 
 	p := &clientpb.Pipeline{
 		Name:       pipeline.Name,
-		Enable:     pipeline.Enable,
+		Enable:     enabled,
 		Type:       consts.HTTPPipeline,
 		ListenerId: pipeline.ListenerID,
 		Parser:     pipeline.Parser,
@@ -98,42 +113,48 @@ func (pipeline *HTTPPipeline) ID() string {
 }
 
 func (pipeline *HTTPPipeline) Close() error {
+	pipeline.stateMu.Lock()
 	pipeline.Enable = false
-	if pipeline.srv != nil {
-		ln := pipeline.srv
-		pipeline.srv = nil
-		if err := ln.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
-			return err
-		}
+	if pipeline.starting {
+		done := pipeline.startDone
+		pipeline.stateMu.Unlock()
+		<-done
 		return nil
 	}
-	return nil
+	ln := pipeline.srv
+	pipeline.srv = nil
+	pipeline.stateMu.Unlock()
+	if ln == nil {
+		return nil
+	}
+	return closePipelineListener(ln)
 }
 
-func (pipeline *HTTPPipeline) Start() error {
-	if pipeline.Enable {
+func (pipeline *HTTPPipeline) Start() (err error) {
+	if !pipeline.beginStart() {
 		return nil
 	}
+
 	forward, err := core.NewForward(pipeline.rpc, pipeline)
 	if err != nil {
+		pipeline.abortStart()
 		return err
 	}
 	forward.ListenerId = pipeline.ListenerID
-	core.Forwarders.Add(forward)
-	core.GoGuarded("http-forward-recv:"+pipeline.Name, func() error {
-		for {
-			msg, err := forward.Stream.Recv()
-			if err != nil {
-				if !pipeline.Enable {
-					return nil
-				}
-				return fmt.Errorf("http pipeline %s forward recv: %w", pipeline.Name, err)
+	committed := false
+	registered := false
+	defer func() {
+		if !committed {
+			if registered {
+				err = errors.Join(err, pipeline.rollbackCommittedStart(forward))
+			} else {
+				err = errors.Join(err, forward.Abort())
 			}
-			dispatchForwardTaskRequest("http", pipeline.Name, msg)
+			pipeline.abortStart()
 		}
-	}, pipeline.runtimeErrorHandler("forward recv loop"))
+	}()
 
-	ln, err := net.Listen("tcp", fmt.Sprintf("%s:%d", pipeline.Host, pipeline.Port))
+	ln, err := httpListen("tcp", fmt.Sprintf("%s:%d", pipeline.Host, pipeline.Port))
 	if err != nil {
 		return err
 	}
@@ -141,14 +162,16 @@ func (pipeline *HTTPPipeline) Start() error {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", pipeline.handler)
 
+	if !pipeline.commitStart(ln, forward) {
+		return closePipelineListener(ln)
+	}
+	registered = true
 	if pipeline.TLSConfig != nil && pipeline.TLSConfig.Enable && pipeline.TLSConfig.Cert != nil {
-		err := pipeline.startWithCmux(ln, mux)
+		err := httpStartWithCmux(pipeline, ln, mux)
 		if err != nil {
 			return err
 		}
 	} else {
-		// 非 TLS 模式，使用原有逻辑
-		pipeline.srv = ln
 		server := NewHTTPServer(mux)
 		core.GoGuarded("http-serve:"+pipeline.Name, func() error {
 			if err := serveHTTP(server, ln); err != nil && err != http.ErrServerClosed && !errors.Is(err, net.ErrClosed) {
@@ -157,11 +180,103 @@ func (pipeline *HTTPPipeline) Start() error {
 			return nil
 		}, pipeline.runtimeErrorHandler("serve loop"))
 	}
+	if !pipeline.finishStart() {
+		return nil
+	}
+	committed = true
+	pipeline.startForwardRecv(forward)
 
 	logs.Log.Infof("pipeline.http - start host=%s port=%d parser=%s tls=%t",
 		pipeline.Host, pipeline.Port, pipeline.Parser, pipeline.TLSConfig.Enable)
-	pipeline.Enable = true
 	return nil
+}
+
+func (pipeline *HTTPPipeline) enabled() bool {
+	pipeline.stateMu.RLock()
+	defer pipeline.stateMu.RUnlock()
+	return pipeline.Enable
+}
+
+func (pipeline *HTTPPipeline) beginStart() bool {
+	for {
+		pipeline.stateMu.Lock()
+		if pipeline.starting {
+			done := pipeline.startDone
+			pipeline.stateMu.Unlock()
+			<-done
+			continue
+		}
+		if pipeline.Enable {
+			pipeline.stateMu.Unlock()
+			return false
+		}
+		pipeline.Enable = true
+		pipeline.starting = true
+		pipeline.startDone = make(chan struct{})
+		pipeline.stateMu.Unlock()
+		return true
+	}
+}
+
+func (pipeline *HTTPPipeline) abortStart() {
+	pipeline.stateMu.Lock()
+	pipeline.starting = false
+	pipeline.Enable = false
+	done := pipeline.startDone
+	pipeline.startDone = nil
+	if done != nil {
+		close(done)
+	}
+	pipeline.stateMu.Unlock()
+}
+
+func (pipeline *HTTPPipeline) commitStart(ln net.Listener, forward *core.Forward) bool {
+	pipeline.stateMu.Lock()
+	defer pipeline.stateMu.Unlock()
+	if !pipeline.Enable {
+		return false
+	}
+	pipeline.srv = ln
+	core.Forwarders.Add(forward)
+	return true
+}
+
+func (pipeline *HTTPPipeline) finishStart() bool {
+	pipeline.stateMu.Lock()
+	defer pipeline.stateMu.Unlock()
+	if !pipeline.Enable {
+		return false
+	}
+	pipeline.starting = false
+	done := pipeline.startDone
+	pipeline.startDone = nil
+	close(done)
+	return true
+}
+
+func (pipeline *HTTPPipeline) rollbackCommittedStart(forward *core.Forward) error {
+	forwardErr := core.Forwarders.RemoveIfSame(forward.RuntimeKey(), forward)
+	pipeline.stateMu.Lock()
+	ln := pipeline.srv
+	pipeline.srv = nil
+	pipeline.Enable = false
+	pipeline.stateMu.Unlock()
+	return errors.Join(forwardErr, closePipelineListener(ln))
+}
+
+func (pipeline *HTTPPipeline) startForwardRecv(forward *core.Forward) {
+	core.GoGuarded("http-forward-recv:"+pipeline.Name, func() error {
+		for {
+			msg, err := forward.Stream.Recv()
+			if err != nil {
+				if !pipeline.enabled() {
+					return nil
+				}
+				return fmt.Errorf("http pipeline %s forward recv: %w", pipeline.Name, err)
+			}
+			dispatchForwardTaskRequest("http", pipeline.Name, msg)
+		}
+	}, pipeline.runtimeErrorHandler("forward recv loop"))
 }
 
 // startWithCmux 使用 cmux 实现 HTTP TLS 和非 TLS 的端口复用
@@ -176,9 +291,6 @@ func (pipeline *HTTPPipeline) startWithCmux(ln net.Listener, mux *http.ServeMux)
 	if err != nil {
 		return err
 	}
-
-	// 保存服务器引用用于关闭
-	pipeline.srv = ln
 
 	return nil
 }
@@ -313,6 +425,10 @@ func (h *httpReadWriter) Close() error {
 	return nil
 }
 
+func (h *httpReadWriter) SetReadDeadline(deadline time.Time) error {
+	return http.NewResponseController(h.writer).SetReadDeadline(deadline)
+}
+
 func (h *httpReadWriter) RemoteAddr() net.Addr {
 	return h.remoteAddr
 }
@@ -348,10 +464,7 @@ func (pipeline *HTTPPipeline) runtimeErrorHandler(scope string) core.GoErrorHand
 	return core.CombineErrorHandlers(
 		core.LogGuardedError(label),
 		func(err error) {
-			pipeline.Enable = false
-			if pipeline.srv != nil {
-				_ = pipeline.srv.Close()
-			}
+			_ = pipeline.Close()
 			if core.EventBroker != nil {
 				core.EventBroker.Publish(core.Event{
 					EventType: consts.EventListener,

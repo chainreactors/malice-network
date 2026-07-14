@@ -96,7 +96,7 @@ func (rpc *Server) SessionManage(ctx context.Context, req *clientpb.BasicUpdateS
 	case "note":
 		session, err := core.Sessions.Get(req.SessionId)
 		if err == nil {
-			session.Note = req.Arg
+			session.SetNote(req.Arg)
 			if err = session.SaveAndNotify(fmt.Sprintf("session %s note updated to %s", req.SessionId, req.Arg)); err != nil {
 				return nil, err
 			}
@@ -109,7 +109,7 @@ func (rpc *Server) SessionManage(ctx context.Context, req *clientpb.BasicUpdateS
 	case "group":
 		session, err := core.Sessions.Get(req.SessionId)
 		if err == nil {
-			session.Group = req.Arg
+			session.SetGroup(req.Arg)
 			if err = session.SaveAndNotify(fmt.Sprintf("session %s group updated to %s", req.SessionId, req.Arg)); err != nil {
 				return nil, err
 			}

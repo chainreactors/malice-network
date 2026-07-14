@@ -261,13 +261,12 @@ func TestForwardDispatchMissingConnectionCompletesTaskAcrossPollingPipelines(t *
 			})
 
 			deadline := time.Now().Add(500 * time.Millisecond)
-			for time.Now().Before(deadline) {
-				if task.Finished() {
-					return
-				}
-				time.Sleep(10 * time.Millisecond)
+			for !task.IsClosed() && time.Now().Before(deadline) {
+				time.Sleep(5 * time.Millisecond)
 			}
-			t.Fatalf("task %s stayed running after %s forward dispatch lost the connection", task.TaskID(), tc.name)
+			if !task.IsClosed() || !task.Finished() {
+				t.Fatalf("task %s stayed running after %s forward dispatch lost the connection", task.TaskID(), tc.name)
+			}
 		})
 	}
 }

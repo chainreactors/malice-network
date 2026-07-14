@@ -24,8 +24,10 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.24.13"
-      - run: go version
+          go-version: "1.25.0"
+
+      - name: Show Go version
+        run: go version
 
       - name: Configure Git
         run: |
@@ -75,4 +77,3 @@ jobs:
             dist/vsix/iom.vsix
         env:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
-

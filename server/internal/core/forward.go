@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"strconv"
 	"sync"
@@ -19,6 +20,10 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
 )
+
+const forwardShutdownTimeout = 5 * time.Second
+
+var ErrForwardShutdownTimeout = errors.New("forward shutdown timed out")
 
 func forwardRawIDBytes(rawID uint32) []byte {
 	data := make([]byte, 4)
@@ -109,13 +114,30 @@ func (f *forwarders) Remove(id string) error {
 	if fw == nil {
 		return nil
 	}
-	f.forwarders.Delete(id)
-	fw.shutdown()
-	err := fw.Close()
-	if err != nil {
-		return err
+	return f.removeIfSame(id, fw)
+}
+
+// RemoveIfSame atomically detaches fw when it is still the registered
+// generation for id, then aborts only that generation. It intentionally does
+// not call Pipeline.Close so callers can finish an in-flight start rollback
+// before releasing their lifecycle gate. A replacement is always preserved.
+func (f *forwarders) RemoveIfSame(id string, fw *Forward) error {
+	if fw == nil {
+		return nil
 	}
-	return nil
+	f.forwarders.CompareAndDelete(id, fw)
+	return fw.Abort()
+}
+
+func (f *forwarders) removeIfSame(id string, fw *Forward) error {
+	if fw == nil {
+		return nil
+	}
+	if !f.forwarders.CompareAndDelete(id, fw) {
+		return fw.Abort()
+	}
+	abortErr := fw.Abort()
+	return errors.Join(abortErr, fw.Close())
 }
 
 func (f *forwarders) Send(id string, msg *Message) {
@@ -129,6 +151,7 @@ func (f *forwarders) Send(id string, msg *Message) {
 
 func NewForward(rpc ForwardClient, pipeline Pipeline) (*Forward, error) {
 	var err error
+	ctx, cancel := context.WithCancel(context.Background())
 	listenerID := ""
 	if pb := pipeline.ToProtobuf(); pb != nil {
 		listenerID = pb.ListenerId
@@ -138,25 +161,31 @@ func NewForward(rpc ForwardClient, pipeline Pipeline) (*Forward, error) {
 		ListenerRpc: rpc,
 		Pipeline:    pipeline,
 		ListenerId:  listenerID,
-		ctx:         context.Background(),
+		ctx:         ctx,
+		cancel:      cancel,
 		done:        make(chan struct{}),
+		handlerDone: make(chan struct{}),
 	}
 	forward.alive.Store(true)
 
-	forward.Stream, err = rpc.OpenForwardStream(context.Background(), pipeline)
+	forward.Stream, err = rpc.OpenForwardStream(ctx, pipeline)
 	if err != nil {
+		cancel()
 		return nil, err
 	}
 
-	GoGuarded("forward:"+pipeline.ID(), forward.Handler, forward.handleRuntimeError(), forward.shutdown)
+	GoGuarded("forward:"+pipeline.ID(), func() error {
+		defer close(forward.handlerDone)
+		return forward.Handler()
+	}, forward.handleRuntimeError(), forward.shutdown)
 
 	return forward, nil
 }
 
 // Forward is a struct that handles messages from listener and server
 type Forward struct {
-	ctx   context.Context
-	count int
+	ctx    context.Context
+	cancel context.CancelFunc
 	Pipeline
 	ListenerId string
 	Stream     ForwardStream
@@ -164,9 +193,12 @@ type Forward struct {
 
 	ListenerRpc forwardRPCClient
 
-	alive     atomic.Bool
-	done      chan struct{}
-	closeOnce sync.Once
+	alive       atomic.Bool
+	done        chan struct{}
+	closeOnce   sync.Once
+	handlerDone chan struct{}
+	abortOnce   sync.Once
+	abortErr    error
 }
 
 func (f *Forward) RuntimeKey() string {
@@ -183,7 +215,6 @@ func (f *Forward) Add(msg *Message) {
 	}
 	select {
 	case f.implantC <- msg:
-		f.count++
 	case <-f.done:
 		logs.Log.Warnf("forward %s closed, dropping message from %s", f.ID(), msg.SessionID)
 	}
@@ -192,12 +223,53 @@ func (f *Forward) Add(msg *Message) {
 func (f *Forward) shutdown() {
 	f.alive.Store(false)
 	f.closeOnce.Do(func() {
+		if f.cancel != nil {
+			f.cancel()
+		}
 		close(f.done)
 	})
 }
 
-func (f *Forward) Count() int {
-	return f.count
+// Abort closes an uncommitted forward without touching the global registry or
+// closing its pipeline. It is safe to call more than once.
+func (f *Forward) Abort() error {
+	ctx, cancel := context.WithTimeout(context.Background(), forwardShutdownTimeout)
+	defer cancel()
+	return f.AbortContext(ctx)
+}
+
+func (f *Forward) AbortContext(ctx context.Context) error {
+	if f == nil {
+		return nil
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	f.abortOnce.Do(func() {
+		f.shutdown()
+		streamClosed := make(chan error, 1)
+		if stream, ok := f.Stream.(interface{ CloseSend() error }); ok {
+			go func() {
+				streamClosed <- stream.CloseSend()
+			}()
+		} else {
+			streamClosed <- nil
+		}
+		select {
+		case f.abortErr = <-streamClosed:
+		case <-ctx.Done():
+			f.abortErr = fmt.Errorf("%w while closing stream: %v", ErrForwardShutdownTimeout, ctx.Err())
+			return
+		}
+		if f.handlerDone != nil {
+			select {
+			case <-f.handlerDone:
+			case <-ctx.Done():
+				f.abortErr = errors.Join(f.abortErr, fmt.Errorf("%w: %v", ErrForwardShutdownTimeout, ctx.Err()))
+			}
+		}
+	})
+	return f.abortErr
 }
 
 func (f *Forward) Context(sid string) context.Context {
@@ -211,7 +283,17 @@ func (f *Forward) Context(sid string) context.Context {
 
 // Handler is a loop that handles messages from implant
 func (f *Forward) Handler() error {
-	for msg := range f.implantC {
+	for {
+		var msg *Message
+		select {
+		case <-f.done:
+			return nil
+		case received, ok := <-f.implantC:
+			if !ok {
+				return nil
+			}
+			msg = received
+		}
 		_, err := f.ListenerRpc.Checkin(f.Context(msg.SessionID), &implantpb.Ping{})
 		if err != nil {
 			logs.Log.Warnf("forward %s checkin failed for session %s: %v", f.ID(), msg.SessionID, err)
@@ -260,7 +342,6 @@ func (f *Forward) Handler() error {
 			}
 		}
 	}
-	return nil
 }
 
 func (f *Forward) handleRuntimeError() GoErrorHandler {

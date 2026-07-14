@@ -87,9 +87,9 @@ func TestStopPipelineCmdUsesDatabaseResolution(t *testing.T) {
 	}
 
 	testsupport.WaitForCondition(t, 5*time.Second, func() bool {
-		_, ok := clientHarness.Console.Pipelines["tcp-stop"]
-		return !ok
-	}, "client pipeline cache to remove stopped pipeline")
+		pipeline, err := clientHarness.Console.FindCachedPipeline("tcp-stop", nil)
+		return err == nil && !pipeline.GetEnable()
+	}, "client pipeline cache to retain stopped pipeline as disabled")
 
 	model, err := h.GetPipeline("tcp-stop", h.ListenerID())
 	if err != nil {

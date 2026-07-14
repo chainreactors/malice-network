@@ -1,6 +1,7 @@
 package core
 
 import (
+	"fmt"
 	"sync"
 	"testing"
 
@@ -157,6 +158,48 @@ func TestSecureManager_UpdateKeyPair(t *testing.T) {
 		t.Errorf("PrivateKey = %q, want %q", sm.keyPair.PrivateKey, "new-priv-key")
 	}
 	sm.mu.Unlock()
+}
+
+func TestSessionUpdateKeyPairConcurrentFieldsStaySynchronized(t *testing.T) {
+	sess := newSecureTestSession()
+	sess.SecureManager = NewSecureSpiteManager(sess)
+
+	const iterations = 500
+	for i := 0; i < iterations; i++ {
+		publicKey := fmt.Sprintf("public-%d", i)
+		privateKey := fmt.Sprintf("private-%d", i)
+		start := make(chan struct{})
+		var updates sync.WaitGroup
+		updates.Add(2)
+
+		go func() {
+			defer updates.Done()
+			<-start
+			sess.UpdatePublicKey(publicKey)
+		}()
+		go func() {
+			defer updates.Done()
+			<-start
+			sess.UpdatePrivateKey(privateKey)
+		}()
+
+		close(start)
+		updates.Wait()
+
+		sess.stateMu.RLock()
+		stored := sess.KeyPair
+		sess.stateMu.RUnlock()
+		sess.SecureManager.mu.Lock()
+		managed := sess.SecureManager.keyPair
+		sess.SecureManager.mu.Unlock()
+
+		if stored != managed {
+			t.Fatalf("iteration %d: session and manager key pairs reference different values", i)
+		}
+		if stored.GetPublicKey() != publicKey || stored.GetPrivateKey() != privateKey {
+			t.Fatalf("iteration %d: key pair = %q/%q, want %q/%q", i, stored.GetPublicKey(), stored.GetPrivateKey(), publicKey, privateKey)
+		}
+	}
 }
 
 // TestSecureManager_UpdateKeyPairNil verifies updating with nil key pair does not panic.

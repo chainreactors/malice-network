@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"errors"
+
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
@@ -34,23 +35,9 @@ func applyAddonsResponse(sess *core.Session, spite *implantpb.Spite, replace boo
 		return
 	}
 	if replace {
-		sess.Addons = nil
-	}
-	seen := make(map[string]bool, len(sess.Addons))
-	for _, a := range sess.Addons {
-		if a != nil && a.GetName() != "" {
-			seen[a.GetName()] = true
-		}
-	}
-	for _, a := range exts.GetAddons() {
-		if a == nil || a.GetName() == "" {
-			continue
-		}
-		if seen[a.GetName()] {
-			continue
-		}
-		seen[a.GetName()] = true
-		sess.Addons = append(sess.Addons, a)
+		sess.ReplaceAddons(exts.GetAddons())
+	} else {
+		sess.MergeAddons(exts.GetAddons())
 	}
 	sess.SaveAndNotify("")
 }
@@ -61,19 +48,11 @@ func applyAddonLoad(sess *core.Session, req *implantpb.LoadAddon) {
 	if req == nil || req.GetName() == "" {
 		return
 	}
-	for _, a := range sess.Addons {
-		if a != nil && a.GetName() == req.GetName() {
-			a.Type = req.GetType()
-			a.Depend = req.GetDepend()
-			sess.SaveAndNotify("")
-			return
-		}
-	}
-	sess.Addons = append(sess.Addons, &implantpb.Addon{
+	sess.MergeAddons([]*implantpb.Addon{{
 		Name:   req.GetName(),
 		Depend: req.GetDepend(),
 		Type:   req.GetType(),
-	})
+	}})
 	sess.SaveAndNotify("")
 }
 
@@ -82,14 +61,7 @@ func (rpc *Server) ExecuteAddon(ctx context.Context, req *implantpb.ExecuteAddon
 		return nil, types.ErrMissingRequestField
 	}
 	if session, err := getSession(ctx); err == nil {
-		hasAddon := false
-		for _, addon := range session.Addons {
-			if addon.Name == req.Addon {
-				hasAddon = true
-				break
-			}
-		}
-		if !hasAddon {
+		if !session.HasAddon(req.Addon) {
 			return nil, errors.New("addon not found, please load_addon first")
 		}
 	}

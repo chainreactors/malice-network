@@ -79,15 +79,30 @@ func TestMaleficParser_ReadHeader_PacketTooLarge(t *testing.T) {
 
 	buf := &rwcBuf{bytes.NewBuffer(header)}
 	sid, length, err := p.ReadHeader(buf)
-	// Large packets are now accepted with a warning, not rejected
 	if err != nil {
-		t.Fatalf("expected large packet to be accepted, got error: %v", err)
+		t.Fatalf("expected packet beyond the chunking threshold to remain compatible: %v", err)
 	}
 	if sid != 1 {
-		t.Fatalf("expected session_id=1, got %d", sid)
+		t.Fatalf("ReadHeader SID = %d, want 1", sid)
 	}
-	if length == 0 {
-		t.Fatal("expected non-zero length")
+	if length != hugeLen+1 {
+		t.Fatalf("ReadHeader length = %d, want %d", length, hugeLen+1)
+	}
+}
+
+func TestMaleficParser_ReadHeader_CompatibilityMarginBoundary(t *testing.T) {
+	const maxPacketLength = uint32(1024)
+	p := NewMaleficParser()
+	p.MaxPacketLength = maxPacketLength
+	declaredLength := maxPacketLength + uint32(consts.KB)*16
+	header := buildHeader(DefaultStartDelimiter, 1, declaredLength)
+
+	_, length, err := p.ReadHeader(&rwcBuf{bytes.NewBuffer(header)})
+	if err != nil {
+		t.Fatalf("expected packet at the compatibility boundary to be accepted: %v", err)
+	}
+	if length != declaredLength+1 {
+		t.Fatalf("ReadHeader length = %d, want %d", length, declaredLength+1)
 	}
 }
 
@@ -149,28 +164,48 @@ func TestMaleficParser_Parse_InvalidEndDelimiter(t *testing.T) {
 
 func TestMaleficParser_Parse_EmptyPayload(t *testing.T) {
 	p := NewMaleficParser()
-	// Single byte: just the end delimiter. After stripping it, protobuf
-	// unmarshal receives an empty buffer.
 	payload := []byte{DefaultEndDelimiter}
-	spites, err := p.Parse(payload)
-	// Empty protobuf unmarshal on Spites{} might succeed (empty message is valid)
-	// or fail depending on implementation. Either way, no panic.
-	if err != nil {
-		t.Logf("Parse empty payload returned error (expected): %v", err)
-	} else if spites != nil && len(spites.Spites) != 0 {
-		t.Logf("Parse empty payload returned spites with %d items", len(spites.Spites))
+	if _, err := p.Parse(payload); !errors.Is(err, ErrInvalidCompressedPayload) {
+		t.Fatalf("Parse error = %v, want ErrInvalidCompressedPayload", err)
+	}
+}
+
+func TestMaleficParser_Parse_RejectsDecodedPayloadAboveLimit(t *testing.T) {
+	p := NewMaleficParser()
+	var header [binary.MaxVarintLen64]byte
+	n := binary.PutUvarint(header[:], maxDecodedPayloadSize+1)
+	payload := append(append([]byte(nil), header[:n]...), DefaultEndDelimiter)
+
+	_, err := p.Parse(payload)
+	if !errors.Is(err, ErrDecodedPayloadTooLarge) {
+		t.Fatalf("Parse error = %v, want ErrDecodedPayloadTooLarge", err)
+	}
+}
+
+func TestMaleficParser_Parse_RejectsHeaderOnlyPayloadAtLimit(t *testing.T) {
+	p := NewMaleficParser()
+	var header [binary.MaxVarintLen64]byte
+	n := binary.PutUvarint(header[:], maxDecodedPayloadSize)
+	payload := append(append([]byte(nil), header[:n]...), DefaultEndDelimiter)
+
+	if _, err := p.Parse(payload); !errors.Is(err, ErrInvalidCompressedPayload) {
+		t.Fatalf("Parse error = %v, want ErrInvalidCompressedPayload", err)
 	}
 }
 
 func TestMaleficParser_Parse_ZeroLengthSlice(t *testing.T) {
 	p := NewMaleficParser()
-	defer func() {
-		if r := recover(); r != nil {
-			t.Logf("BUG: Parse panics on zero-length slice: %v", r)
-		}
-	}()
-	// This will index buf[len(buf)-1] which is buf[-1] -> panic
-	_, _ = p.Parse([]byte{})
+	if _, err := p.Parse(nil); err == nil {
+		t.Fatal("expected zero-length payload to be rejected")
+	}
+}
+
+func TestMaleficParser_Parse_RejectsMalformedSnappyPayload(t *testing.T) {
+	p := NewMaleficParser()
+	payload := []byte{0xff, 0xfe, 0xfd, DefaultEndDelimiter}
+	if _, err := p.Parse(payload); !errors.Is(err, ErrInvalidCompressedPayload) {
+		t.Fatalf("Parse error = %v, want ErrInvalidCompressedPayload", err)
+	}
 }
 
 func TestMaleficParser_MarshalParse_RoundTrip(t *testing.T) {
@@ -244,8 +279,6 @@ func TestParseSid(t *testing.T) {
 	}
 }
 
-// TestParseSid_ShortData documents a real bug: ParseSid does not bounds-check
-// the input slice. Data shorter than 5 bytes causes a panic.
 func TestParseSid_ShortData(t *testing.T) {
 	shortInputs := []struct {
 		name string
@@ -259,15 +292,9 @@ func TestParseSid_ShortData(t *testing.T) {
 
 	for _, tc := range shortInputs {
 		t.Run(tc.name, func(t *testing.T) {
-			defer func() {
-				if r := recover(); r != nil {
-					t.Logf("BUG CONFIRMED: ParseSid panics on %s input (len=%d): %v",
-						tc.name, len(tc.data), r)
-				}
-			}()
-			_ = ParseSid(tc.data)
-			// If we reach here without panic, the bug may have been fixed
-			// with a bounds check. That would be the correct behavior.
+			if got := ParseSid(tc.data); got != 0 {
+				t.Fatalf("ParseSid() = %d, want 0", got)
+			}
 		})
 	}
 }

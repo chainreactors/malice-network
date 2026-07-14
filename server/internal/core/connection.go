@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -28,6 +29,11 @@ var (
 		sessions: &sync.Map{},
 	}
 	ErrConnectionRemoved = fmt.Errorf("connection removed")
+)
+
+const (
+	payloadReadBaseTimeout       = 30 * time.Second
+	payloadReadMinBytesPerSecond = 512 << 10
 )
 
 // listenerSessions 管理 listener 端的 session 信息
@@ -285,11 +291,22 @@ func (c *Connection) Send(ctx context.Context, conn *cryptostream.Conn) error {
 func (c *Connection) buildResponse(conn *cryptostream.Conn, length uint32) error {
 	var msg *implantpb.Spites
 	if length >= 2 {
-		var err error
-		msg, err = c.Parser.ReadMessage(conn, length)
-		if err != nil {
-			return fmt.Errorf("error reading message:%s %w", conn.RemoteAddr(), err)
+		if err := conn.SetReadDeadline(time.Now().Add(payloadReadTimeout(length))); err != nil {
+			return fmt.Errorf("set payload read deadline for %s: %w", conn.RemoteAddr(), err)
 		}
+		readMsg, readErr := c.Parser.ReadMessage(conn, length)
+		clearErr := conn.SetReadDeadline(time.Time{})
+		if readErr != nil {
+			readErr = fmt.Errorf("error reading message:%s %w", conn.RemoteAddr(), readErr)
+			if clearErr != nil {
+				return errors.Join(readErr, fmt.Errorf("clear payload read deadline for %s: %w", conn.RemoteAddr(), clearErr))
+			}
+			return readErr
+		}
+		if clearErr != nil {
+			return fmt.Errorf("clear payload read deadline for %s: %w", conn.RemoteAddr(), clearErr)
+		}
+		msg = readMsg
 		if msg.Spites == nil {
 			msg = types.BuildPingSpites()
 		}
@@ -304,6 +321,11 @@ func (c *Connection) buildResponse(conn *cryptostream.Conn, length uint32) error
 		RemoteAddr: conn.RemoteAddr().String(),
 	})
 	return nil
+}
+
+func payloadReadTimeout(length uint32) time.Duration {
+	seconds := (uint64(length) + payloadReadMinBytesPerSecond - 1) / payloadReadMinBytesPerSecond
+	return payloadReadBaseTimeout + time.Duration(seconds)*time.Second
 }
 
 func (c *Connection) Handler(ctx context.Context, conn *cryptostream.Conn) error {

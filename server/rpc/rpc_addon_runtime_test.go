@@ -26,9 +26,9 @@ func TestAddonHandlersRejectNilRequest(t *testing.T) {
 func TestApplyAddonsResponseDeduplicatesAndPersistsAddons(t *testing.T) {
 	env := newRPCTestEnv(t)
 	sess := env.seedSession(t, "rpc-addon-list", "rpc-addon-list-pipe", true)
-	sess.Addons = []*implantpb.Addon{
+	sess.ReplaceAddons([]*implantpb.Addon{
 		{Name: "seatbelt", Type: "bof", Depend: "exec"},
-	}
+	})
 
 	applyAddonsResponse(sess, &implantpb.Spite{
 		Body: &implantpb.Spite_Addons{
@@ -42,13 +42,14 @@ func TestApplyAddonsResponseDeduplicatesAndPersistsAddons(t *testing.T) {
 		},
 	}, false)
 
-	if len(sess.Addons) != 2 {
-		t.Fatalf("runtime addons = %#v, want 2 unique addons", sess.Addons)
+	addons := sess.AddonsSnapshot()
+	if len(addons) != 2 {
+		t.Fatalf("runtime addons = %#v, want 2 unique addons", addons)
 	}
-	if addon := findAddon(sess.Addons, "seatbelt"); addon == nil || addon.GetType() != "bof" {
+	if addon := findAddon(addons, "seatbelt"); addon == nil || addon.GetType() != "bof" {
 		t.Fatalf("runtime seatbelt addon = %#v, want bof addon", addon)
 	}
-	if addon := findAddon(sess.Addons, "sharpview"); addon == nil || addon.GetType() != "assembly" {
+	if addon := findAddon(addons, "sharpview"); addon == nil || addon.GetType() != "assembly" {
 		t.Fatalf("runtime sharpview addon = %#v, want assembly addon", addon)
 	}
 
@@ -64,18 +65,19 @@ func TestApplyAddonsResponseDeduplicatesAndPersistsAddons(t *testing.T) {
 func TestApplyAddonLoadDeduplicatesRepeatedLoadsAndRefreshesMetadata(t *testing.T) {
 	env := newRPCTestEnv(t)
 	sess := env.seedSession(t, "rpc-addon-load", "rpc-addon-load-pipe", true)
-	sess.Addons = []*implantpb.Addon{
+	sess.ReplaceAddons([]*implantpb.Addon{
 		{Name: "seatbelt", Type: "bof", Depend: "exec"},
-	}
+	})
 
 	applyAddonLoad(sess, &implantpb.LoadAddon{Name: "seatbelt", Type: "assembly", Depend: "execute_dll"})
 	applyAddonLoad(sess, &implantpb.LoadAddon{Name: "sharpview", Type: "assembly", Depend: "exec"})
 	applyAddonLoad(sess, &implantpb.LoadAddon{Name: "sharpview", Type: "assembly", Depend: "exec"})
 
-	if len(sess.Addons) != 2 {
-		t.Fatalf("runtime addons = %#v, want 2 unique addons", sess.Addons)
+	addons := sess.AddonsSnapshot()
+	if len(addons) != 2 {
+		t.Fatalf("runtime addons = %#v, want 2 unique addons", addons)
 	}
-	seatbelt := findAddon(sess.Addons, "seatbelt")
+	seatbelt := findAddon(addons, "seatbelt")
 	if seatbelt == nil || seatbelt.GetType() != "assembly" || seatbelt.GetDepend() != "execute_dll" {
 		t.Fatalf("runtime seatbelt addon = %#v, want refreshed metadata", seatbelt)
 	}

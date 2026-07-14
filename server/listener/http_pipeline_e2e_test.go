@@ -5,7 +5,9 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/binary"
+	"errors"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -100,6 +102,42 @@ func TestHTTPPipelineHandlerDeliversLargeScreenshotSizedResponse(t *testing.T) {
 	}
 }
 
+func TestHTTPReadWriterReadDeadlineInterruptsSlowBody(t *testing.T) {
+	readResult := make(chan error, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rw := &httpReadWriter{body: r.Body, writer: w}
+		if err := rw.SetReadDeadline(time.Now().Add(100 * time.Millisecond)); err != nil {
+			readResult <- err
+			return
+		}
+		_, err := rw.Read(make([]byte, 1))
+		readResult <- err
+	}))
+	defer server.Close()
+
+	conn, err := net.Dial("tcp", server.Listener.Addr().String())
+	if err != nil {
+		t.Fatalf("dial HTTP server: %v", err)
+	}
+	defer conn.Close()
+	if _, err := io.WriteString(conn, "POST / HTTP/1.1\r\nHost: example.test\r\nContent-Length: 1\r\nConnection: close\r\n\r\n"); err != nil {
+		t.Fatalf("write partial HTTP request: %v", err)
+	}
+
+	select {
+	case err := <-readResult:
+		if err == nil {
+			t.Fatal("slow request body read returned without a deadline error")
+		}
+		var netErr net.Error
+		if !errors.As(err, &netErr) || !netErr.Timeout() {
+			t.Fatalf("slow request body read error = %v, want timeout", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("slow request body read was not interrupted by its deadline")
+	}
+}
+
 func newHTTPProbePipeline(listenerID, name string) *HTTPPipeline {
 	return &HTTPPipeline{
 		Name: name,
@@ -123,12 +161,20 @@ func serveMaleficHTTPPacket(t testing.TB, pipeline *HTTPPipeline, packet []byte)
 	t.Helper()
 
 	req := httptest.NewRequest(http.MethodPost, "http://example.test/", bytes.NewReader(packet))
-	resp := httptest.NewRecorder()
+	resp := &deadlineResponseRecorder{ResponseRecorder: httptest.NewRecorder()}
 
 	pipeline.handler(resp, req)
 	if resp.Code >= 400 {
 		t.Fatalf("HTTP handler status = %d, body = %q", resp.Code, resp.Body.String())
 	}
+}
+
+type deadlineResponseRecorder struct {
+	*httptest.ResponseRecorder
+}
+
+func (r *deadlineResponseRecorder) SetReadDeadline(time.Time) error {
+	return nil
 }
 
 func maleficBinaryResponsePacket(t testing.TB, rawID uint32, payload []byte) []byte {
