@@ -95,12 +95,8 @@ func (rpc *Server) handlePtyCommand(ctx context.Context, req *implantpb.PtyReque
 	}
 
 	mgr := getImplantPTYManager(session.ID)
-	if mgr.SendCommand(req.SessionId, req) {
-		greq, err := newGenericRequest(ctx, req)
-		if err != nil {
-			return nil, err
-		}
-		return greq.Task.ToProtobuf(), nil
+	if taskPb, ok := mgr.GetTaskProto(req.SessionId); ok && mgr.SendCommand(req.SessionId, req) {
+		return taskPb, nil
 	}
 
 	greq, err := newGenericRequest(ctx, req)

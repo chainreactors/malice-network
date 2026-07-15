@@ -78,7 +78,7 @@ func (m *ImplantPTYManager) GetTaskProto(sessionID string) (*clientpb.Task, bool
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	s, ok := m.sessions[sessionID]
-	if !ok || s.greq == nil || s.greq.Task == nil {
+	if !ok || s == nil || s.greq == nil || s.greq.Task == nil {
 		return nil, false
 	}
 	return s.greq.Task.ToProtobuf(), true
@@ -87,16 +87,19 @@ func (m *ImplantPTYManager) GetTaskProto(sessionID string) (*clientpb.Task, bool
 func (m *ImplantPTYManager) SendCommand(sessionID string, req *implantpb.PtyRequest) bool {
 	m.mu.Lock()
 	s, ok := m.sessions[sessionID]
-	m.mu.Unlock()
-	if !ok {
+	if !ok || s == nil || s.writer == nil || s.greq == nil || s.greq.Task == nil {
+		m.mu.Unlock()
 		return false
 	}
+	writer := s.writer
+	taskID := s.greq.Task.Id
+	m.mu.Unlock()
 	spite := &implantpb.Spite{
 		Name:   types.MsgPty.String(),
 		Body:   &implantpb.Spite_PtyRequest{PtyRequest: req},
-		TaskId: s.greq.Task.Id,
+		TaskId: taskID,
 	}
-	return s.writer.Send(spite) == nil
+	return writer.Send(spite) == nil
 }
 
 func (m *ImplantPTYManager) PumpOutput(sessionID string, greq *GenericRequest, respCh <-chan *implantpb.Spite) {
