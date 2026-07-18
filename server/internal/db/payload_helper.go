@@ -938,14 +938,26 @@ func GetBuilderLogs(builderName string, limit int) (string, error) {
 		return "", err
 	}
 
-	split := strings.Split(builder.Log, "\n")
+	return tailBuilderLog(builder.Log, limit), nil
+}
 
-	if limit > 0 && len(split) > limit {
-		split = split[len(split)-limit:]
+func tailBuilderLog(log string, limit int) string {
+	if log == "" || limit <= 0 {
+		return log
 	}
-	result := strings.Join(split, "\n")
 
-	return result, nil
+	hasTrailingNewline := strings.HasSuffix(log, "\n")
+	content := strings.TrimSuffix(log, "\n")
+	lines := strings.Split(content, "\n")
+	if len(lines) <= limit {
+		return log
+	}
+
+	tail := strings.Join(lines[len(lines)-limit:], "\n")
+	if hasTrailingNewline {
+		return tail + "\n"
+	}
+	return tail
 }
 
 func UpdateBuilderStatus(builderID uint32, status string) {

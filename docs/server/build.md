@@ -120,6 +120,10 @@ listeners:
 自动构建的优先级：Docker > GitHub Action > SaaS。
 `x86_64-unknown-linux-gnu.2.17` 用于 glibc 2.17 兼容构建，Docker 构建源需要镜像内可用 `cargo-zigbuild` 和 `zig`，产物从 `target/x86_64-unknown-linux-gnu/<release|debug>/` 收集。
 
+### 构建日志
+
+`BuildLog` RPC 的 `log_num` 表示从日志末尾向前获取的最大行数；`0` 表示返回完整日志。返回内容保持原始时间顺序，末尾换行符不占用行数配额。
+
 ## 实现位置
 
 | 目录 | 职责 |
