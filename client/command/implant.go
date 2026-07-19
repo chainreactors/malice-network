@@ -32,6 +32,7 @@ import (
 	"github.com/chainreactors/malice-network/client/command/pty"
 	"github.com/chainreactors/malice-network/client/command/reg"
 	"github.com/chainreactors/malice-network/client/command/service"
+	"github.com/chainreactors/malice-network/client/command/socks5"
 	"github.com/chainreactors/malice-network/client/command/sys"
 	"github.com/chainreactors/malice-network/client/command/tasks"
 	"github.com/chainreactors/malice-network/client/command/taskschd"
@@ -224,6 +225,7 @@ func BindBuiltinCommands(con *core.Console, root *cobra.Command) *cobra.Command 
 
 	bind(consts.PivotGroup,
 		pivot.Commands,
+		socks5.Commands,
 	)
 	bind(consts.ArmoryGroup)
 	bind(consts.AddonGroup)
@@ -348,4 +350,5 @@ func RegisterImplantFunc(con *core.Console) {
 	privilege.Register(con)
 	pipe.Register(con)
 	pivot.Register(con)
+	socks5.Register(con)
 }
