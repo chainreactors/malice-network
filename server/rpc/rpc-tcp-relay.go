@@ -54,10 +54,20 @@ func (m *TcpRelayManager) Remove() {
 	m.sess = nil
 }
 
+// alive reports whether the manager has a task and a usable stream writer.
+// GetTaskProto/idempotent START must not treat a nil or closed writer as live —
+// that creates zombie tasks that Open/Data can never ride.
+func (m *TcpRelayManager) aliveLocked() bool {
+	if m.sess == nil || m.sess.greq == nil || m.sess.greq.Task == nil || m.sess.writer == nil {
+		return false
+	}
+	return true
+}
+
 func (m *TcpRelayManager) GetTaskProto() (*clientpb.Task, bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if m.sess == nil || m.sess.greq == nil || m.sess.greq.Task == nil {
+	if !m.aliveLocked() {
 		return nil, false
 	}
 	return m.sess.greq.Task.ToProtobuf(), true
@@ -73,7 +83,12 @@ func (m *TcpRelayManager) Send(spite *implantpb.Spite) bool {
 	spite.TaskId = s.greq.Task.Id
 	spite.Name = consts.ModuleTcpRelay
 	spite.Async = true
-	return s.writer.Send(spite) == nil
+	if err := s.writer.Send(spite); err != nil {
+		// Writer is dead/closed — drop registration so the next START recreates.
+		m.Remove()
+		return false
+	}
+	return true
 }
 
 // TcpRelay starts (or ensures) a long-lived tcp_relay module task on the implant.
@@ -130,8 +145,8 @@ func (rpc *Server) TcpRelay(ctx context.Context, req *implantpb.TunnelCtrl) (*cl
 	}
 
 	// START (or default): open streaming task.
-	// Idempotent: if this session already has a live tcp_relay stream, reuse it
-	// so multiple client-side SOCKS listeners can share one implant task.
+	// Idempotent only when a *sendable* stream is registered (writer non-nil).
+	// Zombie entries (task without writer) fall through and recreate.
 	if req.Action == implantpb.TunnelCtrl_START || req.Action == implantpb.TunnelCtrl_Action(0) {
 		session, err := getSession(ctx)
 		if err != nil {
@@ -139,9 +154,10 @@ func (rpc *Server) TcpRelay(ctx context.Context, req *implantpb.TunnelCtrl) (*cl
 		}
 		mgr := getTcpRelayManager(session.ID)
 		if taskPb, ok := mgr.GetTaskProto(); ok {
-			// Existing stream still registered — do not replace it.
 			return taskPb, nil
 		}
+		// Drop any half-registered zombie before opening a new stream.
+		mgr.Remove()
 	}
 
 	greq, err := newGenericRequest(ctx, req)

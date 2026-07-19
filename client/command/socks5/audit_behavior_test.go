@@ -310,17 +310,26 @@ func TestAudit_PendingOpenLeakAcrossManyOpens(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// P1: openFailStreak triggers rebuild clear
+// P1: openFailStreak triggers rebuild (STOP+START)
 // ---------------------------------------------------------------------------
 
 func TestAudit_OpenFailStreakHasNoThresholdAction(t *testing.T) {
 	isolateRegistry(t)
 
-	rel := registry.getRelay("sess-streak")
-	svc := mkSvc("sess-streak", "127.0.0.1", 19201)
+	rpc := &recordingTCPRelayRPC{
+		startTask: &clientpb.Task{TaskId: 88, SessionId: "sess-streak"},
+	}
+	con := newAuditConsole(t, rpc)
+	sess := addAuditSession(t, con, "sess-streak")
+	con.ActiveTarget.Set(sess)
+
+	rel := registry.getRelay(sess.SessionId)
+	svc := mkSvc(sess.SessionId, "127.0.0.1", 19201)
 	svc.relay = rel
+	svc.sess = sess
+	svc.con = con
 	rel.mu.Lock()
-	rel.task = &clientpb.Task{TaskId: 1}
+	rel.task = &clientpb.Task{TaskId: 1, SessionId: sess.SessionId}
 	rel.callbackInstalled = true
 	rel.mu.Unlock()
 
@@ -328,16 +337,29 @@ func TestAudit_OpenFailStreakHasNoThresholdAction(t *testing.T) {
 		svc.setError(fmt.Sprintf("connect failed #%d", i))
 	}
 
-	rel.mu.Lock()
-	taskNil := rel.task == nil
-	installed := rel.callbackInstalled
-	streak := rel.openFailStreak
-	rel.mu.Unlock()
-
-	if !taskNil || installed {
-		t.Fatalf("after %d failures want task cleared: task_nil=%v installed=%v streak=%d",
-			openFailRebuildThreshold, taskNil, installed, streak)
+	// rebuild is async
+	deadline := time.Now().Add(2 * time.Second)
+	var sawStop, sawStart bool
+	for time.Now().Before(deadline) {
+		sawStop, sawStart = false, false
+		for _, c := range rpc.snapshot() {
+			if c.action == implantpb.TunnelCtrl_STOP {
+				sawStop = true
+			}
+			if c.action == implantpb.TunnelCtrl_START || c.action == implantpb.TunnelCtrl_Action(0) {
+				sawStart = true
+			}
+		}
+		rel.mu.Lock()
+		ok := rel.task != nil && rel.callbackInstalled
+		rel.mu.Unlock()
+		if sawStop && sawStart && ok {
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
 	}
+	t.Fatalf("rebuild not observed: stop=%v start=%v task/callback ready missing; calls=%+v",
+		sawStop, sawStart, rpc.snapshot())
 }
 
 // ---------------------------------------------------------------------------
@@ -490,4 +512,204 @@ func TestAudit_CrossSessionSamePortRejected(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected cross-session same port rejection")
 	}
+}
+
+// ---------------------------------------------------------------------------
+// Residual fixed: streak auto-rebuilds listening relay (STOP+START)
+// ---------------------------------------------------------------------------
+
+func TestAudit_OpenFailStreakDoesNotAutoRebuildListeningRelay(t *testing.T) {
+	isolateRegistry(t)
+
+	rpc := &recordingTCPRelayRPC{
+		startTask: &clientpb.Task{TaskId: 55, SessionId: "sess-no-auto"},
+	}
+	con := newAuditConsole(t, rpc)
+	sess := addAuditSession(t, con, "sess-no-auto")
+	con.ActiveTarget.Set(sess)
+
+	rel := registry.getRelay(sess.SessionId)
+	svc := mkSvc(sess.SessionId, "127.0.0.1", 19501)
+	svc.relay = rel
+	svc.sess = sess
+	svc.con = con
+	svc.rpc = con.Rpc
+	if err := registry.addService(svc); err != nil {
+		t.Fatal(err)
+	}
+	rel.mu.Lock()
+	rel.task = &clientpb.Task{TaskId: 55, SessionId: sess.SessionId}
+	rel.callbackInstalled = true
+	rel.mu.Unlock()
+	svc.status = StatusListening
+
+	for i := 0; i < openFailRebuildThreshold; i++ {
+		svc.setError(fmt.Sprintf("fail %d", i))
+	}
+
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		starts, stops := 0, 0
+		for _, c := range rpc.snapshot() {
+			if c.action == implantpb.TunnelCtrl_START || c.action == implantpb.TunnelCtrl_Action(0) {
+				starts++
+			}
+			if c.action == implantpb.TunnelCtrl_STOP {
+				stops++
+			}
+		}
+		rel.mu.Lock()
+		ready := rel.task != nil && rel.callbackInstalled
+		rel.mu.Unlock()
+		svc.mu.Lock()
+		st := svc.status
+		svc.mu.Unlock()
+		if starts >= 1 && stops >= 1 && ready && st == StatusListening {
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	t.Fatalf("auto rebuild failed; calls=%+v status=%s", rpc.snapshot(), svc.status)
+}
+
+// ---------------------------------------------------------------------------
+// Residual fixed: streak rebuild issues STOP
+// ---------------------------------------------------------------------------
+
+func TestAudit_OpenFailStreakClearDoesNotStopRemote(t *testing.T) {
+	isolateRegistry(t)
+
+	rpc := &recordingTCPRelayRPC{
+		startTask: &clientpb.Task{TaskId: 10, SessionId: "sess-no-stop"},
+	}
+	con := newAuditConsole(t, rpc)
+	sess := addAuditSession(t, con, "sess-no-stop")
+	con.ActiveTarget.Set(sess)
+	rel := registry.getRelay(sess.SessionId)
+	svc := mkSvc(sess.SessionId, "127.0.0.1", 19502)
+	svc.relay = rel
+	svc.sess = sess
+	svc.con = con
+	rel.mu.Lock()
+	rel.task = &clientpb.Task{TaskId: 9, SessionId: sess.SessionId}
+	rel.callbackInstalled = true
+	rel.mu.Unlock()
+
+	for i := 0; i < openFailRebuildThreshold; i++ {
+		svc.setError("x")
+	}
+
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		for _, c := range rpc.snapshot() {
+			if c.action == implantpb.TunnelCtrl_STOP && c.sessionID == sess.SessionId {
+				return
+			}
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	t.Fatalf("expected STOP for %s; calls=%+v", sess.SessionId, rpc.snapshot())
+}
+
+// ---------------------------------------------------------------------------
+// Residual fixed: late routeSpite after clearRelay is dropped
+// ---------------------------------------------------------------------------
+
+func TestAudit_LateSpiteAfterClearRelayRecreatesRelay(t *testing.T) {
+	isolateRegistry(t)
+
+	sid := "sess-late"
+	rel := registry.getRelay(sid)
+	rel.mu.Lock()
+	rel.task = &clientpb.Task{TaskId: 1}
+	rel.mu.Unlock()
+	registry.clearRelay(sid)
+
+	if _, ok := registry.relays[sid]; ok {
+		t.Fatal("relay should be gone after clearRelay")
+	}
+
+	registry.routeSpite(sid, &implantpb.Spite{
+		Body: &implantpb.Spite_TunnelOpenResult{TunnelOpenResult: &implantpb.TunnelOpenResult{
+			ConnId: 99, Success: true,
+		}},
+	})
+
+	if _, ok := registry.relays[sid]; ok {
+		t.Fatal("late OpenResult must not recreate sessionRelay")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Residual fixed: ensureSessionRelay does not hold rel.mu across RPC
+// ---------------------------------------------------------------------------
+
+func TestAudit_EnsureSessionRelayHoldsLockDuringRPC(t *testing.T) {
+	isolateRegistry(t)
+
+	started := make(chan struct{})
+	release := make(chan struct{})
+	rpc := &recordingTCPRelayRPC{}
+	blockRPC := &blockingStartRPC{
+		recordingTCPRelayRPC: rpc,
+		started:              started,
+		release:              release,
+		task:                 &clientpb.Task{TaskId: 7, SessionId: "sess-lock"},
+	}
+	con := newAuditConsole(t, blockRPC)
+	sess := addAuditSession(t, con, "sess-lock")
+	rel := registry.getRelay(sess.SessionId)
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- ensureSessionRelay(con, sess, rel)
+	}()
+
+	select {
+	case <-started:
+	case <-time.After(2 * time.Second):
+		t.Fatal("START RPC did not start")
+	}
+
+	done := make(chan struct{})
+	go func() {
+		rel.registerConn(1, mkSvc(sess.SessionId, "127.0.0.1", 1))
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		close(release)
+		if err := <-errCh; err != nil {
+			t.Fatalf("ensureSessionRelay: %v", err)
+		}
+	case <-time.After(200 * time.Millisecond):
+		close(release)
+		<-errCh
+		<-done
+		t.Fatal("registerConn blocked while ensureSessionRelay held rel.mu during RPC")
+	}
+}
+
+type blockingStartRPC struct {
+	*recordingTCPRelayRPC
+	started chan struct{}
+	release chan struct{}
+	task    *clientpb.Task
+	once    sync.Once
+}
+
+func (b *blockingStartRPC) TcpRelay(ctx context.Context, in *implantpb.TunnelCtrl, opts ...grpc.CallOption) (*clientpb.Task, error) {
+	if in.GetAction() == implantpb.TunnelCtrl_START || in.GetAction() == implantpb.TunnelCtrl_Action(0) {
+		b.once.Do(func() { close(b.started) })
+		select {
+		case <-b.release:
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+		if b.task != nil {
+			return b.task, nil
+		}
+	}
+	return b.recordingTCPRelayRPC.TcpRelay(ctx, in, opts...)
 }

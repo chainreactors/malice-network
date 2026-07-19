@@ -33,14 +33,34 @@ func seedTcpRelayLiveSession(t *testing.T, sessionID string, taskID uint32) (*co
 	env := newRPCTestEnv(t)
 	sess := env.seedSession(t, sessionID, sessionID+"-pipe", true)
 	task := sess.NewTask("tcp_relay", -1)
-	// Align task id if needed for assertions (NewTask assigns seq).
-	if taskID != 0 && task.Id != taskID {
-		// keep whatever NewTask assigned; callers should use task.Id
-	}
+	_ = taskID
 	greq := &GenericRequest{Task: task, Session: sess}
 	mgr := getTcpRelayManager(sess.ID)
-	// Minimal live registration: writer nil is enough for GetTaskProto;
-	// Send() needs writer — tests that need Send seed a real writer.
+
+	// Real stream writer so GetTaskProto/Send treat the session as alive.
+	stream := &testRPCServerStream{
+		sendMsg: func(msg interface{}) error { return nil },
+	}
+	writer, _, err := sess.RequestWithStream(&clientpb.SpiteRequest{
+		Session: &clientpb.Session{SessionId: sess.ID},
+		Task:    &clientpb.Task{TaskId: task.Id, SessionId: sess.ID},
+	}, stream, 0)
+	if err != nil {
+		t.Fatalf("RequestWithStream: %v", err)
+	}
+	t.Cleanup(writer.Close)
+	mgr.Register(writer, greq, nil)
+	return sess, mgr, task
+}
+
+func seedTcpRelayZombieSession(t *testing.T, sessionID string) (*core.Session, *TcpRelayManager, *core.Task) {
+	t.Helper()
+	env := newRPCTestEnv(t)
+	sess := env.seedSession(t, sessionID, sessionID+"-pipe", true)
+	task := sess.NewTask("tcp_relay", -1)
+	greq := &GenericRequest{Task: task, Session: sess}
+	mgr := getTcpRelayManager(sess.ID)
+	// writer=nil → not alive
 	mgr.Register(nil, greq, nil)
 	return sess, mgr, task
 }
@@ -202,8 +222,21 @@ func TestAudit_TcpRelayManagerRegisterReplacesPrevious(t *testing.T) {
 	task1 := sess.NewTask("tcp_relay", -1)
 	task2 := sess.NewTask("tcp_relay", -1)
 	mgr := getTcpRelayManager(sess.ID)
-	mgr.Register(nil, &GenericRequest{Task: task1, Session: sess}, nil)
-	mgr.Register(nil, &GenericRequest{Task: task2, Session: sess}, nil)
+
+	mkWriter := func(taskID uint32) *core.SpiteStreamWriter {
+		stream := &testRPCServerStream{sendMsg: func(msg interface{}) error { return nil }}
+		w, _, err := sess.RequestWithStream(&clientpb.SpiteRequest{
+			Session: &clientpb.Session{SessionId: sess.ID},
+			Task:    &clientpb.Task{TaskId: taskID, SessionId: sess.ID},
+		}, stream, 0)
+		if err != nil {
+			t.Fatalf("RequestWithStream: %v", err)
+		}
+		t.Cleanup(w.Close)
+		return w
+	}
+	mgr.Register(mkWriter(task1.Id), &GenericRequest{Task: task1, Session: sess}, nil)
+	mgr.Register(mkWriter(task2.Id), &GenericRequest{Task: task2, Session: sess}, nil)
 
 	pb, ok := mgr.GetTaskProto()
 	if !ok {
@@ -212,7 +245,49 @@ func TestAudit_TcpRelayManagerRegisterReplacesPrevious(t *testing.T) {
 	if pb.GetTaskId() != task2.Id {
 		t.Fatalf("expected second task %d got %d", task2.Id, pb.GetTaskId())
 	}
-	// Documents: Register itself is last-write-wins; only TcpRelay START path is idempotent.
-	t.Logf("AUDIT NOTE: Register is last-write-wins (task %d replaced %d); START RPC path avoids this when GetTaskProto ok",
-		task2.Id, task1.Id)
+}
+
+// ---------------------------------------------------------------------------
+// Zombie (nil writer) is NOT treated as live — START may recreate
+// ---------------------------------------------------------------------------
+
+func TestAudit_TcpRelayStartIdempotentWithNilWriterIsZombie(t *testing.T) {
+	clearTcpRelayManagers(t)
+	sess, mgr, oldTask := seedTcpRelayZombieSession(t, "tcp-relay-zombie-writer")
+
+	if ok := mgr.Send(&implantpb.Spite{Body: &implantpb.Spite_TunnelOpen{TunnelOpen: &implantpb.TunnelOpen{ConnId: 1}}}); ok {
+		t.Fatal("Send with nil writer unexpectedly succeeded")
+	}
+	if _, ok := mgr.GetTaskProto(); ok {
+		t.Fatal("GetTaskProto must be false for nil writer")
+	}
+
+	// Without a pipeline stream, full START will fail — but it must NOT
+	// silently return the zombie task id.
+	got, err := (&Server{}).TcpRelay(incomingSessionContext(sess.ID), &implantpb.TunnelCtrl{
+		Action: implantpb.TunnelCtrl_START,
+	})
+	if err == nil && got != nil && got.GetTaskId() == oldTask.Id {
+		t.Fatalf("START returned zombie task %d; should refuse or recreate", oldTask.Id)
+	}
+	// After START attempt, zombie registration should have been cleared.
+	if _, ok := mgr.GetTaskProto(); ok {
+		t.Fatal("zombie manager still reports live task after START")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// GetTaskProto requires usable writer
+// ---------------------------------------------------------------------------
+
+func TestAudit_GetTaskProtoIgnoresWriterLiveness(t *testing.T) {
+	clearTcpRelayManagers(t)
+	_, mgr, _ := seedTcpRelayZombieSession(t, "tcp-relay-proto-vs-send")
+
+	if pb, ok := mgr.GetTaskProto(); ok {
+		t.Fatalf("GetTaskProto ok with nil writer (task=%v) — liveness check missing", pb)
+	}
+	if mgr.Send(&implantpb.Spite{}) {
+		t.Fatal("Send should fail with nil writer")
+	}
 }

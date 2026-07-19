@@ -228,6 +228,7 @@ func (r *socksRegistry) sessionServices(sessionID string) []*SocksService {
 
 // routeSpite delivers tunnel events to the owning listener only (by conn_id).
 // OpenResult without an owner is buffered on the session relay until registerConn.
+// Does NOT create a relay entry — late events after clearRelay are dropped.
 func (r *socksRegistry) routeSpite(sessionID string, spite *implantpb.Spite) {
 	if spite == nil {
 		return
@@ -245,7 +246,13 @@ func (r *socksRegistry) routeSpite(sessionID string, spite *implantpb.Spite) {
 		return
 	}
 
-	rel := r.getRelay(sessionID)
+	r.mu.Lock()
+	rel := r.relays[sessionID]
+	r.mu.Unlock()
+	if rel == nil {
+		return
+	}
+
 	if svc := rel.ownerOf(connID); svc != nil {
 		svc.handleSpite(spite)
 		return
@@ -257,7 +264,6 @@ func (r *socksRegistry) routeSpite(sessionID string, spite *implantpb.Spite) {
 		if rel.pendingOpen == nil {
 			rel.pendingOpen = make(map[uint32]*implantpb.TunnelOpenResult)
 		}
-		// Hard cap to avoid unbounded growth if clients disappear.
 		if len(rel.pendingOpen) < 1024 {
 			rel.pendingOpen[connID] = open
 		}
@@ -389,7 +395,7 @@ socks5 list --session <id>
 
 func Register(con *core.Console) {
 	// Register module name only. Stream events are handled exactly once via
-	// sessionRelay's AddDoneCallback (fan-out to all listeners on that session).
+	// sessionRelay's AddDoneCallback (routed by conn_id owner, not fan-out).
 	con.RegisterImplantFunc(
 		consts.ModuleTcpRelay,
 		func(rpc clientrpc.MaliceRPCClient, sess *client.Session) (*clientpb.Task, error) {
@@ -477,11 +483,13 @@ func StartCmd(cmd *cobra.Command, con *core.Console) error {
 }
 
 func ensureSessionRelay(con *core.Console, sess *client.Session, rel *sessionRelay) error {
+	// Fast path: already installed (do not hold mu across RPC).
 	rel.mu.Lock()
-	defer rel.mu.Unlock()
 	if rel.task != nil && rel.callbackInstalled {
+		rel.mu.Unlock()
 		return nil
 	}
+	rel.mu.Unlock()
 
 	task, err := con.Rpc.TcpRelay(sess.Context(), &implantpb.TunnelCtrl{
 		Action:   implantpb.TunnelCtrl_START,
@@ -490,6 +498,13 @@ func ensureSessionRelay(con *core.Console, sess *client.Session, rel *sessionRel
 	})
 	if err != nil {
 		return fmt.Errorf("start tcp_relay: %w", err)
+	}
+
+	rel.mu.Lock()
+	defer rel.mu.Unlock()
+	// Another goroutine may have won the race.
+	if rel.task != nil && rel.callbackInstalled {
+		return nil
 	}
 	rel.task = task
 	if !rel.callbackInstalled {
@@ -511,6 +526,42 @@ func ensureSessionRelay(con *core.Console, sess *client.Session, rel *sessionRel
 	rel.openFailStreak = 0
 	rel.lastError = ""
 	return nil
+}
+
+// rebuildSessionRelay STOPs the remote stream (best-effort) and starts a fresh
+// tcp_relay without tearing down local SOCKS listeners or conn owner maps.
+func rebuildSessionRelay(con *core.Console, sess *client.Session, rel *sessionRelay) {
+	if con == nil || sess == nil || rel == nil {
+		return
+	}
+	rel.mu.Lock()
+	rel.task = nil
+	rel.callbackInstalled = false
+	rel.openFailStreak = 0
+	rel.mu.Unlock()
+
+	ctx, err := sessionContext(con, sess.SessionId)
+	if err == nil {
+		_, _ = con.Rpc.TcpRelay(ctx, &implantpb.TunnelCtrl{Action: implantpb.TunnelCtrl_STOP})
+	}
+	if err := ensureSessionRelay(con, sess, rel); err != nil {
+		if con.Log != nil {
+			con.Log.Errorf("socks5 rebuild tcp_relay session %s: %v\n", shortSession(sess.SessionId), err)
+		}
+		return
+	}
+	// Clear degraded on listeners that share this relay.
+	for _, svc := range registry.sessionServices(sess.SessionId) {
+		if svc.relay != rel {
+			continue
+		}
+		svc.mu.Lock()
+		if svc.status == StatusDegraded {
+			svc.status = StatusListening
+			svc.lastError = ""
+		}
+		svc.mu.Unlock()
+	}
 }
 
 func StopCmd(cmd *cobra.Command, con *core.Console) error {
@@ -712,22 +763,27 @@ func (s *SocksService) setError(err string) {
 	if s.relay == nil {
 		return
 	}
+	needRebuild := false
 	s.relay.mu.Lock()
 	if err != "" {
 		s.relay.openFailStreak++
 		s.relay.lastError = err
-		// After repeated open failures, drop cached task so the next start /
-		// ensureSessionRelay performs a fresh TcpRelay START (covers half-dead streams).
+		// After repeated open failures: STOP remote + fresh START without
+		// dropping local listeners (covers half-dead server streams).
 		if s.relay.openFailStreak >= openFailRebuildThreshold {
-			s.relay.task = nil
-			s.relay.callbackInstalled = false
 			s.relay.openFailStreak = 0
+			needRebuild = true
 		}
 	} else {
 		s.relay.openFailStreak = 0
 		s.relay.lastError = ""
 	}
 	s.relay.mu.Unlock()
+	if needRebuild && s.con != nil && s.sess != nil {
+		// Async so setError never blocks the data path on RPC.
+		con, sess, rel := s.con, s.sess, s.relay
+		go rebuildSessionRelay(con, sess, rel)
+	}
 }
 
 func (s *SocksService) Close() {
