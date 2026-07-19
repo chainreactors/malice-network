@@ -19,6 +19,7 @@ import (
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc/metadata"
 )
 
 // Status values for a local SOCKS listener record.
@@ -27,6 +28,14 @@ const (
 	StatusListening = "listening"
 	StatusDegraded  = "degraded"
 	StatusStopping  = "stopping"
+
+	// openFailRebuildThreshold clears the cached relay task so the next
+	// ensureSessionRelay issues a fresh TcpRelay START after repeated failures.
+	openFailRebuildThreshold = 5
+	// maxDataQChunks caps ordered downlink chunks per connection (backpressure).
+	maxDataQChunks = 256
+	// closeWaitTimeout bounds SocksService.Close waiting on in-flight handlers.
+	closeWaitTimeout = 300 * time.Millisecond
 )
 
 // registry holds all SOCKS listeners in this client process (cross-session).
@@ -70,6 +79,10 @@ type sessionRelay struct {
 	callbackInstalled bool
 	openFailStreak    int
 	lastError         string
+	// owners routes tunnel events by conn_id to the listener that opened it.
+	owners map[uint32]*SocksService
+	// pendingOpen buffers OpenResult that races ahead of registerConn.
+	pendingOpen map[uint32]*implantpb.TunnelOpenResult
 }
 
 func (r *socksRegistry) getRelay(sessionID string) *sessionRelay {
@@ -78,10 +91,51 @@ func (r *socksRegistry) getRelay(sessionID string) *sessionRelay {
 	if rel, ok := r.relays[sessionID]; ok {
 		return rel
 	}
-	rel := &sessionRelay{sessionID: sessionID}
+	rel := &sessionRelay{
+		sessionID:   sessionID,
+		owners:      make(map[uint32]*SocksService),
+		pendingOpen: make(map[uint32]*implantpb.TunnelOpenResult),
+	}
 	rel.nextID.Store(1)
 	r.relays[sessionID] = rel
 	return rel
+}
+
+// registerConn binds connID to svc. Returns a buffered OpenResult if one arrived early.
+func (rel *sessionRelay) registerConn(connID uint32, svc *SocksService) *implantpb.TunnelOpenResult {
+	rel.mu.Lock()
+	defer rel.mu.Unlock()
+	if rel.owners == nil {
+		rel.owners = make(map[uint32]*SocksService)
+	}
+	rel.owners[connID] = svc
+	if rel.pendingOpen != nil {
+		if p := rel.pendingOpen[connID]; p != nil {
+			delete(rel.pendingOpen, connID)
+			return p
+		}
+	}
+	return nil
+}
+
+func (rel *sessionRelay) unregisterConn(connID uint32) {
+	rel.mu.Lock()
+	defer rel.mu.Unlock()
+	if rel.owners != nil {
+		delete(rel.owners, connID)
+	}
+	if rel.pendingOpen != nil {
+		delete(rel.pendingOpen, connID)
+	}
+}
+
+func (rel *sessionRelay) ownerOf(connID uint32) *SocksService {
+	rel.mu.Lock()
+	defer rel.mu.Unlock()
+	if rel.owners == nil {
+		return nil
+	}
+	return rel.owners[connID]
 }
 
 func (r *socksRegistry) addService(svc *SocksService) error {
@@ -172,10 +226,48 @@ func (r *socksRegistry) sessionServices(sessionID string) []*SocksService {
 	return out
 }
 
-func (r *socksRegistry) fanoutSpite(sessionID string, spite *implantpb.Spite) {
-	for _, svc := range r.sessionServices(sessionID) {
-		svc.handleSpite(spite)
+// routeSpite delivers tunnel events to the owning listener only (by conn_id).
+// OpenResult without an owner is buffered on the session relay until registerConn.
+func (r *socksRegistry) routeSpite(sessionID string, spite *implantpb.Spite) {
+	if spite == nil {
+		return
 	}
+	var connID uint32
+	var hasID bool
+	if x := spite.GetTunnelOpenResult(); x != nil {
+		connID, hasID = x.ConnId, true
+	} else if x := spite.GetTunnelData(); x != nil {
+		connID, hasID = x.ConnId, true
+	} else if x := spite.GetTunnelClose(); x != nil {
+		connID, hasID = x.ConnId, true
+	}
+	if !hasID {
+		return
+	}
+
+	rel := r.getRelay(sessionID)
+	if svc := rel.ownerOf(connID); svc != nil {
+		svc.handleSpite(spite)
+		return
+	}
+
+	// No owner yet: only OpenResult is worth buffering (Data/Close are dropped).
+	if open := spite.GetTunnelOpenResult(); open != nil {
+		rel.mu.Lock()
+		if rel.pendingOpen == nil {
+			rel.pendingOpen = make(map[uint32]*implantpb.TunnelOpenResult)
+		}
+		// Hard cap to avoid unbounded growth if clients disappear.
+		if len(rel.pendingOpen) < 1024 {
+			rel.pendingOpen[connID] = open
+		}
+		rel.mu.Unlock()
+	}
+}
+
+// fanoutSpite is kept as a thin alias for older call sites/tests.
+func (r *socksRegistry) fanoutSpite(sessionID string, spite *implantpb.Spite) {
+	r.routeSpite(sessionID, spite)
 }
 
 func (r *socksRegistry) clearRelay(sessionID string) {
@@ -212,8 +304,6 @@ type SocksService struct {
 
 	mu    sync.Mutex
 	conns map[uint32]*localConn
-	// OpenResult may arrive before the local conn is registered.
-	pendingOpen map[uint32]*implantpb.TunnelOpenResult
 
 	stopCh chan struct{}
 	wg     sync.WaitGroup
@@ -337,29 +427,23 @@ func StartCmd(cmd *cobra.Command, con *core.Console) error {
 	rel := registry.getRelay(sess.SessionId)
 
 	svc := &SocksService{
-		id:          shortID(sess.SessionId, bind, port),
-		sessionID:   sess.SessionId,
-		rpc:         con.Rpc,
-		sess:        sess,
-		con:         con,
-		relay:       rel,
-		user:        user,
-		pass:        pass,
-		bind:        bind,
-		port:        port,
-		status:      StatusStarting,
-		createdAt:   time.Now(),
-		conns:       make(map[uint32]*localConn),
-		pendingOpen: make(map[uint32]*implantpb.TunnelOpenResult),
-		stopCh:      make(chan struct{}),
+		id:        shortID(sess.SessionId, bind, port),
+		sessionID: sess.SessionId,
+		rpc:       con.Rpc,
+		sess:      sess,
+		con:       con,
+		relay:     rel,
+		user:      user,
+		pass:      pass,
+		bind:      bind,
+		port:      port,
+		status:    StatusStarting,
+		createdAt: time.Now(),
+		conns:     make(map[uint32]*localConn),
+		stopCh:    make(chan struct{}),
 	}
 
-	// Ensure shared tcp_relay for this session (idempotent START on server).
-	if err := ensureSessionRelay(con, sess, rel); err != nil {
-		return err
-	}
-	svc.status = StatusListening
-
+	// Bind local port first so a listen failure never leaves an orphan relay.
 	ln, err := net.Listen("tcp", fmt.Sprintf("%s:%d", bind, port))
 	if err != nil {
 		return fmt.Errorf("listen %s:%d: %w", bind, port, err)
@@ -368,10 +452,21 @@ func StartCmd(cmd *cobra.Command, con *core.Console) error {
 
 	if err := registry.addService(svc); err != nil {
 		_ = ln.Close()
-		// If this was the only attempt and relay has no other socks, leave relay up
-		// for a subsequent start; do not STOP here.
 		return err
 	}
+
+	// Shared tcp_relay for this session (idempotent START on server).
+	if err := ensureSessionRelay(con, sess, rel); err != nil {
+		_ = ln.Close()
+		_ = registry.removeService(svc)
+		// If this was the only listener, drop client-side relay cache (no START
+		// succeeded so stopRelay is unnecessary when task is nil).
+		if len(registry.sessionServices(sess.SessionId)) == 0 {
+			registry.clearRelay(sess.SessionId)
+		}
+		return err
+	}
+	svc.status = StatusListening
 
 	svc.wg.Add(1)
 	go svc.acceptLoop()
@@ -403,9 +498,15 @@ func ensureSessionRelay(con *core.Console, sess *client.Session, rel *sessionRel
 			if ctx == nil || ctx.Spite == nil {
 				return
 			}
-			registry.fanoutSpite(sid, ctx.Spite)
+			registry.routeSpite(sid, ctx.Spite)
 		})
 		rel.callbackInstalled = true
+	}
+	if rel.owners == nil {
+		rel.owners = make(map[uint32]*SocksService)
+	}
+	if rel.pendingOpen == nil {
+		rel.pendingOpen = make(map[uint32]*implantpb.TunnelOpenResult)
 	}
 	rel.openFailStreak = 0
 	rel.lastError = ""
@@ -504,15 +605,37 @@ func stopRelay(con *core.Console, sessionID string) {
 	if task == nil {
 		return
 	}
-	// Best-effort STOP on implant via interactive session context if matching.
-	sess := con.GetInteractive()
-	ctx := context.Background()
-	if sess != nil && sess.SessionId == sessionID {
-		ctx = sess.Context()
-	} else if sess != nil {
-		ctx = sess.Context()
+	ctx, err := sessionContext(con, sessionID)
+	if err != nil {
+		if con != nil && con.Log != nil {
+			con.Log.Errorf("socks5 stopRelay session %s: %v\n", shortSession(sessionID), err)
+		}
+		return
 	}
 	_, _ = con.Rpc.TcpRelay(ctx, &implantpb.TunnelCtrl{Action: implantpb.TunnelCtrl_STOP})
+}
+
+// sessionContext builds outgoing gRPC metadata for the given implant session.
+// Prefer a live Session from the local map so STOP/Open always target that session,
+// not whatever is currently interactive.
+func sessionContext(con *core.Console, sessionID string) (context.Context, error) {
+	if con == nil {
+		return nil, fmt.Errorf("no console")
+	}
+	if sess, ok := con.GetLocalSession(sessionID); ok && sess != nil {
+		return sess.Context(), nil
+	}
+	if s := con.GetInteractive(); s != nil && s.SessionId == sessionID {
+		return s.Context(), nil
+	}
+	// Last resort: synthesize metadata without a Session object (still correct sid).
+	if sessionID == "" {
+		return nil, fmt.Errorf("empty session id")
+	}
+	return metadata.NewOutgoingContext(context.Background(), metadata.Pairs(
+		"session_id", sessionID,
+		"callee", consts.CalleeCMD,
+	)), nil
 }
 
 func ListCmd(cmd *cobra.Command, con *core.Console) error {
@@ -586,17 +709,25 @@ func (s *SocksService) setError(err string) {
 		s.status = StatusListening
 	}
 	s.mu.Unlock()
-	if s.relay != nil {
-		s.relay.mu.Lock()
-		if err != "" {
-			s.relay.openFailStreak++
-			s.relay.lastError = err
-		} else {
-			s.relay.openFailStreak = 0
-			s.relay.lastError = ""
-		}
-		s.relay.mu.Unlock()
+	if s.relay == nil {
+		return
 	}
+	s.relay.mu.Lock()
+	if err != "" {
+		s.relay.openFailStreak++
+		s.relay.lastError = err
+		// After repeated open failures, drop cached task so the next start /
+		// ensureSessionRelay performs a fresh TcpRelay START (covers half-dead streams).
+		if s.relay.openFailStreak >= openFailRebuildThreshold {
+			s.relay.task = nil
+			s.relay.callbackInstalled = false
+			s.relay.openFailStreak = 0
+		}
+	} else {
+		s.relay.openFailStreak = 0
+		s.relay.lastError = ""
+	}
+	s.relay.mu.Unlock()
 }
 
 func (s *SocksService) Close() {
@@ -615,11 +746,41 @@ func (s *SocksService) Close() {
 		case c.dataWait <- struct{}{}:
 		default:
 		}
-		_ = c.conn.Close()
+		if c.conn != nil {
+			_ = c.conn.Close()
+		}
 		delete(s.conns, id)
 	}
 	s.mu.Unlock()
-	s.wg.Wait()
+
+	// Unregister any remaining owner bindings for this service.
+	if s.relay != nil {
+		ids := make([]uint32, 0)
+		s.relay.mu.Lock()
+		for cid, owner := range s.relay.owners {
+			if owner == s {
+				ids = append(ids, cid)
+			}
+		}
+		for _, cid := range ids {
+			delete(s.relay.owners, cid)
+			if s.relay.pendingOpen != nil {
+				delete(s.relay.pendingOpen, cid)
+			}
+		}
+		s.relay.mu.Unlock()
+	}
+
+	done := make(chan struct{})
+	go func() {
+		s.wg.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(closeWaitTimeout):
+		// In-flight handlers will exit on stopCh / closed conns; do not block stop forever.
+	}
 }
 
 func (s *SocksService) acceptLoop() {
@@ -742,19 +903,19 @@ func (s *SocksService) handleClient(conn net.Conn) {
 	}
 	s.mu.Lock()
 	s.conns[connID] = lc
-	if pend := s.pendingOpen[connID]; pend != nil {
-		delete(s.pendingOpen, connID)
+	s.mu.Unlock()
+	// Register owner before TunnelOpen so OpenResult routes to this listener.
+	if pend := s.relay.registerConn(connID, s); pend != nil {
 		select {
 		case lc.openCh <- pend:
 		default:
 		}
 	}
-	s.mu.Unlock()
 	defer func() {
 		s.mu.Lock()
 		delete(s.conns, connID)
-		delete(s.pendingOpen, connID)
 		s.mu.Unlock()
+		s.relay.unregisterConn(connID)
 		lc.closed.Store(true)
 		select {
 		case lc.dataWait <- struct{}{}:
@@ -866,17 +1027,21 @@ func (s *SocksService) handleSpite(spite *implantpb.Spite) {
 	if r := spite.GetTunnelOpenResult(); r != nil {
 		s.mu.Lock()
 		lc := s.conns[r.ConnId]
+		s.mu.Unlock()
 		if lc == nil {
-			if s.pendingOpen == nil {
-				s.pendingOpen = make(map[uint32]*implantpb.TunnelOpenResult)
+			// Owner registered but local conn map race: buffer on session relay.
+			if s.relay != nil {
+				s.relay.mu.Lock()
+				if s.relay.pendingOpen == nil {
+					s.relay.pendingOpen = make(map[uint32]*implantpb.TunnelOpenResult)
+				}
+				if len(s.relay.pendingOpen) < 1024 {
+					s.relay.pendingOpen[r.ConnId] = r
+				}
+				s.relay.mu.Unlock()
 			}
-			// Only keep pending if this might be ours — still OK to store; other
-			// listeners ignore unknown ids.
-			s.pendingOpen[r.ConnId] = r
-			s.mu.Unlock()
 			return
 		}
-		s.mu.Unlock()
 		select {
 		case lc.openCh <- r:
 		default:
@@ -893,6 +1058,19 @@ func (s *SocksService) handleSpite(spite *implantpb.Spite) {
 		if len(d.Data) > 0 {
 			chunk := append([]byte(nil), d.Data...)
 			lc.dataMu.Lock()
+			if len(lc.dataQ) >= maxDataQChunks {
+				lc.dataMu.Unlock()
+				// Backpressure: close rather than drop bytes (TLS integrity).
+				lc.closed.Store(true)
+				select {
+				case lc.dataWait <- struct{}{}:
+				default:
+				}
+				if lc.conn != nil {
+					_ = lc.conn.Close()
+				}
+				return
+			}
 			lc.dataQ = append(lc.dataQ, chunk)
 			lc.dataMu.Unlock()
 			select {
@@ -906,7 +1084,9 @@ func (s *SocksService) handleSpite(spite *implantpb.Spite) {
 			case lc.dataWait <- struct{}{}:
 			default:
 			}
-			_ = lc.conn.Close()
+			if lc.conn != nil {
+				_ = lc.conn.Close()
+			}
 		}
 		return
 	}
@@ -920,7 +1100,9 @@ func (s *SocksService) handleSpite(spite *implantpb.Spite) {
 			case lc.dataWait <- struct{}{}:
 			default:
 			}
-			_ = lc.conn.Close()
+			if lc.conn != nil {
+				_ = lc.conn.Close()
+			}
 		}
 	}
 }

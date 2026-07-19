@@ -111,7 +111,7 @@ func (rpc *Server) TcpRelay(ctx context.Context, req *implantpb.TunnelCtrl) (*cl
 		return greq.Task.ToProtobuf(), nil
 	}
 
-	// LIST on existing stream if present
+	// LIST: only on an existing live stream. Never fall through to START.
 	if req.Action == implantpb.TunnelCtrl_LIST {
 		session, err := getSession(ctx)
 		if err != nil {
@@ -126,6 +126,7 @@ func (rpc *Server) TcpRelay(ctx context.Context, req *implantpb.TunnelCtrl) (*cl
 				return taskPb, nil
 			}
 		}
+		return nil, types.ErrNotFoundTask
 	}
 
 	// START (or default): open streaming task.
