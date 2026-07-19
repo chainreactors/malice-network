@@ -133,6 +133,7 @@ func (c *Console) IsMuxIndex() bool {
 
 func (c *Console) NewConsole() {
 	iom := console.New("IoM")
+	iom.SetEscapeMode(console.EscapeLiteral)
 	c.App = iom
 
 	client := iom.NewMenu(consts.ClientMenu)

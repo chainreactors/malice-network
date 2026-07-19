@@ -66,7 +66,23 @@ switch              # 在多个 session 间快速切换
 
 - **Tab 补全** ：命令名、子命令、Flag、Session ID、Pipeline 名称等均支持智能补全
 - **帮助系统** ：`help` 按分组列出所有命令，`help <command>` 查看详细用法
-- **Shell 转义** ：使用 `!` 前缀执行本地命令，如 `! ls -la`
+- **本地 Shell** ：使用 `!` 前缀执行本地命令，如 `! ls -la`
+
+### 输入解析与反斜杠
+
+交互式 Console 面向 Cobra 命令而不是 POSIX Shell，因此反斜杠按普通字符处理。执行、续行判断、Tab 补全和语法高亮使用相同规则。
+
+```text
+ls C:\Windows\Temp
+reg query HKLM\Software\Vendor\Product
+run "argument with spaces" C:\Tools\agent.exe
+```
+
+- Windows 路径、UNC 路径、注册表路径和正则表达式中的反斜杠无需重复转义。
+- 单引号和双引号仍可将带空格的内容组合成一个参数，外围引号不会传给 Cobra 命令。
+- 行末反斜杠是字面量，按 Enter 会立即执行，不会进入下一行。
+
+该行为由 Client 初始化时选择的 `EscapeLiteral` 模式统一配置，目前没有用户侧切换选项。Console 依赖库仍保留 `EscapeShell` 作为默认模式，供需要 POSIX Shell 转义语义的其他调用方使用。
 
 ## TUI 多窗口模式
 
