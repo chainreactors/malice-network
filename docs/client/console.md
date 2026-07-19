@@ -78,8 +78,17 @@ reg query HKLM\Software\Vendor\Product
 run "argument with spaces" C:\Tools\agent.exe
 ```
 
+交互式粘贴会将 CRLF 和 CR 规范化为 LF。引号外的内部换行与空格、Tab 一样用于分隔参数，因此一条跨多行的命令会作为一次 Cobra 命令执行：
+
+```text
+artifact publish RIGID_
+  --website web
+  --path /x
+```
+
 - Windows 路径、UNC 路径、注册表路径和正则表达式中的反斜杠无需重复转义。
 - 单引号和双引号仍可将带空格的内容组合成一个参数，外围引号不会传给 Cobra 命令。
+- 多行粘贴不会逐条执行，而是按一次命令解析；多条独立命令需要分别粘贴和执行。
 - 行末反斜杠是字面量，按 Enter 会立即执行，不会进入下一行。
 
 该行为由 Client 初始化时选择的 `EscapeLiteral` 模式统一配置，目前没有用户侧切换选项。Console 依赖库仍保留 `EscapeShell` 作为默认模式，供需要 POSIX Shell 转义语义的其他调用方使用。
