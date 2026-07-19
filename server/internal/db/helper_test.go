@@ -104,6 +104,29 @@ func TestArtifacts_ToProtobuf(t *testing.T) {
 	}
 }
 
+func TestListArtifactsOmitsBuilderLog(t *testing.T) {
+	initTestDB(t)
+
+	artifact := &models.Artifact{
+		Name: "artifact-with-large-log",
+		Log:  "large builder log that should not be loaded by the list query",
+	}
+	if err := Session().Create(artifact).Error; err != nil {
+		t.Fatalf("create artifact: %v", err)
+	}
+
+	artifacts, err := ListArtifacts()
+	if err != nil {
+		t.Fatalf("ListArtifacts failed: %v", err)
+	}
+	if len(artifacts) != 1 {
+		t.Fatalf("expected 1 artifact, got %d", len(artifacts))
+	}
+	if artifacts[0].Log != "" {
+		t.Fatalf("ListArtifacts loaded builder log into memory: %q", artifacts[0].Log)
+	}
+}
+
 // ============================================
 // Generic CRUD Tests
 // ============================================

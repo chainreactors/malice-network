@@ -933,7 +933,7 @@ func UpdateBuilderLog(name string, logEntry string) {
 }
 
 func GetBuilderLogs(builderName string, limit int) (string, error) {
-	builder, err := NewArtifactQuery().WhereName(builderName).First()
+	builder, err := NewArtifactQuery().Select("log").WhereName(builderName).First()
 	if err != nil {
 		return "", err
 	}

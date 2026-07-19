@@ -1,6 +1,10 @@
 package db
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/chainreactors/malice-network/server/internal/db/models"
+)
 
 func TestTailBuilderLog(t *testing.T) {
 	tests := []struct {
@@ -47,5 +51,26 @@ func TestTailBuilderLog(t *testing.T) {
 				t.Fatalf("tailBuilderLog() = %q, want %q", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestGetBuilderLogsSelectsOnlyLog(t *testing.T) {
+	initTestDB(t)
+
+	artifact := &models.Artifact{
+		Name:       "log-only-query",
+		Log:        "line1\nline2\nline3\n",
+		ParamsData: "{invalid-json",
+	}
+	if err := Session().Create(artifact).Error; err != nil {
+		t.Fatalf("create artifact: %v", err)
+	}
+
+	got, err := GetBuilderLogs(artifact.Name, 2)
+	if err != nil {
+		t.Fatalf("GetBuilderLogs should not deserialize unrelated artifact fields: %v", err)
+	}
+	if want := "line2\nline3\n"; got != want {
+		t.Fatalf("GetBuilderLogs() = %q, want %q", got, want)
 	}
 }

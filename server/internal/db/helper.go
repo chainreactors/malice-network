@@ -450,7 +450,7 @@ func ListTasksBySession(sessionID string) (Tasks, error) {
 
 // ListArtifacts returns all artifacts
 func ListArtifacts() (Artifacts, error) {
-	return NewArtifactQuery().WithProfilePipeline().Find()
+	return NewArtifactQuery().Omit("log").WithProfilePipeline().Find()
 }
 
 // ListPipelinesByListener returns pipelines for a listener (non-website)
@@ -804,6 +804,18 @@ func (q *ArtifactQuery) WherePipelineIdentity(pipelineID, listenerID string) *Ar
 // WherePathNotEmpty filters out artifacts with empty or NULL paths.
 func (q *ArtifactQuery) WherePathNotEmpty() *ArtifactQuery {
 	q.db = q.db.Where("path != '' AND path IS NOT NULL")
+	return q
+}
+
+// Select limits the artifact columns loaded by the query.
+func (q *ArtifactQuery) Select(columns ...string) *ArtifactQuery {
+	q.db = q.db.Select(columns)
+	return q
+}
+
+// Omit excludes artifact columns from the query.
+func (q *ArtifactQuery) Omit(columns ...string) *ArtifactQuery {
+	q.db = q.db.Omit(columns...)
 	return q
 }
 
