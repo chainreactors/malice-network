@@ -339,6 +339,7 @@ func Commands(con *core.Console) []*cobra.Command {
 	startCmd := &cobra.Command{
 		Use:   "start",
 		Short: "Start a local SOCKS5 listener (multiple per session OK)",
+		Long:  "Start an authenticated local SOCKS5 listener for the active implant session. Multiple listeners may share the session's native tcp_relay task.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return StartCmd(cmd, con)
 		},
@@ -360,6 +361,7 @@ socks5 start --port 1081 --user bob --pass secret --bind 127.0.0.1
 	stopCmd := &cobra.Command{
 		Use:   "stop",
 		Short: "Stop SOCKS5 listener(s)",
+		Long:  "Stop one native SOCKS5 listener by ID or port, every listener for a session, or all listeners owned by this client.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return StopCmd(cmd, con)
 		},
@@ -377,6 +379,7 @@ socks5 stop --all        # stop all listeners in this client
 	listCmd := &cobra.Command{
 		Use:   "list",
 		Short: "List native SOCKS5 listeners (session-bound; use --all for global)",
+		Long:  "List native SOCKS5 listeners for the active session, an explicitly selected session, or every session owned by this client.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ListCmd(cmd, con)
 		},
@@ -1162,4 +1165,3 @@ func (s *SocksService) handleSpite(spite *implantpb.Spite) {
 		}
 	}
 }
-
