@@ -13,6 +13,7 @@ import (
 
 // AskCmd handles the ask command
 func AskCmd(cmd *cobra.Command, con *core.Console, args []string) error {
+	writer := cmd.OutOrStdout()
 	question := strings.Join(args, " ")
 	if question == "" {
 		return fmt.Errorf("please provide a question")
@@ -44,7 +45,7 @@ func AskCmd(cmd *cobra.Command, con *core.Console, args []string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
 	defer cancel()
 
-	fmt.Println("Thinking...")
+	fmt.Fprintln(writer, "Thinking...")
 
 	// Ask the AI
 	response, err := aiClient.Ask(ctx, question, history)
@@ -56,17 +57,17 @@ func AskCmd(cmd *cobra.Command, con *core.Console, args []string) error {
 	commands := core.ParseCommandSuggestions(response)
 
 	// Display response
-	fmt.Printf("\n%s\n", response)
+	fmt.Fprintf(writer, "\n%s\n", response)
 
 	// If there are command suggestions, list them
 	if len(commands) > 0 {
-		fmt.Println("\nSuggested commands:")
-		for i, cmd := range commands {
-			fmt.Printf("  [%d] %s\n", i+1, cmd.Command)
+		fmt.Fprintln(writer, "\nSuggested commands:")
+		for i, suggestion := range commands {
+			fmt.Fprintf(writer, "  [%d] %s\n", i+1, suggestion.Command)
 		}
 	}
 
-	fmt.Println()
+	fmt.Fprintln(writer)
 
 	return nil
 }

@@ -298,9 +298,10 @@ func SkillCmd(cmd *cobra.Command, con *core.Console, args []string) error {
 
 // SkillListCmd lists all discovered skills.
 func SkillListCmd(cmd *cobra.Command, con *core.Console) error {
+	writer := cmd.OutOrStdout()
 	skills := DiscoverSkills()
 	if len(skills) == 0 {
-		fmt.Println("No skills found. Place SKILL.md files in ./skills/<name>/ or ~/.config/malice/skills/<name>/")
+		fmt.Fprintln(writer, "No skills found. Place SKILL.md files in ./skills/<name>/ or ~/.config/malice/skills/<name>/")
 		return nil
 	}
 
@@ -317,14 +318,14 @@ func SkillListCmd(cmd *cobra.Command, con *core.Console) error {
 	}
 
 	fmtStr := fmt.Sprintf("  %%-%ds  %%-%ds  %%s\n", nameWidth, descWidth)
-	fmt.Printf(fmtStr, "NAME", "DESCRIPTION", "SOURCE")
-	fmt.Printf(fmtStr, strings.Repeat("─", nameWidth), strings.Repeat("─", descWidth), "───────")
+	fmt.Fprintf(writer, fmtStr, "NAME", "DESCRIPTION", "SOURCE")
+	fmt.Fprintf(writer, fmtStr, strings.Repeat("─", nameWidth), strings.Repeat("─", descWidth), "───────")
 	for _, s := range skills {
 		desc := s.Description
 		if desc == "" {
 			desc = "-"
 		}
-		fmt.Printf(fmtStr, s.Name, desc, s.Source)
+		fmt.Fprintf(writer, fmtStr, s.Name, desc, s.Source)
 	}
 	return nil
 }

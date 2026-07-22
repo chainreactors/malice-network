@@ -1,8 +1,14 @@
 package core
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
@@ -13,12 +19,53 @@ import (
 	"github.com/chainreactors/mals"
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
-	"strings"
-	"sync"
-	"time"
 )
 
 var commandExecMu sync.Mutex
+
+func mergeCommandOutputs(bufferedOutput, cobraOutput string) string {
+	bufferedText := strings.TrimSpace(bufferedOutput)
+	cobraText := strings.TrimSpace(cobraOutput)
+
+	switch {
+	case cobraText == "":
+		return bufferedOutput
+	case bufferedText == "":
+		return cobraOutput
+	case bufferedText == cobraText:
+		return bufferedOutput
+	case strings.HasSuffix(bufferedOutput, "\n") || strings.HasPrefix(cobraOutput, "\n"):
+		return bufferedOutput + cobraOutput
+	default:
+		return bufferedOutput + "\n" + cobraOutput
+	}
+}
+
+// executeConsoleCommandCaptured runs one command while preserving its existing
+// terminal writers and collecting both logger-backed and Cobra-backed output.
+// The caller must hold commandExecMu while this function is running.
+func executeConsoleCommandCaptured(con *Console, args []string) (string, error) {
+	menu := con.App.ActiveMenu()
+	root := menu.Command
+
+	var cobraOutput bytes.Buffer
+	originalOut := root.OutOrStdout()
+	originalErr := root.ErrOrStderr()
+	root.SetOut(io.MultiWriter(&cobraOutput, originalOut))
+	root.SetErr(io.MultiWriter(&cobraOutput, originalErr))
+	defer func() {
+		root.SetOut(originalOut)
+		root.SetErr(originalErr)
+	}()
+
+	start := time.Now()
+	err := con.App.Execute(con.Context(), menu, args, false)
+	end := time.Now()
+
+	bufferedOutput := client.RemoveANSI(client.Stdout.Range(start, end))
+	directOutput := client.RemoveANSI(cobraOutput.String())
+	return mergeCommandOutputs(bufferedOutput, directOutput), err
+}
 
 func RunCommand(con *Console, cmdline interface{}) (string, error) {
 	// Console state (active session/menu/callee + stdout capture window) is shared.
@@ -37,13 +84,12 @@ func RunCommand(con *Console, cmdline interface{}) (string, error) {
 	case []string:
 		args = c
 	}
-	start := time.Now()
 
-	err = con.App.Execute(con.Context(), con.App.ActiveMenu(), args, false)
+	response, err := executeConsoleCommandCaptured(con, args)
 	if err != nil {
 		return "", err
 	}
-	return client.RemoveANSI(client.Stdout.Range(start, time.Now())), nil
+	return response, nil
 }
 
 // switchSessionWithCallee 切换session并设置callee
@@ -197,11 +243,11 @@ func executeCommandWithTaskWait(con *Console, command, sessionID, callee string)
 	}
 
 	args = stripWaitFlag(args)
-	start := time.Now()
-	if err := con.App.Execute(con.Context(), con.App.ActiveMenu(), args, false); err != nil {
+	syncOutput, err := executeConsoleCommandCaptured(con, args)
+	if err != nil {
 		return "", err
 	}
-	syncOutput := strings.TrimSpace(client.RemoveANSI(client.Stdout.Range(start, time.Now())))
+	syncOutput = strings.TrimSpace(syncOutput)
 
 	if !hasSession {
 		return syncOutput, nil

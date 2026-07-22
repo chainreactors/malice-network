@@ -1,6 +1,7 @@
 package core_test
 
 import (
+	"bytes"
 	"context"
 	"strings"
 	"testing"
@@ -44,6 +45,47 @@ func TestLocalRPCExecuteCommandReturnsStaticOutputWithoutSession(t *testing.T) {
 	}
 	if !strings.Contains(resp.Output, "rpc123") {
 		t.Fatalf("session output = %q, want it to contain %q", resp.Output, "rpc123")
+	}
+}
+
+func TestLocalRPCExecuteCommandReturnsHelpAndPreservesConsoleOutput(t *testing.T) {
+	con, _ := newLocalRPCExecutionConsole(t)
+	server := core.NewLocalRPCServer(con)
+
+	root := con.App.ActiveMenu().Command
+	var consoleOutput bytes.Buffer
+	originalOut := root.OutOrStdout()
+	originalErr := root.ErrOrStderr()
+	root.SetOut(&consoleOutput)
+	root.SetErr(&consoleOutput)
+	t.Cleanup(func() {
+		root.SetOut(originalOut)
+		root.SetErr(originalErr)
+	})
+
+	resp, err := server.ExecuteCommand(context.Background(), &localrpcpb.ExecuteCommandRequest{
+		Command: "session --help",
+	})
+	if err != nil {
+		t.Fatalf("ExecuteCommand returned error: %v", err)
+	}
+	if !resp.Success {
+		t.Fatalf("ExecuteCommand failed: %s", resp.Error)
+	}
+
+	for _, want := range []string{"session", "Usage", "--all"} {
+		if !strings.Contains(resp.Output, want) {
+			t.Errorf("RPC output = %q, want it to contain %q", resp.Output, want)
+		}
+		if !strings.Contains(consoleOutput.String(), want) {
+			t.Errorf("console output = %q, want it to contain %q", consoleOutput.String(), want)
+		}
+	}
+	if strings.Count(resp.Output, "\n") < 2 {
+		t.Errorf("RPC output = %q, want multiline help", resp.Output)
+	}
+	if root.OutOrStdout() != &consoleOutput || root.ErrOrStderr() != &consoleOutput {
+		t.Fatal("ExecuteCommand did not restore the command output writers")
 	}
 }
 

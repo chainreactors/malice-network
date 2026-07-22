@@ -1,10 +1,26 @@
 package agent
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/spf13/cobra"
 )
+
+func TestSkillListCmdWritesToCommandOutput(t *testing.T) {
+	cmd := &cobra.Command{}
+	var output bytes.Buffer
+	cmd.SetOut(&output)
+
+	if err := SkillListCmd(cmd, nil); err != nil {
+		t.Fatalf("SkillListCmd returned error: %v", err)
+	}
+	if output.Len() == 0 {
+		t.Fatal("SkillListCmd did not write to the command output")
+	}
+}
 
 func TestParseSkillDataAndRenderSkill(t *testing.T) {
 	raw := []byte(`---

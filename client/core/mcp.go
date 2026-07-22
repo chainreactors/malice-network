@@ -297,6 +297,11 @@ func (m *MCPServer) registerExecuteCommandTool() {
 
 Examples:
 - "session --all" - List all sessions
+- "session --help" - Show multiline command help
+- "search screenshot" - Search commands and plugins
+- "skill list" - List available AI skills
+- "ask explain this result" - Ask the configured local AI
+- "analyze permission denied" - Analyze an error with the configured local AI
 - "use <session_id>" - Switch to a session
 - "whoami" - Execute whoami in current session (requires active session)
 - "ls" - List files in current directory (requires active session)

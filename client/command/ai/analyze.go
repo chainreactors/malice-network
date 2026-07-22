@@ -13,6 +13,7 @@ import (
 
 // AnalyzeCmd handles the analyze command - analyzes errors and provides suggestions
 func AnalyzeCmd(cmd *cobra.Command, con *core.Console, args []string) error {
+	writer := cmd.OutOrStdout()
 	aiSettings, err := assets.GetValidAISettings()
 	if err != nil {
 		return err
@@ -50,29 +51,29 @@ func AnalyzeCmd(cmd *cobra.Command, con *core.Console, args []string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
 	defer cancel()
 
-	fmt.Println("\nAnalyzing error...")
-	fmt.Println()
+	fmt.Fprintln(writer, "\nAnalyzing error...")
+	fmt.Fprintln(writer)
 
 	// Use streaming for real-time output
 	response, err := aiClient.AskStream(ctx, prompt, nil, func(chunk string) {
-		fmt.Print(chunk)
+		fmt.Fprint(writer, chunk)
 	})
 	if err != nil {
 		return fmt.Errorf("AI analysis failed: %w", err)
 	}
 
-	fmt.Println()
+	fmt.Fprintln(writer)
 
 	// Parse command suggestions
 	commands := core.ParseCommandSuggestions(response)
 	if len(commands) > 0 {
-		fmt.Println("\nSuggested commands:")
-		for i, cmd := range commands {
-			fmt.Printf("  [%d] %s\n", i+1, cmd.Command)
+		fmt.Fprintln(writer, "\nSuggested commands:")
+		for i, suggestion := range commands {
+			fmt.Fprintf(writer, "  [%d] %s\n", i+1, suggestion.Command)
 		}
 	}
 
-	fmt.Println()
+	fmt.Fprintln(writer)
 	return nil
 }
 

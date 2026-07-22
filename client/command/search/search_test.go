@@ -1,14 +1,36 @@
 package search
 
 import (
+	"bytes"
 	"encoding/json"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/carapace-sh/carapace"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/spf13/cobra"
 )
+
+func TestRenderResultsWritesToProvidedWriter(t *testing.T) {
+	var output bytes.Buffer
+	renderResults(&output, "screen", []core.SearchResult{
+		{
+			Name:        "screenshot",
+			Type:        "command",
+			Category:    "collection",
+			Description: "Capture the current desktop",
+			Usage:       "screenshot",
+		},
+	})
+
+	got := output.String()
+	for _, want := range []string{"Found 1 results", "screenshot", "Capture the current desktop"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("renderResults output = %q, want it to contain %q", got, want)
+		}
+	}
+}
 
 func TestSearchGroupCompleterUsesSearchIndexCategories(t *testing.T) {
 	dir := t.TempDir()

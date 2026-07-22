@@ -3,6 +3,7 @@ package search
 import (
 	"context"
 	"fmt"
+	"io"
 	"strconv"
 	"strings"
 
@@ -79,11 +80,18 @@ func searchRunE(con *core.Console) func(cmd *cobra.Command, args []string) error
 		}
 
 		if len(results) == 0 {
-			con.Log.Infof("No results found for: %s\n", query)
+			if common.ShouldUseStaticOutput(con) {
+				fmt.Fprintf(cmd.OutOrStdout(), "No results found for: %s\n", query)
+			} else {
+				con.Log.Infof("No results found for: %s\n", query)
+			}
 			return nil
 		}
 
-		renderResults(con, query, results)
+		if !common.ShouldUseStaticOutput(con) {
+			tui.Down(0)
+		}
+		renderResults(cmd.OutOrStdout(), query, results)
 		return nil
 	}
 }
@@ -110,9 +118,8 @@ func opsecStyle(opsecStr string) lipgloss.Style {
 	}
 }
 
-func renderResults(con *core.Console, query string, results []core.SearchResult) {
-	tui.Down(0)
-	fmt.Printf("%s\n\n", headerStyle.Render(fmt.Sprintf("Found %d results for \"%s\":", len(results), query)))
+func renderResults(writer io.Writer, query string, results []core.SearchResult) {
+	fmt.Fprintf(writer, "%s\n\n", headerStyle.Render(fmt.Sprintf("Found %d results for \"%s\":", len(results), query)))
 
 	for i, r := range results {
 		// Name and type badge
@@ -133,23 +140,23 @@ func renderResults(con *core.Console, query string, results []core.SearchResult)
 			line += " " + opsecStyle(r.Opsec).Render("opsec:"+r.Opsec)
 		}
 
-		fmt.Println(line)
+		fmt.Fprintln(writer, line)
 
 		if r.Description != "" {
-			fmt.Printf("    %s\n", r.Description)
+			fmt.Fprintf(writer, "    %s\n", r.Description)
 		}
 
 		if r.Snippet != "" && r.Snippet != r.Description {
-			fmt.Printf("    %s\n", snippetStyle.Render(r.Snippet))
+			fmt.Fprintf(writer, "    %s\n", snippetStyle.Render(r.Snippet))
 		}
 
 		if r.Usage != "" {
-			fmt.Printf("    %s\n", groupStyle.Render(r.Usage))
+			fmt.Fprintf(writer, "    %s\n", groupStyle.Render(r.Usage))
 		}
 
 		if i < len(results)-1 {
-			fmt.Println()
+			fmt.Fprintln(writer)
 		}
 	}
-	fmt.Println()
+	fmt.Fprintln(writer)
 }

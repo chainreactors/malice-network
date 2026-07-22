@@ -35,6 +35,19 @@ MCP 服务会注册通用工具和 Client 命令接口：
 - **Tools** ：`execute_command`、`execute_lua`、`search_commands`、`get_history`，以及从 Cobra 命令树生成的命令 Tool
 - **Resources** ：从命令树生成的只读 Resource，用于查询 session、listener、artifact 等常用状态
 
+`execute_command` 会在保留终端显示的同时返回命令输出，并保留帮助或结果中的换行。例如：
+
+```text
+session --help              # 返回多行 help / usage
+session --all               # 返回 Console 日志型结果
+search screenshot           # 返回搜索结果
+skill list                  # 返回 Skill 列表
+ask "explain this result"   # 返回本地 AI 答复
+analyze "permission denied" # 返回本地 AI 分析
+```
+
+Implant 命令会等待对应 Task 完成并返回渲染后的任务结果；命令确实没有产生任何内容时，才返回无输出提示。
+
 ### 支持的客户端
 
 任何兼容 MCP 协议的客户端均可接入：

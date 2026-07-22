@@ -342,12 +342,11 @@ func executeStreamCommand(con *Console, command, sessionID string) (string, *cli
 	}
 	args = stripWaitFlag(args)
 
-	start := time.Now()
-	if err := con.App.Execute(con.Context(), con.App.ActiveMenu(), args, false); err != nil {
+	syncOutput, err := executeConsoleCommandCaptured(con, args)
+	if err != nil {
 		return "", nil, err
 	}
-
-	syncOutput := strings.TrimSpace(client.RemoveANSI(client.Stdout.Range(start, time.Now())))
+	syncOutput = strings.TrimSpace(syncOutput)
 
 	// Capture LastTask while still holding the lock.
 	var task *clientpb.Task
