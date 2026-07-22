@@ -15,6 +15,9 @@ func Commands(con *core.Console) []*cobra.Command {
 		Use:   consts.CommandProject,
 		Short: "Manage projects",
 		Long:  "List, create, update, and delete projects.",
+		Example: `~~~
+project
+~~~`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ListProjectsCmd(cmd, con)
 		},
@@ -23,6 +26,10 @@ func Commands(con *core.Console) []*cobra.Command {
 	createCmd := &cobra.Command{
 		Use:   consts.CommandProjectCreate + " [name]",
 		Short: "Create a new project",
+		Long:  "Create a project with an optional description and note.",
+		Example: `~~~
+project create red-team-q3 --description "Q3 assessment" --note "Internal"
+~~~`,
 		Args: func(cmd *cobra.Command, args []string) error {
 			if len(args) != 1 {
 				return fmt.Errorf("project name is required")
@@ -41,7 +48,11 @@ func Commands(con *core.Console) []*cobra.Command {
 	getCmd := &cobra.Command{
 		Use:   consts.CommandProjectGet + " [name|id]",
 		Short: "Show project details",
-		Args:  cobra.ExactArgs(1),
+		Long:  "Show project details by project name or ID.",
+		Example: `~~~
+project get red-team-q3
+~~~`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return GetProjectCmd(cmd, con)
 		},
@@ -50,7 +61,11 @@ func Commands(con *core.Console) []*cobra.Command {
 	updateCmd := &cobra.Command{
 		Use:   consts.CommandProjectUpdate + " [name|id]",
 		Short: "Update a project",
-		Args:  cobra.ExactArgs(1),
+		Long:  "Update a project's name, description, or note.",
+		Example: `~~~
+project update red-team-q3 --name red-team-q3-final
+~~~`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return UpdateProjectCmd(cmd, con)
 		},
@@ -64,7 +79,12 @@ func Commands(con *core.Console) []*cobra.Command {
 	deleteCmd := &cobra.Command{
 		Use:   consts.CommandProjectDelete + " [name|id]",
 		Short: "Delete a project",
-		Args:  cobra.ExactArgs(1),
+		Long:  "Soft-delete a project, or permanently delete it with --hard.",
+		Example: `~~~
+project delete red-team-q3
+project delete red-team-q3 --hard
+~~~`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return DeleteProjectCmd(cmd, con)
 		},
