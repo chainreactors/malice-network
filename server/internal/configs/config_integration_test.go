@@ -62,6 +62,25 @@ func TestLoadMiscConfigParsesCertificateKeys(t *testing.T) {
 	}
 }
 
+func TestUploadConfigParsesResourceLimits(t *testing.T) {
+	configPath := writeTestFile(t, t.TempDir(), "config.yaml", `server:
+  upload:
+    max_chunk_bytes: 1024
+    max_file_bytes: 2048
+    max_staging_bytes: 4096
+    min_free_disk_bytes: 512
+    max_active_per_session: 2
+    staging_ttl_seconds: 60
+`)
+	loadTestConfig(t, configPath)
+
+	upload := GetUploadConfig()
+	if upload.MaxChunkBytes != 1024 || upload.MaxFileBytes != 2048 || upload.MaxStagingBytes != 4096 ||
+		upload.MinFreeDiskBytes != 512 || upload.MaxActivePerSession != 2 || upload.StagingTTLSeconds != 60 {
+		t.Fatalf("unexpected upload config: %#v", upload)
+	}
+}
+
 func TestFullConfigFixtureParsesAndDrivesMechanisms(t *testing.T) {
 	dir := t.TempDir()
 	certPath := writeTestFile(t, dir, "cert.pem", "cert-data")

@@ -247,6 +247,37 @@ func TestTask_ClosedFieldRaceSafe(t *testing.T) {
 	}
 }
 
+func TestTaskExtendDeadlineIsRaceSafe(t *testing.T) {
+	task := &Task{Deadline: time.Now().Add(-time.Second)}
+	if !task.Timeout() {
+		t.Fatal("past deadline should be timed out")
+	}
+
+	future := time.Now().Add(time.Hour)
+	task.ExtendDeadline(future)
+	if task.Timeout() {
+		t.Fatal("extended future deadline should not be timed out")
+	}
+
+	var wg sync.WaitGroup
+	for i := 0; i < 8; i++ {
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			for j := 0; j < 100; j++ {
+				task.ExtendDeadline(time.Now().Add(time.Hour))
+			}
+		}()
+		go func() {
+			defer wg.Done()
+			for j := 0; j < 100; j++ {
+				_ = task.Timeout()
+			}
+		}()
+	}
+	wg.Wait()
+}
+
 func TestUpdateTotalPersistsOnlyTotalField(t *testing.T) {
 	cleanup := installTaskDBMocks()
 	defer cleanup()

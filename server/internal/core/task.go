@@ -321,8 +321,21 @@ func (t *Task) Finished() bool {
 	return t.Total >= 0 && t.Cur == t.Total
 }
 
+// ExtendDeadline moves the observational timeout deadline forward without
+// shortening an existing later deadline.
+func (t *Task) ExtendDeadline(deadline time.Time) {
+	t.progressMu.Lock()
+	if deadline.After(t.Deadline) {
+		t.Deadline = deadline
+	}
+	t.progressMu.Unlock()
+}
+
 func (t *Task) Timeout() bool {
-	return time.Now().After(t.Deadline)
+	t.progressMu.RLock()
+	deadline := t.Deadline
+	t.progressMu.RUnlock()
+	return time.Now().After(deadline)
 }
 
 func (t *Task) Panic(event Event) {

@@ -94,6 +94,8 @@ func ResetTransientRPCState() {
 }
 
 func RegisterRPCServices(grpcServer *grpc.Server) {
+	globalUploadStaging.applyConfig(configs.GetUploadConfig())
+	globalUploadStaging.startJanitor(uploadStagingJanitorInterval)
 	clientrpc.RegisterMaliceRPCServer(grpcServer, NewServer())
 	clientrpc.RegisterRootRPCServer(grpcServer, NewServer())
 	listenerrpc.RegisterListenerRPCServer(grpcServer, NewServer())

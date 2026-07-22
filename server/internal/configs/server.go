@@ -82,6 +82,7 @@ type ServerConfig struct {
 	LLMConfig      *LLMConfig      `config:"llm" yaml:"llm"`
 	DatabaseConfig *DatabaseConfig `config:"database" yaml:"database"`
 	RootRPCConfig  *RootRPCConfig  `config:"root_rpc" yaml:"root_rpc"`
+	UploadConfig   *UploadConfig   `config:"upload" yaml:"upload"`
 }
 
 func (c *ServerConfig) Address() string {
@@ -121,6 +122,24 @@ type MiscConfig struct {
 	PacketLength int    `config:"packet_length" default:"4194304" yaml:"packet_length"`
 	Certificate  string `config:"certificate" default:"" yaml:"certificate"`
 	PrivateKey   string `config:"certificate_key" default:"" yaml:"certificate_key"`
+}
+
+const (
+	DefaultUploadMaxChunkBytes       = 8 * 1024 * 1024
+	DefaultUploadMaxFileBytes        = 20 * 1024 * 1024 * 1024
+	DefaultUploadMaxStagingBytes     = 20 * 1024 * 1024 * 1024
+	DefaultUploadMinFreeDiskBytes    = 1 * 1024 * 1024 * 1024
+	DefaultUploadMaxActivePerSession = 4
+	DefaultUploadStagingTTLSeconds   = 6 * 60 * 60
+)
+
+type UploadConfig struct {
+	MaxChunkBytes       uint64 `config:"max_chunk_bytes" default:"8388608" yaml:"max_chunk_bytes"`
+	MaxFileBytes        uint64 `config:"max_file_bytes" default:"21474836480" yaml:"max_file_bytes"`
+	MaxStagingBytes     uint64 `config:"max_staging_bytes" default:"21474836480" yaml:"max_staging_bytes"`
+	MinFreeDiskBytes    uint64 `config:"min_free_disk_bytes" default:"1073741824" yaml:"min_free_disk_bytes"`
+	MaxActivePerSession int    `config:"max_active_per_session" default:"4" yaml:"max_active_per_session"`
+	StagingTTLSeconds   int    `config:"staging_ttl_seconds" default:"21600" yaml:"staging_ttl_seconds"`
 }
 
 type RootRPCConfig struct {

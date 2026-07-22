@@ -1,8 +1,14 @@
 package rpc
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"time"
+
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
@@ -13,15 +19,51 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
-	"github.com/chainreactors/malice-network/server/internal/parser"
-	"os"
-	"path/filepath"
-	"time"
 )
 
 const maxChunkRetries = 3
 
 var rpcFileSaveContext = db.SaveContext
+
+// uploadBlockCount returns how many implant Block messages are needed for a
+// reader-based upload of totalSize bytes. Zero-byte uploads need one final
+// empty Block (implant treats empty UploadRequest.data as streamed mode).
+func uploadBlockCount(totalSize int64, packetLength int) int {
+	if totalSize <= 0 {
+		return 1
+	}
+	if packetLength <= 0 {
+		return 1
+	}
+	return int((totalSize + int64(packetLength) - 1) / int64(packetLength))
+}
+
+// shouldInlineUpload is true when the entire payload fits in one implant packet
+// and is non-empty. Empty payloads must use the streamed Block path.
+func shouldInlineUpload(totalSize int64, packetLength int) bool {
+	if totalSize <= 0 {
+		return false
+	}
+	if packetLength <= 0 {
+		return true
+	}
+	return totalSize <= int64(packetLength)
+}
+
+// cloneUploadMetadata copies implant-facing upload fields without payload data.
+// Override must be preserved for multi-block delivery.
+func cloneUploadMetadata(req *implantpb.UploadRequest) *implantpb.UploadRequest {
+	if req == nil {
+		return &implantpb.UploadRequest{}
+	}
+	return &implantpb.UploadRequest{
+		Name:     req.Name,
+		Target:   req.Target,
+		Priv:     req.Priv,
+		Hidden:   req.Hidden,
+		Override: req.Override,
+	}
+}
 
 func downloadChunkCount(size int, chunkSize int) int {
 	if chunkSize <= 0 {
@@ -63,13 +105,78 @@ func isChunkSizeCompatible(tempDir string, bufferSize int, total int) bool {
 	return info.Size() == int64(bufferSize)
 }
 
-// Upload - Upload a file from the remote file system
+// Upload - Upload a file from the remote file system.
+// Large payloads still arrive as a full unary request for legacy clients; the
+// downstream implant path is reader-based so UploadChunk staging can share it.
 func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*clientpb.Task, error) {
 	if req == nil {
 		return nil, types.ErrMissingRequestField
 	}
-	count := parser.Count(req.Data, getPacketLength(ctx))
-	if count == 1 {
+	return rpc.dispatchUpload(ctx, req, bytes.NewReader(req.Data), int64(len(req.Data)))
+}
+
+func saveUploadContext(greq *GenericRequest, meta *implantpb.UploadRequest, totalSize int64) {
+	if greq == nil || greq.Task == nil || greq.Session == nil || meta == nil {
+		return
+	}
+	v := &output.UploadContext{
+		FileDescriptor: &output.FileDescriptor{
+			Name:       meta.Name,
+			TargetPath: meta.Target,
+			Abstract:   fmt.Sprintf("upload -%d -%t", meta.Priv, meta.Hidden),
+			Size:       totalSize,
+		},
+	}
+	ictx, err := rpcFileSaveContext(&clientpb.Context{
+		Task:    greq.Task.ToProtobuf(),
+		Session: greq.Session.ToProtobuf(),
+		Type:    consts.ContextUpload,
+		Value:   v.Marshal(),
+	})
+	if err != nil {
+		logs.Log.Errorf("cannot create task %d, %s in db", greq.Task.Id, err.Error())
+		return
+	}
+	core.PushContextEvent(consts.ContextUpload, ictx)
+}
+
+// closeIfCloser closes reader when it implements io.Closer (e.g. *os.File from staging).
+func closeIfCloser(reader io.Reader) {
+	if c, ok := reader.(io.Closer); ok && c != nil {
+		_ = c.Close()
+	}
+}
+
+// dispatchUpload sends an upload to the implant using either a single inline
+// UploadRequest (payload fits in one packet) or a metadata-only request followed
+// by sequential Block/ACK messages read from reader.
+//
+// If reader implements io.Closer, it is closed when delivery finishes (inline
+// path after ReadAll; streamed path in the async handler cleanup).
+func (rpc *Server) dispatchUpload(ctx context.Context, meta *implantpb.UploadRequest, reader io.Reader, totalSize int64) (*clientpb.Task, error) {
+	if meta == nil {
+		return nil, types.ErrMissingRequestField
+	}
+	if reader == nil {
+		reader = bytes.NewReader(nil)
+	}
+	if totalSize < 0 {
+		totalSize = 0
+	}
+
+	packetLength := getPacketLength(ctx)
+	if shouldInlineUpload(totalSize, packetLength) {
+		defer closeIfCloser(reader)
+		payload, err := io.ReadAll(io.LimitReader(reader, totalSize))
+		if err != nil {
+			return nil, fmt.Errorf("read upload payload: %w", err)
+		}
+		if int64(len(payload)) != totalSize {
+			return nil, fmt.Errorf("upload payload size mismatch: got %d, want %d", len(payload), totalSize)
+		}
+		req := cloneUploadMetadata(meta)
+		req.Data = payload
+
 		greq, err := newGenericRequest(ctx, req)
 		if err != nil {
 			return nil, err
@@ -79,118 +186,159 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 			return nil, err
 		}
 		greq.HandlerResponse(ch, types.MsgAck, func(spite *implantpb.Spite) {
-			v := &output.UploadContext{
-				FileDescriptor: &output.FileDescriptor{
-					Name:       req.Name,
-					TargetPath: req.Target,
-					Abstract:   fmt.Sprintf("upload -%d -%t", req.Priv, req.Hidden),
-					Size:       int64(len(req.Data)),
-				},
-			}
-			ictx, err := db.SaveContext(&clientpb.Context{
-				Task:    greq.Task.ToProtobuf(),
-				Session: greq.Session.ToProtobuf(),
-				Type:    consts.ContextUpload,
-				Value:   v.Marshal(),
-			})
-			if err != nil {
-				logs.Log.Errorf("cannot create task %d, %s in db", greq.Task.Id, err.Error())
-				return
-			}
-			core.PushContextEvent(consts.ContextUpload, ictx)
+			saveUploadContext(greq, meta, totalSize)
 		})
-		if err != nil {
-			return nil, err
-		}
-		return greq.Task.ToProtobuf(), nil
-	} else {
-		greq, err := newGenericRequest(ctx, &implantpb.UploadRequest{
-			Name:   req.Name,
-			Target: req.Target,
-			Priv:   req.Priv,
-			Hidden: req.Hidden,
-		}, count)
-		if err != nil {
-			return nil, err
-		}
-		in, out, err := rpc.StreamGenericHandler(ctx, greq)
-		if err != nil {
-			return nil, err
-		}
-		var blockId = 0
-		runTaskHandler(greq.Task, func() error {
-			stat, ok := recvSpite(greq.Task.Ctx, out)
-			if !ok {
-				return ErrTaskContextCancelled
-			}
-			err := types.HandleMaleficError(stat)
-			if err != nil {
-				return buildTaskError(err)
-			}
-			for block := range parser.Chunked(req.Data, greq.Session.GetPacketLength()) {
-				msg := &implantpb.Block{
-					BlockId: uint32(blockId),
-					Content: block,
-				}
-				blockId++
-				if blockId == count {
-					msg.End = true
-				}
-				spite, _ := types.BuildSpite(&implantpb.Spite{
-					Timeout: uint64(consts.MinTimeout.Seconds()),
-					TaskId:  greq.Task.Id,
-				}, msg)
-				spite.Name = types.MsgUpload.String()
-				if err := in.Send(spite); err != nil {
-					return err
-				}
-				resp, ok := recvSpite(greq.Task.Ctx, out)
-				if !ok {
-					return ErrTaskContextCancelled
-				}
-				err = types.AssertSpite(resp, types.MsgAck)
-				if err != nil {
-					return buildTaskError(err)
-				}
-				greq.Session.AddMessage(resp, blockId)
-
-				err = greq.Session.TaskLog(greq.Task, resp)
-				if err != nil {
-					return fmt.Errorf("write task log: %w", err)
-				}
-				if resp.GetAck().Success {
-					greq.Task.Done(resp, "")
-					if err != nil {
-						logs.Log.Errorf("cannot update task %d , %s in db", greq.Task.Id, err.Error())
-						return nil
-					}
-					if msg.End {
-						v := &output.UploadContext{
-							FileDescriptor: &output.FileDescriptor{
-								Name:       req.Name,
-								TargetPath: req.Target,
-								Abstract:   fmt.Sprintf("upload -%d -%t", req.Priv, req.Hidden),
-								Size:       int64(len(req.Data)),
-							},
-						}
-						ictx, err := db.SaveContext(&clientpb.Context{
-							Task:    greq.Task.ToProtobuf(),
-							Session: greq.Session.ToProtobuf(),
-							Type:    consts.ContextUpload,
-							Value:   v.Marshal(),
-						})
-						if err != nil {
-							logs.Log.Errorf("cannot create task %d , %s in db", greq.Task.Id, err.Error())
-						}
-						greq.Task.Finish(resp, "")
-						core.PushContextEvent(consts.ContextUpload, ictx)
-					}
-				}
-			}
-			return nil
-		}, greq.Task.Close, in.Close)
 		return greq.Task.ToProtobuf(), nil
 	}
+
+	count := uploadBlockCount(totalSize, packetLength)
+	metaOnly := cloneUploadMetadata(meta)
+	greq, err := newGenericRequest(ctx, metaOnly, count)
+	if err != nil {
+		closeIfCloser(reader)
+		return nil, err
+	}
+	in, out, err := rpc.StreamGenericHandler(ctx, greq)
+	if err != nil {
+		closeIfCloser(reader)
+		return nil, err
+	}
+
+	// Touch deadline so multi-block work is not reported timed-out while still
+	// actively progressing (Deadline is observational, not a cancel timer).
+	extendTaskDeadline := func() {
+		if greq.Task != nil {
+			greq.Task.ExtendDeadline(time.Now().Add(consts.MinTimeout))
+		}
+	}
+
+	runTaskHandler(greq.Task, func() error {
+		stat, ok := recvSpite(greq.Task.Ctx, out)
+		if !ok {
+			return ErrTaskContextCancelled
+		}
+		if err := types.HandleMaleficError(stat); err != nil {
+			return buildTaskError(err)
+		}
+		extendTaskDeadline()
+
+		packetLen := greq.Session.GetPacketLength()
+		if packetLen <= 0 {
+			// Fall back to a single-read path if session has no packet limit.
+			payload, readErr := io.ReadAll(reader)
+			if readErr != nil {
+				return fmt.Errorf("read upload payload: %w", readErr)
+			}
+			return sendUploadBlocks(greq, in, out, [][]byte{payload}, totalSize, meta, extendTaskDeadline)
+		}
+
+		buf := make([]byte, packetLen)
+		blockID := 0
+		var remaining int64 = totalSize
+		// Zero-byte uploads: send one empty final Block after the initial ACK.
+		if totalSize == 0 {
+			return sendUploadBlocks(greq, in, out, [][]byte{nil}, totalSize, meta, extendTaskDeadline)
+		}
+
+		for remaining > 0 {
+			toRead := packetLen
+			if remaining < int64(packetLen) {
+				toRead = int(remaining)
+			}
+			n, readErr := io.ReadFull(reader, buf[:toRead])
+			if readErr != nil && readErr != io.EOF && readErr != io.ErrUnexpectedEOF {
+				return fmt.Errorf("read upload block %d: %w", blockID, readErr)
+			}
+			if n == 0 {
+				return fmt.Errorf("upload reader ended early at block %d, remaining %d", blockID, remaining)
+			}
+			content := make([]byte, n)
+			copy(content, buf[:n])
+			remaining -= int64(n)
+			isEnd := remaining == 0 || blockID+1 == count
+			if err := sendOneUploadBlock(greq, in, out, blockID, content, isEnd, totalSize, meta, extendTaskDeadline); err != nil {
+				return err
+			}
+			blockID++
+			if isEnd {
+				break
+			}
+		}
+		return nil
+	}, func() { closeIfCloser(reader) }, greq.Task.Close, in.Close)
+
+	return greq.Task.ToProtobuf(), nil
+}
+
+func sendUploadBlocks(
+	greq *GenericRequest,
+	in *core.SpiteStreamWriter,
+	out chan *implantpb.Spite,
+	blocks [][]byte,
+	totalSize int64,
+	meta *implantpb.UploadRequest,
+	onProgress func(),
+) error {
+	for i, content := range blocks {
+		isEnd := i == len(blocks)-1
+		if err := sendOneUploadBlock(greq, in, out, i, content, isEnd, totalSize, meta, onProgress); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func sendOneUploadBlock(
+	greq *GenericRequest,
+	in *core.SpiteStreamWriter,
+	out chan *implantpb.Spite,
+	blockID int,
+	content []byte,
+	isEnd bool,
+	totalSize int64,
+	meta *implantpb.UploadRequest,
+	onProgress func(),
+) error {
+	msg := &implantpb.Block{
+		BlockId: uint32(blockID),
+		Content: content,
+		End:     isEnd,
+	}
+	spite, err := types.BuildSpite(&implantpb.Spite{
+		Timeout: uint64(consts.MinTimeout.Seconds()),
+		TaskId:  greq.Task.Id,
+	}, msg)
+	if err != nil {
+		return err
+	}
+	// Implant stream expects upload-named spites for block continuation.
+	spite.Name = types.MsgUpload.String()
+	if err := in.Send(spite); err != nil {
+		return err
+	}
+	resp, ok := recvSpite(greq.Task.Ctx, out)
+	if !ok {
+		return ErrTaskContextCancelled
+	}
+	if err := types.AssertSpite(resp, types.MsgAck); err != nil {
+		return buildTaskError(err)
+	}
+	greq.Session.AddMessage(resp, blockID+1)
+	if err := greq.Session.TaskLog(greq.Task, resp); err != nil {
+		return fmt.Errorf("write task log: %w", err)
+	}
+	if !resp.GetAck().Success {
+		return fmt.Errorf("upload block %d not acked", blockID)
+	}
+	greq.Task.Done(resp, "")
+	if onProgress != nil {
+		onProgress()
+	}
+	if isEnd {
+		saveUploadContext(greq, meta, totalSize)
+		greq.Task.Finish(resp, "")
+	}
+	return nil
 }
 
 func mergeChunks(tempDir, finalPath string, totalChunks int) error {

@@ -64,6 +64,36 @@ func GetServerConfig() *ServerConfig {
 	return s
 }
 
+func GetUploadConfig() *UploadConfig {
+	u := &UploadConfig{
+		MaxChunkBytes:       DefaultUploadMaxChunkBytes,
+		MaxFileBytes:        DefaultUploadMaxFileBytes,
+		MaxStagingBytes:     DefaultUploadMaxStagingBytes,
+		MinFreeDiskBytes:    DefaultUploadMinFreeDiskBytes,
+		MaxActivePerSession: DefaultUploadMaxActivePerSession,
+		StagingTTLSeconds:   DefaultUploadStagingTTLSeconds,
+	}
+	if err := config.MapStruct("server.upload", u); err != nil && !strings.Contains(err.Error(), "does not exist") {
+		logs.Log.Errorf("Failed to map upload config %s", err)
+	}
+	if u.MaxChunkBytes == 0 {
+		u.MaxChunkBytes = DefaultUploadMaxChunkBytes
+	}
+	if u.MaxFileBytes == 0 {
+		u.MaxFileBytes = DefaultUploadMaxFileBytes
+	}
+	if u.MaxStagingBytes == 0 {
+		u.MaxStagingBytes = DefaultUploadMaxStagingBytes
+	}
+	if u.MaxActivePerSession <= 0 {
+		u.MaxActivePerSession = DefaultUploadMaxActivePerSession
+	}
+	if u.StagingTTLSeconds <= 0 {
+		u.StagingTTLSeconds = DefaultUploadStagingTTLSeconds
+	}
+	return u
+}
+
 func GetGithubConfig() *GithubConfig {
 	g := &GithubConfig{}
 	err := config.MapStruct("server.github", g)

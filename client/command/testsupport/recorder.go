@@ -308,6 +308,26 @@ func (r *RecorderRPC) Upload(ctx context.Context, in *implantpb.UploadRequest, o
 	return r.taskResponse(ctx, "Upload", in)
 }
 
+func (r *RecorderRPC) UploadChunk(ctx context.Context, in *clientpb.UploadChunkRequest, opts ...grpc.CallOption) (*clientpb.UploadChunkResponse, error) {
+	r.recordPrimary(ctx, "UploadChunk", in)
+	if in == nil {
+		return nil, fmt.Errorf("upload chunk request is nil")
+	}
+	next := in.GetOffset() + uint64(len(in.GetData()))
+	resp := &clientpb.UploadChunkResponse{
+		UploadId:   in.GetUploadId(),
+		NextOffset: next,
+	}
+	if next >= in.GetTotalSize() {
+		task, err := r.taskResponse(ctx, "UploadChunk", in)
+		if err != nil {
+			return nil, err
+		}
+		resp.Task = task
+	}
+	return resp, nil
+}
+
 func (r *RecorderRPC) Download(ctx context.Context, in *implantpb.DownloadRequest, opts ...grpc.CallOption) (*clientpb.Task, error) {
 	return r.taskResponse(ctx, "Download", in)
 }

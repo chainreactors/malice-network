@@ -180,3 +180,71 @@ func TestFinalizeDownloadHandlesContextSaveFailureGracefully(t *testing.T) {
 func TestUploadRequestTypeReferenceCompiles(t *testing.T) {
 	_ = &implantpb.UploadRequest{}
 }
+
+func TestUploadBlockCount(t *testing.T) {
+	cases := []struct {
+		totalSize    int64
+		packetLength int
+		want         int
+	}{
+		{0, 512, 1}, // zero-byte needs one final empty block
+		{1, 512, 1},
+		{512, 512, 1},
+		{513, 512, 2},
+		{1024, 512, 2},
+		{1025, 512, 3},
+		{10, 0, 1}, // no packet limit → single logical block
+		{-1, 512, 1},
+	}
+	for _, tc := range cases {
+		if got := uploadBlockCount(tc.totalSize, tc.packetLength); got != tc.want {
+			t.Fatalf("uploadBlockCount(%d, %d) = %d, want %d", tc.totalSize, tc.packetLength, got, tc.want)
+		}
+	}
+}
+
+func TestShouldInlineUpload(t *testing.T) {
+	cases := []struct {
+		totalSize    int64
+		packetLength int
+		want         bool
+	}{
+		{0, 512, false}, // empty must stream so implant gets final Block
+		{1, 512, true},
+		{512, 512, true},
+		{513, 512, false},
+		{10, 0, true},
+		{-1, 512, false},
+	}
+	for _, tc := range cases {
+		if got := shouldInlineUpload(tc.totalSize, tc.packetLength); got != tc.want {
+			t.Fatalf("shouldInlineUpload(%d, %d) = %v, want %v", tc.totalSize, tc.packetLength, got, tc.want)
+		}
+	}
+}
+
+func TestCloneUploadMetadataPreservesOverride(t *testing.T) {
+	src := &implantpb.UploadRequest{
+		Name:     "payload.bin",
+		Target:   "C:\\Windows\\Temp\\payload.bin",
+		Priv:     0o644,
+		Data:     []byte("should-not-copy"),
+		Hidden:   true,
+		Override: true,
+	}
+	got := cloneUploadMetadata(src)
+	if got.Name != src.Name || got.Target != src.Target || got.Priv != src.Priv || got.Hidden != src.Hidden {
+		t.Fatalf("metadata fields not preserved: %+v", got)
+	}
+	if !got.Override {
+		t.Fatal("Override was dropped from multi-block metadata clone")
+	}
+	if len(got.Data) != 0 {
+		t.Fatalf("Data should be empty in metadata-only clone, got %d bytes", len(got.Data))
+	}
+	// nil-safe
+	empty := cloneUploadMetadata(nil)
+	if empty == nil {
+		t.Fatal("cloneUploadMetadata(nil) returned nil")
+	}
+}
