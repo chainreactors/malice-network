@@ -12,6 +12,7 @@
 - [审计导出](audit.md) - Session 级 Task 审计 JSON/HTML 导出
 - [管理命令](management-commands.md) - cert、pipeline、listener、job、artifact、website 管理入口
 - [Project 管理](project.md) - Project 创建、查询、更新和删除
+- [原生 SOCKS5](socks5.md) - 通过 Implant `tcp_relay` 建立本地 SOCKS5 代理
 - [上下文同步](context-sync.md) - `context sync` 流式下载、完整性校验与旧服务端兼容
 - [插件体系](plugin.md) - MAL / Alias / Extension / Addon / Armory 架构设计
 - [Agent 集成](agent.md) - MCP、chat、tapping、skill、schema、tool_call 机制
@@ -49,7 +50,7 @@ Client 的命令按职责分组，不同上下文下可用命令不同：
 | Execute | `run` / `execute` / `shell` / `powershell` / `bof` / `execute_exe` / `inline_exe` / `execute_assembly` | [命令执行](../operations/post-exploitation/command-execution.md) |
 | Sys | `whoami` / `env` / `ps` / `kill` / `service` / `reg` / `taskschd` | [系统信息](../operations/post-exploitation/system-info.md)、[服务管理](../operations/post-exploitation/service-management.md) |
 | File | `ls` / `cd` / `upload` / `download` / `cat` / `mkdir` / `rm` / `mv` / `cp` | [文件操作](../operations/post-exploitation/file-operations.md) |
-| Pivot | `portfwd` / `rportfwd` / `proxy` / `reverse` | [网络代理](../operations/post-exploitation/network-proxy.md)、[代理配置](../operations/proxy.md) |
+| Pivot | `portfwd` / `rportfwd` / `proxy` / `reverse` / `socks5` | [网络代理](../operations/post-exploitation/network-proxy.md)、[代理配置](../operations/proxy.md)、[原生 SOCKS5](socks5.md) |
 | Armory / Addon | 动态注册 | [插件体系](plugin.md)、[嵌入式 MAL](../operations/embed-mal.md) |
 
 ### 命令注册机制
