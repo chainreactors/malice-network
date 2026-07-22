@@ -11,6 +11,7 @@
 - [任务查询](tasks.md) - 任务列表、请求摘要、raw request 与结果导出
 - [审计导出](audit.md) - Session 级 Task 审计 JSON/HTML 导出
 - [管理命令](management-commands.md) - cert、pipeline、listener、job、artifact、website 管理入口
+- [Project 管理](project.md) - Project 创建、查询、更新和删除
 - [上下文同步](context-sync.md) - `context sync` 流式下载、完整性校验与旧服务端兼容
 - [插件体系](plugin.md) - MAL / Alias / Extension / Addon / Armory 架构设计
 - [Agent 集成](agent.md) - MCP、chat、tapping、skill、schema、tool_call 机制
@@ -36,7 +37,7 @@ Client 的命令按职责分组，不同上下文下可用命令不同：
 | 命令组 | 命令 | 操作文档 |
 |--------|------|----------|
 | Generic | `login` / `version` / `status` / `exit` / `!` | [快速开始](quickstart.md) |
-| Manage | `session` / `mal` / `alias` / `extension` / `armory` / `config` / `cert` / `audit` / `context` | [后渗透操作](../operations/post-exploitation/)、[审计导出](audit.md)、[管理命令](management-commands.md)、[插件体系](plugin.md) |
+| Manage | `session` / `project` / `mal` / `alias` / `extension` / `armory` / `config` / `cert` / `audit` / `context` | [后渗透操作](../operations/post-exploitation/)、[Project 管理](project.md)、[审计导出](audit.md)、[管理命令](management-commands.md)、[插件体系](plugin.md) |
 | Listener | `listener` / `pipeline` / `website` / `job` | [Listener 操作](../operations/listener.md)、[管理命令](management-commands.md) |
 | Generator | `build` / `profile` / `mutant` / `artifact` | [构建操作](../operations/build.md)、[管理命令](management-commands.md) |
 
