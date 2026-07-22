@@ -8,6 +8,7 @@ import (
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
+	"github.com/gofrs/uuid"
 	"github.com/spf13/cobra"
 )
 
@@ -44,10 +45,7 @@ func CreateProjectCmd(cmd *cobra.Command, con *core.Console) error {
 func GetProjectCmd(cmd *cobra.Command, con *core.Console) error {
 	nameOrID := cmd.Flags().Arg(0)
 
-	project, err := con.Rpc.GetProject(con.Context(), &clientpb.Project{
-		Name: nameOrID,
-		Id:   nameOrID,
-	})
+	project, err := con.Rpc.GetProject(con.Context(), projectSelector(nameOrID))
 	if err != nil {
 		return err
 	}
@@ -58,10 +56,7 @@ func GetProjectCmd(cmd *cobra.Command, con *core.Console) error {
 func UpdateProjectCmd(cmd *cobra.Command, con *core.Console) error {
 	nameOrID := cmd.Flags().Arg(0)
 
-	existing, err := con.Rpc.GetProject(con.Context(), &clientpb.Project{
-		Name: nameOrID,
-		Id:   nameOrID,
-	})
+	existing, err := con.Rpc.GetProject(con.Context(), projectSelector(nameOrID))
 	if err != nil {
 		return err
 	}
@@ -86,10 +81,7 @@ func UpdateProjectCmd(cmd *cobra.Command, con *core.Console) error {
 func DeleteProjectCmd(cmd *cobra.Command, con *core.Console) error {
 	nameOrID := cmd.Flags().Arg(0)
 
-	existing, err := con.Rpc.GetProject(con.Context(), &clientpb.Project{
-		Name: nameOrID,
-		Id:   nameOrID,
-	})
+	existing, err := con.Rpc.GetProject(con.Context(), projectSelector(nameOrID))
 	if err != nil {
 		return err
 	}
@@ -109,6 +101,15 @@ func DeleteProjectCmd(cmd *cobra.Command, con *core.Console) error {
 		con.Log.Console(fmt.Sprintf("Project '%s' deleted (soft)\n", existing.Name))
 	}
 	return nil
+}
+
+func projectSelector(nameOrID string) *clientpb.Project {
+	selector := &clientpb.Project{Name: nameOrID}
+	if _, err := uuid.FromString(nameOrID); err == nil {
+		selector.Id = nameOrID
+		selector.Name = ""
+	}
+	return selector
 }
 
 func printProjects(con *core.Console, projects *clientpb.Projects) {
