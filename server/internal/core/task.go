@@ -13,6 +13,7 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
+	"google.golang.org/protobuf/proto"
 )
 
 // test-swappable DB functions (overridden in task_runtime_test.go)
@@ -208,13 +209,23 @@ func (t *Task) FinishedAtTime() time.Time {
 	return t.FinishedAt
 }
 
+func taskEventSpite(spite *implantpb.Spite) *implantpb.Spite {
+	if spite == nil || len(spite.GetDownloadResponse().GetContent()) == 0 {
+		return spite
+	}
+
+	eventSpite := proto.Clone(spite).(*implantpb.Spite)
+	eventSpite.GetDownloadResponse().Content = nil
+	return eventSpite
+}
+
 func (t *Task) Publish(op string, spite *implantpb.Spite, msg string) {
 	EventBroker.Publish(Event{
 		EventType: consts.EventTask,
 		Op:        op,
 		Task:      t.ToProtobuf(),
 		Session:   t.Session.ToProtobufLite(),
-		Spite:     spite,
+		Spite:     taskEventSpite(spite),
 		Message:   msg,
 		Callee:    t.Callee,
 	})
