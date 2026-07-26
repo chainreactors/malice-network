@@ -117,6 +117,63 @@ func TestConnectionReceiveLoopFailureMarksConnectionDead(t *testing.T) {
 	}
 }
 
+func TestConnectionSenderLoopRetainsPendingBatchWhileSenderFull(t *testing.T) {
+	conn := &Connection{
+		SessionID: "session-sender-backpressure",
+		Sender:    make(chan *implantpb.Spites, 1),
+		cache:     parser.NewSpitesBuf(),
+	}
+	conn.alive.Store(true)
+
+	conn.Sender <- &implantpb.Spites{
+		Spites: []*implantpb.Spite{{TaskId: 101}},
+	}
+	conn.cache.Append(&implantpb.Spite{TaskId: 102})
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		_ = conn.runSenderLoop()
+	}()
+	t.Cleanup(func() {
+		conn.alive.Store(false)
+		select {
+		case <-done:
+		case <-time.After(time.Second):
+			t.Error("sender loop did not stop")
+		}
+	})
+
+	deadline := time.Now().Add(time.Second)
+	for conn.cache.Len() != 0 && time.Now().Before(deadline) {
+		time.Sleep(5 * time.Millisecond)
+	}
+	if conn.cache.Len() != 0 {
+		t.Fatal("sender loop did not take task 102 from the cache")
+	}
+
+	// Keep Sender full across multiple retries, then queue a newer task.
+	time.Sleep(250 * time.Millisecond)
+	conn.cache.Append(&implantpb.Spite{TaskId: 103})
+	time.Sleep(150 * time.Millisecond)
+
+	assertTaskBatch := func(want uint32) {
+		t.Helper()
+		select {
+		case batch := <-conn.Sender:
+			if len(batch.GetSpites()) != 1 || batch.GetSpites()[0].GetTaskId() != want {
+				t.Fatalf("sender batch = %#v, want task %d", batch.GetSpites(), want)
+			}
+		case <-time.After(time.Second):
+			t.Fatalf("timed out waiting for task %d", want)
+		}
+	}
+
+	assertTaskBatch(101)
+	assertTaskBatch(102)
+	assertTaskBatch(103)
+}
+
 func TestConnectionSendReturnsWriteError(t *testing.T) {
 	want := errors.New("write failed")
 	conn := &Connection{

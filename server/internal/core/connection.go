@@ -256,14 +256,20 @@ func (c *Connection) runReceiveLoop() error {
 }
 
 func (c *Connection) runSenderLoop() error {
+	var pending *implantpb.Spites
 	for c.IsAlive() {
-		if c.cache.Len() == 0 {
-			time.Sleep(100 * time.Millisecond)
-			continue
+		if pending == nil {
+			if c.cache.Len() == 0 {
+				time.Sleep(100 * time.Millisecond)
+				continue
+			}
+			pending = c.cache.Build()
 		}
 		select {
-		case c.Sender <- c.cache.Build():
+		case c.Sender <- pending:
+			pending = nil
 		case <-time.After(100 * time.Millisecond):
+			// Keep the batch and retry while Sender is full.
 		}
 	}
 	return nil
