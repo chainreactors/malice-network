@@ -34,25 +34,92 @@ var (
 const (
 	payloadReadBaseTimeout       = 30 * time.Second
 	payloadReadMinBytesPerSecond = 512 << 10
+
+	CtrlListenerSessionSnapshotBegin = "sync_sessions_begin"
+	CtrlListenerSessionSnapshotEnd   = "sync_sessions_end"
 )
 
 // listenerSessions 管理 listener 端的 session 信息
 type listenerSessions struct {
+	mu       sync.RWMutex
 	sessions *sync.Map // map[uint32]*clientpb.Session
+	staged   *sync.Map
 }
 
 // Add 添加或更新 session
 func (ls *listenerSessions) Add(session *clientpb.Session) {
-	if session != nil {
-		ls.sessions.Store(session.RawId, session)
-		logs.Log.Debugf("listener - session_upsert raw=%d keypair=%v",
-			session.RawId, session.KeyPair != nil)
+	if ls == nil || session == nil {
+		return
 	}
+	ls.mu.RLock()
+	sessions := ls.sessions
+	if sessions != nil {
+		sessions.Store(session.RawId, session)
+	}
+	ls.mu.RUnlock()
+	logs.Log.Debugf("listener - session_upsert raw=%d keypair=%v",
+		session.RawId, session.KeyPair != nil)
+}
+
+func (ls *listenerSessions) BeginSnapshot() {
+	if ls == nil {
+		return
+	}
+	ls.mu.Lock()
+	ls.staged = &sync.Map{}
+	ls.mu.Unlock()
+}
+
+func (ls *listenerSessions) AddSnapshot(session *clientpb.Session) {
+	if ls == nil || session == nil {
+		return
+	}
+	ls.mu.RLock()
+	target := ls.staged
+	if target == nil {
+		target = ls.sessions
+	}
+	if target != nil {
+		target.Store(session.RawId, session)
+	}
+	ls.mu.RUnlock()
+}
+
+func (ls *listenerSessions) CommitSnapshot() {
+	if ls == nil {
+		return
+	}
+	ls.mu.Lock()
+	if ls.staged != nil {
+		ls.sessions = ls.staged
+		ls.staged = nil
+	}
+	ls.mu.Unlock()
+}
+
+func (ls *listenerSessions) AbortSnapshot() {
+	if ls == nil {
+		return
+	}
+	ls.mu.Lock()
+	ls.staged = nil
+	ls.mu.Unlock()
 }
 
 // Get 获取 session
 func (ls *listenerSessions) Get(rawID uint32) *clientpb.Session {
-	if val, ok := ls.sessions.Load(rawID); ok {
+	if ls == nil {
+		return nil
+	}
+	ls.mu.RLock()
+	sessions := ls.sessions
+	if sessions == nil {
+		ls.mu.RUnlock()
+		return nil
+	}
+	val, ok := sessions.Load(rawID)
+	ls.mu.RUnlock()
+	if ok {
 		return val.(*clientpb.Session)
 	}
 	return nil
@@ -157,7 +224,15 @@ func GetKeyPairForSession(sid uint32, secureConfig *implanttypes.SecureConfig) *
 
 // Remove 移除 session
 func (ls *listenerSessions) Remove(rawID uint32) {
-	ls.sessions.Delete(rawID)
+	if ls == nil {
+		return
+	}
+	ls.mu.RLock()
+	sessions := ls.sessions
+	if sessions != nil {
+		sessions.Delete(rawID)
+	}
+	ls.mu.RUnlock()
 	logs.Log.Debugf("listener - session_remove raw=%d", rawID)
 }
 

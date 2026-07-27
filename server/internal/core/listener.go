@@ -24,6 +24,10 @@ type Listener struct {
 	Name           string
 	IP             string
 	active         atomic.Bool
+	readyCh        chan struct{}
+	stoppedCh      chan struct{}
+	readyOnce      sync.Once
+	stopOnce       sync.Once
 	pipelines      map[string]*clientpb.Pipeline
 	pipelineMu     sync.RWMutex
 	Ctrl           chan *clientpb.JobCtrl
@@ -36,15 +40,64 @@ type Listener struct {
 const DefaultCtrlTimeout = 10 * time.Second
 
 func NewListener(name, ip string) *Listener {
+	l := newListener(name, ip)
+	l.MarkReady()
+	return l
+}
+
+func NewPendingListener(name, ip string) *Listener {
+	return newListener(name, ip)
+}
+
+func newListener(name, ip string) *Listener {
 	l := &Listener{
 		Name:      name,
 		IP:        ip,
+		readyCh:   make(chan struct{}),
+		stoppedCh: make(chan struct{}),
 		pipelines: make(map[string]*clientpb.Pipeline),
 		Ctrl:      make(chan *clientpb.JobCtrl, 8),
 		CtrlJob:   &sync.Map{},
 	}
 	l.active.Store(true)
 	return l
+}
+
+func (l *Listener) MarkReady() {
+	if l == nil || l.readyCh == nil {
+		return
+	}
+	l.readyOnce.Do(func() {
+		close(l.readyCh)
+	})
+}
+
+func (l *Listener) WaitReady(ctx context.Context) error {
+	if l == nil {
+		return errors.New("listener is nil")
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	// Directly constructed legacy values do not participate in the startup
+	// snapshot barrier.
+	if l.readyCh == nil {
+		return nil
+	}
+	if !l.Active() {
+		return errors.New("listener is stopped")
+	}
+	select {
+	case <-l.readyCh:
+		if !l.Active() {
+			return errors.New("listener is stopped")
+		}
+		return nil
+	case <-l.stoppedCh:
+		return errors.New("listener is stopped")
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 // Active returns whether the listener is active.
@@ -76,6 +129,10 @@ func (l *Listener) pushCtrlContext(ctx context.Context, ctrl *clientpb.JobCtrl, 
 	}
 	if err := ctx.Err(); err != nil {
 		logs.Log.Warnf("listener %s: PushCtrl canceled before queueing: %v", l.Name, err)
+		return 0
+	}
+	if err := l.WaitReady(ctx); err != nil {
+		logs.Log.Warnf("listener %s: PushCtrl canceled before snapshot readiness: %v", l.Name, err)
 		return 0
 	}
 	ctrl.Id = NextCtrlID()
@@ -326,6 +383,11 @@ func (l *listeners) Stop(name string) error {
 
 func (l *Listener) stop() {
 	l.active.Store(false)
+	if l.stoppedCh != nil {
+		l.stopOnce.Do(func() {
+			close(l.stoppedCh)
+		})
+	}
 	l.deferredEvents.Range(func(key, _ any) bool {
 		l.deferredEvents.Delete(key)
 		return true

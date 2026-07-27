@@ -138,7 +138,7 @@ func (rpc *Server) Checkin(ctx context.Context, req *implantpb.Ping) (*clientpb.
 		if err != nil {
 			return nil, err
 		}
-		core.Sessions.Add(sess)
+		activateRecoveredSession(sess)
 		reborn = true
 		logs.Log.Debugf("recover session %s", sid)
 	} else if sess.MarkAlive() {

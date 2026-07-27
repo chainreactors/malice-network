@@ -468,7 +468,7 @@ func deliverForwardTaskResponse(event *clientpb.SpiteRequest) error {
 		if err != nil {
 			return err
 		}
-		core.Sessions.Add(sess)
+		activateRecoveredSession(sess)
 	}
 	sess.SetLastCheckin(time.Now().Unix())
 	if sess.MarkAlive() {

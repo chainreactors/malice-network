@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/chainreactors/IoM-go/consts"
@@ -58,6 +59,37 @@ var openListenerJobStream = func(client listenerrpc.ListenerRPCClient, ctx conte
 	return client.JobStream(ctx)
 }
 
+var registerListenerRPC = func(lns *listener) error {
+	if lns == nil || lns.Rpc == nil {
+		return errors.New("listener rpc client is nil")
+	}
+	_, err := lns.Rpc.RegisterListener(lns.Context(), &clientpb.RegisterListener{
+		Name: lns.Name,
+		Host: lns.IP,
+	})
+	return err
+}
+
+var waitListenerReconnect = func(ctx context.Context, delay time.Duration) bool {
+	timer := time.NewTimer(delay)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+		return false
+	case <-timer.C:
+		return true
+	}
+}
+
+var restoreListenerRuntimeRPC = func(lns *listener, pipelines, websites []*clientpb.Pipeline) error {
+	return lns.restoreRuntimeRegistrations(pipelines, websites)
+}
+
+const (
+	listenerReconnectMinDelay = 100 * time.Millisecond
+	listenerReconnectMaxDelay = 5 * time.Second
+)
+
 func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig, serverEnable bool) error {
 	options, err := mtls.GetGrpcOptions([]byte(clientConf.CACertificate), []byte(clientConf.Certificate), []byte(clientConf.PrivateKey), clientConf.Type)
 	if err != nil {
@@ -78,6 +110,7 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig, ser
 		return fmt.Errorf("failed to connect to server: %v", err)
 	}
 
+	runtimeCtx, runtimeCancel := context.WithCancel(context.Background())
 	lns := &listener{
 		Rpc:       listenerrpc.NewListenerRPCClient(conn),
 		Name:      cfg.Name,
@@ -86,15 +119,15 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig, ser
 		conn:      conn,
 		cfg:       cfg,
 		websites:  make(map[string]*Website),
+		ctx:       runtimeCtx,
+		cancel:    runtimeCancel,
 	}
 	lns.shutdown = lns.Close
 	lns.pipelineRPC = &reversePipelineRPC{ListenerRPCClient: lns.Rpc}
 
-	_, err = lns.Rpc.RegisterListener(lns.Context(), &clientpb.RegisterListener{
-		Name: lns.Name,
-		Host: cfg.IP,
-	})
-	if err != nil {
+	if err = registerListenerRPC(lns); err != nil {
+		runtimeCancel()
+		_ = conn.Close()
 		return err
 	}
 	core.GoGuarded("listener-job-stream:"+lns.ID(), lns.Handler, core.LogGuardedError("listener-job-stream:"+lns.ID()))
@@ -232,18 +265,22 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig, ser
 }
 
 type listener struct {
-	Rpc         listenerrpc.ListenerRPCClient
-	pipelineRPC pipelineRPCClient
-	Name        string
-	IP          string
-	pipelines   core.Pipelines
-	conn        *grpc.ClientConn
-	cfg         *configs.ListenerConfig
-	websites    map[string]*Website
-	shutdown    func() error
-	retireOnce  sync.Once
-	closeOnce   sync.Once
-	closeErr    error
+	Rpc               listenerrpc.ListenerRPCClient
+	pipelineRPC       pipelineRPCClient
+	Name              string
+	IP                string
+	pipelines         core.Pipelines
+	conn              *grpc.ClientConn
+	cfg               *configs.ListenerConfig
+	websites          map[string]*Website
+	shutdown          func() error
+	ctx               context.Context
+	cancel            context.CancelFunc
+	restoreMu         sync.Mutex
+	restoreOnSnapshot atomic.Bool
+	retireOnce        sync.Once
+	closeOnce         sync.Once
+	closeErr          error
 }
 
 func (lns *listener) Close() error {
@@ -258,6 +295,10 @@ func (lns *listener) Close() error {
 
 func (lns *listener) close() error {
 	var errs []error
+
+	if lns.cancel != nil {
+		lns.cancel()
+	}
 
 	for _, pipeline := range lns.pipelines.ToProtobuf().GetPipelines() {
 		if pipeline == nil {
@@ -349,7 +390,11 @@ func (lns *listener) ToProtobuf() *clientpb.Listener {
 }
 
 func (lns *listener) Context() context.Context {
-	return metadata.NewOutgoingContext(context.Background(), metadata.Pairs(
+	ctx := lns.ctx
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return metadata.NewOutgoingContext(ctx, metadata.Pairs(
 		"listener_id", lns.Name,
 		"listener_ip", lns.IP,
 	),
@@ -357,15 +402,67 @@ func (lns *listener) Context() context.Context {
 }
 
 func (lns *listener) Handler() error {
+	needsRegistration := false
+	reconnectDelay := listenerReconnectMinDelay
+	for {
+		ctx := lns.ctx
+		if ctx == nil {
+			ctx = context.Background()
+		}
+		if ctx.Err() != nil {
+			return nil
+		}
+
+		if needsRegistration {
+			if err := registerListenerRPC(lns); err != nil {
+				logs.Log.Warnf("listener.%s - reregister_failed error=%q", lns.ID(), err)
+				if !waitListenerReconnect(ctx, reconnectDelay) {
+					return nil
+				}
+				reconnectDelay = nextListenerReconnectDelay(reconnectDelay)
+				continue
+			}
+			needsRegistration = false
+			reconnectDelay = listenerReconnectMinDelay
+			lns.restoreOnSnapshot.Store(true)
+		}
+
+		opened, err := lns.runJobStreamOnce()
+		if ctx.Err() != nil {
+			return nil
+		}
+		if err != nil {
+			logs.Log.Warnf("listener.%s - job_stream_disconnected error=%q", lns.ID(), err)
+		}
+		if opened {
+			needsRegistration = true
+		}
+		if !waitListenerReconnect(ctx, reconnectDelay) {
+			return nil
+		}
+		reconnectDelay = nextListenerReconnectDelay(reconnectDelay)
+	}
+}
+
+func nextListenerReconnectDelay(current time.Duration) time.Duration {
+	next := current * 2
+	if next > listenerReconnectMaxDelay {
+		return listenerReconnectMaxDelay
+	}
+	return next
+}
+
+func (lns *listener) runJobStreamOnce() (bool, error) {
 	stream, err := openListenerJobStream(lns.Rpc, lns.Context())
 	if err != nil {
-		return fmt.Errorf("open listener job stream: %w", err)
+		return false, fmt.Errorf("open listener job stream: %w", err)
 	}
+	defer core.ListenerSessions.AbortSnapshot()
 
 	for {
 		msg, err := stream.Recv()
 		if err != nil {
-			return fmt.Errorf("listener %s job stream recv: %w", lns.ID(), err)
+			return true, fmt.Errorf("listener %s job stream recv: %w", lns.ID(), err)
 		}
 
 		status := lns.handleJobCtrl(msg)
@@ -373,7 +470,7 @@ func (lns *listener) Handler() error {
 			continue
 		}
 		if err := stream.Send(status); err != nil {
-			return fmt.Errorf("listener %s job stream send: %w", lns.ID(), err)
+			return true, fmt.Errorf("listener %s job stream send: %w", lns.ID(), err)
 		}
 	}
 }
@@ -414,8 +511,17 @@ func (lns *listener) handleJobCtrl(msg *clientpb.JobCtrl) *clientpb.JobStatus {
 		handlerErr = lns.handlerRemAgentStop(msg.Job)
 	case consts.CtrlRemAgentReconfigure:
 		handlerErr = lns.handlerRemAgentReconfigure(msg.Job)
+	case core.CtrlListenerSessionSnapshotBegin:
+		core.ListenerSessions.BeginSnapshot()
+		return nil
 	case consts.CtrlListenerSyncSession:
-		core.ListenerSessions.Add(msg.Session)
+		core.ListenerSessions.AddSnapshot(msg.Session)
+		return nil
+	case core.CtrlListenerSessionSnapshotEnd:
+		core.ListenerSessions.CommitSnapshot()
+		if lns.restoreOnSnapshot.Swap(false) {
+			lns.scheduleRuntimeReregistration()
+		}
 		return nil
 	case consts.CtrlListenerRetire:
 		handlerErr = lns.handleRetire(msg.Retire)
@@ -440,6 +546,58 @@ func (lns *listener) handleJobCtrl(msg *clientpb.JobCtrl) *clientpb.JobStatus {
 		logs.Log.Importantf("listener.%s - job_ctrl_success listener=%s ctrl_id=%d job=%s ctrl=%s", lns.ID(), lns.ID(), msg.Id, jobName, msg.Ctrl)
 	}
 	return status
+}
+
+func (lns *listener) scheduleRuntimeReregistration() {
+	if lns == nil {
+		return
+	}
+	pipelines := make([]*clientpb.Pipeline, 0)
+	for _, pipeline := range lns.pipelines.ToProtobuf().GetPipelines() {
+		if pipeline != nil && pipeline.Enable {
+			pipelines = append(pipelines, pipeline)
+		}
+	}
+	websites := make([]*clientpb.Pipeline, 0)
+	for _, website := range lns.websites {
+		if website != nil && website.Enable {
+			websites = append(websites, website.ToProtobuf())
+		}
+	}
+	if len(pipelines) == 0 && len(websites) == 0 {
+		return
+	}
+	core.GoGuarded(
+		"listener-runtime-reregister:"+lns.ID(),
+		func() error {
+			return restoreListenerRuntimeRPC(lns, pipelines, websites)
+		},
+		core.LogGuardedError("listener-runtime-reregister:"+lns.ID()),
+	)
+}
+
+func (lns *listener) restoreRuntimeRegistrations(pipelines, websites []*clientpb.Pipeline) error {
+	if lns == nil || lns.Rpc == nil {
+		return errors.New("listener rpc client is nil")
+	}
+	lns.restoreMu.Lock()
+	defer lns.restoreMu.Unlock()
+
+	runtimes := make([]*clientpb.Pipeline, 0, len(pipelines)+len(websites))
+	runtimes = append(runtimes, pipelines...)
+	runtimes = append(runtimes, websites...)
+	var errs []error
+	for _, runtime := range runtimes {
+		if runtime == nil || !runtime.Enable {
+			continue
+		}
+		runtime.ListenerId = lns.ID()
+		_, err := lns.Rpc.SyncPipeline(lns.Context(), runtime)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("sync runtime %s: %w", runtime.Name, err))
+		}
+	}
+	return errors.Join(errs...)
 }
 
 func (lns *listener) handlerStart(job *clientpb.Job) error {

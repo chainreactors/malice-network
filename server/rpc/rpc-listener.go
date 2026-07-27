@@ -15,6 +15,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"io"
+	"sort"
 	"time"
 )
 
@@ -46,7 +47,7 @@ func (rpc *Server) RegisterListener(ctx context.Context, req *clientpb.RegisterL
 		logs.Log.Warnf("server - listener_reregister name=%s state=old_cleaned", req.Name)
 	}
 
-	core.Listeners.Add(core.NewListener(req.Name, req.Host))
+	core.Listeners.Add(core.NewPendingListener(req.Name, req.Host))
 	core.EventBroker.Notify(core.Event{
 		EventType: consts.EventListener,
 		Op:        consts.CtrlListenerStart,
@@ -73,6 +74,48 @@ func deletePipelineStreamIfSame(key string, stream interface{}) bool {
 	}
 	pipelinesCh.Delete(key)
 	return true
+}
+
+func sessionSnapshotsForListener(listenerID string) []*clientpb.Session {
+	if core.Sessions == nil {
+		return nil
+	}
+	snapshots := make([]*clientpb.Session, 0)
+	for _, session := range core.Sessions.All() {
+		if session == nil {
+			continue
+		}
+		snapshot := session.ToProtobufLite()
+		if snapshot.ListenerId == listenerID {
+			snapshots = append(snapshots, snapshot)
+		}
+	}
+	sort.Slice(snapshots, func(i, j int) bool {
+		return snapshots[i].SessionId < snapshots[j].SessionId
+	})
+	return snapshots
+}
+
+func syncRecoveredSessions(stream listenerrpc.ListenerRPC_JobStreamServer, listenerID string) error {
+	if err := stream.Send(&clientpb.JobCtrl{
+		Ctrl: core.CtrlListenerSessionSnapshotBegin,
+	}); err != nil {
+		return fmt.Errorf("begin session snapshot for listener %s: %w", listenerID, err)
+	}
+	for _, snapshot := range sessionSnapshotsForListener(listenerID) {
+		if err := stream.Send(&clientpb.JobCtrl{
+			Ctrl:    consts.CtrlListenerSyncSession,
+			Session: snapshot,
+		}); err != nil {
+			return fmt.Errorf("sync session %s to listener %s: %w", snapshot.SessionId, listenerID, err)
+		}
+	}
+	if err := stream.Send(&clientpb.JobCtrl{
+		Ctrl: core.CtrlListenerSessionSnapshotEnd,
+	}); err != nil {
+		return fmt.Errorf("complete session snapshot for listener %s: %w", listenerID, err)
+	}
+	return nil
 }
 
 func (rpc *Server) SpiteStream(stream listenerrpc.ListenerRPC_SpiteStreamServer) error {
@@ -113,7 +156,7 @@ func (rpc *Server) SpiteStream(stream listenerrpc.ListenerRPC_SpiteStreamServer)
 				logs.Log.Warnf("session %s recovery failed: %v", msg.SessionId, err)
 				continue
 			}
-			core.Sessions.Add(sess)
+			activateRecoveredSession(sess)
 			logs.Log.Importantf("session %s recovered from DB via SpiteStream", msg.SessionId)
 		}
 		sess.SetLastCheckin(time.Now().Unix())
@@ -188,6 +231,11 @@ func (rpc *Server) JobStream(stream listenerrpc.ListenerRPC_JobStreamServer) err
 			logs.Log.Debugf("listener %s JobStream cleanup skipped replacement instance", listenerID)
 		}
 	}()
+
+	if err := syncRecoveredSessions(stream, listenerID); err != nil {
+		return err
+	}
+	lns.MarkReady()
 
 	recvMsgCh := make(chan *clientpb.JobStatus)
 	sendErrCh := core.GoGuarded("listener-job-stream-send:"+listenerID, func() error {

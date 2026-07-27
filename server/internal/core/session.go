@@ -193,15 +193,7 @@ func RecoverSession(sess *models.Session) (*Session, error) {
 	}
 	s.Taskseq.Store(1)
 
-	// 无论如何都初始化 SecureManager，使用SessionContext中的KeyPair
-	err = s.initializeSecureManager(&clientpb.RegisterSession{
-		PipelineId:   sess.PipelineID,
-		ListenerId:   sess.ListenerID,
-		RegisterData: &implantpb.Register{Secure: s.Secure},
-	})
-	if err != nil {
-		return nil, err
-	}
+	s.restoreSecureManagerFromContext()
 	s.SetLastCheckin(sess.LastCheckin)
 
 	s.Ctx, s.Cancel = context.WithCancel(context.Background())
@@ -209,14 +201,12 @@ func RecoverSession(sess *models.Session) (*Session, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(tasks) == 0 {
-		logID, err := s.RecoverTaskIDByLog()
-		if err != nil {
-			return nil, err
-		}
-		if uint32(logID) > tid {
-			tid = uint32(logID)
-		}
+	logID, err := s.RecoverTaskIDByLog()
+	if err != nil {
+		return nil, err
+	}
+	if uint32(logID) > tid {
+		tid = uint32(logID)
 	}
 	s.Taskseq.Store(tid)
 	for _, task := range tasks {
@@ -420,8 +410,7 @@ func (s *Session) TaskLog(task *Task, spite *implantpb.Spite) error {
 
 func (s *Session) Recover() error {
 	for _, task := range s.Tasks.All() {
-		cur, total := task.Progress()
-		if cur < total {
+		if !task.Finished() {
 			ch := make(chan *implantpb.Spite, 16)
 			s.responses.Store(task.Id, ch)
 		}
@@ -436,6 +425,9 @@ func (s *Session) RecoverTaskIDByLog() (int, error) {
 	}
 	files, err := os.ReadDir(taskDir)
 	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return 0, nil
+		}
 		return 0, err
 	}
 
@@ -1358,6 +1350,15 @@ func (s *sessions) SweepInactive() {
 	}
 }
 
+// restoreSecureManagerFromContext rebuilds only the in-memory secure runtime.
+// Persisted session hydration must not depend on a live listener or pipeline.
+func (s *Session) restoreSecureManagerFromContext() {
+	if s == nil || s.SessionContext == nil || s.Secure == nil || !s.Secure.Enable {
+		return
+	}
+	s.SecureManager = NewSecureSpiteManager(s)
+}
+
 // initializePipelineKeyPair 从pipeline获取预分发的密钥对
 func (s *Session) initializeSecureManager(req *clientpb.RegisterSession) error {
 	var (
@@ -1452,13 +1453,19 @@ func (s *Session) UpdateKeyPair(publicKey string, privateKey string) {
 }
 
 func (s *Session) PushCtrl() {
-	lns, err := Listeners.Get(s.ListenerID)
+	if s == nil {
+		return
+	}
+	snapshot := s.ToProtobufLite()
+	lns, err := Listeners.Get(snapshot.ListenerId)
 	if err != nil {
 		return
 	}
-	s.Save()
+	if err := s.Save(); err != nil {
+		logs.Log.Errorf("sync session %s persistence failed: %v", s.ID, err)
+	}
 	lns.PushCtrl(&clientpb.JobCtrl{
 		Ctrl:    consts.CtrlListenerSyncSession,
-		Session: s.ToProtobufLite(),
+		Session: snapshot,
 	})
 }
