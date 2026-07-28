@@ -482,6 +482,37 @@ execute_exe gogo.exe -- -i 123.123.123.123 -p top2
 	common.BindFlag(execExeCmd, common.ExecuteFlagSet, common.SacrificeFlagSet)
 	common.BindOutputFlags(execExeCmd)
 
+	spawnCmd := &cobra.Command{
+		Use:   CommandSpawn,
+		Short: "Spawn a new Windows Beacon from an Artifact",
+		Long:  "Execute a completed Windows Beacon Artifact with the matching binary executor.",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return SpawnCmd(cmd, con)
+		},
+		Annotations: map[string]string{
+			"os": consts.Windows,
+		},
+		Example: `
+~~~
+spawn --artifact beacon-windows-x64
+spawn --artifact beacon-windows-x64 --ppid 1234 --block_dll
+~~~
+`,
+	}
+	common.BindFlag(spawnCmd, common.SacrificeFlagSet, func(f *pflag.FlagSet) {
+		f.String("artifact", "", "completed Windows Beacon Artifact")
+		f.StringP("process", "n", `C:\\Windows\\System32\\svchost.exe`, "custom process path")
+		f.BoolP("quiet", "q", false, "disable output")
+		f.Uint32P("timeout", "t", 60, "timeout, in seconds")
+		common.SetFlagSetGroup(f, "execute")
+	})
+	_ = spawnCmd.MarkFlagRequired("artifact")
+	common.BindFlagCompletions(spawnCmd, func(comp carapace.ActionMap) {
+		comp["artifact"] = SpawnArtifactCompleter(con)
+	})
+	common.BindOutputFlags(spawnCmd)
+
 	inlinePECmd := &cobra.Command{
 		Use:   consts.ModuleAliasInlineExe + " [exe]",
 		Short: "Executes the given inline EXE in current process",
@@ -603,6 +634,7 @@ powerpick -s powerview.ps1 -- Get-NetUser
 		execDLLCmd,
 		inlineDLLCmd,
 		execExeCmd,
+		spawnCmd,
 		inlinePECmd,
 		execBofCmd,
 		powerpickCmd,

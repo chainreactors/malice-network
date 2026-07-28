@@ -304,6 +304,10 @@ func (r *RecorderRPC) Execute(ctx context.Context, in *implantpb.ExecRequest, op
 	return r.taskResponse(ctx, "Execute", in)
 }
 
+func (r *RecorderRPC) ExecuteSpawn(ctx context.Context, in *implantpb.ExecuteBinary, opts ...grpc.CallOption) (*clientpb.Task, error) {
+	return r.taskResponse(ctx, "ExecuteSpawn", in)
+}
+
 func (r *RecorderRPC) Upload(ctx context.Context, in *implantpb.UploadRequest, opts ...grpc.CallOption) (*clientpb.Task, error) {
 	return r.taskResponse(ctx, "Upload", in)
 }
@@ -1079,6 +1083,7 @@ var methodTaskTypes = map[string]string{
 	"CancelTask":     consts.ModuleCancelTask,
 	"Clear":          consts.ModuleClear,
 	"Execute":        consts.ModuleExecute,
+	"ExecuteSpawn":   "spawn",
 	"Upload":         consts.ModuleUpload,
 	"Download":       consts.ModuleDownload,
 	"DownloadDir":    consts.ModuleDownload,

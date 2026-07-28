@@ -1008,6 +1008,41 @@ shell [cmdline] [flags]
   -s, --shell string   custom shell path (e.g. /bin/bash, /bin/ash)
 ```
 
+### spawn
+
+Spawn a new Windows Beacon from an Artifact
+
+**Description**
+
+Execute a completed Windows Beacon Artifact with the matching binary executor.
+
+```
+spawn [flags]
+```
+
+**Examples**
+
+
+~~~
+spawn --artifact beacon-windows-x64
+spawn --artifact beacon-windows-x64 --ppid 1234 --block_dll
+~~~
+
+
+**Options**
+
+```
+  -a, --argue string     spoofing process arguments, eg: notepad.exe
+      --artifact string  completed Windows Beacon Artifact
+  -b, --block_dll        block not microsoft dll injection
+      --etw              disable ETW
+  -f, --file string      save output to file path
+  -p, --ppid uint32      spoofing parent processes, (0 means injection into ourselves)
+  -n, --process string   custom process path (default "C:\\\\Windows\\\\System32\\\\svchost.exe")
+  -q, --quiet            disable output
+  -t, --timeout uint32   timeout, in seconds (default 60)
+```
+
 ## sys
 ### bypass
 
