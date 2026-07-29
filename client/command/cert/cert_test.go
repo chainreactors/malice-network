@@ -46,7 +46,7 @@ func TestCertCommandConformance(t *testing.T) {
 		{
 			Name:    "update requires cert name",
 			Argv:    []string{consts.CommandCert, consts.CommandCertUpdate},
-			WantErr: "accepts 1 arg(s), received 0",
+			WantErr: "cert-name is required",
 			Assert: func(t testing.TB, h *testsupport.Harness, err error) {
 				testsupport.RequireNoPrimaryCalls(t, h)
 			},
@@ -110,7 +110,8 @@ func TestCertUpdateLoadsKeyPairWithoutCACert(t *testing.T) {
 	certPath, keyPath := writePEMFixture(t)
 
 	err := h.ExecuteClient(
-		consts.CommandCert, consts.CommandCertUpdate, "demo-cert",
+		consts.CommandCert, consts.CommandCertUpdate,
+		"--cert-name", "demo-cert",
 		"--cert", certPath,
 		"--key", keyPath,
 		"--type", "imported",
@@ -119,7 +120,14 @@ func TestCertUpdateLoadsKeyPairWithoutCACert(t *testing.T) {
 		t.Fatalf("execute failed: %v", err)
 	}
 
-	req, _ := testsupport.MustSingleCall[*clientpb.TLS](t, h, "UpdateCertificate")
+	calls := h.Recorder.Calls()
+	if len(calls) != 2 || calls[0].Method != "UpdateCertificate" || calls[1].Method != "ApplyCertificate" {
+		t.Fatalf("calls = %#v, want UpdateCertificate then ApplyCertificate", calls)
+	}
+	req, ok := calls[0].Request.(*clientpb.TLS)
+	if !ok {
+		t.Fatalf("update request type = %T, want *clientpb.TLS", calls[0].Request)
+	}
 	if req.Cert == nil {
 		t.Fatalf("update certificate request cert = nil")
 	}
@@ -129,8 +137,68 @@ func TestCertUpdateLoadsKeyPairWithoutCACert(t *testing.T) {
 	if strings.TrimSpace(req.Cert.Cert) == "" || strings.TrimSpace(req.Cert.Key) == "" {
 		t.Fatalf("update certificate payload missing cert/key: %#v", req.Cert)
 	}
-	if req.Ca != nil && strings.TrimSpace(req.Ca.Cert) != "" {
-		t.Fatalf("update certificate CA = %#v, want empty", req.Ca)
+	if req.Ca != nil {
+		t.Fatalf("update certificate CA = %#v, want nil to preserve existing CA", req.Ca)
+	}
+	applyReq, ok := calls[1].Request.(*clientpb.CertificateApplyRequest)
+	if !ok || applyReq.GetCertName() != "demo-cert" {
+		t.Fatalf("apply request = %#v, want demo-cert", calls[1].Request)
+	}
+}
+
+func TestCertUpdateClearCAAndNoReload(t *testing.T) {
+	h := testsupport.NewClientHarness(t)
+
+	err := h.ExecuteClient(
+		consts.CommandCert, consts.CommandCertUpdate,
+		"--cert-name", "demo-cert",
+		"--clear-ca",
+		"--no-reload",
+	)
+	if err != nil {
+		t.Fatalf("execute failed: %v", err)
+	}
+
+	req, _ := testsupport.MustSingleCall[*clientpb.TLS](t, h, "UpdateCertificate")
+	if req.GetCa() == nil || req.GetCa().GetCert() != "" {
+		t.Fatalf("update CA = %#v, want explicit empty CA", req.GetCa())
+	}
+}
+
+func TestCertUpdateKeepsPositionalNameCompatibility(t *testing.T) {
+	h := testsupport.NewClientHarness(t)
+
+	err := h.ExecuteClient(
+		consts.CommandCert, consts.CommandCertUpdate, "demo-cert",
+		"--comment", "rotated",
+		"--no-reload",
+	)
+	if err != nil {
+		t.Fatalf("execute failed: %v", err)
+	}
+
+	req, _ := testsupport.MustSingleCall[*clientpb.TLS](t, h, "UpdateCertificate")
+	if req.GetCert().GetName() != "demo-cert" || req.GetCert().GetComment() != "rotated" {
+		t.Fatalf("update request = %#v, want positional demo-cert", req)
+	}
+}
+
+func TestCertApplyUsesNamedFlags(t *testing.T) {
+	h := testsupport.NewClientHarness(t)
+
+	err := h.ExecuteClient(
+		consts.CommandCert, "apply",
+		"--cert-name", "demo-cert",
+		"--listener", "listener-a",
+		"--pipeline", "pipe-a",
+	)
+	if err != nil {
+		t.Fatalf("cert apply failed: %v", err)
+	}
+
+	req, _ := testsupport.MustSingleCall[*clientpb.CertificateApplyRequest](t, h, "ApplyCertificate")
+	if req.GetCertName() != "demo-cert" || req.GetListenerId() != "listener-a" || req.GetPipelineName() != "pipe-a" {
+		t.Fatalf("apply request = %#v", req)
 	}
 }
 
@@ -233,9 +301,20 @@ func TestCertRenewForwardsAcmeRequest(t *testing.T) {
 		t.Fatalf("renew failed: %v", err)
 	}
 
-	req, _ := testsupport.MustSingleCall[*clientpb.AcmeRequest](t, h, "ObtainAcmeCert")
+	calls := h.Recorder.Calls()
+	if len(calls) != 2 || calls[0].Method != "ObtainAcmeCert" || calls[1].Method != "ApplyCertificate" {
+		t.Fatalf("calls = %#v, want ObtainAcmeCert then ApplyCertificate", calls)
+	}
+	req, ok := calls[0].Request.(*clientpb.AcmeRequest)
+	if !ok {
+		t.Fatalf("ACME request type = %T", calls[0].Request)
+	}
 	if req.Domain != "example.com" || req.Provider != "cloudflare" {
 		t.Fatalf("acme request = %#v", req)
+	}
+	applyReq, ok := calls[1].Request.(*clientpb.CertificateApplyRequest)
+	if !ok || applyReq.GetCertName() != "example.com" {
+		t.Fatalf("apply request = %#v, want example.com", calls[1].Request)
 	}
 }
 

@@ -2,11 +2,14 @@ package rpc
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/types"
 	"github.com/chainreactors/malice-network/helper/certs"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/core"
@@ -109,18 +112,116 @@ func (rpc *Server) UpdateCertificate(ctx context.Context, req *clientpb.TLS) (*c
 	if req == nil || req.Cert == nil {
 		return nil, fmt.Errorf("certificate is required")
 	}
-
-	caPEM := ""
-	if req.Ca != nil {
-		caPEM = req.Ca.Cert
+	certName := strings.TrimSpace(req.Cert.Name)
+	if certName == "" {
+		return nil, fmt.Errorf("certificate name is required")
 	}
 
-	err := db.UpdateCert(req.Cert.Name, req.Cert.Cert, req.Cert.Key, caPEM, req.Cert.Comment)
+	fields := make(map[string]interface{})
+	certPEM := req.Cert.Cert
+	keyPEM := req.Cert.Key
+	if strings.TrimSpace(certPEM) != "" || strings.TrimSpace(keyPEM) != "" {
+		if strings.TrimSpace(certPEM) == "" || strings.TrimSpace(keyPEM) == "" {
+			return nil, fmt.Errorf("cert and key must be provided together")
+		}
+		if _, err := tls.X509KeyPair([]byte(certPEM), []byte(keyPEM)); err != nil {
+			return nil, fmt.Errorf("invalid certificate key pair: %w", err)
+		}
+		fields["cert_pem"] = certPEM
+		fields["key_pem"] = keyPEM
+	}
+	if certType := strings.TrimSpace(req.Cert.Type); certType != "" {
+		fields["type"] = certType
+	}
+	if req.Cert.Comment != "" {
+		fields["comment"] = req.Cert.Comment
+	}
+	if req.Ca != nil {
+		fields["ca_cert_pem"] = req.Ca.Cert
+		if req.Ca.Cert == "" {
+			fields["ca_key_pem"] = ""
+		} else if req.Ca.Key != "" {
+			fields["ca_key_pem"] = req.Ca.Key
+		}
+	}
+	if len(fields) == 0 {
+		return nil, fmt.Errorf("no certificate fields were provided")
+	}
+
+	if err := db.UpdateCertFields(certName, fields); err != nil {
+		return nil, err
+	}
+	publishCertificateLifecycleEvent(consts.CtrlCertUpdate, certName, "")
+	return &clientpb.Empty{}, nil
+}
+
+func (rpc *Server) ApplyCertificate(ctx context.Context, req *clientpb.CertificateApplyRequest) (*clientpb.CertificateApplyResult, error) {
+	if req == nil {
+		return nil, types.ErrMissingRequestField
+	}
+	certName := strings.TrimSpace(req.GetCertName())
+	if certName == "" {
+		return nil, fmt.Errorf("cert_name is required")
+	}
+	cert, err := db.FindCertificate(certName)
 	if err != nil {
 		return nil, err
 	}
-	publishCertificateLifecycleEvent(consts.CtrlCertUpdate, req.Cert.Name, "")
-	return &clientpb.Empty{}, nil
+	if _, err := tls.X509KeyPair([]byte(cert.CertPEM), []byte(cert.KeyPEM)); err != nil {
+		return nil, fmt.Errorf("certificate %s is invalid: %w", certName, err)
+	}
+
+	query := db.NewPipelineQuery().WhereCertName(certName)
+	if req.GetListenerId() != "" {
+		query = query.WhereListenerID(req.GetListenerId())
+	}
+	if req.GetPipelineName() != "" {
+		query = query.WhereName(req.GetPipelineName())
+	}
+	references, err := query.Find()
+	if err != nil {
+		return nil, err
+	}
+	sort.Slice(references, func(i, j int) bool {
+		left := references[i].ListenerId + ":" + references[i].Name
+		right := references[j].ListenerId + ":" + references[j].Name
+		return left < right
+	})
+
+	result := &clientpb.CertificateApplyResult{CertName: certName}
+	for _, reference := range references {
+		target := &clientpb.CertificateApplyTarget{
+			ListenerId:   reference.ListenerId,
+			PipelineName: reference.Name,
+			PipelineType: reference.Type,
+		}
+		var applyErr error
+		switch reference.Type {
+		case consts.WebsitePipeline:
+			_, applyErr = rpc.UpdateWebsiteTLS(ctx, &clientpb.PipelineTLSUpdate{
+				ListenerId: reference.ListenerId,
+				Name:       reference.Name,
+				Mode:       clientpb.TLSUpdateMode_TLS_UPDATE_MODE_EXISTING_CERT,
+				CertName:   certName,
+			})
+		case consts.HTTPPipeline, consts.TCPPipeline:
+			_, applyErr = rpc.UpdatePipelineTLS(ctx, &clientpb.PipelineTLSUpdate{
+				ListenerId: reference.ListenerId,
+				Name:       reference.Name,
+				Mode:       clientpb.TLSUpdateMode_TLS_UPDATE_MODE_EXISTING_CERT,
+				CertName:   certName,
+			})
+		default:
+			applyErr = fmt.Errorf("pipeline type %s does not support certificate reload", reference.Type)
+		}
+		if applyErr != nil {
+			target.Error = applyErr.Error()
+		} else {
+			target.Applied = true
+		}
+		result.Targets = append(result.Targets, target)
+	}
+	return result, nil
 }
 
 func (rpc *Server) GenerateAcmeCert(ctx context.Context, req *clientpb.Pipeline) (*clientpb.Empty, error) {
@@ -144,7 +245,11 @@ func (rpc *Server) ObtainAcmeCert(ctx context.Context, req *clientpb.AcmeRequest
 	operation := consts.CtrlCertCreate
 	if existing != nil {
 		operation = consts.CtrlCertUpdate
-		err = db.UpdateCert(req.Domain, string(certPEM), string(keyPEM), "")
+		err = db.UpdateCertFields(req.Domain, map[string]interface{}{
+			"cert_pem": string(certPEM),
+			"key_pem":  string(keyPEM),
+			"type":     certs.Acme,
+		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to update certificate: %w", err)
 		}

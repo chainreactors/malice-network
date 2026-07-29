@@ -127,30 +127,60 @@ cert delete cert-name
 	updateCmd := &cobra.Command{
 		Use:   consts.CommandCertUpdate + " [cert_name]",
 		Short: "update a cert",
-		Long:  "Update the certificate material, type, or comment for a stored certificate.",
-		Args:  cobra.ExactArgs(1),
+		Long:  "Update stored certificate fields and reload pipelines and websites that reference it. The positional certificate name remains supported for compatibility.",
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return UpdateCmd(cmd, con)
 		},
 		Example: `~~~
 // update a cert
-cert update cert-name --cert cert_path --key key_path --type imported
+cert update --cert-name cert-name --cert cert_path --key key_path --type imported
 ~~~`,
 	}
 
 	common.BindFlag(updateCmd, common.ImportSet, func(f *pflag.FlagSet) {
+		f.String("cert-name", "", "stored certificate name")
 		f.String("type", "", "cert type")
 		f.String("comment", "", "certificate comment")
+		f.Bool("clear-ca", false, "clear the stored CA certificate")
+		f.Bool("no-reload", false, "update the certificate without reloading references")
 	})
 
 	common.BindArgCompletions(updateCmd, nil,
 		common.CertNameCompleter(con),
 	)
 	common.BindFlagCompletions(updateCmd, func(comp carapace.ActionMap) {
+		comp["cert-name"] = common.CertNameCompleter(con)
 		comp["cert"] = carapace.ActionFiles().Usage("path to the cert file")
 		comp["key"] = carapace.ActionFiles().Usage("path to the key file")
 		comp["type"] = common.CertTypeCompleter()
 		comp["ca-cert"] = carapace.ActionFiles().Usage("path to the ca cert file")
+	})
+
+	applyCmd := &cobra.Command{
+		Use:   "apply",
+		Short: "Reload references to a stored certificate",
+		Long:  "Reload every website and supported pipeline that references a stored certificate, optionally filtered by listener and pipeline name.",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return ApplyCmd(cmd, con)
+		},
+		Example: `~~~
+cert apply --cert-name prod-cert
+
+cert apply --cert-name prod-cert --listener edge-a --pipeline http-main
+~~~`,
+	}
+	common.BindFlag(applyCmd, func(f *pflag.FlagSet) {
+		f.String("cert-name", "", "stored certificate name")
+		f.String("listener", "", "only reload references on this listener")
+		f.String("pipeline", "", "only reload references with this pipeline or website name")
+	})
+	_ = applyCmd.MarkFlagRequired("cert-name")
+	common.BindFlagCompletions(applyCmd, func(comp carapace.ActionMap) {
+		comp["cert-name"] = common.CertNameCompleter(con)
+		comp["listener"] = common.ListenerIDCompleter(con)
+		comp["pipeline"] = common.PipelineNameFlagCompleter(con, applyCmd, consts.WebsitePipeline, consts.HTTPPipeline, consts.TCPPipeline)
 	})
 
 	downloadCmd := &cobra.Command{
@@ -222,6 +252,7 @@ cert renew example-com --domain example.com --provider cloudflare
 		f.String("provider", "", "ACME provider override")
 		f.String("email", "", "ACME account email override")
 		f.String("ca-url", "", "ACME CA directory URL override")
+		f.Bool("no-reload", false, "renew the certificate without reloading references")
 	})
 	common.BindArgCompletions(renewCmd, nil, common.CertNameCompleter(con))
 
@@ -260,7 +291,7 @@ cert prune --expired
 	// Enable wizard for cert commands that need configuration
 	common.EnableWizardForCommands(importCmd, selfSignCmd, updateCmd)
 
-	certCmd.AddCommand(importCmd, selfSignCmd, acmeCmd, acmeConfigCmd, delCmd, updateCmd, downloadCmd,
+	certCmd.AddCommand(importCmd, selfSignCmd, acmeCmd, acmeConfigCmd, delCmd, updateCmd, applyCmd, downloadCmd,
 		inspectCmd, verifyCmd, renewCmd, listRefsCmd, pruneExpiredCmd)
 	return []*cobra.Command{
 		certCmd,

@@ -85,7 +85,7 @@ func TestComplexClientCommandsExposeActionableHelp(t *testing.T) {
 			cmd:          mustSubcommandPath(t, pipeline, "update"),
 			wantUse:      "update [pipeline_name]",
 			wantLong:     []string{"--enable", "--disable", "--cert-name", "--parser"},
-			wantExamples: []string{"pipeline update tcp-main --cert-name web-cert"},
+			wantExamples: []string{"pipeline cert bind --pipeline tcp-main --cert-name web-cert"},
 		},
 	}
 

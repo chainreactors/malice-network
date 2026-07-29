@@ -377,12 +377,21 @@ cert import --name cert-name --cert cert.crt --key key.crt --ca-cert ca.crt --co
  ![image-20250709211824315](../assets/cert_imported.png)
 gui则是在certificates界面点击Imported Certificate按钮后，证书上传至服务端。
  ![image-20250817173827224752](../assets/usage/listener/inportedCert_gui.png)
-当服务器已存储所需证书后，可以通过以下命令，将pipeline使用新的证书配置启动。
+当服务器已存储所需证书后，可以绑定或换绑 HTTP/TCP Pipeline。运行中的 Pipeline 会自动重启，停止态只保存配置。
 
 ```bash
-pipeline start tcp --cert-name cert-name
+pipeline cert bind --pipeline tcp --listener listener --cert-name cert-name
+pipeline cert show --pipeline tcp --listener listener
 website tls web-test --cert-name cert-name
 ```
+
+同名证书续期时可直接替换 cert/key；默认会重载所有引用，未传 `--ca-cert` 时保留原 CA：
+
+```bash
+cert update --cert-name cert-name --cert fullchain.pem --key privkey.pem
+```
+
+使用 `--no-reload` 可延后应用，再执行 `cert apply --cert-name cert-name`。Pipeline 证书命令和失败恢复语义见 [Pipeline 证书绑定与更新](../client/pipeline-certificates.md)。旧的 `pipeline start tcp --cert-name cert-name` 仍兼容，但日常证书管理建议使用 `pipeline cert`。
 
 ![image-20250709213539835](../assets/cert_pipeline_start.png)
 

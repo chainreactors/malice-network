@@ -11,6 +11,7 @@
 - [任务查询](tasks.md) - 任务列表、请求摘要、raw request 与结果导出
 - [审计导出](audit.md) - Session 级 Task 审计 JSON/HTML 导出
 - [管理命令](management-commands.md) - cert、pipeline、listener、job、artifact、website 管理入口
+- [Pipeline 证书](pipeline-certificates.md) - HTTP/TCP Pipeline 证书绑定、换绑、续期与引用重载
 - [Project 管理](project.md) - Project 创建、查询、更新和删除
 - [原生 SOCKS5](socks5.md) - 通过 Implant `tcp_relay` 建立本地 SOCKS5 代理
 - [上下文同步](context-sync.md) - `context sync` 流式下载、完整性校验与旧服务端兼容

@@ -20,9 +20,10 @@ import (
 )
 
 var (
-	pipelinesCh     sync.Map
-	authLog, rpcLog *logs.Logger
-	logDebug        bool
+	pipelinesCh            sync.Map
+	pipelineLifecycleLocks sync.Map
+	authLog, rpcLog        *logs.Logger
+	logDebug               bool
 )
 
 var serveClientGRPC = func(server *grpc.Server, ln net.Listener) error {
@@ -89,6 +90,7 @@ func ReInitLogs() {
 // not leak across isolated in-process test harnesses.
 func ResetTransientRPCState() {
 	pipelinesCh = sync.Map{}
+	pipelineLifecycleLocks = sync.Map{}
 	implantPTYManagers = sync.Map{}
 	resetForwardListenerRuntimes()
 }

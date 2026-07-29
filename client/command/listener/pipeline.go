@@ -124,6 +124,15 @@ func ListPipelineCmd(cmd *cobra.Command, con *core.Console) error {
 func StartPipelineCmd(cmd *cobra.Command, con *core.Console) error {
 	name := cmd.Flags().Arg(0)
 	pipelineName, listenerID, cached := resolvePipelineCtrlTarget(con, name)
+	certName, _ := cmd.Flags().GetString("cert-name")
+	if certName != "" {
+		_, err := con.Rpc.StartPipeline(con.Context(), &clientpb.CtrlPipeline{
+			Name:       pipelineName,
+			ListenerId: listenerID,
+			CertName:   certName,
+		})
+		return err
+	}
 
 	p, _ := common.FindCachedPipeline(con, name, nil)
 	if cached && p != nil && p.Enable {
@@ -135,11 +144,9 @@ func StartPipelineCmd(cmd *cobra.Command, con *core.Console) error {
 			return err
 		}
 	}
-	certName, _ := cmd.Flags().GetString("cert-name")
 	_, err := con.Rpc.StartPipeline(con.Context(), &clientpb.CtrlPipeline{
 		Name:       pipelineName,
 		ListenerId: listenerID,
-		CertName:   certName,
 	})
 	if err != nil {
 		return err
@@ -228,6 +235,9 @@ func HealthPipelineCmd(cmd *cobra.Command, con *core.Console) error {
 }
 
 func UpdatePipelineCmd(cmd *cobra.Command, con *core.Console) error {
+	if cmd.Flags().Changed("cert-name") {
+		return fmt.Errorf("--cert-name is not supported by pipeline update; use pipeline cert bind --pipeline <name> --cert-name <cert>")
+	}
 	name := cmd.Flags().Arg(0)
 	pipelineName, _, cached := resolvePipelineCtrlTarget(con, name)
 	if !cached {
@@ -247,10 +257,6 @@ func UpdatePipelineCmd(cmd *cobra.Command, con *core.Console) error {
 		if disable {
 			updated.Enable = false
 		}
-	}
-	if cmd.Flags().Changed("cert-name") {
-		certName, _ := cmd.Flags().GetString("cert-name")
-		updated.CertName = certName
 	}
 	if cmd.Flags().Changed("parser") {
 		parser, _ := cmd.Flags().GetString("parser")

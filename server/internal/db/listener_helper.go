@@ -201,6 +201,16 @@ func UpdateCert(name, cert, key, ca string, comment ...string) error {
 	return NewCertificateQuery().WhereName(name).UpdateFields(fields)
 }
 
+func UpdateCertFields(name string, fields map[string]interface{}) error {
+	if len(fields) == 0 {
+		return nil
+	}
+	if _, err := FindCertificate(name); err != nil {
+		return err
+	}
+	return NewCertificateQuery().WhereName(name).UpdateFields(fields)
+}
+
 func isDuplicateCommonNameAndCAType(name string) bool {
 	_, err := FindCertificate(name)
 	return err == nil

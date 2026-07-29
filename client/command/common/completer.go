@@ -10,6 +10,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/implanttypes"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/carapace-sh/carapace"
@@ -382,6 +383,48 @@ func AllPipelineCompleter(con *core.Console) carapace.Action {
 		return carapace.ActionValuesDescribed(results...).Tag("pipeline name")
 	}
 	return carapace.ActionCallback(callback)
+}
+
+func PipelineNameFlagCompleter(con *core.Console, cmd *cobra.Command, allowedTypes ...string) carapace.Action {
+	allowed := make(map[string]struct{}, len(allowedTypes))
+	for _, pipelineType := range allowedTypes {
+		allowed[pipelineType] = struct{}{}
+	}
+	return carapace.ActionCallback(func(c carapace.Context) carapace.Action {
+		listenerID := ""
+		if cmd.Flags().Lookup("listener") != nil {
+			listenerID, _ = cmd.Flags().GetString("listener")
+		}
+		descriptions := make(map[string][]string)
+		seen := make(map[string]struct{})
+		for _, pipeline := range SnapshotCachedPipelines(con) {
+			if pipeline == nil || listenerID != "" && pipeline.GetListenerId() != listenerID {
+				continue
+			}
+			if len(allowed) != 0 {
+				if _, ok := allowed[pipeline.GetType()]; !ok {
+					continue
+				}
+			}
+			identity := pipeline.GetListenerId() + "\x00" + pipeline.GetName()
+			if _, ok := seen[identity]; ok {
+				continue
+			}
+			seen[identity] = struct{}{}
+			descriptions[pipeline.GetName()] = append(descriptions[pipeline.GetName()], fmt.Sprintf("%s: %s", pipeline.GetListenerId(), pipeline.GetType()))
+		}
+
+		names := make([]string, 0, len(descriptions))
+		for name := range descriptions {
+			names = append(names, name)
+		}
+		sort.Strings(names)
+		results := make([]string, 0, len(names)*2)
+		for _, name := range names {
+			results = append(results, name, strings.Join(descriptions[name], ", "))
+		}
+		return carapace.ActionValuesDescribed(results...).Tag("pipeline name")
+	})
 }
 
 func SessionModuleCompleter(con *core.Console) carapace.Action {

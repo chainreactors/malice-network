@@ -184,16 +184,16 @@ pipeline restart tcp-main
 		Use:   "update [pipeline_name]",
 		Short: "Update cached pipeline metadata",
 		Args:  cobra.ExactArgs(1),
-		Long:  "Update selected pipeline fields with --enable, --disable, --cert-name, or --parser, then synchronize the result to the server.",
+		Long:  "Update selected pipeline fields with --enable, --disable, or --parser, then synchronize the result to the server. The deprecated --cert-name flag returns migration guidance; use pipeline cert bind for TLS certificate changes.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return UpdatePipelineCmd(cmd, con)
 		},
 		Example: `~~~
-pipeline update tcp-main --cert-name web-cert
-
 pipeline update tcp-main --disable
 
 pipeline update tcp-main --parser default
+
+pipeline cert bind --pipeline tcp-main --cert-name web-cert
 ~~~`,
 	}
 	common.BindFlag(updatePipelineCmd, func(f *pflag.FlagSet) {
@@ -228,7 +228,8 @@ pipeline health --listener listener-a
 	})
 
 	pipelineCmd.AddCommand(startPipelineCmd, stopPipelineCmd, listPipelineCmd, deletePipeCmd,
-		inspectPipelineCmd, restartPipelineCmd, updatePipelineCmd, healthPipelineCmd)
+		inspectPipelineCmd, restartPipelineCmd, updatePipelineCmd, healthPipelineCmd,
+		newPipelineCertificateCommand(con))
 
 	forwardCmd := &cobra.Command{
 		Use:   "forward",

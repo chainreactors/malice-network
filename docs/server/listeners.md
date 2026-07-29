@@ -139,8 +139,11 @@ Pipeline 的 TLS 支持两种配置方式：
     ```bash
     cert self_signed                  # 生成自签名证书
     cert import --cert cert.crt --key key.crt  # 导入证书
-    pipeline start tcp --cert-name <name>      # 使用指定证书启动
+    pipeline cert bind --pipeline tcp --listener listener-a --cert-name <name>
+    cert update --cert-name <name> --cert fullchain.pem --key privkey.pem
     ```
+
+    `pipeline cert bind` 对运行中的 HTTP/TCP Pipeline 执行停止、持久化和重新启动；启动失败时恢复原绑定。停止态只更新数据库。`cert update` 默认通过 `cert apply` 语义重载所有引用，未提供 CA 时保留原 CA。
 
 !!! warning "Implant 对齐"
     Pipeline 开启 TLS 时，Implant 的 profile 中也需要同步开启 `tls.enable: true`。

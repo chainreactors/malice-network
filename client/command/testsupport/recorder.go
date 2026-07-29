@@ -54,6 +54,7 @@ type RecorderRPC struct {
 	webContentResponders      map[string]func(context.Context, any) (*clientpb.WebContent, error)
 	webContentsResponders     map[string]func(context.Context, any) (*clientpb.WebContents, error)
 	pipelineResponders        map[string]func(context.Context, any) (*clientpb.Pipeline, error)
+	certApplyResponders       map[string]func(context.Context, any) (*clientpb.CertificateApplyResult, error)
 	licenseResponders         map[string]func(context.Context, any) (*clientpb.LicenseInfo, error)
 	contextsResponders        map[string]func(context.Context, any) (*clientpb.Contexts, error)
 	certsResponders           map[string]func(context.Context, any) (*clientpb.Certs, error)
@@ -85,6 +86,7 @@ func NewRecorderRPC() *RecorderRPC {
 		webContentResponders:      map[string]func(context.Context, any) (*clientpb.WebContent, error){},
 		webContentsResponders:     map[string]func(context.Context, any) (*clientpb.WebContents, error){},
 		pipelineResponders:        map[string]func(context.Context, any) (*clientpb.Pipeline, error){},
+		certApplyResponders:       map[string]func(context.Context, any) (*clientpb.CertificateApplyResult, error){},
 		licenseResponders:         map[string]func(context.Context, any) (*clientpb.LicenseInfo, error){},
 		contextsResponders:        map[string]func(context.Context, any) (*clientpb.Contexts, error){},
 		certsResponders:           map[string]func(context.Context, any) (*clientpb.Certs, error){},
@@ -198,6 +200,10 @@ func (r *RecorderRPC) OnPipelines(method string, fn func(context.Context, any) (
 
 func (r *RecorderRPC) OnPipeline(method string, fn func(context.Context, any) (*clientpb.Pipeline, error)) {
 	r.pipelineResponders[method] = fn
+}
+
+func (r *RecorderRPC) OnCertificateApply(method string, fn func(context.Context, any) (*clientpb.CertificateApplyResult, error)) {
+	r.certApplyResponders[method] = fn
 }
 
 func (r *RecorderRPC) OnWebContent(method string, fn func(context.Context, any) (*clientpb.WebContent, error)) {
@@ -533,6 +539,14 @@ func (r *RecorderRPC) UpdateCertificate(ctx context.Context, in *clientpb.TLS, o
 	return r.emptyResponse(ctx, "UpdateCertificate", in)
 }
 
+func (r *RecorderRPC) ApplyCertificate(ctx context.Context, in *clientpb.CertificateApplyRequest, opts ...grpc.CallOption) (*clientpb.CertificateApplyResult, error) {
+	r.recordPrimary(ctx, "ApplyCertificate", in)
+	if responder, ok := r.certApplyResponders["ApplyCertificate"]; ok {
+		return responder(ctx, in)
+	}
+	return &clientpb.CertificateApplyResult{CertName: in.GetCertName()}, nil
+}
+
 func (r *RecorderRPC) GetAllCertificates(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Certs, error) {
 	r.recordPrimary(ctx, "GetAllCertificates", in)
 	if responder, ok := r.certsResponders["GetAllCertificates"]; ok {
@@ -563,6 +577,14 @@ func (r *RecorderRPC) RegisterPipeline(ctx context.Context, in *clientpb.Pipelin
 
 func (r *RecorderRPC) SyncPipeline(ctx context.Context, in *clientpb.Pipeline, opts ...grpc.CallOption) (*clientpb.Empty, error) {
 	return r.emptyResponse(ctx, "SyncPipeline", in)
+}
+
+func (r *RecorderRPC) UpdatePipelineTLS(ctx context.Context, in *clientpb.PipelineTLSUpdate, opts ...grpc.CallOption) (*clientpb.Pipeline, error) {
+	r.recordPrimary(ctx, "UpdatePipelineTLS", in)
+	if responder, ok := r.pipelineResponders["UpdatePipelineTLS"]; ok {
+		return responder(ctx, in)
+	}
+	return &clientpb.Pipeline{Name: in.GetName(), ListenerId: in.GetListenerId(), CertName: in.GetCertName()}, nil
 }
 
 func (r *RecorderRPC) DeletePipeline(ctx context.Context, in *clientpb.CtrlPipeline, opts ...grpc.CallOption) (*clientpb.Empty, error) {

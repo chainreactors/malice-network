@@ -55,11 +55,13 @@ func TestLifecycleEventsPublishStructuredPayloads(t *testing.T) {
 
 func TestCertificateMutationsPublishLifecycleEvents(t *testing.T) {
 	newRPCTestEnv(t)
+	oldCert, oldKey := websitePEMFixture(t)
+	newCert, newKey := websitePEMFixture(t)
 	if err := db.SaveCertificate(&models.Certificate{
 		Name:    "certificate-event",
 		Type:    "imported",
-		CertPEM: "old-cert",
-		KeyPEM:  "old-key",
+		CertPEM: oldCert,
+		KeyPEM:  oldKey,
 	}); err != nil {
 		t.Fatalf("SaveCertificate: %v", err)
 	}
@@ -69,8 +71,8 @@ func TestCertificateMutationsPublishLifecycleEvents(t *testing.T) {
 	server := &Server{}
 	if _, err := server.UpdateCertificate(context.Background(), &clientpb.TLS{Cert: &clientpb.Cert{
 		Name:    "certificate-event",
-		Cert:    "new-cert",
-		Key:     "new-key",
+		Cert:    newCert,
+		Key:     newKey,
 		Comment: "updated",
 	}}); err != nil {
 		t.Fatalf("UpdateCertificate: %v", err)

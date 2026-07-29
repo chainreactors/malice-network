@@ -102,8 +102,21 @@ func RenewCmd(cmd *cobra.Command, con *core.Console) error {
 	if err != nil {
 		return err
 	}
+	noReload, _ := cmd.Flags().GetBool("no-reload")
+	if !noReload {
+		if err := applyCertificateReferences(con, domain, "", ""); err != nil {
+			return err
+		}
+	}
 	con.Log.Infof("cert %s renew requested for %s\n", certName, domain)
 	return nil
+}
+
+func ApplyCmd(cmd *cobra.Command, con *core.Console) error {
+	certName, _ := cmd.Flags().GetString("cert-name")
+	listenerID, _ := cmd.Flags().GetString("listener")
+	pipelineName, _ := cmd.Flags().GetString("pipeline")
+	return applyCertificateReferences(con, certName, listenerID, pipelineName)
 }
 
 func ListRefsCmd(cmd *cobra.Command, con *core.Console) error {
@@ -178,15 +191,32 @@ func pipelineUsesCert(p *clientpb.Pipeline, certName string) bool {
 }
 
 func UpdateCmd(cmd *cobra.Command, con *core.Console) error {
-	certName := cmd.Flags().Arg(0)
+	certName, err := resolveCertificateUpdateName(cmd)
+	if err != nil {
+		return err
+	}
 	certPath, _ := cmd.Flags().GetString("cert")
 	keyPath, _ := cmd.Flags().GetString("key")
 	certType, _ := cmd.Flags().GetString("type")
 	caPath, _ := cmd.Flags().GetString("ca-cert")
 	comment, _ := cmd.Flags().GetString("comment")
+	clearCA, _ := cmd.Flags().GetBool("clear-ca")
+	noReload, _ := cmd.Flags().GetBool("no-reload")
+	certChanged := cmd.Flags().Changed("cert")
+	keyChanged := cmd.Flags().Changed("key")
+	caChanged := cmd.Flags().Changed("ca-cert")
+	if clearCA && caChanged {
+		return fmt.Errorf("--clear-ca cannot be used with --ca-cert")
+	}
+	if certChanged != keyChanged {
+		return fmt.Errorf("cert and key must be provided together")
+	}
+	if !certChanged && !caChanged && !clearCA && !cmd.Flags().Changed("type") && !cmd.Flags().Changed("comment") {
+		return fmt.Errorf("no certificate fields were provided")
+	}
+
 	var cert, key, ca string
-	var err error
-	if certPath != "" || keyPath != "" {
+	if certChanged {
 		if certPath == "" || keyPath == "" {
 			return fmt.Errorf("cert and key must be provided together")
 		}
@@ -198,29 +228,94 @@ func UpdateCmd(cmd *cobra.Command, con *core.Console) error {
 		if err != nil {
 			return err
 		}
+		if _, err := tls.X509KeyPair([]byte(cert), []byte(key)); err != nil {
+			return fmt.Errorf("invalid certificate key pair: %w", err)
+		}
 	}
-	if caPath != "" {
+	if caChanged {
+		if caPath == "" {
+			return fmt.Errorf("ca-cert path is required")
+		}
 		ca, err = cryptography.ProcessPEM(caPath)
 		if err != nil {
 			return err
 		}
 	}
-	_, err = con.Rpc.UpdateCertificate(con.Context(), &clientpb.TLS{
-		Ca: &clientpb.Cert{
-			Cert: ca,
-		},
-		Cert: &clientpb.Cert{
-			Name:    certName,
-			Cert:    cert,
-			Key:     key,
-			Type:    certType,
-			Comment: comment,
-		},
-	})
+	request := &clientpb.TLS{Cert: &clientpb.Cert{Name: certName}}
+	if certChanged {
+		request.Cert.Cert = cert
+		request.Cert.Key = key
+	}
+	if cmd.Flags().Changed("type") {
+		request.Cert.Type = certType
+	}
+	if cmd.Flags().Changed("comment") {
+		request.Cert.Comment = comment
+	}
+	if clearCA {
+		request.Ca = &clientpb.Cert{}
+	} else if caChanged {
+		request.Ca = &clientpb.Cert{Cert: ca}
+	}
+	_, err = con.Rpc.UpdateCertificate(con.Context(), request)
 	if err != nil {
 		return err
 	}
 	con.Log.Infof("cert update %s success\n", certName)
+	if !noReload {
+		return applyCertificateReferences(con, certName, "", "")
+	}
+	return nil
+}
+
+func resolveCertificateUpdateName(cmd *cobra.Command) (string, error) {
+	flagName, _ := cmd.Flags().GetString("cert-name")
+	positionalName := cmd.Flags().Arg(0)
+	if flagName != "" && positionalName != "" {
+		return "", fmt.Errorf("specify the certificate name with either --cert-name or a positional argument, not both")
+	}
+	name := strings.TrimSpace(flagName)
+	if name == "" {
+		name = strings.TrimSpace(positionalName)
+	}
+	if name == "" {
+		return "", fmt.Errorf("cert-name is required")
+	}
+	return name, nil
+}
+
+func applyCertificateReferences(con *core.Console, certName, listenerID, pipelineName string) error {
+	result, err := con.Rpc.ApplyCertificate(con.Context(), &clientpb.CertificateApplyRequest{
+		CertName:     certName,
+		ListenerId:   listenerID,
+		PipelineName: pipelineName,
+	})
+	if err != nil {
+		return err
+	}
+	if len(result.GetTargets()) == 0 {
+		con.Log.Infof("cert %s has no matching references\n", certName)
+		return nil
+	}
+
+	failed := 0
+	var output strings.Builder
+	for _, target := range result.GetTargets() {
+		ref := target.GetPipelineName()
+		if target.GetListenerId() != "" {
+			ref = target.GetListenerId() + ":" + ref
+		}
+		if target.GetApplied() {
+			fmt.Fprintf(&output, "%s\tapplied\n", ref)
+			continue
+		}
+		failed++
+		fmt.Fprintf(&output, "%s\tfailed: %s\n", ref, target.GetError())
+	}
+	con.Log.Console(output.String())
+	if failed > 0 {
+		return fmt.Errorf("certificate reload failed for %d target(s)", failed)
+	}
 	return nil
 }
 

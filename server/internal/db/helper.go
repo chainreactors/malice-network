@@ -355,6 +355,12 @@ func (q *PipelineQuery) WhereListenerID(listenerID string) *PipelineQuery {
 	return q
 }
 
+// WhereCertName filters by the stored certificate reference.
+func (q *PipelineQuery) WhereCertName(certName string) *PipelineQuery {
+	q.db = q.db.Where("cert_name = ?", certName)
+	return q
+}
+
 // WhereEnabled filters by enabled status
 func (q *PipelineQuery) WhereEnabled(enabled bool) *PipelineQuery {
 	q.db = q.db.Where("enable = ?", enabled)
@@ -469,7 +475,7 @@ func ListArtifacts() (Artifacts, error) {
 
 // ListPipelinesByListener returns pipelines for a listener (non-website)
 func ListPipelinesByListener(listenerID string) (Pipelines, error) {
-	query := NewPipelineQuery().WhereNotType(consts.WebsitePipeline)
+	query := NewPipelineQuery().WhereNotType(consts.WebsitePipeline).WithCert()
 	if listenerID != "" {
 		query = query.WhereListenerID(listenerID)
 	}

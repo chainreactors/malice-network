@@ -67,6 +67,31 @@ func TestStartPipelineCmdForwardsCertNameToStartRequest(t *testing.T) {
 	}
 }
 
+func TestStartPipelineCmdLetsServerRebindRunningPipelineAtomically(t *testing.T) {
+	h := testsupport.NewClientHarness(t)
+	h.Console.Pipelines["listener-a:pipe-running"] = &clientpb.Pipeline{
+		Name:       "pipe-running",
+		ListenerId: "listener-a",
+		Type:       consts.HTTPPipeline,
+		Enable:     true,
+	}
+
+	cmd := &cobra.Command{Use: "start"}
+	cmd.Flags().String("cert-name", "", "")
+	if err := cmd.Flags().Parse([]string{"listener-a:pipe-running", "--cert-name", "cert-blue"}); err != nil {
+		t.Fatalf("Parse failed: %v", err)
+	}
+
+	if err := listenercmd.StartPipelineCmd(cmd, h.Console); err != nil {
+		t.Fatalf("StartPipelineCmd failed: %v", err)
+	}
+
+	req, _ := testsupport.MustSingleCall[*clientpb.CtrlPipeline](t, h, "StartPipeline")
+	if req.GetName() != "pipe-running" || req.GetListenerId() != "listener-a" || req.GetCertName() != "cert-blue" {
+		t.Fatalf("start request = %#v", req)
+	}
+}
+
 func TestStartPipelineCmdUsesScopedCacheKey(t *testing.T) {
 	h := testsupport.NewClientHarness(t)
 	h.Console.Pipelines["listener-a:pipe-c"] = &clientpb.Pipeline{
@@ -247,17 +272,96 @@ func TestUpdatePipelineCmdSyncsCachedPipeline(t *testing.T) {
 	if err := cmd.Flags().Set("enable", "true"); err != nil {
 		t.Fatalf("Set enable failed: %v", err)
 	}
-	if err := cmd.Flags().Set("cert-name", "web-cert"); err != nil {
-		t.Fatalf("Set cert-name failed: %v", err)
-	}
 	if err := listenercmd.UpdatePipelineCmd(cmd, h.Console); err != nil {
 		t.Fatalf("UpdatePipelineCmd failed: %v", err)
 	}
 
 	req, _ := testsupport.MustSingleCall[*clientpb.Pipeline](t, h, "SyncPipeline")
-	if !req.Enable || req.CertName != "web-cert" || req.Name != "pipe-a" || req.ListenerId != "listener-a" {
+	if !req.Enable || req.Name != "pipe-a" || req.ListenerId != "listener-a" {
 		t.Fatalf("sync pipeline = %#v", req)
 	}
+}
+
+func TestUpdatePipelineCmdRejectsCertName(t *testing.T) {
+	h := testsupport.NewClientHarness(t)
+	h.Console.Pipelines["listener-a:pipe-a"] = &clientpb.Pipeline{
+		Name:       "pipe-a",
+		ListenerId: "listener-a",
+		Type:       consts.HTTPPipeline,
+	}
+
+	cmd := &cobra.Command{Use: "update"}
+	cmd.Flags().Bool("enable", false, "")
+	cmd.Flags().Bool("disable", false, "")
+	cmd.Flags().String("cert-name", "", "")
+	cmd.Flags().String("parser", "", "")
+	if err := cmd.Flags().Parse([]string{"listener-a:pipe-a", "--cert-name", "web-cert"}); err != nil {
+		t.Fatalf("Parse failed: %v", err)
+	}
+
+	err := listenercmd.UpdatePipelineCmd(cmd, h.Console)
+	if err == nil || !strings.Contains(err.Error(), "pipeline cert bind") {
+		t.Fatalf("UpdatePipelineCmd error = %v, want pipeline cert bind guidance", err)
+	}
+	testsupport.RequireNoPrimaryCalls(t, h)
+}
+
+func TestPipelineCertBindUsesNamedFlags(t *testing.T) {
+	h := testsupport.NewClientHarness(t)
+
+	err := h.ExecuteClient(
+		consts.CommandPipeline, "cert", "bind",
+		"--pipeline", "pipe-a",
+		"--listener", "listener-a",
+		"--cert-name", "web-cert",
+	)
+	if err != nil {
+		t.Fatalf("pipeline cert bind failed: %v", err)
+	}
+
+	req, _ := testsupport.MustSingleCall[*clientpb.PipelineTLSUpdate](t, h, "UpdatePipelineTLS")
+	if req.GetName() != "pipe-a" || req.GetListenerId() != "listener-a" || req.GetCertName() != "web-cert" {
+		t.Fatalf("bind request = %#v", req)
+	}
+	if req.GetMode() != clientpb.TLSUpdateMode_TLS_UPDATE_MODE_EXISTING_CERT {
+		t.Fatalf("bind mode = %v, want existing cert", req.GetMode())
+	}
+}
+
+func TestPipelineCertGenerateCanSaveCertificate(t *testing.T) {
+	h := testsupport.NewClientHarness(t)
+
+	err := h.ExecuteClient(
+		consts.CommandPipeline, "cert", "generate",
+		"--pipeline", "pipe-a",
+		"--listener", "listener-a",
+		"--save-as", "generated-cert",
+	)
+	if err != nil {
+		t.Fatalf("pipeline cert generate failed: %v", err)
+	}
+
+	req, _ := testsupport.MustSingleCall[*clientpb.PipelineTLSUpdate](t, h, "UpdatePipelineTLS")
+	if req.GetMode() != clientpb.TLSUpdateMode_TLS_UPDATE_MODE_INLINE_CERT || !req.GetSaveCert() || req.GetSaveCertName() != "generated-cert" {
+		t.Fatalf("generate request = %#v", req)
+	}
+	if req.GetTls() == nil || !req.GetTls().GetEnable() {
+		t.Fatalf("generate TLS = %#v, want enabled TLS", req.GetTls())
+	}
+}
+
+func TestPipelineCertCommandsRejectPositionalArguments(t *testing.T) {
+	h := testsupport.NewClientHarness(t)
+
+	err := h.ExecuteClient(
+		consts.CommandPipeline, "cert", "bind", "pipe-a", "web-cert",
+		"--pipeline", "pipe-a",
+		"--cert-name", "web-cert",
+	)
+	if err == nil || !strings.Contains(err.Error(), "unknown command") && !strings.Contains(err.Error(), "unknown arguments") {
+		t.Fatalf("pipeline cert bind positional error = %v", err)
+	}
+	testsupport.RequireNoPrimaryCalls(t, h)
 }
 
 func TestKillJobCmdStopsRunningPipeline(t *testing.T) {
