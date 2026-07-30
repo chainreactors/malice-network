@@ -1121,7 +1121,7 @@ func (s *Session) NewTask(name string, total int) *Task {
 		Session:   s,
 		DoneCh:    make(chan bool, 1),
 		CreatedAt: now,
-		Deadline:  now.Add(consts.MinTimeout),
+		Deadline:  now.Add(configs.DefaultTaskTimeout),
 	}
 	task.Ctx, task.Cancel = context.WithCancel(s.Ctx)
 	s.Tasks.Add(task)

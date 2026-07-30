@@ -125,6 +125,7 @@ type MiscConfig struct {
 }
 
 const (
+	DefaultTaskTimeout               = 60 * time.Second
 	DefaultUploadMaxChunkBytes       = 8 * 1024 * 1024
 	DefaultUploadMaxFileBytes        = 20 * 1024 * 1024 * 1024
 	DefaultUploadMaxStagingBytes     = 20 * 1024 * 1024 * 1024

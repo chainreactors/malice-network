@@ -1,9 +1,11 @@
 package models
 
 import (
-	"github.com/chainreactors/IoM-go/proto/client/clientpb"
-	"gorm.io/gorm"
 	"time"
+
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/server/internal/configs"
+	"gorm.io/gorm"
 )
 
 type Task struct {
@@ -57,6 +59,10 @@ func (t *Task) ToProtobuf() *clientpb.Task {
 	if t == nil {
 		return nil
 	}
+	deadline := t.Deadline
+	if deadline.IsZero() && !t.Created.IsZero() {
+		deadline = t.Created.Add(configs.DefaultTaskTimeout)
+	}
 	return &clientpb.Task{
 		TaskId:         uint32(t.Seq),
 		Type:           t.Type,
@@ -65,7 +71,7 @@ func (t *Task) ToProtobuf() *clientpb.Task {
 		Total:          int32(t.Total),
 		Description:    t.Description,
 		Callby:         t.ClientName,
-		Timeout:        time.Now().After(t.Deadline),
+		Timeout:        !deadline.IsZero() && time.Now().After(deadline),
 		Finished:       !t.FinishTime.IsZero() || t.Cur == t.Total,
 		CreatedAt:      t.Created.Unix(),
 		FinishedAt:     t.FinishTime.Unix(),

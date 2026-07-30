@@ -15,6 +15,7 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
+	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"github.com/gofrs/uuid"
 	"gorm.io/gorm"
@@ -250,6 +251,10 @@ func GetTaskBySessionAndSeq(sessionID string, seq uint32) (*models.Task, error) 
 }
 
 func AddTask(task *clientpb.Task) error {
+	deadline := time.Now().Add(configs.DefaultTaskTimeout)
+	if task.CreatedAt > 0 {
+		deadline = time.Unix(task.CreatedAt, 0).Add(configs.DefaultTaskTimeout)
+	}
 	taskModel := &models.Task{
 		ID:             task.SessionId + "-" + utils.ToString(task.TaskId),
 		Seq:            task.TaskId,
@@ -263,6 +268,7 @@ func AddTask(task *clientpb.Task) error {
 		RequestSize:    task.RequestSize,
 		RequestSHA256:  task.RequestSha256,
 		HasRequest:     task.HasRequest,
+		Deadline:       deadline,
 	}
 	return Session().Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "id"}},

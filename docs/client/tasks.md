@@ -58,7 +58,9 @@ fetch_task 7
 
 ## 配置
 
-不需要新增配置。request cache 使用现有 context 目录，路径由 Server 的 runtime context path 决定。
+普通 Task 的默认观察性超时为 60 秒。超过该时间会将 `timeout` 标记为 `true`，但不会中断 implant 上正在执行的任务。
+
+request cache 不需要新增配置，使用现有 context 目录，路径由 Server 的 runtime context path 决定。
 
 ## 示例
 

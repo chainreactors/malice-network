@@ -146,7 +146,7 @@ func (r *GenericRequest) TaskContext(spite *implantpb.Spite) *clientpb.TaskConte
 
 func (r *GenericRequest) InitSpite(ctx context.Context) (*implantpb.Spite, error) {
 	spite := &implantpb.Spite{
-		Timeout: uint64(consts.MinTimeout.Seconds()),
+		Timeout: uint64(configs.DefaultTaskTimeout.Seconds()),
 		Async:   true,
 	}
 	var err error
@@ -194,7 +194,7 @@ func (r *GenericRequest) rollbackTask() {
 
 func (r *GenericRequest) NewSpite(msg proto.Message) (*implantpb.Spite, error) {
 	spite := &implantpb.Spite{
-		Timeout: uint64(consts.MinTimeout.Seconds()),
+		Timeout: uint64(configs.DefaultTaskTimeout.Seconds()),
 		Async:   true,
 	}
 	var err error

@@ -11,6 +11,7 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"google.golang.org/protobuf/proto"
@@ -165,6 +166,7 @@ func (t *Task) ToProtobuf() *clientpb.Task {
 }
 
 func FromTaskProtobuf(task *clientpb.Task) *Task {
+	createdAt := time.Unix(task.CreatedAt, 0)
 	t := &Task{
 		Id:        task.TaskId,
 		Type:      task.Type,
@@ -172,7 +174,8 @@ func FromTaskProtobuf(task *clientpb.Task) *Task {
 		Cur:       int(task.Cur),
 		Total:     int(task.Total),
 		CallBy:    task.Callby,
-		CreatedAt: time.Unix(task.CreatedAt, 0),
+		CreatedAt: createdAt,
+		Deadline:  createdAt.Add(configs.DefaultTaskTimeout),
 	}
 	// Only set FinishedAt when the protobuf carries a positive timestamp;
 	// zero-time.Unix() is negative and would produce a non-zero time.Time,

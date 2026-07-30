@@ -9,6 +9,7 @@ import (
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/types"
+	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 )
@@ -60,6 +61,16 @@ func subscribeEventBrokerReady(t testing.TB, broker interface {
 			t.Fatal("subscriber did not become ready")
 		case <-time.After(10 * time.Millisecond):
 		}
+	}
+}
+
+func TestGenericRequestNewSpiteUsesTaskTimeout(t *testing.T) {
+	spite, err := (&GenericRequest{}).NewSpite(&implantpb.Request{Name: "test"})
+	if err != nil {
+		t.Fatalf("NewSpite failed: %v", err)
+	}
+	if got := time.Duration(spite.Timeout) * time.Second; got != configs.DefaultTaskTimeout {
+		t.Fatalf("spite timeout = %v, want %v", got, configs.DefaultTaskTimeout)
 	}
 }
 

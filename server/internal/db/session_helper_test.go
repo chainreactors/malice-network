@@ -3,9 +3,11 @@ package db
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 )
 
@@ -361,6 +363,10 @@ func TestAddAndGetTask(t *testing.T) {
 	}
 	if found.Total != 100 {
 		t.Errorf("expected total 100, got %d", found.Total)
+	}
+	deadlineOffset := found.Deadline.Sub(found.Created)
+	if deadlineOffset <= configs.DefaultTaskTimeout-time.Second || deadlineOffset > configs.DefaultTaskTimeout {
+		t.Errorf("task deadline offset = %v, want approximately %v", deadlineOffset, configs.DefaultTaskTimeout)
 	}
 }
 

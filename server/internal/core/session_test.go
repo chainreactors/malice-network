@@ -610,6 +610,16 @@ func TestSession_NewTask_IncrementsSeq(t *testing.T) {
 	}
 }
 
+func TestSession_NewTask_UsesTaskTimeout(t *testing.T) {
+	sess := newTestSession("task-timeout")
+	task := sess.NewTask("type", 1)
+	t.Cleanup(task.Close)
+
+	if got := task.Deadline.Sub(task.CreatedAt); got != configs.DefaultTaskTimeout {
+		t.Fatalf("task timeout = %v, want %v", got, configs.DefaultTaskTimeout)
+	}
+}
+
 func TestSession_NewTask_ConcurrentIDsUnique(t *testing.T) {
 	cleanup := installTestDBMocks()
 	defer cleanup()
