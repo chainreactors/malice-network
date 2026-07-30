@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
@@ -19,6 +20,9 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
+	"github.com/chainreactors/malice-network/server/internal/db/models"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"gorm.io/gorm"
 )
@@ -124,6 +128,61 @@ func (rpc *Server) SessionManage(ctx context.Context, req *clientpb.BasicUpdateS
 	}
 
 	return &clientpb.Empty{}, nil
+}
+
+func (rpc *Server) ListSessionLinks(_ context.Context, req *clientpb.SessionLinkRequest) (*clientpb.SessionLinks, error) {
+	if req == nil {
+		return nil, types.ErrMissingRequestField
+	}
+	links, err := db.ListSessionLinks(req.GetParentSessionId(), req.GetChildSessionId())
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "list session links: %v", err)
+	}
+	return links.ToProtobuf(), nil
+}
+
+func (rpc *Server) SetSessionLink(_ context.Context, req *clientpb.SessionLinkRequest) (*clientpb.SessionLink, error) {
+	if req == nil {
+		return nil, types.ErrMissingRequestField
+	}
+	parentSessionID := strings.TrimSpace(req.GetParentSessionId())
+	childSessionID := strings.TrimSpace(req.GetChildSessionId())
+	if parentSessionID == "" || childSessionID == "" {
+		return nil, status.Error(codes.InvalidArgument, "parent_session_id and child_session_id are required")
+	}
+
+	link, err := db.SetSessionLink(parentSessionID, childSessionID, models.SessionLinkSourceManual)
+	if err != nil {
+		return nil, sessionLinkRPCError(err)
+	}
+	return link.ToProtobuf(), nil
+}
+
+func (rpc *Server) RemoveSessionLink(_ context.Context, req *clientpb.SessionLinkRequest) (*clientpb.Empty, error) {
+	if req == nil {
+		return nil, types.ErrMissingRequestField
+	}
+	childSessionID := strings.TrimSpace(req.GetChildSessionId())
+	if childSessionID == "" {
+		return nil, status.Error(codes.InvalidArgument, "child_session_id is required")
+	}
+	if err := db.RemoveSessionLink(childSessionID); err != nil {
+		return nil, sessionLinkRPCError(err)
+	}
+	return &clientpb.Empty{}, nil
+}
+
+func sessionLinkRPCError(err error) error {
+	switch {
+	case errors.Is(err, db.ErrSessionLinkSelf):
+		return status.Error(codes.InvalidArgument, err.Error())
+	case errors.Is(err, db.ErrSessionLinkCycle):
+		return status.Error(codes.FailedPrecondition, err.Error())
+	case errors.Is(err, db.ErrSessionLinkSessionNotFound), errors.Is(err, db.ErrSessionLinkNotFound):
+		return status.Error(codes.NotFound, err.Error())
+	default:
+		return status.Errorf(codes.Internal, "manage session link: %v", err)
+	}
 }
 
 func (rpc *Server) Info(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {

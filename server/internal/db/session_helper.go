@@ -176,14 +176,19 @@ func FindTaskAndMaxTasksID(sessionID string) (Tasks, uint32, error) {
 }
 
 func RemoveSession(sessionID string) error {
-	result := Session().Model(&models.Session{}).Where("session_id = ?", sessionID).Update("is_removed", true)
-	if result.Error != nil {
-		return result.Error
-	}
-	if result.RowsAffected == 0 {
-		return ErrRecordNotFound
-	}
-	return nil
+	sessionLinkMu.Lock()
+	defer sessionLinkMu.Unlock()
+
+	return Session().Transaction(func(tx *gorm.DB) error {
+		result := tx.Model(&models.Session{}).Where("session_id = ?", sessionID).Update("is_removed", true)
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return ErrRecordNotFound
+		}
+		return removeSessionLinks(tx, sessionID)
+	})
 }
 
 // RecoverRemovedSession finds a soft-deleted session and resets is_removed flag.

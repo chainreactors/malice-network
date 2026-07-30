@@ -70,7 +70,7 @@ flowchart TB
     %% 数据层
     subgraph data["数据层"]
         direction LR
-        db["SQLite / PostgreSQL<br/>Operator / Session / Task"]
+        db["SQLite / PostgreSQL<br/>Operator / Session / SessionLink / Task"]
         context["Runtime Files<br/>Context / Audit / Logs / Web"]
         proto["IoM-go Proto<br/>Client / Listener / Implant contracts"]
         assets["Profiles / Artifacts / Certificates"]
@@ -116,7 +116,7 @@ flowchart TB
 | 展现层 | `client/cmd/cli/`, `client/command/`, `client/plugin/`, `external/IoM-go` | 提供 CLI/TUI、SDK、LocalRPC、MCP、MAL/Armory 和 Agent 入口。 |
 | 通讯层 | `server/rpc/`, `server/forwardrpc/`, `server/listener/`, `external/rem` | 承载 Client 到 Server、Server 到 Listener、Listener 到 Implant 的通信协议和连接形态。 |
 | 服务层 | `server/rpc/`, `server/internal/core/`, `server/build/`, `server/internal/mutant/`, `server/internal/llm/`, `server/internal/notify/` | 维护认证授权、Session/Task/Event 调度、Listener/Pipeline 管理、构建产物、插件自动化、审计和通知能力。 |
-| 数据层 | `server/internal/db/`, `server/internal/configs/`, `server/internal/audit/`, `server/assets/`, `external/IoM-go/generate/proto/` | 持久化 Operator、Session、Task、Pipeline、Artifact、Context、Website 内容，保存配置、证书、审计日志和 proto 契约。 |
+| 数据层 | `server/internal/db/`, `server/internal/configs/`, `server/internal/audit/`, `server/assets/`, `external/IoM-go/generate/proto/` | 持久化 Operator、Session、SessionLink、Task、Pipeline、Artifact、Context、Website 内容，保存配置、证书、审计日志和 proto 契约。 |
 
 ## 运行时链路
 
@@ -135,6 +135,12 @@ flowchart TB
 5. JobStream 断开后 Listener 重新注册并建流；新快照提交后，以 `SyncPipeline` 恢复 Server 对仍在运行的 Pipeline/Website 的视图。
 6. 上述过程恢复控制面状态，不代表 Implant 的 TCP/HTTP 连接已经恢复；实际在线仍以新的 Register/Checkin 和连接建立为准。
 
+### Session 逻辑拓扑
+
+1. Session 之间的父子关系由独立的 `SessionLink` 模型持久化，不属于 Listener、Pipeline 或 REM 的运行时连接状态。
+2. 当前拓扑由 Client 通过 `ListSessionLinks`、`SetSessionLink` 和 `RemoveSessionLink` 人工维护；一个子 Session 只能有一个父 Session，服务端拒绝自关联和环路。
+3. 逻辑拓扑当前不参与 Task 路由。后续接入 REM 或 Implant 级联信道时，由信道生命周期更新关系来源和状态，而不是从拓扑表反向假定连接已经存在。
+
 ## 相关文档
 
 - [核心概念](concept.md)
@@ -142,3 +148,4 @@ flowchart TB
 - [Listener 与 Pipeline 架构](server/listeners.md)
 - [构建与 Profile](server/build.md)
 - [Server 冷启动 Session 恢复](server/session-startup-recovery-design.md)
+- [Session 父子关系](client/session-links.md)

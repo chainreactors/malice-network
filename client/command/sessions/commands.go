@@ -136,7 +136,8 @@ remove 08d6c05a21512a79a1dfeb9d2a8f262f
 	common.BindArgCompletions(removeCommand, nil, common.SessionIDCompleter(con))
 	plugin.SetCommandArgs(removeCommand, plugin.SessionArg("session", true, 0))
 
-	sessCmd.AddCommand(bindSessNewCmd, noteCommand, groupCommand, removeCommand)
+	linkCommand := newSessionLinkCommand(con)
+	sessCmd.AddCommand(bindSessNewCmd, noteCommand, groupCommand, removeCommand, linkCommand)
 	useCommand := &cobra.Command{
 		Use:           consts.CommandUse + " [session]",
 		Short:         "Use a session",

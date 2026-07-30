@@ -18,6 +18,7 @@ var testAllModels = []interface{}{
 	&models.Profile{},
 	&models.WebsiteContent{},
 	&models.Session{},
+	&models.SessionLink{},
 	&models.Artifact{},
 	&models.Task{},
 	&models.Context{},
@@ -44,7 +45,7 @@ func TestSQLiteAutoMigrate_Fresh(t *testing.T) {
 
 	// Verify all tables were created
 	for _, table := range []string{"pipelines", "operators", "certificates", "authz_rules",
-		"profiles", "website_contents", "sessions", "artifacts", "tasks", "contexts"} {
+		"profiles", "website_contents", "sessions", "session_links", "artifacts", "tasks", "contexts"} {
 		if !db.Migrator().HasTable(table) {
 			t.Errorf("table %q should exist after AutoMigrate", table)
 		}

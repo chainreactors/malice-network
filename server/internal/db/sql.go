@@ -53,6 +53,7 @@ func NewDBClient(dbConfig *configs.DatabaseConfig) (*gorm.DB, error) {
 		&models.Profile{},
 		&models.WebsiteContent{},
 		&models.Session{},
+		&models.SessionLink{},
 		&models.Artifact{},
 		&models.Task{},
 		&models.Context{},
