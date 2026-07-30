@@ -594,25 +594,22 @@ func (rpc *Server) deletePipelineLocked(ctx context.Context, req *clientpb.CtrlP
 		return rpc.DeleteRem(ctx, req)
 	}
 
-	lns, err := core.Listeners.Get(listenerID)
-	if err != nil {
-		return nil, err
-	}
-
-	if pipe := lns.GetPipeline(req.Name); pipe != nil {
-		ctrlID := lns.PushCtrlDeferredEvent(ctx, &clientpb.JobCtrl{
-			Ctrl: consts.CtrlPipelineStop,
-			Job: &clientpb.Job{
-				Id:       core.NextJobID(),
-				Name:     req.Name,
-				Pipeline: pipe,
-			},
-		})
-		status := lns.WaitCtrl(ctrlID)
-		if err := waitForCtrlStatus("delete pipeline", req.Name, status); err != nil {
-			return nil, err
+	if lns, runtimeErr := core.Listeners.Get(listenerID); runtimeErr == nil {
+		if pipe := lns.GetPipeline(req.Name); pipe != nil {
+			ctrlID := lns.PushCtrlDeferredEvent(ctx, &clientpb.JobCtrl{
+				Ctrl: consts.CtrlPipelineStop,
+				Job: &clientpb.Job{
+					Id:       core.NextJobID(),
+					Name:     req.Name,
+					Pipeline: pipe,
+				},
+			})
+			status := lns.WaitCtrl(ctrlID)
+			if err := waitForCtrlStatus("delete pipeline", req.Name, status); err != nil {
+				return nil, err
+			}
+			lns.RemovePipeline(pipe)
 		}
-		lns.RemovePipeline(pipe)
 	}
 
 	err = db.DeletePipelineByListener(pipelineDB.Name, listenerID)

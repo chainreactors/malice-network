@@ -103,6 +103,42 @@ func TestRegisterPipeline_Valid(t *testing.T) {
 	}
 }
 
+func TestDeletePipelineRemovesPipelineWhenListenerIsOffline(t *testing.T) {
+	_ = newRPCTestEnv(t)
+	const listenerID = "offline-delete-listener"
+	pipeline := &clientpb.Pipeline{
+		Name:       "offline-delete-pipeline",
+		ListenerId: listenerID,
+		Enable:     false,
+		Type:       consts.HTTPPipeline,
+		Body: &clientpb.Pipeline_Http{Http: &clientpb.HTTPPipeline{
+			Name:       "offline-delete-pipeline",
+			ListenerId: listenerID,
+			Host:       "127.0.0.1",
+			Port:       8899,
+		}},
+	}
+	if _, err := db.SavePipeline(models.FromPipelinePb(pipeline)); err != nil {
+		t.Fatalf("SavePipeline failed: %v", err)
+	}
+	events := subscribeEventBrokerReady(t, core.EventBroker)
+	defer core.EventBroker.Unsubscribe(events)
+
+	if _, err := (&Server{}).DeletePipeline(context.Background(), &clientpb.CtrlPipeline{
+		Name:       pipeline.Name,
+		ListenerId: listenerID,
+	}); err != nil {
+		t.Fatalf("DeletePipeline failed for offline listener: %v", err)
+	}
+	if _, err := db.FindPipelineByListener(pipeline.Name, listenerID); err == nil {
+		t.Fatal("DeletePipeline should remove the persisted pipeline")
+	}
+	event := waitForLifecycleEvent(t, events, consts.CtrlPipelineDelete)
+	if event.EventType != consts.EventJob || event.Job.GetPipeline().GetName() != pipeline.Name {
+		t.Fatalf("unexpected offline pipeline delete event: %#v", event)
+	}
+}
+
 func TestRegisterPipeline_AllowsSameNameAcrossListeners(t *testing.T) {
 	_ = newRPCTestEnv(t)
 	core.Listeners.Add(core.NewListener("listener-a", "127.0.0.1"))
