@@ -8,6 +8,7 @@ import (
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
+	"github.com/chainreactors/malice-network/server/internal/configs"
 	"google.golang.org/protobuf/proto"
 	"gopkg.in/yaml.v3"
 	"os"
@@ -64,23 +65,78 @@ func saveListenerAuth(rpc clientrpc.RootRPCClient, msg *rootpb.Operator) (proto.
 	if err != nil {
 		return nil, err
 	}
+	wd, err := os.Getwd()
+	if err != nil {
+		return nil, fmt.Errorf("get working directory: %w", err)
+	}
+	authPath := filepath.Join(wd, fmt.Sprintf("%s.auth", name))
+	configPath := filepath.Join(wd, fmt.Sprintf("%s.yaml", name))
+	if msg.Op != "reset" {
+		for _, target := range []string{authPath, configPath} {
+			if _, statErr := os.Stat(target); statErr == nil {
+				return nil, fmt.Errorf("listener file %q already exists", target)
+			} else if !os.IsNotExist(statErr) {
+				return nil, fmt.Errorf("inspect listener file %q: %w", target, statErr)
+			}
+		}
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), rootRPCTimeout)
 	defer cancel()
 	resp, err := rpc.AddListener(ctx, msg)
 	if err != nil {
 		return nil, err
 	}
-	wd, _ := os.Getwd()
 	var conf *mtls.ClientConfig
 	err = yaml.Unmarshal([]byte(resp.Response), &conf)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal listener auth: %w", err)
 	}
-	yamlPath := filepath.Join(wd, fmt.Sprintf("%s.auth", name))
-	err = fileutils.AtomicWriteFile(yamlPath, []byte(resp.Response), 0o600)
+	if conf == nil || conf.Operator != name {
+		operator := ""
+		if conf != nil {
+			operator = conf.Operator
+		}
+		return nil, fmt.Errorf("listener auth operator %q does not match requested name %q", operator, name)
+	}
+
+	type listenerConfig struct {
+		Listeners struct {
+			Enable    bool   `yaml:"enable"`
+			Name      string `yaml:"name"`
+			Auth      string `yaml:"auth"`
+			Transport string `yaml:"transport"`
+		} `yaml:"listeners"`
+	}
+	generatedConfig := listenerConfig{}
+	generatedConfig.Listeners.Enable = true
+	generatedConfig.Listeners.Name = name
+	generatedConfig.Listeners.Auth = filepath.Base(authPath)
+	generatedConfig.Listeners.Transport = configs.ListenerTransportReverse
+	configData, err := yaml.Marshal(generatedConfig)
 	if err != nil {
+		return nil, fmt.Errorf("marshal listener config: %w", err)
+	}
+
+	wroteConfig := false
+	if _, statErr := os.Stat(configPath); os.IsNotExist(statErr) {
+		if err := fileutils.AtomicWriteFile(configPath, configData, 0o600); err != nil {
+			return nil, fmt.Errorf("write listener config: %w", err)
+		}
+		wroteConfig = true
+	} else if statErr != nil {
+		return nil, fmt.Errorf("inspect listener config %q: %w", configPath, statErr)
+	}
+
+	err = fileutils.AtomicWriteFile(authPath, []byte(resp.Response), 0o600)
+	if err != nil {
+		if wroteConfig {
+			_ = os.Remove(configPath)
+		}
 		return nil, err
 	}
-	logs.Log.Importantf("listener auth file written to %s", yamlPath)
+	logs.Log.Importantf("listener auth file written to %s", authPath)
+	if wroteConfig {
+		logs.Log.Importantf("listener config file written to %s", configPath)
+	}
 	return resp, nil
 }

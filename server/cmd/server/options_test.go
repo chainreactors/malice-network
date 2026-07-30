@@ -3,11 +3,48 @@ package server
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/chainreactors/IoM-go/mtls"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/jessevdk/go-flags"
 )
+
+func TestValidateListenerAuthNameRejectsMismatch(t *testing.T) {
+	cfg := &configs.ListenerConfig{Name: "listener"}
+	err := validateListenerAuthName(cfg, &mtls.ClientConfig{Operator: "listener-2"})
+	if err == nil {
+		t.Fatal("validateListenerAuthName should reject mismatched names")
+	}
+	if !strings.Contains(err.Error(), `listener config name "listener" does not match auth operator "listener-2"`) {
+		t.Fatalf("unexpected mismatch error: %v", err)
+	}
+}
+
+func TestValidateListenerAuthNameUsesOperatorWhenNameIsEmpty(t *testing.T) {
+	cfg := &configs.ListenerConfig{}
+	if err := validateListenerAuthName(cfg, &mtls.ClientConfig{Operator: "listener-2"}); err != nil {
+		t.Fatalf("validateListenerAuthName failed: %v", err)
+	}
+	if cfg.Name != "listener-2" {
+		t.Fatalf("listener name = %q, want listener-2", cfg.Name)
+	}
+}
+
+func TestResolveListenerAuthPathRelativeToConfig(t *testing.T) {
+	oldFilename := configs.CurrentServerConfigFilename
+	configs.CurrentServerConfigFilename = filepath.Join(t.TempDir(), "listener-2.yaml")
+	t.Cleanup(func() {
+		configs.CurrentServerConfigFilename = oldFilename
+	})
+
+	got := resolveListenerAuthPath("listener-2.auth")
+	want := filepath.Join(filepath.Dir(configs.CurrentServerConfigFilename), "listener-2.auth")
+	if got != want {
+		t.Fatalf("resolved auth path = %q, want %q", got, want)
+	}
+}
 
 func TestValidateAllowsListenerOnlyWithoutServerConfig(t *testing.T) {
 	opt := &Options{

@@ -570,18 +570,61 @@ func RecoverPipelines(listenerID string) error {
 	return nil
 }
 
+func resolveListenerAuthPath(authPath string) string {
+	authPath = strings.TrimSpace(authPath)
+	if authPath == "" || filepath.IsAbs(authPath) {
+		return authPath
+	}
+	configPath := strings.TrimSpace(configs.CurrentServerConfigFilename)
+	if configPath == "" {
+		return authPath
+	}
+	return filepath.Clean(filepath.Join(filepath.Dir(configPath), authPath))
+}
+
+func validateListenerAuthName(cfg *configs.ListenerConfig, auth *mtls.ClientConfig) error {
+	if cfg == nil {
+		return errors.New("listener config is nil")
+	}
+	if auth == nil {
+		return errors.New("listener auth is nil")
+	}
+	operator := strings.TrimSpace(auth.Operator)
+	if operator == "" {
+		return errors.New("listener auth operator is empty")
+	}
+	name := strings.TrimSpace(cfg.Name)
+	if name == "" {
+		cfg.Name = operator
+		return nil
+	}
+	if name != operator {
+		return fmt.Errorf("listener config name %q does not match auth operator %q", name, operator)
+	}
+	cfg.Name = name
+	return nil
+}
+
 func StartListener(opt *configs.ListenerConfig, serverEnable bool) error {
+	if opt == nil {
+		return errors.New("listener config is nil")
+	}
+	authPath := resolveListenerAuthPath(opt.Auth)
+	listenerConf, err := mtls.ReadConfig(authPath)
+	if err != nil {
+		return err
+	}
+	if err := validateListenerAuthName(opt, listenerConf); err != nil {
+		return err
+	}
+	opt.Auth = authPath
+
 	if opt.IsForwardTransport() {
 		_, err := listener.NewForwardListener(opt)
 		return err
 	}
-	if listenerConf, err := mtls.ReadConfig(opt.Auth); err != nil {
+	if err := listener.NewListener(listenerConf, opt, serverEnable); err != nil {
 		return err
-	} else {
-		err = listener.NewListener(listenerConf, opt, serverEnable)
-		if err != nil {
-			return err
-		}
 	}
 
 	// DB-backed recovery only makes sense when the local server is running.

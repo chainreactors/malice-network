@@ -41,6 +41,8 @@ listeners:
   auth: listener.auth  
 ```
 
+Listener 身份由 `listener.auth` 中的证书绑定。配置里的 `listeners.name` 必须与 auth 文件中的 `operator` 完全一致，不能让多个不同名称的 Listener 共用同一份 auth。相对路径形式的 `listeners.auth` 会以当前 Listener 配置文件所在目录为基准解析。
+
 ### listener root 命令管理
 
 当您需要添加一个新的listener， 在确保 **Malice-Network** 服务器已经运行后，在终端输入以下指令：
@@ -51,7 +53,17 @@ listeners:
 .\malice-network listener add [listener_name]
 ```
 
-执行命令成功后，服务端会输出以下信息并在所处文件夹下生成对应 auth 配置文件：
+执行命令成功后，服务端会在当前目录生成同名的 `<listener_name>.auth` 和 `<listener_name>.yaml`。生成的 YAML 已包含与 auth `operator` 一致的 `listeners.name`，可直接用于 `--listener-only -c`。`listener add` 不会覆盖已有文件；`listener reset` 会更新 auth，并保留已有的同名 YAML 配置。
+
+```yaml
+listeners:
+  enable: true
+  name: listener-2
+  auth: listener-2.auth
+  transport: reverse
+```
+
+不要复制 `listener-2.auth` 后将 YAML 名称改为 `listener`。启动时会在注册 Pipeline 前拒绝这种身份不匹配。
 
 也可以使用以下命令删除listerner
 

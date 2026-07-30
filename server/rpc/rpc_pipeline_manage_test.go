@@ -214,6 +214,51 @@ func TestListPipelines_AfterRegister(t *testing.T) {
 	}
 }
 
+func TestListPipelinesRemainsUniqueAfterRepeatedRegisterAndSync(t *testing.T) {
+	_ = newRPCTestEnv(t)
+	listenerID := "idempotent-listener"
+	core.Listeners.Add(core.NewListener(listenerID, "127.0.0.1"))
+	newPipeline := func() *clientpb.Pipeline {
+		return &clientpb.Pipeline{
+			Name:       "idempotent-pipe",
+			ListenerId: listenerID,
+			Enable:     true,
+			Type:       consts.TCPPipeline,
+			Secure:     &clientpb.Secure{},
+			Body: &clientpb.Pipeline_Tcp{Tcp: &clientpb.TCPPipeline{
+				Name:       "idempotent-pipe",
+				ListenerId: listenerID,
+				Host:       "127.0.0.1",
+				Port:       7799,
+			}},
+		}
+	}
+
+	server := &Server{}
+	for i := 0; i < 2; i++ {
+		if _, err := server.RegisterPipeline(context.Background(), newPipeline()); err != nil {
+			t.Fatalf("RegisterPipeline call %d failed: %v", i+1, err)
+		}
+		if _, err := server.SyncPipeline(context.Background(), newPipeline()); err != nil {
+			t.Fatalf("SyncPipeline call %d failed: %v", i+1, err)
+		}
+	}
+
+	resp, err := server.ListPipelines(context.Background(), &clientpb.Listener{Id: listenerID})
+	if err != nil {
+		t.Fatalf("ListPipelines failed: %v", err)
+	}
+	count := 0
+	for _, pipeline := range resp.GetPipelines() {
+		if pipeline.GetName() == "idempotent-pipe" && pipeline.GetListenerId() == listenerID {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Fatalf("ListPipelines returned %d matching pipelines, want 1", count)
+	}
+}
+
 func TestListPipelinesReportsRuntimeAvailability(t *testing.T) {
 	_ = newRPCTestEnv(t)
 	pipeline := &clientpb.Pipeline{

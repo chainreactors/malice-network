@@ -21,6 +21,7 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"github.com/gofrs/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // ============================================
@@ -94,23 +95,30 @@ func SavePipeline(pipeline *models.Pipeline) (*models.Pipeline, error) {
 	if pipeline == nil {
 		return nil, errors.New("pipeline cannot be nil")
 	}
-	existing, err := NewPipelineQuery().WhereName(pipeline.Name).WhereListenerID(pipeline.ListenerId).First()
+	err := Session().Clauses(clause.OnConflict{
+		Columns: []clause.Column{{Name: "listener_id"}, {Name: "name"}},
+		DoUpdates: clause.Assignments(map[string]interface{}{
+			"ip":     gorm.Expr("CASE WHEN excluded.ip = '' THEN pipelines.ip ELSE excluded.ip END"),
+			"host":   gorm.Expr("excluded.host"),
+			"port":   gorm.Expr("excluded.port"),
+			"type":   gorm.Expr("excluded.type"),
+			"enable": gorm.Expr("excluded.enable"),
+			"params": gorm.Expr("excluded.params"),
+		}),
+	}).Create(pipeline).Error
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			if createErr := Session().Create(&pipeline).Error; createErr != nil {
-				return nil, createErr
-			}
-			return pipeline, nil
-		}
 		return nil, err
 	}
-	pipeline.ID = existing.ID
-	pipeline.CertName = existing.CertName
-	if pipeline.IP == "" {
-		pipeline.IP = existing.IP
+
+	saved, err := NewPipelineQuery().
+		WhereName(pipeline.Name).
+		WhereListenerID(pipeline.ListenerId).
+		First()
+	if err != nil {
+		return nil, err
 	}
-	saveErr := Session().Save(&pipeline).Error
-	return pipeline, saveErr
+	*pipeline = *saved
+	return pipeline, nil
 }
 
 func DeletePipeline(name string) error {

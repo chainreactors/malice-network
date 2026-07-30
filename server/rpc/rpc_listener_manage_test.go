@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"sync"
 	"testing"
 
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
@@ -151,6 +152,46 @@ func TestRegisterListener_ReRegisterAfterStop(t *testing.T) {
 	}
 	if lns.IP != "10.0.0.3" {
 		t.Fatalf("listener IP = %q, want %q", lns.IP, "10.0.0.3")
+	}
+}
+
+func TestRegisterListener_ConcurrentDuplicateHasSingleWinner(t *testing.T) {
+	_ = newRPCTestEnv(t)
+
+	const attempts = 32
+	start := make(chan struct{})
+	results := make(chan error, attempts)
+	var wg sync.WaitGroup
+	for i := 0; i < attempts; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			_, err := (&Server{}).RegisterListener(context.Background(), &clientpb.RegisterListener{
+				Name: "concurrent-listener",
+				Host: "10.0.0.4",
+			})
+			results <- err
+		}()
+	}
+	close(start)
+	wg.Wait()
+	close(results)
+
+	successes := 0
+	conflicts := 0
+	for err := range results {
+		switch status.Code(err) {
+		case codes.OK:
+			successes++
+		case codes.AlreadyExists:
+			conflicts++
+		default:
+			t.Fatalf("unexpected registration error: %v", err)
+		}
+	}
+	if successes != 1 || conflicts != attempts-1 {
+		t.Fatalf("registration results = %d successes/%d conflicts, want 1/%d", successes, conflicts, attempts-1)
 	}
 }
 

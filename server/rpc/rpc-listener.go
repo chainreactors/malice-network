@@ -16,8 +16,11 @@ import (
 	"google.golang.org/protobuf/proto"
 	"io"
 	"sort"
+	"sync"
 	"time"
 )
+
+var listenerRegistrationMu sync.Mutex
 
 func (rpc *Server) GetListeners(ctx context.Context, req *clientpb.Empty) (*clientpb.Listeners, error) {
 	return core.Listeners.ToProtobuf(), nil
@@ -30,6 +33,9 @@ func (rpc *Server) RegisterListener(ctx context.Context, req *clientpb.RegisterL
 	if err := validateScopedResourceName("listener", req.Name); err != nil {
 		return nil, err
 	}
+	listenerRegistrationMu.Lock()
+	defer listenerRegistrationMu.Unlock()
+
 	// Idempotent: if a listener with this name already exists (e.g. reconnect after crash),
 	// fully clean up the old state before creating the fresh instance.
 	if old, err := core.Listeners.Get(req.Name); err == nil {

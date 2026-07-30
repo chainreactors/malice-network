@@ -91,19 +91,18 @@ const (
 )
 
 func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig, serverEnable bool) error {
-	options, err := mtls.GetGrpcOptions([]byte(clientConf.CACertificate), []byte(clientConf.Certificate), []byte(clientConf.PrivateKey), clientConf.Type)
-	if err != nil {
-		return err
+	if clientConf == nil {
+		return errors.New("listener auth is nil")
 	}
-	listenerCfg, err := mtls.ReadConfig(cfg.Auth)
+	options, err := mtls.GetGrpcOptions([]byte(clientConf.CACertificate), []byte(clientConf.Certificate), []byte(clientConf.PrivateKey), clientConf.Type)
 	if err != nil {
 		return err
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	var address = listenerCfg.Address()
+	var address = clientConf.Address()
 	if serverEnable && cfg.Enable {
-		address = fmt.Sprintf("%s:%d", "127.0.0.1", listenerCfg.Port)
+		address = fmt.Sprintf("%s:%d", "127.0.0.1", clientConf.Port)
 	}
 	conn, err := grpc.DialContext(ctx, address, options...)
 	if err != nil {

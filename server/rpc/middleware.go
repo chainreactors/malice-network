@@ -9,9 +9,12 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/chainreactors/IoM-go/mtls"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
+	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -120,6 +123,9 @@ func authInterceptor(log *logs.Logger) grpc.UnaryServerInterceptor {
 		if err := enforceRootRemoteGate(info.FullMethod, identity); err != nil {
 			return nil, err
 		}
+		if err := authorizeListenerRPCIdentity(ctx, identity, info.FullMethod, req); err != nil {
+			return nil, err
+		}
 
 		return handler(ctx, req)
 	}
@@ -159,8 +165,11 @@ func authStreamInterceptor(log *logs.Logger) grpc.StreamServerInterceptor {
 		if err := enforceRootRemoteGate(info.FullMethod, identity); err != nil {
 			return err
 		}
+		if err := authorizeListenerRPCIdentity(ctx, identity, info.FullMethod, nil); err != nil {
+			return err
+		}
 
-		wrapped := &identityServerStream{ServerStream: ss, identity: identity}
+		wrapped := &identityServerStream{ServerStream: ss, identity: identity, method: info.FullMethod}
 		return handler(srv, wrapped)
 	}
 }
@@ -169,6 +178,7 @@ func authStreamInterceptor(log *logs.Logger) grpc.StreamServerInterceptor {
 type identityServerStream struct {
 	grpc.ServerStream
 	identity *PeerIdentity
+	method   string
 }
 
 func (s *identityServerStream) Context() context.Context {
@@ -181,7 +191,10 @@ func (s *identityServerStream) RecvMsg(m interface{}) error {
 	if err := s.ensureIdentityActive(); err != nil {
 		return err
 	}
-	return s.ServerStream.RecvMsg(m)
+	if err := s.ServerStream.RecvMsg(m); err != nil {
+		return err
+	}
+	return authorizeListenerRPCIdentity(s.Context(), s.identity, s.method, m)
 }
 
 func (s *identityServerStream) SendMsg(m interface{}) error {
@@ -210,6 +223,86 @@ func (s *identityServerStream) ensureIdentityActive() error {
 			"operator %s has been revoked", op.Name)
 	}
 	return nil
+}
+
+const listenerRPCMethodPrefix = "/listenerrpc.ListenerRPC/"
+
+func authorizeListenerRPCIdentity(ctx context.Context, identity *PeerIdentity, method string, req interface{}) error {
+	if !strings.HasPrefix(method, listenerRPCMethodPrefix) {
+		return nil
+	}
+	if identity == nil || identity.Fingerprint == "" {
+		return status.Error(codes.Unauthenticated, "missing peer identity")
+	}
+	op, ok := opCache.LookupByFingerprint(identity.Fingerprint)
+	if !ok {
+		return status.Errorf(codes.Unauthenticated,
+			"certificate fingerprint not registered: %s", shortFingerprint(identity.Fingerprint))
+	}
+	if op.Revoked {
+		return status.Errorf(codes.Unauthenticated, "operator %s has been revoked", op.Name)
+	}
+	if op.Type != mtls.Listener || op.Role != models.RoleListener {
+		return status.Error(codes.PermissionDenied, "listener identity required")
+	}
+
+	metadataListenerID, err := getListenerID(ctx)
+	if err != nil || metadataListenerID == "" {
+		return status.Errorf(codes.PermissionDenied,
+			"listener identity %q is missing listener_id metadata", op.Name)
+	}
+	if metadataListenerID != op.Name {
+		return listenerIdentityMismatch(op.Name, metadataListenerID)
+	}
+
+	claims, scoped := listenerIDsFromRequest(req)
+	hasClaim := false
+	for _, claim := range claims {
+		if claim == "" {
+			continue
+		}
+		hasClaim = true
+		if claim != op.Name {
+			return listenerIdentityMismatch(op.Name, claim)
+		}
+	}
+	if scoped && !hasClaim {
+		return status.Errorf(codes.PermissionDenied,
+			"listener identity %q received a request without listener_id", op.Name)
+	}
+	return nil
+}
+
+func listenerIdentityMismatch(operator, claimed string) error {
+	return status.Errorf(codes.PermissionDenied,
+		"listener identity %q cannot operate as %q", operator, claimed)
+}
+
+func listenerIDsFromRequest(req interface{}) ([]string, bool) {
+	switch typed := req.(type) {
+	case *clientpb.RegisterListener:
+		return []string{typed.GetName()}, true
+	case *clientpb.RegisterSession:
+		return []string{typed.GetListenerId()}, true
+	case *clientpb.Pipeline:
+		return []string{typed.GetListenerId()}, true
+	case *clientpb.CtrlPipeline:
+		return []string{typed.GetListenerId(), typed.GetPipeline().GetListenerId()}, true
+	case *clientpb.Listener:
+		return []string{typed.GetId()}, true
+	case *clientpb.PipelineTLSUpdate:
+		return []string{typed.GetListenerId()}, true
+	case *clientpb.Website:
+		return []string{typed.GetListenerId()}, true
+	case *clientpb.WebContent:
+		return []string{typed.GetListenerId()}, true
+	case *clientpb.JobStatus:
+		return []string{typed.GetListenerId(), typed.GetJob().GetPipeline().GetListenerId()}, true
+	case *clientpb.SpiteResponse:
+		return []string{typed.GetListenerId()}, true
+	default:
+		return nil, false
+	}
 }
 
 func shortFingerprint(fp string) string {

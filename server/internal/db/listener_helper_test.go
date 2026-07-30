@@ -2,6 +2,7 @@ package db
 
 import (
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/chainreactors/IoM-go/consts"
@@ -57,6 +58,68 @@ func TestSavePipeline_Update(t *testing.T) {
 	}
 	if updated.Host != "10.0.0.1" {
 		t.Errorf("expected host '10.0.0.1', got %q", updated.Host)
+	}
+}
+
+func TestSavePipelineUpdatePreservesCertificateAndNonEmptyIP(t *testing.T) {
+	initTestDB(t)
+
+	original := newTestPipeline("sp-preserve-1", "ls-1")
+	original.IP = "192.0.2.20"
+	original.CertName = "existing-cert"
+	if _, err := SavePipeline(original); err != nil {
+		t.Fatalf("SavePipeline create failed: %v", err)
+	}
+
+	update := newTestPipeline("sp-preserve-1", "ls-1")
+	update.IP = ""
+	update.CertName = "incoming-cert"
+	saved, err := SavePipeline(update)
+	if err != nil {
+		t.Fatalf("SavePipeline update failed: %v", err)
+	}
+	if saved.IP != "192.0.2.20" {
+		t.Fatalf("pipeline IP = %q, want preserved IP", saved.IP)
+	}
+	if saved.CertName != "existing-cert" {
+		t.Fatalf("pipeline certificate = %q, want existing-cert", saved.CertName)
+	}
+}
+
+func TestSavePipelineConcurrentUpsertKeepsSingleRecord(t *testing.T) {
+	initTestDB(t)
+
+	const attempts = 16
+	start := make(chan struct{})
+	errs := make(chan error, attempts)
+	var wg sync.WaitGroup
+	for i := 0; i < attempts; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			_, err := SavePipeline(newTestPipeline("sp-concurrent", "ls-concurrent"))
+			errs <- err
+		}()
+	}
+	close(start)
+	wg.Wait()
+	close(errs)
+
+	for err := range errs {
+		if err != nil {
+			t.Fatalf("concurrent SavePipeline failed: %v", err)
+		}
+	}
+	count, err := NewPipelineQuery().
+		WhereName("sp-concurrent").
+		WhereListenerID("ls-concurrent").
+		Count()
+	if err != nil {
+		t.Fatalf("count concurrent pipelines: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("pipeline count = %d, want 1", count)
 	}
 }
 

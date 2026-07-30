@@ -32,6 +32,10 @@ Listener 是 malice-network 的分布式通信层，与 Server 解耦设计：
 - Server 拨入 Listener 时使用 Server 本地 Root CA 签发/保存的 forward client cert，不会读取或复用 Listener 的私钥。
 - 双方都用 Root CA 公钥验证对端证书链和证书用途。
 
+### Listener 身份一致性
+
+Listener 的唯一身份来自 mTLS 证书对应的 Operator。`listeners.name`、auth 文件中的 `operator` 和 RPC 中的 `listener_id` 必须完全一致；不同名称的 Listener 不能共用同一份 auth。Server 会同时校验证书 fingerprint、RPC metadata 和请求消息中的 Listener ID，不一致的请求会以 `PermissionDenied` 拒绝，避免同一运行实例在不同 ID 下重复注册并产生 Pipeline 状态分裂。
+
 Listener-only forward 最小示例：
 
 ```yaml
@@ -220,14 +224,30 @@ rem:
 Listener 可以独立部署在与 Server 不同的服务器上：
 
 ```bash
-./malice-network --listener-only -c listener.yaml
+./malice-network listener add listener-a
 ```
 
-需要的文件：
+该命令会在当前目录生成同名的 `listener-a.auth` 和 `listener-a.yaml`。生成的 YAML 可直接用于 listener-only 模式：
+
+```yaml
+listeners:
+  enable: true
+  name: listener-a
+  auth: listener-a.auth
+  transport: reverse
+```
+
+将以下文件部署到 Listener 主机：
 
 - `malice-network` 可执行文件
-- `listener.yaml` 配置文件（或 `config.yaml`）
-- `listener.auth` 认证凭证
+- `listener-a.yaml` 配置文件
+- `listener-a.auth` 认证凭证
+
+```bash
+./malice-network --listener-only -c listener-a.yaml
+```
+
+auth 相对路径以 YAML 文件所在目录为基准解析。`listener reset listener-a` 会更新 auth，但不会覆盖已经添加 Pipeline 或 forward 设置的 YAML。
 
 ## 实现位置
 
