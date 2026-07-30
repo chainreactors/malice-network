@@ -126,6 +126,8 @@ type Task struct {
 	Callee     string
 	Cur        int
 	Total      int
+	Status     int32
+	Error      string
 	Callback   func()
 	Ctx        context.Context
 	Cancel     context.CancelFunc
@@ -137,6 +139,7 @@ type Task struct {
 	CreatedAt  time.Time
 	FinishedAt time.Time
 	progressMu sync.RWMutex
+	doneMu     sync.Mutex
 	closeOnce  sync.Once
 }
 
@@ -149,13 +152,15 @@ func (t *Task) TaskID() string {
 }
 
 func (t *Task) ToProtobuf() *clientpb.Task {
-	cur, total, createdAt, finishedAt := t.snapshot()
+	cur, total, status, errorText, createdAt, finishedAt := t.snapshot()
 	task := &clientpb.Task{
 		TaskId:     t.Id,
 		SessionId:  t.SessionId,
 		Type:       t.Type,
 		Cur:        int32(cur),
 		Total:      int32(total),
+		Status:     status,
+		Error:      errorText,
 		Timeout:    t.Timeout(),
 		Finished:   t.Finished(),
 		Callby:     t.CallBy,
@@ -173,6 +178,8 @@ func FromTaskProtobuf(task *clientpb.Task) *Task {
 		SessionId: task.SessionId,
 		Cur:       int(task.Cur),
 		Total:     int(task.Total),
+		Status:    task.Status,
+		Error:     task.Error,
 		CallBy:    task.Callby,
 		CreatedAt: createdAt,
 		Deadline:  createdAt.Add(configs.DefaultTaskTimeout),
@@ -194,10 +201,10 @@ func (t *Task) String() string {
 	return fmt.Sprintf("%d/%d", cur, total)
 }
 
-func (t *Task) snapshot() (cur, total int, createdAt, finishedAt time.Time) {
+func (t *Task) snapshot() (cur, total int, status int32, errorText string, createdAt, finishedAt time.Time) {
 	t.progressMu.RLock()
 	defer t.progressMu.RUnlock()
-	return t.Cur, t.Total, t.CreatedAt, t.FinishedAt
+	return t.Cur, t.Total, t.Status, t.Error, t.CreatedAt, t.FinishedAt
 }
 
 func (t *Task) Progress() (cur, total int) {
@@ -223,11 +230,18 @@ func taskEventSpite(spite *implantpb.Spite) *implantpb.Spite {
 }
 
 func (t *Task) Publish(op string, spite *implantpb.Spite, msg string) {
+	if EventBroker == nil {
+		return
+	}
+	var session *clientpb.Session
+	if t.Session != nil {
+		session = t.Session.ToProtobufLite()
+	}
 	EventBroker.Publish(Event{
 		EventType: consts.EventTask,
 		Op:        op,
 		Task:      t.ToProtobuf(),
-		Session:   t.Session.ToProtobufLite(),
+		Session:   session,
 		Spite:     taskEventSpite(spite),
 		Message:   msg,
 		Callee:    t.Callee,
@@ -247,6 +261,10 @@ func (t *Task) UpdateTotal(total int) {
 
 func (t *Task) Done(spite *implantpb.Spite, msg string) {
 	t.progressMu.Lock()
+	if !t.FinishedAt.IsZero() {
+		t.progressMu.Unlock()
+		return
+	}
 	t.Cur++
 	cur := t.Cur
 	t.progressMu.Unlock()
@@ -255,20 +273,23 @@ func (t *Task) Done(spite *implantpb.Spite, msg string) {
 		logs.Log.Warnf("task %s: update cur failed: %v", t.TaskID(), err)
 	}
 	t.Publish(consts.CtrlTaskCallback, spite, msg)
-	select {
-	case t.DoneCh <- true:
-	default:
-	}
+	t.signalDone()
 }
 
 func (t *Task) Finish(spite *implantpb.Spite, msg string) {
 	needsUpdate := false
 	t.progressMu.Lock()
+	if !t.FinishedAt.IsZero() {
+		t.progressMu.Unlock()
+		return
+	}
 	if t.Total < 0 {
 		t.Total = t.Cur
 		needsUpdate = true
 	}
 	t.FinishedAt = time.Now()
+	t.Status = consts.CtrlStatusSuccess
+	t.Error = ""
 	t.progressMu.Unlock()
 
 	if needsUpdate {
@@ -283,10 +304,34 @@ func (t *Task) Finish(spite *implantpb.Spite, msg string) {
 	if err := taskDBUpdateFinish(t.TaskID()); err != nil {
 		logs.Log.Warnf("task %s: update finish failed: %v", t.TaskID(), err)
 	}
-	select {
-	case t.DoneCh <- true:
-	default:
+	t.signalDone()
+}
+
+// Fail records a terminal task error exactly once, persists it, wakes waiters,
+// and releases the response channel that would otherwise keep the session alive.
+func (t *Task) Fail(spite *implantpb.Spite, reason string) {
+	if reason == "" {
+		reason = "task failed"
 	}
+
+	t.progressMu.Lock()
+	if !t.FinishedAt.IsZero() {
+		t.progressMu.Unlock()
+		return
+	}
+	t.Status = consts.CtrlStatusFailed
+	t.Error = reason
+	t.FinishedAt = time.Now()
+	t.progressMu.Unlock()
+
+	if err := taskDBUpdate(t.ToProtobuf()); err != nil {
+		logs.Log.Warnf("task %s: persist failure failed: %v", t.TaskID(), err)
+	}
+	if err := taskDBUpdateFinish(t.TaskID()); err != nil {
+		logs.Log.Warnf("task %s: update finish failed: %v", t.TaskID(), err)
+	}
+	t.Publish(consts.CtrlTaskError, spite, reason)
+	t.Close()
 }
 
 func (t *Task) CancelTask(spite *implantpb.Spite, msg string) {
@@ -319,11 +364,20 @@ func (t *Task) CancelTask(spite *implantpb.Spite, msg string) {
 	}
 
 	t.Publish(consts.CtrlTaskCancel, spite, msg)
+	t.signalDone()
+	t.Close()
+}
+
+func (t *Task) signalDone() {
+	t.doneMu.Lock()
+	defer t.doneMu.Unlock()
+	if t.DoneCh == nil || t.closed.Load() {
+		return
+	}
 	select {
 	case t.DoneCh <- true:
 	default:
 	}
-	t.Close()
 }
 
 func (t *Task) Finished() bool {
@@ -346,10 +400,14 @@ func (t *Task) ExtendDeadline(deadline time.Time) {
 }
 
 func (t *Task) Timeout() bool {
+	return t.TimedOutAt(time.Now())
+}
+
+func (t *Task) TimedOutAt(now time.Time) bool {
 	t.progressMu.RLock()
 	deadline := t.Deadline
 	t.progressMu.RUnlock()
-	return time.Now().After(deadline)
+	return !deadline.IsZero() && now.After(deadline)
 }
 
 func (t *Task) Panic(event Event) {
@@ -358,9 +416,15 @@ func (t *Task) Panic(event Event) {
 
 func (t *Task) Close() {
 	t.closeOnce.Do(func() {
-		t.Cancel()
-		close(t.DoneCh)
+		if t.Cancel != nil {
+			t.Cancel()
+		}
+		t.doneMu.Lock()
 		t.closed.Store(true)
+		if t.DoneCh != nil {
+			close(t.DoneCh)
+		}
+		t.doneMu.Unlock()
 		if t.Session != nil {
 			t.Session.RemoveResp(t.Id)
 		}

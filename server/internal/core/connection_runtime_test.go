@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/http"
 	"sync"
 	"testing"
 	"time"
@@ -15,6 +16,7 @@ import (
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	iomtypes "github.com/chainreactors/IoM-go/types"
 	"github.com/chainreactors/malice-network/server/internal/parser"
 	"github.com/chainreactors/malice-network/server/internal/parser/malefic"
 	cryptostream "github.com/chainreactors/malice-network/server/internal/stream"
@@ -22,6 +24,15 @@ import (
 
 type testPacketParser struct {
 	marshalData []byte
+}
+
+type headerErrorPacketParser struct {
+	testPacketParser
+	err error
+}
+
+func (p headerErrorPacketParser) ReadHeader(io.ReadWriteCloser) (uint32, uint32, error) {
+	return 0, 0, p.err
 }
 
 func (p testPacketParser) ReadHeader(io.ReadWriteCloser) (uint32, uint32, error) {
@@ -42,6 +53,15 @@ type errorWriter struct {
 
 func (w errorWriter) Write([]byte) (int, error) {
 	return 0, w.err
+}
+
+type partialErrorWriter struct {
+	n   int
+	err error
+}
+
+func (w partialErrorWriter) Write(p []byte) (int, error) {
+	return min(w.n, len(p)), w.err
 }
 
 type errorReader struct {
@@ -69,6 +89,36 @@ type deadlineRecordingRWC struct {
 	deadlines      []time.Time
 	deadlineErrors []error
 }
+
+type responseClosesUnreadBodyRWC struct {
+	reader          *bytes.Reader
+	writes          bytes.Buffer
+	responseStarted bool
+	writeBeforeRead bool
+}
+
+func newResponseClosesUnreadBodyRWC(request []byte) *responseClosesUnreadBodyRWC {
+	return &responseClosesUnreadBodyRWC{reader: bytes.NewReader(request)}
+}
+
+func (c *responseClosesUnreadBodyRWC) Read(p []byte) (int, error) {
+	if c.responseStarted && c.reader.Len() > 0 {
+		return 0, http.ErrBodyReadAfterClose
+	}
+	return c.reader.Read(p)
+}
+
+func (c *responseClosesUnreadBodyRWC) Write(p []byte) (int, error) {
+	if c.reader.Len() > 0 {
+		c.writeBeforeRead = true
+	}
+	c.responseStarted = true
+	return c.writes.Write(p)
+}
+
+func (*responseClosesUnreadBodyRWC) Close() error                    { return nil }
+func (*responseClosesUnreadBodyRWC) RemoteAddr() net.Addr            { return testAddr("127.0.0.1:0") }
+func (*responseClosesUnreadBodyRWC) SetReadDeadline(time.Time) error { return nil }
 
 func (c *deadlineRecordingRWC) RemoteAddr() net.Addr { return testAddr("127.0.0.1:0") }
 
@@ -197,6 +247,238 @@ func TestConnectionSendReturnsWriteError(t *testing.T) {
 	err := conn.Send(context.Background(), streamConn)
 	if !errors.Is(err, want) {
 		t.Fatalf("Send error = %v, want %v", err, want)
+	}
+}
+
+func TestConnectionSendRetainsBatchWhenNoBytesWereWritten(t *testing.T) {
+	wantErr := errors.New("write failed before delivery")
+	wantPacket := []byte{1, 2, 3}
+	conn := &Connection{
+		SessionID: "session-send-retry",
+		RawID:     7,
+		Sender:    make(chan *implantpb.Spites, 1),
+		Parser: &parser.MessageParser{
+			Implant:      "test",
+			PacketParser: testPacketParser{marshalData: wantPacket},
+		},
+	}
+	conn.Sender <- &implantpb.Spites{Spites: []*implantpb.Spite{{TaskId: 10}}}
+
+	failedConn := &cryptostream.Conn{
+		ReadWriteCloser: testConnRWC{ReadWriteCloser: cryptostream.WrapReadWriteCloser(
+			bytes.NewReader(nil), errorWriter{err: wantErr}, nil,
+		)},
+		Parser: conn.Parser,
+	}
+	if err := conn.Send(context.Background(), failedConn); !errors.Is(err, wantErr) {
+		t.Fatalf("first Send error = %v, want %v", err, wantErr)
+	}
+
+	var delivered bytes.Buffer
+	retryConn := &cryptostream.Conn{
+		ReadWriteCloser: testConnRWC{ReadWriteCloser: cryptostream.WrapReadWriteCloser(
+			bytes.NewReader(nil), &delivered, nil,
+		)},
+		Parser: conn.Parser,
+	}
+	if err := conn.Send(context.Background(), retryConn); err != nil {
+		t.Fatalf("retry Send failed: %v", err)
+	}
+	if !bytes.Equal(delivered.Bytes(), wantPacket) {
+		t.Fatalf("retry packet = %v, want %v", delivered.Bytes(), wantPacket)
+	}
+}
+
+func TestConnectionSendReportsPartialDeliveryWithoutReplay(t *testing.T) {
+	oldForwarders := Forwarders
+	Forwarders = &forwarders{forwarders: &sync.Map{}}
+	t.Cleanup(func() { Forwarders = oldForwarders })
+
+	wantErr := errors.New("connection reset during write")
+	conn := &Connection{
+		SessionID:  "session-send-partial",
+		PipelineID: "partial-delivery-pipeline",
+		RawID:      7,
+		Sender:     make(chan *implantpb.Spites, 1),
+		Parser: &parser.MessageParser{
+			Implant:      "test",
+			PacketParser: testPacketParser{marshalData: []byte{1, 2, 3}},
+		},
+	}
+	conn.Sender <- &implantpb.Spites{Spites: []*implantpb.Spite{{
+		Name:   consts.ModuleExecute,
+		TaskId: 11,
+	}}}
+	forward := &Forward{
+		Pipeline: testPipeline{id: conn.PipelineID},
+		implantC: make(chan *Message, 1),
+		done:     make(chan struct{}),
+	}
+	forward.alive.Store(true)
+	Forwarders.Add(forward)
+
+	partialConn := &cryptostream.Conn{
+		ReadWriteCloser: testConnRWC{ReadWriteCloser: cryptostream.WrapReadWriteCloser(
+			bytes.NewReader(nil), partialErrorWriter{n: 1, err: wantErr}, nil,
+		)},
+		Parser: conn.Parser,
+	}
+	if err := conn.Send(context.Background(), partialConn); !errors.Is(err, wantErr) {
+		t.Fatalf("partial Send error = %v, want %v", err, wantErr)
+	}
+
+	select {
+	case msg := <-forward.implantC:
+		if len(msg.Spites.GetSpites()) != 1 {
+			t.Fatalf("delivery failure spites = %d, want 1", len(msg.Spites.GetSpites()))
+		}
+		failure := msg.Spites.GetSpites()[0]
+		if failure.GetTaskId() != 11 || failure.GetError() != iomtypes.MaleficErrorTaskError {
+			t.Fatalf("delivery failure = %#v", failure)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("partial delivery did not produce a task failure response")
+	}
+
+	var replayed bytes.Buffer
+	retryConn := &cryptostream.Conn{
+		ReadWriteCloser: testConnRWC{ReadWriteCloser: cryptostream.WrapReadWriteCloser(
+			bytes.NewReader(nil), &replayed, nil,
+		)},
+		Parser: conn.Parser,
+	}
+	if err := conn.Send(context.Background(), retryConn); err != nil {
+		t.Fatalf("Send after partial delivery failed: %v", err)
+	}
+	if replayed.Len() != 0 {
+		t.Fatalf("ambiguous batch was replayed: %v", replayed.Bytes())
+	}
+}
+
+func TestConnectionSendReturnsImmediatelyWithoutQueuedMessage(t *testing.T) {
+	conn := &Connection{Sender: make(chan *implantpb.Spites, 1)}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	result := make(chan error, 1)
+	go func() {
+		result <- conn.Send(ctx, nil)
+	}()
+
+	select {
+	case err := <-result:
+		if err != nil {
+			t.Fatalf("Send error = %v, want nil", err)
+		}
+	case <-time.After(250 * time.Millisecond):
+		cancel()
+		<-result
+		t.Fatal("Send waited for a future message instead of returning immediately")
+	}
+}
+
+func TestConnectionHandlerSimplexReadsRequestBeforeWritingResponse(t *testing.T) {
+	oldForwarders := Forwarders
+	Forwarders = &forwarders{forwarders: &sync.Map{}}
+	t.Cleanup(func() {
+		Forwarders = oldForwarders
+	})
+
+	const (
+		rawID      = uint32(0x01020304)
+		pipelineID = "http-read-before-write"
+	)
+	messageParser, err := parser.NewParser(consts.ImplantMalefic)
+	if err != nil {
+		t.Fatalf("NewParser failed: %v", err)
+	}
+	incoming, err := messageParser.Marshal(iomtypes.BuildPingSpites(), rawID)
+	if err != nil {
+		t.Fatalf("marshal incoming packet: %v", err)
+	}
+
+	rwc := newResponseClosesUnreadBodyRWC(incoming)
+	streamConn := &cryptostream.Conn{ReadWriteCloser: rwc, Parser: messageParser}
+	connection := &Connection{
+		RawID:      rawID,
+		SessionID:  "session-read-before-write",
+		PipelineID: pipelineID,
+		Sender:     make(chan *implantpb.Spites, 1),
+		Parser:     messageParser,
+	}
+	connection.alive.Store(true)
+	connection.Sender <- &implantpb.Spites{Spites: []*implantpb.Spite{{
+		Name:   consts.ModuleExecute,
+		TaskId: 42,
+	}}}
+
+	forward := &Forward{
+		Pipeline: testPipeline{id: pipelineID},
+		implantC: make(chan *Message, 1),
+		done:     make(chan struct{}),
+	}
+	forward.alive.Store(true)
+	Forwarders.Add(forward)
+
+	if err := connection.HandlerSimplex(context.Background(), streamConn); err != nil {
+		t.Fatalf("HandlerSimplex failed: %v", err)
+	}
+	if rwc.writeBeforeRead {
+		t.Fatal("HTTP response started before the request body was fully read")
+	}
+	if got := rwc.reader.Len(); got != 0 {
+		t.Fatalf("unread request bytes = %d, want 0", got)
+	}
+	if rwc.writes.Len() == 0 {
+		t.Fatal("queued response was not written")
+	}
+	select {
+	case msg := <-forward.implantC:
+		if msg.SessionID != connection.SessionID {
+			t.Fatalf("forwarded session = %q, want %q", msg.SessionID, connection.SessionID)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("request body was not forwarded")
+	}
+}
+
+func TestConnectionHandlerSimplexRequestErrorKeepsLogicalConnection(t *testing.T) {
+	oldConnections := Connections
+	Connections = &connections{connections: &sync.Map{}}
+	t.Cleanup(func() { Connections = oldConnections })
+
+	wantErr := errors.New("malformed request header")
+	messageParser := &parser.MessageParser{
+		Implant: "test",
+		PacketParser: headerErrorPacketParser{
+			testPacketParser: testPacketParser{},
+			err:              wantErr,
+		},
+	}
+	connection := &Connection{
+		SessionID: "simplex-request-error",
+		RawID:     7,
+		Sender:    make(chan *implantpb.Spites, 1),
+		Parser:    messageParser,
+	}
+	connection.alive.Store(true)
+	Connections.Add(connection)
+	streamConn := &cryptostream.Conn{
+		ReadWriteCloser: testConnRWC{ReadWriteCloser: cryptostream.WrapReadWriteCloser(
+			bytes.NewReader(nil), io.Discard, nil,
+		)},
+		Parser: messageParser,
+	}
+
+	err := connection.HandlerSimplex(context.Background(), streamConn)
+	if !errors.Is(err, wantErr) {
+		t.Fatalf("HandlerSimplex error = %v, want %v", err, wantErr)
+	}
+	if !connection.IsAlive() {
+		t.Fatal("request-scoped HTTP failure killed the logical connection")
+	}
+	if got := Connections.Get(connection.SessionID); got != connection {
+		t.Fatalf("logical connection was removed after request error: %#v", got)
 	}
 }
 

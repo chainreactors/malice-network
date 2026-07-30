@@ -231,15 +231,7 @@ func runTaskHandler(task *core.Task, fn func() error, cleanups ...func()) <-chan
 	handler := core.LogGuardedError(label)
 	if task != nil {
 		handler = core.CombineErrorHandlers(handler, func(err error) {
-			if core.EventBroker == nil {
-				return
-			}
-			core.EventBroker.Publish(core.Event{
-				EventType: consts.EventTask,
-				Op:        consts.CtrlTaskError,
-				Task:      task.ToProtobuf(),
-				Err:       core.ErrorText(err),
-			})
+			task.Fail(nil, core.ErrorText(err))
 		})
 	}
 	return core.GoGuarded(label, fn, handler, cleanups...)

@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
@@ -212,6 +213,106 @@ func TestTaskCancelMarksTaskFinishedAndClosesRuntimeState(t *testing.T) {
 	}
 	if finishedTask != task.TaskID() {
 		t.Fatalf("finished task id = %q, want %q", finishedTask, task.TaskID())
+	}
+}
+
+func TestTaskFailMarksTerminalStateAndPersistsReason(t *testing.T) {
+	cleanup := installTaskDBMocks()
+	defer cleanup()
+
+	oldBroker := EventBroker
+	EventBroker = newTestBroker()
+	defer func() { EventBroker = oldBroker }()
+
+	sess := newTestSession("task-terminal-failure")
+	task := sess.NewTask("exec", 1)
+	sess.StoreResp(task.Id, make(chan *implantpb.Spite, 1))
+
+	var (
+		updatedTask  *clientpb.Task
+		finishedTask string
+		updateCount  int
+	)
+	taskDBUpdate = func(pb *clientpb.Task) error {
+		updatedTask = pb
+		updateCount++
+		return nil
+	}
+	taskDBUpdateFinish = func(taskID string) error {
+		finishedTask = taskID
+		return nil
+	}
+
+	task.Fail(&implantpb.Spite{TaskId: task.Id}, "delivery outcome is ambiguous")
+	task.Fail(nil, "duplicate failure")
+
+	if !task.Finished() || task.FinishedAtTime().IsZero() {
+		t.Fatal("failed task should have a terminal timestamp")
+	}
+	if !task.IsClosed() || task.Ctx.Err() == nil {
+		t.Fatal("failed task should close its runtime context")
+	}
+	if _, ok := sess.GetResp(task.Id); ok {
+		t.Fatal("failed task response channel should be removed")
+	}
+	got := task.ToProtobuf()
+	if got.Status != consts.CtrlStatusFailed || got.Error != "delivery outcome is ambiguous" {
+		t.Fatalf("failed task state = status %d error %q", got.Status, got.Error)
+	}
+	if updatedTask == nil || updatedTask.Status != consts.CtrlStatusFailed || updatedTask.Error != got.Error {
+		t.Fatalf("persisted failed task = %#v", updatedTask)
+	}
+	if finishedTask != task.TaskID() {
+		t.Fatalf("finished task id = %q, want %q", finishedTask, task.TaskID())
+	}
+	if updateCount != 1 {
+		t.Fatalf("terminal state persisted %d times, want 1", updateCount)
+	}
+}
+
+func TestTaskDoneDoesNotSendAfterConcurrentFailureClosesChannel(t *testing.T) {
+	cleanup := installTaskDBMocks()
+	defer cleanup()
+
+	oldBroker := EventBroker
+	EventBroker = nil
+	defer func() { EventBroker = oldBroker }()
+
+	updateStarted := make(chan struct{})
+	releaseUpdate := make(chan struct{})
+	taskDBUpdateCur = func(string, int) error {
+		close(updateStarted)
+		<-releaseUpdate
+		return nil
+	}
+
+	task := &Task{
+		Id:        22,
+		SessionId: "task-done-fail-race",
+		Total:     2,
+		DoneCh:    make(chan bool, 1),
+	}
+	task.Ctx, task.Cancel = context.WithCancel(context.Background())
+
+	panicValue := make(chan interface{}, 1)
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		defer func() { panicValue <- recover() }()
+		task.Done(&implantpb.Spite{TaskId: task.Id}, "chunk")
+	}()
+
+	select {
+	case <-updateStarted:
+	case <-time.After(time.Second):
+		t.Fatal("Task.Done did not reach the persistence barrier")
+	}
+	task.Fail(nil, "task deadline exceeded")
+	close(releaseUpdate)
+	<-done
+
+	if got := <-panicValue; got != nil {
+		t.Fatalf("Task.Done panicked after concurrent Task.Fail: %v", got)
 	}
 }
 

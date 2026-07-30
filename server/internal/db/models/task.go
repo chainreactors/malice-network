@@ -19,6 +19,8 @@ type Task struct {
 	Session        Session `gorm:"foreignKey:SessionID;references:SessionID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 	Cur            int
 	Total          int
+	Status         int32
+	Error          string
 	Description    string
 	ClientName     string
 	FinishTime     time.Time
@@ -69,6 +71,8 @@ func (t *Task) ToProtobuf() *clientpb.Task {
 		SessionId:      t.SessionID,
 		Cur:            int32(t.Cur),
 		Total:          int32(t.Total),
+		Status:         t.Status,
+		Error:          t.Error,
 		Description:    t.Description,
 		Callby:         t.ClientName,
 		Timeout:        !deadline.IsZero() && time.Now().After(deadline),

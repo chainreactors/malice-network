@@ -274,6 +274,8 @@ type Connection struct {
 	alive       atomic.Bool
 	errMu       sync.Mutex
 	lastErr     error
+	sendMu      sync.Mutex
+	leasedBatch *implantpb.Spites
 }
 
 func (c *Connection) IsAlive() bool {
@@ -351,22 +353,72 @@ func (c *Connection) runSenderLoop() error {
 }
 
 func (c *Connection) Send(ctx context.Context, conn *cryptostream.Conn) error {
-	select {
-	case <-time.After(1000 * time.Millisecond):
-		return nil
-	case <-ctx.Done():
-		return nil
-	case msg, ok := <-c.Sender:
-		if !ok || msg == nil {
+	c.sendMu.Lock()
+	defer c.sendMu.Unlock()
+
+	if c.leasedBatch == nil {
+		select {
+		case <-ctx.Done():
+			return nil
+		case msg, ok := <-c.Sender:
+			if !ok || msg == nil {
+				return nil
+			}
+			c.leasedBatch = msg
+		default:
+			// Beacon responses do not wait for tasks that may arrive later.
 			return nil
 		}
-		// Parser 内部会自动处理加解密逻辑
-		err := c.Parser.WritePacket(conn, msg, c.RawID)
-		if err != nil {
-			return fmt.Errorf("write packet for connection %s: %w", c.SessionID, err)
-		}
 	}
-	return nil
+
+	written, err := c.Parser.WritePacketCounted(conn, c.leasedBatch, c.RawID)
+	if err == nil {
+		c.leasedBatch = nil
+		return nil
+	}
+	if written == 0 {
+		// No encoded byte left the process, so the batch is safe to retry on the
+		// next HTTP poll.
+		return fmt.Errorf("write packet for connection %s: %w", c.SessionID, err)
+	}
+
+	// Once any byte was accepted, replay could execute a task twice. Drop this
+	// lease and report an explicit terminal delivery error instead.
+	ambiguous := c.leasedBatch
+	c.leasedBatch = nil
+	c.reportDeliveryFailure(ambiguous, written, err)
+	return fmt.Errorf("write packet for connection %s after %d bytes: %w", c.SessionID, written, err)
+}
+
+func (c *Connection) reportDeliveryFailure(batch *implantpb.Spites, written int, writeErr error) {
+	if batch == nil {
+		return
+	}
+	reason := fmt.Sprintf("task delivery became ambiguous after %d bytes: %v", written, writeErr)
+	failures := &implantpb.Spites{}
+	for _, spite := range batch.GetSpites() {
+		if spite == nil || spite.GetTaskId() == 0 {
+			continue
+		}
+		failures.Spites = append(failures.Spites, &implantpb.Spite{
+			Name:   spite.GetName(),
+			TaskId: spite.GetTaskId(),
+			Error:  types.MaleficErrorTaskError,
+			Status: &implantpb.Status{
+				TaskId: spite.GetTaskId(),
+				Status: int32(types.TaskError),
+				Error:  reason,
+			},
+		})
+	}
+	if len(failures.GetSpites()) == 0 {
+		return
+	}
+	Forwarders.Send(c.PipelineID, &Message{
+		Spites:    failures,
+		SessionID: c.SessionID,
+		RawID:     c.RawID,
+	})
 }
 
 func (c *Connection) buildResponse(conn *cryptostream.Conn, length uint32) error {
@@ -429,13 +481,14 @@ func (c *Connection) HandlerSimplex(ctx context.Context, conn *cryptostream.Conn
 	var err error
 	_, length, err := c.Parser.ReadHeader(conn)
 	if err != nil {
-		return c.closeWithError(fmt.Errorf("error reading header:%s %w", conn.RemoteAddr(), err))
+		return fmt.Errorf("error reading HTTP request header for %s from %s: %w", c.SessionID, conn.RemoteAddr(), err)
+	}
+	// net/http may make an unread HTTP/1.x request body unavailable once the response starts.
+	if err := c.buildResponse(conn, length); err != nil {
+		return fmt.Errorf("read HTTP request body for %s: %w", c.SessionID, err)
 	}
 	if err := c.Send(ctx, conn); err != nil {
-		return c.closeWithError(err)
-	}
-	if err := c.buildResponse(conn, length); err != nil {
-		return c.closeWithError(err)
+		return fmt.Errorf("write HTTP response for %s: %w", c.SessionID, err)
 	}
 	return nil
 }

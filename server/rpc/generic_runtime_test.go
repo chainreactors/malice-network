@@ -1,7 +1,6 @@
 package rpc
 
 import (
-	"context"
 	"errors"
 	"testing"
 	"time"
@@ -75,32 +74,19 @@ func TestGenericRequestNewSpiteUsesTaskTimeout(t *testing.T) {
 }
 
 func TestGenericRequestHandlerResponsePublishesTaskError(t *testing.T) {
-	oldBroker := core.EventBroker
-	oldTicker := core.GlobalTicker
-	defer func() {
-		core.EventBroker = oldBroker
-		core.GlobalTicker = oldTicker
-	}()
-
-	testTicker := core.NewTicker()
-	defer testTicker.RemoveAll()
-	core.GlobalTicker = testTicker
-
-	broker := core.NewBroker()
-	defer broker.Stop()
-	waitEventBrokerReady(t, broker)
+	env := newRPCTestEnv(t)
+	broker := core.EventBroker
 	sub := subscribeEventBrokerReady(t, broker)
 	defer broker.Unsubscribe(sub)
+	sess := env.seedSession(t, "session-a", "task-error-pipeline", true)
+	task := sess.NewTask("exec", 1)
+	if err := db.AddTask(task.ToProtobuf()); err != nil {
+		t.Fatalf("AddTask failed: %v", err)
+	}
 
 	req := &GenericRequest{
-		Task: &core.Task{
-			Id:        7,
-			SessionId: "session-a",
-			Type:      "exec",
-			Ctx:       context.Background(),
-			Cancel:    func() {},
-			DoneCh:    make(chan bool),
-		},
+		Task:    task,
+		Session: sess,
 	}
 	ch := make(chan *implantpb.Spite, 1)
 
@@ -116,6 +102,12 @@ func TestGenericRequestHandlerResponsePublishesTaskError(t *testing.T) {
 			}
 			if evt.Task == nil || evt.Task.TaskId != req.Task.Id {
 				t.Fatalf("unexpected task payload: %#v", evt.Task)
+			}
+			if evt.Task.Status != consts.CtrlStatusFailed || evt.Task.Error == "" {
+				t.Fatalf("task error was not terminal: %#v", evt.Task)
+			}
+			if !req.Task.IsClosed() || req.Task.FinishedAtTime().IsZero() {
+				t.Fatal("task handler error did not close the task")
 			}
 			return
 		case <-deadline:

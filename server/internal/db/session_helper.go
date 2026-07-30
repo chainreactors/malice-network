@@ -262,6 +262,8 @@ func AddTask(task *clientpb.Task) error {
 		SessionID:      task.SessionId,
 		Cur:            int(task.Cur),
 		Total:          int(task.Total),
+		Status:         task.Status,
+		Error:          task.Error,
 		ClientName:     task.Callby,
 		CommandSummary: task.CommandSummary,
 		RequestSummary: task.RequestSummary,
@@ -272,7 +274,7 @@ func AddTask(task *clientpb.Task) error {
 	}
 	return Session().Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "id"}},
-		DoUpdates: clause.AssignmentColumns([]string{"seq", "type", "session_id", "cur", "total", "client_name"}),
+		DoUpdates: clause.AssignmentColumns([]string{"seq", "type", "session_id", "cur", "total", "status", "error", "client_name"}),
 	}).Create(taskModel).Error
 }
 
@@ -283,6 +285,8 @@ func UpdateTask(task *clientpb.Task) error {
 	return Session().Model(taskModel).Updates(map[string]interface{}{
 		"cur":       int(task.Cur),
 		"total":     int(task.Total),
+		"status":    task.Status,
+		"error":     task.Error,
 		"last_time": time.Now(),
 	}).Error
 }

@@ -480,6 +480,17 @@ func (s *Session) HasUnfinishedTasks() bool {
 	return false
 }
 
+func (s *Session) FailTimedOutTasks(now time.Time) {
+	if s == nil || s.Tasks == nil {
+		return
+	}
+	for _, task := range s.Tasks.All() {
+		if task != nil && !task.Finished() && task.TimedOutAt(now) {
+			task.Fail(nil, "task deadline exceeded")
+		}
+	}
+}
+
 func (s *Session) LastCheckinUnix() int64 {
 	return s.lastCheckin.Load()
 }
@@ -1318,7 +1329,11 @@ func (s *sessions) SweepInactive() {
 	if s == nil {
 		return
 	}
+	now := time.Now()
 	for _, session := range s.All() {
+		if session != nil {
+			session.FailTimedOutTasks(now)
+		}
 		if session == nil || session.isAlived() {
 			continue
 		}

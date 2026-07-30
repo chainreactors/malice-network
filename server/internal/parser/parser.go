@@ -121,17 +121,25 @@ func readPayload(conn io.Reader, length uint32) ([]byte, error) {
 }
 
 func (parser *MessageParser) WritePacket(conn net.Conn, msg *implantpb.Spites, sid uint32) error {
+	_, err := parser.WritePacketCounted(conn, msg, sid)
+	return err
+}
+
+// WritePacketCounted reports how many encoded bytes the connection accepted.
+// Callers use this to distinguish a retryable zero-byte failure from an
+// ambiguous partial delivery that must not be replayed.
+func (parser *MessageParser) WritePacketCounted(conn net.Conn, msg *implantpb.Spites, sid uint32) (int, error) {
 	bs, err := parser.Marshal(msg, sid)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	n, err := conn.Write(bs)
 	if err != nil {
-		return err
+		return n, err
 	}
 	if n != len(bs) {
-		return fmt.Errorf("send error, expect send %d, real send %d", len(bs), n)
+		return n, fmt.Errorf("send error, expect send %d, real send %d", len(bs), n)
 	}
 	if len(bs) <= 1000 {
 		logs.Log.Debugf("write packet to %s , %d bytes", conn.RemoteAddr(), len(bs))
@@ -139,5 +147,5 @@ func (parser *MessageParser) WritePacket(conn net.Conn, msg *implantpb.Spites, s
 		logs.Log.Debugf("write packet to %s , %d bytes", conn.RemoteAddr(), len(bs))
 	}
 
-	return nil
+	return n, nil
 }

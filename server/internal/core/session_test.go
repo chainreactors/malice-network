@@ -861,6 +861,38 @@ func TestSessions_SweepInactiveKeepsPendingTasks(t *testing.T) {
 	}
 }
 
+func TestSessions_SweepInactiveFailsExpiredTaskAndRemovesDeadSession(t *testing.T) {
+	cleanupSessionDB := installTestDBMocks()
+	defer cleanupSessionDB()
+	cleanupTaskDB := installTaskDBMocks()
+	defer cleanupTaskDB()
+
+	oldBroker := EventBroker
+	EventBroker = newTestBroker()
+	defer func() { EventBroker = oldBroker }()
+
+	s := &sessions{active: &sync.Map{}}
+	sess := newTestSession("sweep-expired-task",
+		withExpression("*/1 * * * *"),
+		withLastCheckin(expiredLastCheckinUnix()),
+	)
+	task := sess.NewTask("sleep", 1)
+	task.Deadline = time.Now().Add(-time.Second)
+	s.Add(sess)
+
+	s.SweepInactive()
+
+	if _, err := s.Get(sess.ID); err == nil {
+		t.Fatal("dead session should be removed after its expired task becomes terminal")
+	}
+	if !task.Finished() || !task.IsClosed() {
+		t.Fatal("expired task should be failed and closed by the sweep")
+	}
+	if got := task.ToProtobuf(); got.Status != consts.CtrlStatusFailed || got.Error != "task deadline exceeded" {
+		t.Fatalf("expired task state = %#v", got)
+	}
+}
+
 func TestSessions_SweepInactiveRemovesIdleSessions(t *testing.T) {
 	cleanup := installTestDBMocks()
 	defer cleanup()
