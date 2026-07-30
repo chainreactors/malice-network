@@ -340,6 +340,110 @@ func (s *blockingForwardTaskStream) Recv() (*clientpb.SpiteRequest, error) {
 	return nil, s.ctx.Err()
 }
 
+type reconnectingForwardTaskClient struct {
+	streams []*reconnectingForwardTaskStream
+	calls   atomic.Int32
+}
+
+func (c *reconnectingForwardTaskClient) ControlStream(context.Context, ...grpc.CallOption) (forwardrpc.ForwardListener_ControlStreamClient, error) {
+	return nil, errors.New("not used")
+}
+
+func (c *reconnectingForwardTaskClient) TaskStream(ctx context.Context, _ ...grpc.CallOption) (forwardrpc.ForwardListener_TaskStreamClient, error) {
+	index := int(c.calls.Add(1)) - 1
+	if index >= len(c.streams) {
+		return nil, errors.New("no more task streams")
+	}
+	stream := c.streams[index]
+	stream.ctx = ctx
+	return stream, nil
+}
+
+type reconnectingForwardTaskStream struct {
+	grpc.ClientStream
+	ctx     context.Context
+	recvErr error
+	entered chan struct{}
+	sent    chan *clientpb.SpiteRequest
+	once    sync.Once
+}
+
+func (s *reconnectingForwardTaskStream) Send(req *clientpb.SpiteRequest) error {
+	s.sent <- req
+	return nil
+}
+
+func (s *reconnectingForwardTaskStream) Recv() (*clientpb.SpiteRequest, error) {
+	s.once.Do(func() { close(s.entered) })
+	if s.recvErr != nil {
+		return nil, s.recvErr
+	}
+	<-s.ctx.Done()
+	return nil, s.ctx.Err()
+}
+
+func TestForwardTaskStreamReconnectsAndKeepsReplacementRegistered(t *testing.T) {
+	withIsolatedPipelinesCh(t)
+
+	first := &reconnectingForwardTaskStream{
+		recvErr: errors.New("connection reset"),
+		entered: make(chan struct{}),
+		sent:    make(chan *clientpb.SpiteRequest, 1),
+	}
+	second := &reconnectingForwardTaskStream{
+		entered: make(chan struct{}),
+		sent:    make(chan *clientpb.SpiteRequest, 1),
+	}
+	client := &reconnectingForwardTaskClient{streams: []*reconnectingForwardTaskStream{first, second}}
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+
+	const listenerID = "listener-task-reconnect"
+	const pipelineID = "pipeline-task-reconnect"
+	if err := ensureForwardTaskStream(ctx, client, listenerID, pipelineID); err != nil {
+		t.Fatalf("ensureForwardTaskStream failed: %v", err)
+	}
+
+	select {
+	case <-second.entered:
+	case <-time.After(2 * time.Second):
+		t.Fatalf("replacement task stream did not start, open count = %d", client.calls.Load())
+	}
+
+	key := core.PipelineRuntimeKey(listenerID, pipelineID)
+	streamValue, ok := pipelinesCh.Load(key)
+	if !ok {
+		t.Fatal("replacement task stream is not registered")
+	}
+	adapter, ok := streamValue.(*forwardTaskServerStream)
+	if !ok || adapter.stream != second {
+		t.Fatalf("registered stream = %#v, want second generation", streamValue)
+	}
+
+	want := &clientpb.SpiteRequest{Task: &clientpb.Task{TaskId: 41}}
+	if err := adapter.SendMsg(want); err != nil {
+		t.Fatalf("send through replacement stream failed: %v", err)
+	}
+	select {
+	case got := <-second.sent:
+		if got.GetTask().GetTaskId() != want.GetTask().GetTaskId() {
+			t.Fatalf("replacement stream task id = %d, want %d", got.GetTask().GetTaskId(), want.GetTask().GetTaskId())
+		}
+	case <-time.After(time.Second):
+		t.Fatal("replacement task stream did not receive task")
+	}
+
+	cancel()
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		if _, exists := pipelinesCh.Load(key); !exists {
+			return
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	t.Fatal("replacement task stream remained registered after parent context cancellation")
+}
+
 func TestRetireListenerThroughForwardControlStream(t *testing.T) {
 	initForwardRPCTestDB(t)
 	withIsolatedListenersAndJobs(t)

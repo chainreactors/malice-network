@@ -74,12 +74,7 @@ func deletePipelineStreamIfSame(key string, stream interface{}) bool {
 	if key == "" || stream == nil {
 		return false
 	}
-	current, ok := pipelinesCh.Load(key)
-	if !ok || current != stream {
-		return false
-	}
-	pipelinesCh.Delete(key)
-	return true
+	return pipelinesCh.CompareAndDelete(key, stream)
 }
 
 func sessionSnapshotsForListener(listenerID string) []*clientpb.Session {

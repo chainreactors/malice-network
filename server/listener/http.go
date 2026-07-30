@@ -60,6 +60,7 @@ type HTTPPipeline struct {
 	starting  bool
 	startDone chan struct{}
 	srv       net.Listener
+	forward   *forwardSupervisor
 	rpc       pipelineRPCClient
 	Name      string
 	Port      uint16
@@ -123,11 +124,14 @@ func (pipeline *HTTPPipeline) Close() error {
 	}
 	ln := pipeline.srv
 	pipeline.srv = nil
+	forward := pipeline.forward
+	pipeline.forward = nil
 	pipeline.stateMu.Unlock()
-	if ln == nil {
-		return nil
+	var forwardErr error
+	if forward != nil {
+		forwardErr = forward.Stop()
 	}
-	return closePipelineListener(ln)
+	return errors.Join(forwardErr, closePipelineListener(ln))
 }
 
 func (pipeline *HTTPPipeline) Start() (err error) {
@@ -265,18 +269,24 @@ func (pipeline *HTTPPipeline) rollbackCommittedStart(forward *core.Forward) erro
 }
 
 func (pipeline *HTTPPipeline) startForwardRecv(forward *core.Forward) {
-	core.GoGuarded("http-forward-recv:"+pipeline.Name, func() error {
-		for {
-			msg, err := forward.Stream.Recv()
-			if err != nil {
-				if !pipeline.enabled() {
-					return nil
-				}
-				return fmt.Errorf("http pipeline %s forward recv: %w", pipeline.Name, err)
-			}
+	supervisor := newForwardSupervisor(
+		pipeline.rpc,
+		pipeline,
+		"http",
+		forward,
+		func(msg *clientpb.SpiteRequest) {
 			dispatchForwardTaskRequest("http", pipeline.Name, msg)
-		}
-	}, pipeline.runtimeErrorHandler("forward recv loop"))
+		},
+	)
+	pipeline.stateMu.Lock()
+	if !pipeline.Enable || pipeline.forward != nil {
+		pipeline.stateMu.Unlock()
+		_ = supervisor.Stop()
+		return
+	}
+	pipeline.forward = supervisor
+	pipeline.stateMu.Unlock()
+	supervisor.Start()
 }
 
 // startWithCmux 使用 cmux 实现 HTTP TLS 和非 TLS 的端口复用

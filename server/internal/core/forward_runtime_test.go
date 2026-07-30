@@ -17,6 +17,38 @@ type testForwardRPC struct {
 	checkinCount atomic.Int32
 }
 
+var errForwardSessionMissing = errors.New("session missing")
+
+type registerAwareForwardRPC struct {
+	mu         sync.Mutex
+	registered bool
+	calls      []string
+}
+
+func (r *registerAwareForwardRPC) Checkin(context.Context, *implantpb.Ping, ...grpc.CallOption) (*clientpb.Empty, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.calls = append(r.calls, "checkin")
+	if !r.registered {
+		return nil, errForwardSessionMissing
+	}
+	return &clientpb.Empty{}, nil
+}
+
+func (r *registerAwareForwardRPC) Register(context.Context, *clientpb.RegisterSession, ...grpc.CallOption) (*clientpb.Empty, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.calls = append(r.calls, "register")
+	r.registered = true
+	return &clientpb.Empty{}, nil
+}
+
+func (r *registerAwareForwardRPC) callOrder() []string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return append([]string(nil), r.calls...)
+}
+
 func (r *testForwardRPC) Checkin(context.Context, *implantpb.Ping, ...grpc.CallOption) (*clientpb.Empty, error) {
 	r.checkinCount.Add(1)
 	return &clientpb.Empty{}, nil
@@ -254,6 +286,30 @@ func TestForwardersRemoveIfSamePreservesReplacement(t *testing.T) {
 	}
 }
 
+func TestForwardersAddIfAbsentDoesNotReplaceCurrentGeneration(t *testing.T) {
+	store := &forwarders{forwarders: &sync.Map{}}
+	current := &Forward{
+		Pipeline: testPipeline{id: "shared-generation"},
+		Stream:   testForwardStream{},
+		done:     make(chan struct{}),
+	}
+	staleReconnect := &Forward{
+		Pipeline: testPipeline{id: "shared-generation"},
+		Stream:   testForwardStream{},
+		done:     make(chan struct{}),
+	}
+	current.alive.Store(true)
+	staleReconnect.alive.Store(true)
+	store.Add(current)
+
+	if store.AddIfAbsent(staleReconnect) {
+		t.Fatal("stale reconnect unexpectedly replaced the current generation")
+	}
+	if got := store.Get(current.RuntimeKey()); got != current {
+		t.Fatalf("registered forward = %#v, want current generation %#v", got, current)
+	}
+}
+
 func TestForwardHandlerCheckinCalledOncePerMessage(t *testing.T) {
 	rpc := &testForwardRPC{}
 	stream := &capturingForwardStream{}
@@ -286,6 +342,119 @@ func TestForwardHandlerCheckinCalledOncePerMessage(t *testing.T) {
 	got := rpc.checkinCount.Load()
 	if got != 1 {
 		t.Fatalf("Checkin called %d times for 1 message with 3 spites, want exactly 1", got)
+	}
+}
+
+func TestForwardHandlerRegistersBeforeCheckinWithoutQueuingInit(t *testing.T) {
+	oldConnections := Connections
+	Connections = &connections{connections: &sync.Map{}}
+	t.Cleanup(func() {
+		Connections = oldConnections
+	})
+
+	const sessionID = "session-register-before-checkin"
+	connection := &Connection{
+		SessionID: sessionID,
+		C:         make(chan *clientpb.SpiteRequest, 1),
+	}
+	connection.alive.Store(true)
+	Connections.Add(connection)
+
+	rpc := &registerAwareForwardRPC{}
+	forward := &Forward{
+		ctx:         context.Background(),
+		Pipeline:    testPipeline{id: "pipe-register-order"},
+		ListenerId:  "listener-register-order",
+		ListenerRpc: rpc,
+		Stream:      testForwardStream{},
+		implantC:    make(chan *Message, 1),
+		done:        make(chan struct{}),
+	}
+	forward.alive.Store(true)
+	forward.implantC <- &Message{
+		SessionID: sessionID,
+		RawID:     0x01020304,
+		Spites: &implantpb.Spites{
+			Spites: []*implantpb.Spite{{
+				Name: "register",
+				Body: &implantpb.Spite_Register{Register: &implantpb.Register{
+					Name: "new-agent",
+				}},
+			}},
+		},
+		RemoteAddr: "10.0.0.1:9000",
+	}
+	close(forward.implantC)
+
+	if err := forward.Handler(); err != nil {
+		t.Fatalf("Handler returned error: %v", err)
+	}
+	calls := rpc.callOrder()
+	if len(calls) != 2 || calls[0] != "register" || calls[1] != "checkin" {
+		t.Fatalf("RPC call order = %v, want [register checkin]", calls)
+	}
+	select {
+	case req := <-connection.C:
+		t.Fatalf("successful registration queued unexpected Init: %#v", req.GetSpite().GetInit())
+	default:
+	}
+}
+
+func TestForwardHandlerUnknownNonRegisterSessionQueuesInit(t *testing.T) {
+	oldConnections := Connections
+	Connections = &connections{connections: &sync.Map{}}
+	t.Cleanup(func() {
+		Connections = oldConnections
+	})
+
+	const (
+		sessionID = "session-unknown-checkin"
+		rawID     = uint32(0x01020304)
+	)
+	connection := &Connection{
+		SessionID: sessionID,
+		C:         make(chan *clientpb.SpiteRequest, 1),
+	}
+	connection.alive.Store(true)
+	Connections.Add(connection)
+
+	rpc := &registerAwareForwardRPC{}
+	forward := &Forward{
+		ctx:         context.Background(),
+		Pipeline:    testPipeline{id: "pipe-unknown-checkin"},
+		ListenerId:  "listener-unknown-checkin",
+		ListenerRpc: rpc,
+		Stream:      testForwardStream{},
+		implantC:    make(chan *Message, 1),
+		done:        make(chan struct{}),
+	}
+	forward.alive.Store(true)
+	forward.implantC <- &Message{
+		SessionID: sessionID,
+		RawID:     rawID,
+		Spites: &implantpb.Spites{
+			Spites: []*implantpb.Spite{{
+				Name: "ping",
+				Body: &implantpb.Spite_Ping{Ping: &implantpb.Ping{}},
+			}},
+		},
+	}
+	close(forward.implantC)
+
+	if err := forward.Handler(); err != nil {
+		t.Fatalf("Handler returned error: %v", err)
+	}
+	select {
+	case req := <-connection.C:
+		init := req.GetSpite().GetInit()
+		if init == nil {
+			t.Fatalf("queued spite body = %T, want Init", req.GetSpite().Body)
+		}
+		if got, want := string(init.Data), string(forwardRawIDBytes(rawID)); got != want {
+			t.Fatalf("Init raw ID bytes = %v, want %v", init.Data, forwardRawIDBytes(rawID))
+		}
+	default:
+		t.Fatal("unknown non-register session did not queue Init")
 	}
 }
 

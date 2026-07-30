@@ -101,6 +101,17 @@ func (f *forwarders) Add(fw *Forward) {
 	f.forwarders.Store(fw.RuntimeKey(), fw)
 }
 
+// AddIfAbsent installs a reconnect generation only when no newer forward owns
+// the runtime key. This prevents a stale supervisor from replacing a pipeline
+// that was stopped and started again.
+func (f *forwarders) AddIfAbsent(fw *Forward) bool {
+	if fw == nil {
+		return false
+	}
+	_, loaded := f.forwarders.LoadOrStore(fw.RuntimeKey(), fw)
+	return !loaded
+}
+
 func (f *forwarders) Get(id string) *Forward {
 	fw, ok := f.forwarders.Load(id)
 	if !ok {
@@ -150,8 +161,15 @@ func (f *forwarders) Send(id string, msg *Message) {
 }
 
 func NewForward(rpc ForwardClient, pipeline Pipeline) (*Forward, error) {
+	return NewForwardContext(context.Background(), rpc, pipeline)
+}
+
+func NewForwardContext(parent context.Context, rpc ForwardClient, pipeline Pipeline) (*Forward, error) {
 	var err error
-	ctx, cancel := context.WithCancel(context.Background())
+	if parent == nil {
+		parent = context.Background()
+	}
+	ctx, cancel := context.WithCancel(parent)
 	listenerID := ""
 	if pb := pipeline.ToProtobuf(); pb != nil {
 		listenerID = pb.ListenerId
@@ -199,6 +217,7 @@ type Forward struct {
 	handlerDone chan struct{}
 	abortOnce   sync.Once
 	abortErr    error
+	sendMu      sync.Mutex
 }
 
 func (f *Forward) RuntimeKey() string {
@@ -294,6 +313,23 @@ func (f *Forward) Handler() error {
 			}
 			msg = received
 		}
+		// Register creates the session that the message-level Checkin resolves.
+		for _, spite := range msg.Spites.Spites {
+			if _, ok := spite.Body.(*implantpb.Spite_Register); !ok {
+				continue
+			}
+			_, err := f.ListenerRpc.Register(f.Context(msg.SessionID), &clientpb.RegisterSession{
+				SessionId:    msg.SessionID,
+				PipelineId:   f.ID(),
+				ListenerId:   f.ListenerId,
+				RegisterData: spite.GetRegister(),
+				Target:       msg.RemoteAddr,
+				RawId:        msg.RawID,
+			})
+			if err != nil {
+				logs.Log.Errorf("register err %s", err.Error())
+			}
+		}
 		_, err := f.ListenerRpc.Checkin(f.Context(msg.SessionID), &implantpb.Ping{})
 		if err != nil {
 			logs.Log.Warnf("forward %s checkin failed for session %s: %v", f.ID(), msg.SessionID, err)
@@ -310,20 +346,7 @@ func (f *Forward) Handler() error {
 		}
 		for _, spite := range msg.Spites.Spites {
 			switch spite.Body.(type) {
-			case *implantpb.Spite_Register:
-				_, err := f.ListenerRpc.Register(f.Context(msg.SessionID), &clientpb.RegisterSession{
-					SessionId:    msg.SessionID,
-					PipelineId:   f.ID(),
-					ListenerId:   f.ListenerId,
-					RegisterData: spite.GetRegister(),
-					Target:       msg.RemoteAddr,
-					RawId:        msg.RawID,
-				})
-				if err != nil {
-					logs.Log.Errorf("register err %s", err.Error())
-					continue
-				}
-			case *implantpb.Spite_Ping:
+			case *implantpb.Spite_Register, *implantpb.Spite_Ping:
 				continue
 			default:
 				if size := proto.Size(spite); size <= 1000 {
@@ -331,7 +354,7 @@ func (f *Forward) Handler() error {
 				} else {
 					logs.Log.Debugf("listener.%s - receive_spite session=%s name=%s bytes=%d", msg.SessionID, msg.SessionID, spite.Name, size)
 				}
-				if err := f.Stream.Send(&clientpb.SpiteResponse{
+				if err := f.sendResponse(&clientpb.SpiteResponse{
 					ListenerId: f.ListenerId,
 					SessionId:  msg.SessionID,
 					TaskId:     spite.TaskId,
@@ -342,6 +365,12 @@ func (f *Forward) Handler() error {
 			}
 		}
 	}
+}
+
+func (f *Forward) sendResponse(response *clientpb.SpiteResponse) error {
+	f.sendMu.Lock()
+	defer f.sendMu.Unlock()
+	return f.Stream.Send(response)
 }
 
 func (f *Forward) handleRuntimeError() GoErrorHandler {

@@ -46,6 +46,7 @@ type TCPPipeline struct {
 	starting  bool
 	startDone chan struct{}
 	ln        net.Listener
+	forward   *forwardSupervisor
 	rpc       pipelineRPCClient
 	Name      string
 	Port      uint16
@@ -98,11 +99,14 @@ func (pipeline *TCPPipeline) Close() error {
 	}
 	ln := pipeline.ln
 	pipeline.ln = nil
+	forward := pipeline.forward
+	pipeline.forward = nil
 	pipeline.stateMu.Unlock()
-	if ln == nil {
-		return nil
+	var forwardErr error
+	if forward != nil {
+		forwardErr = forward.Stop()
 	}
-	return closePipelineListener(ln)
+	return errors.Join(forwardErr, closePipelineListener(ln))
 }
 
 func (pipeline *TCPPipeline) Start() (err error) {
@@ -214,18 +218,24 @@ func (pipeline *TCPPipeline) finishStart() bool {
 }
 
 func (pipeline *TCPPipeline) startForwardRecv(forward *core.Forward) {
-	core.GoGuarded("tcp-forward-recv:"+pipeline.Name, func() error {
-		for {
-			msg, err := forward.Stream.Recv()
-			if err != nil {
-				if !pipeline.enabled() {
-					return nil
-				}
-				return fmt.Errorf("tcp pipeline %s forward recv: %w", pipeline.Name, err)
-			}
+	supervisor := newForwardSupervisor(
+		pipeline.rpc,
+		pipeline,
+		"tcp",
+		forward,
+		func(msg *clientpb.SpiteRequest) {
 			dispatchForwardTaskRequest("tcp", pipeline.Name, msg)
-		}
-	}, pipeline.runtimeErrorHandler("forward recv loop"))
+		},
+	)
+	pipeline.stateMu.Lock()
+	if !pipeline.Enable || pipeline.forward != nil {
+		pipeline.stateMu.Unlock()
+		_ = supervisor.Stop()
+		return
+	}
+	pipeline.forward = supervisor
+	pipeline.stateMu.Unlock()
+	supervisor.Start()
 }
 
 func (pipeline *TCPPipeline) prepareListener() (net.Listener, *tls.Config, error) {

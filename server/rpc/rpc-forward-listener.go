@@ -33,6 +33,11 @@ var (
 	forwardTaskStreamMu                sync.Mutex
 )
 
+const (
+	forwardTaskReconnectMinDelay = 100 * time.Millisecond
+	forwardTaskReconnectMaxDelay = 5 * time.Second
+)
+
 type forwardListenerRuntime struct {
 	listenerID   string
 	connectHost  string
@@ -365,31 +370,124 @@ func ensureForwardTaskStream(ctx context.Context, client forwardrpc.ForwardListe
 	if _, ok := pipelinesCh.Load(key); ok {
 		return nil
 	}
-	streamCtx := metadata.NewOutgoingContext(ctx, metadata.Pairs(
+	adapter, err := openForwardTaskStream(ctx, client, listenerID, pipelineID)
+	if err != nil {
+		return err
+	}
+	if _, loaded := pipelinesCh.LoadOrStore(key, adapter); loaded {
+		adapter.close()
+		return nil
+	}
+	core.GoGuarded(
+		"forward-listener-task-recv:"+key,
+		func() error { return superviseForwardTaskStream(ctx, client, listenerID, pipelineID, adapter) },
+		core.LogGuardedError("forward-listener-task-recv:"+key),
+	)
+	return nil
+}
+
+func openForwardTaskStream(ctx context.Context, client forwardrpc.ForwardListenerClient, listenerID, pipelineID string) (*forwardTaskServerStream, error) {
+	key := core.PipelineRuntimeKey(listenerID, pipelineID)
+	generationCtx, cancel := context.WithCancel(ctx)
+	streamCtx := metadata.NewOutgoingContext(generationCtx, metadata.Pairs(
 		"listener_id", listenerID,
 		"pipeline_id", pipelineID,
 	))
 	stream, err := client.TaskStream(streamCtx)
 	if err != nil {
-		return fmt.Errorf("open forward listener task stream %s: %w", key, err)
+		cancel()
+		return nil, fmt.Errorf("open forward listener task stream %s: %w", key, err)
 	}
-	adapter := &forwardTaskServerStream{
+	return &forwardTaskServerStream{
 		ctx:    streamCtx,
+		cancel: cancel,
 		stream: stream,
 		key:    key,
+	}, nil
+}
+
+func superviseForwardTaskStream(
+	ctx context.Context,
+	client forwardrpc.ForwardListenerClient,
+	listenerID string,
+	pipelineID string,
+	initial *forwardTaskServerStream,
+) error {
+	current := initial
+	delay := forwardTaskReconnectMinDelay
+	for {
+		err := current.receiveLoop()
+		current.close()
+		if !deletePipelineStreamIfSame(current.key, current) {
+			return nil
+		}
+		if ctx.Err() != nil {
+			return nil
+		}
+		logs.Log.Warnf("forward listener task stream %s disconnected: %v", current.key, err)
+
+		for ctx.Err() == nil {
+			if !waitForwardTaskReconnect(ctx, delay) {
+				return nil
+			}
+			next, openErr := openForwardTaskStream(ctx, client, listenerID, pipelineID)
+			if openErr != nil {
+				logs.Log.Warnf("forward listener task stream %s reconnect failed: %v", current.key, openErr)
+				delay = nextForwardTaskReconnectDelay(delay)
+				continue
+			}
+			if _, loaded := pipelinesCh.LoadOrStore(next.key, next); loaded {
+				next.close()
+				return nil
+			}
+			logs.Log.Infof("forward listener task stream %s reconnected", next.key)
+			current = next
+			delay = forwardTaskReconnectMinDelay
+			break
+		}
+		if ctx.Err() != nil {
+			return nil
+		}
 	}
-	pipelinesCh.Store(key, adapter)
-	core.GoGuarded("forward-listener-task-recv:"+key, adapter.receiveLoop, core.LogGuardedError("forward-listener-task-recv:"+key), func() {
-		pipelinesCh.Delete(key)
-	})
-	return nil
+}
+
+func waitForwardTaskReconnect(ctx context.Context, delay time.Duration) bool {
+	timer := time.NewTimer(delay)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+		return false
+	case <-timer.C:
+		return true
+	}
+}
+
+func nextForwardTaskReconnectDelay(current time.Duration) time.Duration {
+	next := current * 2
+	if next > forwardTaskReconnectMaxDelay {
+		return forwardTaskReconnectMaxDelay
+	}
+	return next
 }
 
 type forwardTaskServerStream struct {
 	ctx    context.Context
+	cancel context.CancelFunc
 	stream forwardrpc.ForwardListener_TaskStreamClient
 	key    string
 	sendMu sync.Mutex
+	stop   sync.Once
+}
+
+func (s *forwardTaskServerStream) close() {
+	if s == nil {
+		return
+	}
+	s.stop.Do(func() {
+		if s.cancel != nil {
+			s.cancel()
+		}
+	})
 }
 
 func (s *forwardTaskServerStream) SetHeader(metadata.MD) error  { return nil }

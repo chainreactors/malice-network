@@ -34,7 +34,26 @@ Listener 是 malice-network 的分布式通信层，与 Server 解耦设计：
 
 ### Listener 身份一致性
 
-Listener 的唯一身份来自 mTLS 证书对应的 Operator。`listeners.name`、auth 文件中的 `operator` 和 RPC 中的 `listener_id` 必须完全一致；不同名称的 Listener 不能共用同一份 auth。Server 会同时校验证书 fingerprint、RPC metadata 和请求消息中的 Listener ID，不一致的请求会以 `PermissionDenied` 拒绝，避免同一运行实例在不同 ID 下重复注册并产生 Pipeline 状态分裂。
+Listener 的唯一身份来自 mTLS 证书对应的 Operator。`listeners.name`、auth 文件中的 `operator` 和 RPC 中的 `listener_id` 必须完全一致；不同名称的 Listener 不能共用同一份 auth。反向 Listener 的 gRPC 连接会为所有 unary 和 stream RPC 自动写入 `listener_id` metadata。Server 会同时校验证书 fingerprint、RPC metadata 和请求消息中的 Listener ID，不一致的 Listener 请求会以 `PermissionDenied` 拒绝，避免同一运行实例在不同 ID 下重复注册并产生 Pipeline 状态分裂。
+
+该身份绑定只应用于证书身份为 Listener 的调用方。远程 Admin 仍可在通过角色授权后调用 ListenerRPC 中的 Pipeline 管理接口，不需要伪造 `listener_id` metadata。
+
+### 断线重连与运行态对账
+
+反向 Listener 的 JobStream 断开后会重新注册并重开流，重试间隔从 100 ms 指数退避到 5 s。重连注册会携带当前仍在运行的 Pipeline 和 Website 快照；首次注册不带快照，避免与配置中的首次启动并发绑定同一端口。
+
+HTTP/TCP Pipeline 的任务 Forward stream 使用独立的重连监督器。该 stream 遇到 `Unavailable`、EOF 或 connection reset 时，只移除失败的 stream generation，并以 100 ms 到 5 s 的有界指数退避重新建立连接；公网 HTTP/TCP socket 保持监听，不会因为控制面抖动而关闭 443/5001。显式执行 pipeline stop 会取消退避并关闭当前 generation，旧 generation 的延迟清理不会覆盖或删除后来启动的新 generation。
+
+`forward` transport 的 Server 侧 TaskStream 采用相同的自动重挂载语义。TaskStream 断开期间，Server 暂时没有可用的任务下发 stream；重连成功后会原子替换运行时映射，不需要额外执行一次 pipeline start/stop 来恢复任务通道。
+
+新 JobStream 就绪后，Server 以数据库中的 `enable` 状态作为期望状态进行双向对账：
+
+- 数据库为启用、本地快照缺失的 Pipeline 会收到启动控制。
+- 数据库为禁用或记录已不存在、本地仍运行的 Pipeline 会收到停止控制。
+- 恢复启动失败不会把数据库的启用状态改为禁用，后续重连仍可重试。
+- 停止已经不存在的本地运行态按成功处理，避免 Server 与 Listener 的短暂状态差异导致 `pipeline not found`。
+
+普通 Pipeline 在 Listener 离线时执行 `pipeline stop` 会直接把数据库状态更新为禁用；执行 `pipeline delete` 会删除数据库中的期望记录。Listener 重连后，对账流程会停止本地仍存活的旧运行态，因此不会被自动重新启动或重新注册。
 
 Listener-only forward 最小示例：
 
@@ -190,6 +209,18 @@ http:
     body_suffix: "<!-- suffix -->"         # Body 后缀
 ```
 
+### HTTP 请求边界与任务交付
+
+HTTP/HTTPS 的每次 POST 都是一个短生命周期请求，同一 Session 的逻辑 Connection 和待下发任务队列会跨请求保留。Listener 会先完整读取请求 body，再开始写响应，避免 `net/http` 在响应提交后关闭未读 body。请求 header/body 的 EOF、超时或客户端中断只结束当前请求，不会删除该 Session 的逻辑 Connection。
+
+任务响应使用单批次 lease，两个并发 poll 不会取到同一批任务：
+
+- 写入 0 字节即失败时，批次保留到下一次 poll 重试。
+- 已写入部分字节时，交付结果不确定；批次不会自动重放，以免 Implant 重复执行命令，相关任务会进入明确失败终态。
+- 未完成任务超过自身 deadline 后由 Session sweep 标记失败并释放等待通道，避免永久停留在 running。
+
+该策略不提供协议级 exactly-once。若未来需要对“部分写出”自动重试，必须先在 Implant 协议中增加 task ID 去重或显式 ACK。
+
 ### Pipeline 身份与同名规则
 
 Pipeline 的唯一身份是 `listener_id + name`：
@@ -247,7 +278,7 @@ listeners:
 ./malice-network --listener-only -c listener-a.yaml
 ```
 
-auth 相对路径以 YAML 文件所在目录为基准解析。`listener reset listener-a` 会更新 auth，但不会覆盖已经添加 Pipeline 或 forward 设置的 YAML。
+auth 相对路径以 YAML 文件所在目录为基准解析。Server 首次初始化默认 Listener 身份时，也会使用配置中的 `listeners.name` 生成 auth，并写入按相同规则解析后的 `listeners.auth` 路径。`listener reset listener-a` 会更新 auth，但不会覆盖已经添加 Pipeline 或 forward 设置的 YAML。
 
 ## 实现位置
 
@@ -258,6 +289,7 @@ auth 相对路径以 YAML 文件所在目录为基准解析。`listener reset li
 | `server/listener/retire.go` | Listener retire 本地文件清理与关闭调度 |
 | `server/listener/tcp.go` | TCP Pipeline 实现 |
 | `server/listener/http.go` | HTTP Pipeline 实现 |
+| `server/listener/forward_supervisor.go` | HTTP/TCP Forward stream 代际管理与退避重连 |
 | `server/listener/rem.go` | REM Pipeline 实现 |
 | `server/listener/custom.go` | Custom Pipeline 接入 |
 | `server/rpc/rpc-forward-listener.go` | forward transport Server 端拨号与 stream 适配 |
@@ -265,6 +297,8 @@ auth 相对路径以 YAML 文件所在目录为基准解析。`listener reset li
 | `server/rpc/rpc-listener-retire.go` | Server 端 Listener retire RPC |
 | `server/forwardrpc/forwardrpc.go` | forward transport 手写 gRPC service descriptor |
 | `server/internal/core/pipeline.go` | Pipeline 运行时状态 |
+| `server/internal/core/connection.go` | 跨 HTTP 请求的 Session Connection 与任务批次 lease |
+| `server/internal/core/task.go` | 任务成功、失败、取消和 deadline 终态 |
 
 ## 相关文档
 
