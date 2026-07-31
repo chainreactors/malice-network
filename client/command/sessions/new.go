@@ -5,6 +5,7 @@ import (
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/encoders"
@@ -31,6 +32,7 @@ func NewBindSession(con *core.Console, PipelineID string, target string, name st
 	sid := hash.Md5Hash(rid)
 	_, err := con.Rpc.Register(con.Context(), &clientpb.RegisterSession{
 		PipelineId: PipelineID,
+		ListenerId: resolvePipelineListenerID(con, PipelineID),
 		RawId:      encoders.BytesToUint32(rid),
 		SessionId:  sid,
 		Target:     target,
@@ -54,6 +56,26 @@ func NewBindSession(con *core.Console, PipelineID string, target string, name st
 		return nil, err
 	}
 	return sess, nil
+}
+
+// resolvePipelineListenerID looks up the listener that owns the given pipeline
+// from the client's pipeline cache. Bind sessions must carry the listener id in
+// RegisterSession, otherwise the server cannot route the init spite through the
+// listener's stream (loadPipelineStreamForSession requires listenerID+pipelineID
+// to match the key under which the listener registered its stream).
+// Returns "" when the pipeline is not cached; the server then falls back to its
+// legacy lookup behaviour.
+func resolvePipelineListenerID(con *core.Console, pipelineID string) string {
+	if pipelineID == "" {
+		return ""
+	}
+	pipe, err := common.FindCachedPipeline(con, pipelineID, func(candidate *clientpb.Pipeline) bool {
+		return candidate.GetName() == pipelineID
+	})
+	if err != nil || pipe == nil {
+		return ""
+	}
+	return pipe.GetListenerId()
 }
 
 func RegisterNewSessionFunc(con *core.Console) {
