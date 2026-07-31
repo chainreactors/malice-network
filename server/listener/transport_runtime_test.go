@@ -125,42 +125,71 @@ func (s *reconnectJobStream) Recv() (*clientpb.JobCtrl, error) {
 var _ grpc.ClientStream = (*reconnectJobStream)(nil)
 var _ listenerrpc.ListenerRPC_JobStreamClient = (*reconnectJobStream)(nil)
 
-type syncPipelineCaptureClient struct {
+type registerListenerCaptureClient struct {
 	listenerrpc.ListenerRPCClient
-	pipelines []*clientpb.Pipeline
+	request *clientpb.RegisterListener
 }
 
-func (c *syncPipelineCaptureClient) SyncPipeline(_ context.Context, pipeline *clientpb.Pipeline, _ ...grpc.CallOption) (*clientpb.Empty, error) {
-	c.pipelines = append(c.pipelines, pipeline)
+func (c *registerListenerCaptureClient) RegisterListener(_ context.Context, request *clientpb.RegisterListener, _ ...grpc.CallOption) (*clientpb.Empty, error) {
+	c.request = request
 	return &clientpb.Empty{}, nil
 }
 
-func TestRestoreRuntimeRegistrationsOnlySyncsActiveRuntimes(t *testing.T) {
-	rpcClient := &syncPipelineCaptureClient{}
-	lns := &listener{
-		Rpc:  rpcClient,
-		Name: "listener-reconnect",
-	}
+type runtimeSnapshotPipeline struct {
+	pipeline *clientpb.Pipeline
+}
 
-	err := lns.restoreRuntimeRegistrations(
-		[]*clientpb.Pipeline{
-			{Name: "tcp-active", Enable: true},
-			{Name: "tcp-disabled", Enable: false},
-		},
-		[]*clientpb.Pipeline{
-			{Name: "website-active", Enable: true},
-		},
-	)
-	if err != nil {
-		t.Fatalf("restoreRuntimeRegistrations returned error: %v", err)
+func (p *runtimeSnapshotPipeline) ID() string                     { return p.pipeline.GetName() }
+func (p *runtimeSnapshotPipeline) Start() error                   { return nil }
+func (p *runtimeSnapshotPipeline) Close() error                   { return nil }
+func (p *runtimeSnapshotPipeline) ToProtobuf() *clientpb.Pipeline { return p.pipeline }
+
+func TestReregisterListenerIncludesRuntimeSnapshot(t *testing.T) {
+	rpcClient := &registerListenerCaptureClient{}
+	lns := &listener{
+		Rpc:       rpcClient,
+		Name:      "listener-2",
+		IP:        "127.0.0.1",
+		pipelines: core.NewPipelines(),
+		ctx:       context.Background(),
 	}
-	if len(rpcClient.pipelines) != 2 {
-		t.Fatalf("synced runtimes = %d, want 2", len(rpcClient.pipelines))
+	lns.pipelines.Add(&runtimeSnapshotPipeline{pipeline: &clientpb.Pipeline{
+		Name:       "AA",
+		ListenerId: "listener-2",
+		Enable:     true,
+	}})
+	lns.pipelines.Add(&runtimeSnapshotPipeline{pipeline: &clientpb.Pipeline{
+		Name:       "disabled-runtime",
+		ListenerId: "listener-2",
+		Enable:     false,
+	}})
+	lns.setWebsite("download", &Website{
+		Name:   "download",
+		Enable: true,
+		PipelineConfig: &core.PipelineConfig{
+			ListenerID: "listener-2",
+		},
+	})
+
+	if err := reregisterListenerRPC(lns); err != nil {
+		t.Fatalf("reregisterListenerRPC failed: %v", err)
 	}
-	for _, pipeline := range rpcClient.pipelines {
-		if pipeline.ListenerId != lns.ID() {
-			t.Fatalf("runtime %q listener = %q, want %q", pipeline.Name, pipeline.ListenerId, lns.ID())
+	if rpcClient.request == nil || rpcClient.request.Pipelines == nil {
+		t.Fatal("re-registration did not include a runtime snapshot")
+	}
+	pipelines := rpcClient.request.Pipelines.GetPipelines()
+	if len(pipelines) != 2 {
+		t.Fatalf("runtime snapshot = %#v, want two pipelines", pipelines)
+	}
+	names := map[string]bool{}
+	for _, pipeline := range pipelines {
+		names[pipeline.GetName()] = true
+		if pipeline.GetListenerId() != "listener-2" {
+			t.Fatalf("runtime %q listener = %q, want listener-2", pipeline.GetName(), pipeline.GetListenerId())
 		}
+	}
+	if !names["AA"] || !names["download"] {
+		t.Fatalf("runtime snapshot names = %v, want AA and download", names)
 	}
 }
 
@@ -177,11 +206,11 @@ func TestListenerHandlerReregistersBeforeReopeningJobStream(t *testing.T) {
 	}
 
 	oldOpen := openListenerJobStream
-	oldRegister := registerListenerRPC
+	oldRegister := reregisterListenerRPC
 	oldWait := waitListenerReconnect
 	defer func() {
 		openListenerJobStream = oldOpen
-		registerListenerRPC = oldRegister
+		reregisterListenerRPC = oldRegister
 		waitListenerReconnect = oldWait
 	}()
 
@@ -206,7 +235,7 @@ func TestListenerHandlerReregistersBeforeReopeningJobStream(t *testing.T) {
 			},
 		}, nil
 	}
-	registerListenerRPC = func(*listener) error {
+	reregisterListenerRPC = func(*listener) error {
 		events <- "register"
 		return nil
 	}

@@ -234,6 +234,29 @@ func TestWaitCtrlReturnsNilOnTimeout(t *testing.T) {
 	_ = origTimeout
 }
 
+func TestWaitCtrlContextReturnsWhenCanceled(t *testing.T) {
+	listener := NewListener("listener-wait-cancel", "127.0.0.1")
+	listener.CtrlJob.Store(uint32(77), nil)
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan *clientpb.JobStatus, 1)
+	go func() {
+		done <- listener.WaitCtrlContext(ctx, 77)
+	}()
+
+	cancel()
+	select {
+	case status := <-done:
+		if status != nil {
+			t.Fatalf("WaitCtrlContext returned %#v, want nil", status)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("WaitCtrlContext did not return after cancellation")
+	}
+	if _, ok := listener.CtrlJob.Load(uint32(77)); ok {
+		t.Fatal("WaitCtrlContext did not clean up CtrlJob after cancellation")
+	}
+}
+
 // Bug #3 fix: PushCtrl now uses buffered channel + timeout instead of blocking forever.
 func TestPushCtrlDoesNotBlockWithBufferedChannel(t *testing.T) {
 	listener := NewListener("listener-buffered", "127.0.0.1")

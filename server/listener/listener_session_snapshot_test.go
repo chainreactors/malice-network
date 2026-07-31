@@ -2,7 +2,6 @@ package listener
 
 import (
 	"testing"
-	"time"
 
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
@@ -51,86 +50,5 @@ func TestHandleJobCtrlCommitsSessionSnapshotAtomically(t *testing.T) {
 	}
 	if got := core.ListenerSessions.Get(2); got == nil || got.SessionId != "new" {
 		t.Fatalf("committed session = %#v, want new", got)
-	}
-}
-
-func TestReconnectSnapshotEndSchedulesActiveRuntimeReregistration(t *testing.T) {
-	oldRestore := restoreListenerRuntimeRPC
-	defer func() {
-		restoreListenerRuntimeRPC = oldRestore
-	}()
-
-	lns := &listener{
-		Name:      "runtime-restore-listener",
-		pipelines: core.NewPipelines(),
-		websites:  make(map[string]*Website),
-	}
-	lns.pipelines.Add(NewCustomPipeline(&clientpb.Pipeline{
-		Name:       "active-pipeline",
-		ListenerId: lns.Name,
-		Enable:     true,
-		Body: &clientpb.Pipeline_Custom{
-			Custom: &clientpb.CustomPipeline{
-				Name:       "active-pipeline",
-				ListenerId: lns.Name,
-			},
-		},
-	}))
-
-	restored := make(chan []*clientpb.Pipeline, 1)
-	restoreListenerRuntimeRPC = func(_ *listener, pipelines, _ []*clientpb.Pipeline) error {
-		restored <- pipelines
-		return nil
-	}
-
-	lns.restoreOnSnapshot.Store(true)
-	lns.handleJobCtrl(&clientpb.JobCtrl{Ctrl: core.CtrlListenerSessionSnapshotBegin})
-	lns.handleJobCtrl(&clientpb.JobCtrl{Ctrl: core.CtrlListenerSessionSnapshotEnd})
-
-	select {
-	case pipelines := <-restored:
-		if len(pipelines) != 1 || pipelines[0].Name != "active-pipeline" {
-			t.Fatalf("restored pipelines = %#v, want active-pipeline", pipelines)
-		}
-	case <-time.After(time.Second):
-		t.Fatal("snapshot completion did not schedule runtime reregistration")
-	}
-}
-
-func TestInitialSnapshotEndDoesNotScheduleRuntimeReregistration(t *testing.T) {
-	oldRestore := restoreListenerRuntimeRPC
-	defer func() {
-		restoreListenerRuntimeRPC = oldRestore
-	}()
-
-	restored := make(chan struct{}, 1)
-	restoreListenerRuntimeRPC = func(_ *listener, _, _ []*clientpb.Pipeline) error {
-		restored <- struct{}{}
-		return nil
-	}
-
-	lns := &listener{
-		Name:      "initial-snapshot-listener",
-		pipelines: core.NewPipelines(),
-		websites:  make(map[string]*Website),
-	}
-	lns.pipelines.Add(NewCustomPipeline(&clientpb.Pipeline{
-		Name:       "initializing-pipeline",
-		ListenerId: lns.Name,
-		Enable:     true,
-		Body: &clientpb.Pipeline_Custom{
-			Custom: &clientpb.CustomPipeline{
-				Name:       "initializing-pipeline",
-				ListenerId: lns.Name,
-			},
-		},
-	}))
-	lns.handleJobCtrl(&clientpb.JobCtrl{Ctrl: core.CtrlListenerSessionSnapshotBegin})
-	lns.handleJobCtrl(&clientpb.JobCtrl{Ctrl: core.CtrlListenerSessionSnapshotEnd})
-
-	select {
-	case <-restored:
-		t.Fatal("initial snapshot unexpectedly scheduled runtime reregistration")
-	case <-time.After(50 * time.Millisecond):
 	}
 }

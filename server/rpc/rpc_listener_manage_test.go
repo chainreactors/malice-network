@@ -4,9 +4,13 @@ import (
 	"context"
 	"sync"
 	"testing"
+	"time"
 
+	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/internal/core"
+	"github.com/chainreactors/malice-network/server/internal/db"
+	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -77,6 +81,183 @@ func TestRegisterListener_CreatesNew(t *testing.T) {
 	}
 	if lns.IP != "10.0.0.1" {
 		t.Fatalf("listener IP = %q, want %q", lns.IP, "10.0.0.1")
+	}
+}
+
+func TestRegisterListenerRestoresReconnectRuntimeSnapshot(t *testing.T) {
+	_ = newRPCTestEnv(t)
+	const listenerID = "listener-reconnect-snapshot"
+	pipeline := &clientpb.Pipeline{
+		Name:       "existing-runtime",
+		ListenerId: listenerID,
+		Enable:     true,
+	}
+
+	_, err := (&Server{}).RegisterListener(context.Background(), &clientpb.RegisterListener{
+		Name:      listenerID,
+		Host:      "10.0.0.8",
+		Pipelines: &clientpb.Pipelines{Pipelines: []*clientpb.Pipeline{pipeline}},
+	})
+	if err != nil {
+		t.Fatalf("RegisterListener error: %v", err)
+	}
+	lns, err := core.Listeners.Get(listenerID)
+	if err != nil {
+		t.Fatalf("listener not found after registration: %v", err)
+	}
+	if got := lns.GetPipeline(pipeline.Name); got == nil || !got.GetEnable() {
+		t.Fatalf("restored runtime = %#v, want enabled pipeline", got)
+	}
+	if !lns.RuntimeSnapshotReceived() {
+		t.Fatal("listener was not marked for runtime reconciliation")
+	}
+}
+
+func TestRegisterListenerRejectsRuntimeSnapshotFromAnotherListener(t *testing.T) {
+	_ = newRPCTestEnv(t)
+	_, err := (&Server{}).RegisterListener(context.Background(), &clientpb.RegisterListener{
+		Name: "listener-a",
+		Pipelines: &clientpb.Pipelines{Pipelines: []*clientpb.Pipeline{{
+			Name:       "foreign-runtime",
+			ListenerId: "listener-b",
+			Enable:     true,
+		}}},
+	})
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("RegisterListener error = %v, want PermissionDenied", err)
+	}
+}
+
+func TestReconcileListenerRuntimeStartsEnabledPipelineMissingFromSnapshot(t *testing.T) {
+	_ = newRPCTestEnv(t)
+	const listenerID = "listener-reconcile"
+	pipeline := &clientpb.Pipeline{
+		Name:       "AA",
+		ListenerId: listenerID,
+		Enable:     true,
+		Type:       consts.HTTPPipeline,
+		Body: &clientpb.Pipeline_Http{Http: &clientpb.HTTPPipeline{
+			Name:       "AA",
+			ListenerId: listenerID,
+			Host:       "127.0.0.1",
+			Port:       8899,
+		}},
+	}
+	if _, err := db.SavePipeline(models.FromPipelinePb(pipeline)); err != nil {
+		t.Fatalf("SavePipeline failed: %v", err)
+	}
+
+	lns := core.NewListener(listenerID, "127.0.0.1")
+	core.Listeners.Add(lns)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	done := make(chan error, 1)
+	go func() {
+		done <- (&Server{}).reconcileListenerRuntime(ctx, lns)
+	}()
+
+	select {
+	case ctrl := <-lns.Ctrl:
+		if ctrl.GetCtrl() != consts.CtrlPipelineStart {
+			t.Fatalf("reconcile control = %q, want %q", ctrl.GetCtrl(), consts.CtrlPipelineStart)
+		}
+		if got := ctrl.GetJob().GetPipeline(); got.GetName() != "AA" || got.GetListenerId() != listenerID {
+			t.Fatalf("reconcile pipeline = %#v, want %s/AA", got, listenerID)
+		}
+		lns.CtrlJob.Store(ctrl.GetId(), &clientpb.JobStatus{
+			CtrlId: ctrl.GetId(),
+			Ctrl:   ctrl.GetCtrl(),
+			Status: consts.CtrlStatusSuccess,
+			Job:    ctrl.GetJob(),
+		})
+	case <-ctx.Done():
+		t.Fatal("timed out waiting for pipeline recovery control")
+	}
+
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("reconcileListenerRuntime failed: %v", err)
+		}
+	case <-ctx.Done():
+		t.Fatal("timed out waiting for runtime reconciliation")
+	}
+	stored, err := db.FindPipelineByListener("AA", listenerID)
+	if err != nil {
+		t.Fatalf("FindPipelineByListener failed: %v", err)
+	}
+	if !stored.Enable {
+		t.Fatal("successful reconciliation changed the desired enabled state")
+	}
+}
+
+func TestReconcileListenerRuntimeStopsPipelineDisabledOrDeletedWhileOffline(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		persisted bool
+	}{
+		{name: "disabled", persisted: true},
+		{name: "deleted", persisted: false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_ = newRPCTestEnv(t)
+			listenerID := "listener-offline-stop-reconcile-" + tc.name
+			pipeline := &clientpb.Pipeline{
+				Name:       "AA",
+				ListenerId: listenerID,
+				Enable:     false,
+				Type:       consts.HTTPPipeline,
+				Body: &clientpb.Pipeline_Http{Http: &clientpb.HTTPPipeline{
+					Name:       "AA",
+					ListenerId: listenerID,
+					Host:       "127.0.0.1",
+					Port:       8899,
+				}},
+			}
+			if tc.persisted {
+				if _, err := db.SavePipeline(models.FromPipelinePb(pipeline)); err != nil {
+					t.Fatalf("SavePipeline failed: %v", err)
+				}
+			}
+			pipeline.Enable = true
+			lns := core.NewListener(listenerID, "127.0.0.1")
+			lns.AddPipeline(pipeline)
+			core.Listeners.Add(lns)
+
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer cancel()
+			done := make(chan error, 1)
+			go func() {
+				done <- (&Server{}).reconcileListenerRuntime(ctx, lns)
+			}()
+
+			select {
+			case ctrl := <-lns.Ctrl:
+				if ctrl.GetCtrl() != consts.CtrlPipelineStop {
+					t.Fatalf("reconcile control = %q, want %q", ctrl.GetCtrl(), consts.CtrlPipelineStop)
+				}
+				lns.CtrlJob.Store(ctrl.GetId(), &clientpb.JobStatus{
+					CtrlId: ctrl.GetId(),
+					Ctrl:   ctrl.GetCtrl(),
+					Status: consts.CtrlStatusSuccess,
+					Job:    ctrl.GetJob(),
+				})
+			case <-ctx.Done():
+				t.Fatal("timed out waiting for pipeline stop reconciliation")
+			}
+
+			select {
+			case err := <-done:
+				if err != nil {
+					t.Fatalf("reconcileListenerRuntime failed: %v", err)
+				}
+			case <-ctx.Done():
+				t.Fatal("timed out waiting for runtime reconciliation")
+			}
+			if got := lns.GetPipeline("AA"); got != nil {
+				t.Fatalf("undesired runtime remained registered: %#v", got)
+			}
+		})
 	}
 }
 

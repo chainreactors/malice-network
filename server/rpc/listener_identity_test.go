@@ -49,6 +49,31 @@ func TestAuthorizeListenerRPCIdentityAcceptsMatchingName(t *testing.T) {
 	}
 }
 
+func TestAuthorizeListenerRPCIdentityAllowsAuthorizedAdmin(t *testing.T) {
+	_ = newRPCTestEnv(t)
+	const fingerprint = "remote-admin-fingerprint"
+	if err := db.CreateOperator(&models.Operator{
+		Name:        "remote-admin",
+		Type:        mtls.Client,
+		Role:        models.RoleAdmin,
+		Fingerprint: fingerprint,
+	}); err != nil {
+		t.Fatalf("CreateOperator failed: %v", err)
+	}
+	opCache.Invalidate()
+	t.Cleanup(opCache.Invalidate)
+
+	err := authorizeListenerRPCIdentity(
+		context.Background(),
+		&PeerIdentity{Fingerprint: fingerprint},
+		"/listenerrpc.ListenerRPC/ListPipelines",
+		&clientpb.Listener{Id: "listener-2"},
+	)
+	if err != nil {
+		t.Fatalf("authorized admin was rejected: %v", err)
+	}
+}
+
 func TestAuthorizeListenerRPCIdentityRejectsMetadataMismatch(t *testing.T) {
 	_ = newRPCTestEnv(t)
 	identity := seedListenerIdentity(t, "listener-2", "listener-2-fingerprint")

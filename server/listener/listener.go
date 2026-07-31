@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/chainreactors/IoM-go/consts"
@@ -59,15 +58,24 @@ var openListenerJobStream = func(client listenerrpc.ListenerRPCClient, ctx conte
 	return client.JobStream(ctx)
 }
 
-var registerListenerRPC = func(lns *listener) error {
+func sendListenerRegistration(lns *listener, pipelines *clientpb.Pipelines) error {
 	if lns == nil || lns.Rpc == nil {
 		return errors.New("listener rpc client is nil")
 	}
 	_, err := lns.Rpc.RegisterListener(lns.Context(), &clientpb.RegisterListener{
-		Name: lns.Name,
-		Host: lns.IP,
+		Name:      lns.Name,
+		Host:      lns.IP,
+		Pipelines: pipelines,
 	})
 	return err
+}
+
+var registerListenerRPC = func(lns *listener) error {
+	return sendListenerRegistration(lns, nil)
+}
+
+var reregisterListenerRPC = func(lns *listener) error {
+	return sendListenerRegistration(lns, lns.runtimeSnapshot())
 }
 
 var waitListenerReconnect = func(ctx context.Context, delay time.Duration) bool {
@@ -79,10 +87,6 @@ var waitListenerReconnect = func(ctx context.Context, delay time.Duration) bool 
 	case <-timer.C:
 		return true
 	}
-}
-
-var restoreListenerRuntimeRPC = func(lns *listener, pipelines, websites []*clientpb.Pipeline) error {
-	return lns.restoreRuntimeRegistrations(pipelines, websites)
 }
 
 const (
@@ -98,6 +102,10 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig, ser
 	if err != nil {
 		return err
 	}
+	options = append(options,
+		grpc.WithChainUnaryInterceptor(listenerIdentityUnaryClientInterceptor(cfg.Name)),
+		grpc.WithChainStreamInterceptor(listenerIdentityStreamClientInterceptor(cfg.Name)),
+	)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	var address = clientConf.Address()
@@ -264,22 +272,21 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig, ser
 }
 
 type listener struct {
-	Rpc               listenerrpc.ListenerRPCClient
-	pipelineRPC       pipelineRPCClient
-	Name              string
-	IP                string
-	pipelines         core.Pipelines
-	conn              *grpc.ClientConn
-	cfg               *configs.ListenerConfig
-	websites          map[string]*Website
-	shutdown          func() error
-	ctx               context.Context
-	cancel            context.CancelFunc
-	restoreMu         sync.Mutex
-	restoreOnSnapshot atomic.Bool
-	retireOnce        sync.Once
-	closeOnce         sync.Once
-	closeErr          error
+	Rpc         listenerrpc.ListenerRPCClient
+	pipelineRPC pipelineRPCClient
+	Name        string
+	IP          string
+	pipelines   core.Pipelines
+	conn        *grpc.ClientConn
+	cfg         *configs.ListenerConfig
+	websites    map[string]*Website
+	websitesMu  sync.RWMutex
+	shutdown    func() error
+	ctx         context.Context
+	cancel      context.CancelFunc
+	retireOnce  sync.Once
+	closeOnce   sync.Once
+	closeErr    error
 }
 
 func (lns *listener) Close() error {
@@ -316,14 +323,13 @@ func (lns *listener) close() error {
 		lns.pipelines.Delete(pipeline.Name)
 	}
 
-	for name, website := range lns.websites {
+	for _, website := range lns.drainWebsites() {
 		if website == nil {
 			continue
 		}
 		if err := website.Close(); err != nil {
-			errs = append(errs, fmt.Errorf("close website %s: %w", name, err))
+			errs = append(errs, fmt.Errorf("close website %s: %w", website.Name, err))
 		}
-		delete(lns.websites, name)
 	}
 
 	if lns.conn != nil {
@@ -413,7 +419,7 @@ func (lns *listener) Handler() error {
 		}
 
 		if needsRegistration {
-			if err := registerListenerRPC(lns); err != nil {
+			if err := reregisterListenerRPC(lns); err != nil {
 				logs.Log.Warnf("listener.%s - reregister_failed error=%q", lns.ID(), err)
 				if !waitListenerReconnect(ctx, reconnectDelay) {
 					return nil
@@ -423,7 +429,6 @@ func (lns *listener) Handler() error {
 			}
 			needsRegistration = false
 			reconnectDelay = listenerReconnectMinDelay
-			lns.restoreOnSnapshot.Store(true)
 		}
 
 		opened, err := lns.runJobStreamOnce()
@@ -441,6 +446,68 @@ func (lns *listener) Handler() error {
 		}
 		reconnectDelay = nextListenerReconnectDelay(reconnectDelay)
 	}
+}
+
+func (lns *listener) runtimeSnapshot() *clientpb.Pipelines {
+	snapshot := &clientpb.Pipelines{}
+	for _, pipeline := range lns.pipelines.ToProtobuf().GetPipelines() {
+		if pipeline == nil || !pipeline.GetEnable() {
+			continue
+		}
+		pipeline.ListenerId = lns.ID()
+		snapshot.Pipelines = append(snapshot.Pipelines, pipeline)
+	}
+	for _, website := range lns.snapshotWebsites() {
+		if website == nil || !website.Enable {
+			continue
+		}
+		pipeline := website.ToProtobuf()
+		pipeline.ListenerId = lns.ID()
+		snapshot.Pipelines = append(snapshot.Pipelines, pipeline)
+	}
+	return snapshot
+}
+
+func (lns *listener) getWebsite(name string) *Website {
+	lns.websitesMu.RLock()
+	defer lns.websitesMu.RUnlock()
+	return lns.websites[name]
+}
+
+func (lns *listener) setWebsite(name string, website *Website) {
+	lns.websitesMu.Lock()
+	if lns.websites == nil {
+		lns.websites = make(map[string]*Website)
+	}
+	lns.websites[name] = website
+	lns.websitesMu.Unlock()
+}
+
+func (lns *listener) removeWebsite(name string) {
+	lns.websitesMu.Lock()
+	delete(lns.websites, name)
+	lns.websitesMu.Unlock()
+}
+
+func (lns *listener) snapshotWebsites() []*Website {
+	lns.websitesMu.RLock()
+	defer lns.websitesMu.RUnlock()
+	websites := make([]*Website, 0, len(lns.websites))
+	for _, website := range lns.websites {
+		websites = append(websites, website)
+	}
+	return websites
+}
+
+func (lns *listener) drainWebsites() []*Website {
+	lns.websitesMu.Lock()
+	defer lns.websitesMu.Unlock()
+	websites := make([]*Website, 0, len(lns.websites))
+	for _, website := range lns.websites {
+		websites = append(websites, website)
+	}
+	lns.websites = make(map[string]*Website)
+	return websites
 }
 
 func nextListenerReconnectDelay(current time.Duration) time.Duration {
@@ -518,9 +585,6 @@ func (lns *listener) handleJobCtrl(msg *clientpb.JobCtrl) *clientpb.JobStatus {
 		return nil
 	case core.CtrlListenerSessionSnapshotEnd:
 		core.ListenerSessions.CommitSnapshot()
-		if lns.restoreOnSnapshot.Swap(false) {
-			lns.scheduleRuntimeReregistration()
-		}
 		return nil
 	case consts.CtrlListenerRetire:
 		handlerErr = lns.handleRetire(msg.Retire)
@@ -545,58 +609,6 @@ func (lns *listener) handleJobCtrl(msg *clientpb.JobCtrl) *clientpb.JobStatus {
 		logs.Log.Importantf("listener.%s - job_ctrl_success listener=%s ctrl_id=%d job=%s ctrl=%s", lns.ID(), lns.ID(), msg.Id, jobName, msg.Ctrl)
 	}
 	return status
-}
-
-func (lns *listener) scheduleRuntimeReregistration() {
-	if lns == nil {
-		return
-	}
-	pipelines := make([]*clientpb.Pipeline, 0)
-	for _, pipeline := range lns.pipelines.ToProtobuf().GetPipelines() {
-		if pipeline != nil && pipeline.Enable {
-			pipelines = append(pipelines, pipeline)
-		}
-	}
-	websites := make([]*clientpb.Pipeline, 0)
-	for _, website := range lns.websites {
-		if website != nil && website.Enable {
-			websites = append(websites, website.ToProtobuf())
-		}
-	}
-	if len(pipelines) == 0 && len(websites) == 0 {
-		return
-	}
-	core.GoGuarded(
-		"listener-runtime-reregister:"+lns.ID(),
-		func() error {
-			return restoreListenerRuntimeRPC(lns, pipelines, websites)
-		},
-		core.LogGuardedError("listener-runtime-reregister:"+lns.ID()),
-	)
-}
-
-func (lns *listener) restoreRuntimeRegistrations(pipelines, websites []*clientpb.Pipeline) error {
-	if lns == nil || lns.Rpc == nil {
-		return errors.New("listener rpc client is nil")
-	}
-	lns.restoreMu.Lock()
-	defer lns.restoreMu.Unlock()
-
-	runtimes := make([]*clientpb.Pipeline, 0, len(pipelines)+len(websites))
-	runtimes = append(runtimes, pipelines...)
-	runtimes = append(runtimes, websites...)
-	var errs []error
-	for _, runtime := range runtimes {
-		if runtime == nil || !runtime.Enable {
-			continue
-		}
-		runtime.ListenerId = lns.ID()
-		_, err := lns.Rpc.SyncPipeline(lns.Context(), runtime)
-		if err != nil {
-			errs = append(errs, fmt.Errorf("sync runtime %s: %w", runtime.Name, err))
-		}
-	}
-	return errors.Join(errs...)
 }
 
 func (lns *listener) handlerStart(job *clientpb.Job) error {
@@ -745,10 +757,15 @@ func (lns *listener) startPipeline(pipelinepb *clientpb.Pipeline) (core.Pipeline
 }
 
 func (lns *listener) handlerStop(job *clientpb.Job) error {
+	if job == nil || job.GetPipeline() == nil || job.GetPipeline().GetName() == "" {
+		return errors.New("pipeline is required")
+	}
 	pipeline := job.GetPipeline()
 	p := lns.pipelines.Get(pipeline.Name)
 	if p == nil {
-		return errors.New("pipeline not found")
+		job.Name = pipeline.Name
+		logs.Log.Infof("listener.%s - pipeline_already_stopped name=%s", lns.ID(), pipeline.Name)
+		return nil
 	}
 	job.Name = p.ID()
 	if err := p.Close(); err != nil {
@@ -780,7 +797,7 @@ func (lns *listener) handleStartWebsite(job *clientpb.Job) error {
 	}
 
 	// Idempotency: website already started in this listener process.
-	if existing := lns.websites[pipe.Name]; existing != nil && existing.Enable {
+	if existing := lns.getWebsite(pipe.Name); existing != nil && existing.Enable {
 		_, err := lns.Rpc.SyncPipeline(lns.Context(), existing.ToProtobuf())
 		return err
 	}
@@ -791,7 +808,7 @@ func (lns *listener) handleStartWebsite(job *clientpb.Job) error {
 	if err != nil {
 		return err
 	}
-	lns.websites[pipe.Name] = website
+	lns.setWebsite(pipe.Name, website)
 	_, err = lns.Rpc.SyncPipeline(lns.Context(), website.ToProtobuf())
 	if err != nil {
 		return err
@@ -801,15 +818,20 @@ func (lns *listener) handleStartWebsite(job *clientpb.Job) error {
 }
 
 func (lns *listener) handleStopWebsite(job *clientpb.Job) error {
+	if job == nil || job.GetPipeline() == nil || job.GetPipeline().GetName() == "" {
+		return errors.New("website pipeline is required")
+	}
 	pipe := job.GetPipeline()
-	w := lns.websites[pipe.Name]
+	w := lns.getWebsite(pipe.Name)
 	if w == nil {
-		return errors.New("website not found")
+		job.Name = pipe.Name
+		logs.Log.Infof("listener.%s - website_already_stopped name=%s", lns.ID(), pipe.Name)
+		return nil
 	}
 	if err := w.Close(); err != nil {
 		return err
 	}
-	delete(lns.websites, pipe.Name)
+	lns.removeWebsite(pipe.Name)
 	return nil
 }
 
@@ -865,7 +887,7 @@ func (lns *listener) handleRegisterWebsite(job *clientpb.Job) error {
 
 func (lns *listener) handleWebContentAdd(job *clientpb.JobCtrl) error {
 	pipe := job.GetJob()
-	w := lns.websites[pipe.Name]
+	w := lns.getWebsite(pipe.Name)
 	if w == nil {
 		return errors.New("website not found")
 	}
@@ -883,7 +905,7 @@ func (lns *listener) handleWebContentAdd(job *clientpb.JobCtrl) error {
 
 func (lns *listener) handleAmountArtifact(job *clientpb.JobCtrl) error {
 	pipe := job.GetJob()
-	w := lns.websites[pipe.Pipeline.Name]
+	w := lns.getWebsite(pipe.Pipeline.Name)
 	if w == nil {
 		return errors.New("website not found")
 	}
@@ -907,7 +929,7 @@ func (lns *listener) handleAmountArtifact(job *clientpb.JobCtrl) error {
 
 func (lns *listener) handleWebContentUpdate(job *clientpb.JobCtrl) error {
 	pipe := job.GetJob()
-	w := lns.websites[pipe.Name]
+	w := lns.getWebsite(pipe.Name)
 	if w == nil {
 		return errors.New("website not found")
 	}
@@ -917,7 +939,7 @@ func (lns *listener) handleWebContentUpdate(job *clientpb.JobCtrl) error {
 func (lns *listener) handleWebContentRemove(job *clientpb.Job) error {
 	pipe := job.GetPipeline()
 	web := pipe.GetWeb()
-	w := lns.websites[pipe.Name]
+	w := lns.getWebsite(pipe.Name)
 	if w == nil {
 		return errors.New("website not found")
 	}

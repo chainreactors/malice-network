@@ -41,7 +41,7 @@ listeners:
   auth: listener.auth  
 ```
 
-Listener 身份由 `listener.auth` 中的证书绑定。配置里的 `listeners.name` 必须与 auth 文件中的 `operator` 完全一致，不能让多个不同名称的 Listener 共用同一份 auth。相对路径形式的 `listeners.auth` 会以当前 Listener 配置文件所在目录为基准解析。
+Listener 身份由 `listener.auth` 中的证书绑定。配置里的 `listeners.name` 必须与 auth 文件中的 `operator` 完全一致，不能让多个不同名称的 Listener 共用同一份 auth。相对路径形式的 `listeners.auth` 会以当前 Listener 配置文件所在目录为基准解析。Server 首次初始化 Listener 身份时，会按同一目录规则写入该文件，并使用配置中的 `listeners.name` 作为 auth 的 `operator`。
 
 ### listener root 命令管理
 
@@ -79,6 +79,10 @@ listeners:
 ```bash
 ./malice-network --listener-only -c listener.yaml
 ```
+
+反向 Listener 与 Server 的长连接断开后会自动重新注册并重建 JobStream。重连时 Listener 上报仍在运行的本地 Pipeline，Server 再根据数据库中的启用状态补启动缺失项或停止不再启用的旧运行态。恢复启动失败会保留数据库中的启用状态，供后续重连继续尝试。
+
+`pipeline stop <name>` 是幂等操作：本地运行态已经不存在时仍视为成功。Listener 离线时执行普通 Pipeline 的 `stop` 会先持久化禁用状态，执行 `delete` 则删除持久化配置；Listener 重连后会停止仍存活但已禁用或已删除的本地端口。
 
 ![image-20250710233407269](../assets/listener_start.png)
 

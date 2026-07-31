@@ -22,6 +22,36 @@ type failingBindRPCClient struct {
 	err error
 }
 
+func TestHandlerStopIsIdempotentWhenRuntimeIsMissing(t *testing.T) {
+	lns := &listener{pipelines: core.NewPipelines()}
+	job := &clientpb.Job{
+		Name: "AA",
+		Pipeline: &clientpb.Pipeline{
+			Name:       "AA",
+			ListenerId: "listener-2",
+		},
+	}
+
+	if err := lns.handlerStop(job); err != nil {
+		t.Fatalf("handlerStop returned error for missing runtime: %v", err)
+	}
+}
+
+func TestHandleStopWebsiteIsIdempotentWhenRuntimeIsMissing(t *testing.T) {
+	lns := &listener{websites: make(map[string]*Website)}
+	job := &clientpb.Job{
+		Name: "download",
+		Pipeline: &clientpb.Pipeline{
+			Name:       "download",
+			ListenerId: "listener-2",
+		},
+	}
+
+	if err := lns.handleStopWebsite(job); err != nil {
+		t.Fatalf("handleStopWebsite returned error for missing runtime: %v", err)
+	}
+}
+
 func (c *failingBindRPCClient) OpenForwardStream(context.Context, core.Pipeline) (core.ForwardStream, error) {
 	return nil, c.err
 }

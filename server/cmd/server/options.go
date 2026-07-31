@@ -18,6 +18,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/certs"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/utils/configutil"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
@@ -163,8 +164,21 @@ func (opt *Options) InitListener() error {
 		return nil
 	}
 
-	name := "listener"
-	cfg := configs.GetServerConfig()
+	if opt.Listeners == nil {
+		return errors.New("listener config is nil")
+	}
+	name := strings.TrimSpace(opt.Listeners.Name)
+	if name == "" {
+		name = "listener"
+		opt.Listeners.Name = name
+	}
+	cfg := opt.Server
+	if cfg == nil {
+		cfg = configs.GetServerConfig()
+	}
+	if cfg == nil {
+		return errors.New("server config is nil")
+	}
 	listenerConf, fingerprint, err := certutils.GenerateListenerCert(cfg.IP, name, int(cfg.GRPCPort))
 	if err != nil {
 		return fmt.Errorf("generate listener cert: %w", err)
@@ -189,10 +203,14 @@ func (opt *Options) InitListener() error {
 	if err != nil {
 		return fmt.Errorf("marshal listener config: %w", err)
 	}
-	authPath := filepath.Join(configs.GetWorkDir(), fmt.Sprintf("%s.auth", name))
-	if err := os.WriteFile(authPath, data, 0600); err != nil {
+	authPath := resolveListenerAuthPath(opt.Listeners.Auth)
+	if authPath == "" {
+		authPath = resolveListenerAuthPath(fmt.Sprintf("%s.auth", name))
+	}
+	if err := fileutils.AtomicWriteFile(authPath, data, 0600); err != nil {
 		return fmt.Errorf("write auth file: %w", err)
 	}
+	opt.Listeners.Auth = authPath
 	logs.Log.Importantf("listener auth file written to %s", authPath)
 	return nil
 }

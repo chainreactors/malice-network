@@ -21,18 +21,29 @@ var (
 )
 
 type Listener struct {
-	Name           string
-	IP             string
-	active         atomic.Bool
-	readyCh        chan struct{}
-	stoppedCh      chan struct{}
-	readyOnce      sync.Once
-	stopOnce       sync.Once
-	pipelines      map[string]*clientpb.Pipeline
-	pipelineMu     sync.RWMutex
-	Ctrl           chan *clientpb.JobCtrl
-	CtrlJob        *sync.Map
-	deferredEvents sync.Map
+	Name            string
+	IP              string
+	active          atomic.Bool
+	runtimeSnapshot atomic.Bool
+	readyCh         chan struct{}
+	stoppedCh       chan struct{}
+	readyOnce       sync.Once
+	stopOnce        sync.Once
+	pipelines       map[string]*clientpb.Pipeline
+	pipelineMu      sync.RWMutex
+	Ctrl            chan *clientpb.JobCtrl
+	CtrlJob         *sync.Map
+	deferredEvents  sync.Map
+}
+
+func (l *Listener) MarkRuntimeSnapshotReceived() {
+	if l != nil {
+		l.runtimeSnapshot.Store(true)
+	}
+}
+
+func (l *Listener) RuntimeSnapshotReceived() bool {
+	return l != nil && l.runtimeSnapshot.Load()
 }
 
 // DefaultCtrlTimeout is the maximum time to wait for a listener control response.
@@ -176,27 +187,48 @@ func (l *Listener) DiscardDeferredEvent(ctrlID uint32) {
 // WaitCtrl waits for a control response from the listener. Returns nil if the
 // response does not arrive within DefaultCtrlTimeout or if ctrlID is 0 (PushCtrl failed).
 func (l *Listener) WaitCtrl(i uint32) *clientpb.JobStatus {
-	return l.WaitCtrlWithTimeout(i, DefaultCtrlTimeout)
+	return l.waitCtrl(context.Background(), i, DefaultCtrlTimeout)
+}
+
+func (l *Listener) WaitCtrlContext(ctx context.Context, i uint32) *clientpb.JobStatus {
+	return l.waitCtrl(ctx, i, DefaultCtrlTimeout)
 }
 
 func (l *Listener) WaitCtrlWithTimeout(i uint32, timeout time.Duration) *clientpb.JobStatus {
+	return l.waitCtrl(context.Background(), i, timeout)
+}
+
+func (l *Listener) waitCtrl(ctx context.Context, i uint32, timeout time.Duration) *clientpb.JobStatus {
 	if i == 0 {
 		return nil
+	}
+	if ctx == nil {
+		ctx = context.Background()
 	}
 	if timeout <= 0 {
 		timeout = DefaultCtrlTimeout
 	}
 	defer l.CtrlJob.Delete(i)
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+	for {
 		done, ok := l.CtrlJob.Load(i)
 		if ok && done != nil {
 			return done.(*clientpb.JobStatus)
 		}
-		time.Sleep(100 * time.Millisecond)
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-l.stoppedCh:
+			return nil
+		case <-ticker.C:
+		case <-timer.C:
+			logs.Log.Warnf("listener %s: WaitCtrl(%d) timed out after %v", l.Name, i, timeout)
+			return nil
+		}
 	}
-	logs.Log.Warnf("listener %s: WaitCtrl(%d) timed out after %v", l.Name, i, timeout)
-	return nil
 }
 
 func (l *Listener) AddPipeline(pipeline *clientpb.Pipeline) {

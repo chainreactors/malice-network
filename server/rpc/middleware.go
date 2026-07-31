@@ -242,8 +242,14 @@ func authorizeListenerRPCIdentity(ctx context.Context, identity *PeerIdentity, m
 	if op.Revoked {
 		return status.Errorf(codes.Unauthenticated, "operator %s has been revoked", op.Name)
 	}
-	if op.Type != mtls.Listener || op.Role != models.RoleListener {
-		return status.Error(codes.PermissionDenied, "listener identity required")
+	isListenerType := op.Type == mtls.Listener
+	isListenerRole := op.Role == models.RoleListener
+	if !isListenerType && !isListenerRole {
+		return nil
+	}
+	if !isListenerType || !isListenerRole {
+		return status.Errorf(codes.PermissionDenied,
+			"operator %q has inconsistent listener identity", op.Name)
 	}
 
 	metadataListenerID, err := getListenerID(ctx)

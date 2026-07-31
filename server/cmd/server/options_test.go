@@ -7,7 +7,10 @@ import (
 	"testing"
 
 	"github.com/chainreactors/IoM-go/mtls"
+	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
+	"github.com/chainreactors/malice-network/server/internal/db"
+	config "github.com/gookit/config/v2"
 	"github.com/jessevdk/go-flags"
 )
 
@@ -43,6 +46,56 @@ func TestResolveListenerAuthPathRelativeToConfig(t *testing.T) {
 	want := filepath.Join(filepath.Dir(configs.CurrentServerConfigFilename), "listener-2.auth")
 	if got != want {
 		t.Fatalf("resolved auth path = %q, want %q", got, want)
+	}
+}
+
+func TestInitListenerWritesConfiguredAuthPathAndIdentity(t *testing.T) {
+	configs.InitTestConfigRuntime(t)
+	root := t.TempDir()
+	t.Chdir(root)
+	configs.UseTestPaths(t, filepath.Join(root, ".malice"))
+	if err := configs.InitConfig(); err != nil {
+		t.Fatalf("InitConfig failed: %v", err)
+	}
+	if err := certutils.GenerateRootCert(); err != nil {
+		t.Fatalf("GenerateRootCert failed: %v", err)
+	}
+
+	oldDBClient := db.Client
+	t.Cleanup(func() { db.Client = oldDBClient })
+	var err error
+	db.Client, err = db.NewDBClient(nil)
+	if err != nil {
+		t.Fatalf("NewDBClient failed: %v", err)
+	}
+
+	config.Set("server.ip", "127.0.0.1")
+	config.Set("server.grpc_port", 5004)
+	configDir := filepath.Join(root, "node")
+	oldFilename := configs.CurrentServerConfigFilename
+	configs.CurrentServerConfigFilename = filepath.Join(configDir, "config.yaml")
+	t.Cleanup(func() { configs.CurrentServerConfigFilename = oldFilename })
+
+	opt := &Options{
+		Listeners: &configs.ListenerConfig{
+			Name: "listener-2",
+			Auth: filepath.Join("credentials", "listener-2.auth"),
+		},
+	}
+	if err := opt.InitListener(); err != nil {
+		t.Fatalf("InitListener failed: %v", err)
+	}
+
+	authPath := filepath.Join(configDir, "credentials", "listener-2.auth")
+	auth, err := mtls.ReadConfig(authPath)
+	if err != nil {
+		t.Fatalf("ReadConfig(%q) failed: %v", authPath, err)
+	}
+	if auth.Operator != "listener-2" {
+		t.Fatalf("auth operator = %q, want listener-2", auth.Operator)
+	}
+	if opt.Listeners.Auth != authPath {
+		t.Fatalf("listener auth path = %q, want %q", opt.Listeners.Auth, authPath)
 	}
 }
 

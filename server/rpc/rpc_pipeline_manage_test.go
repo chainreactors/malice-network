@@ -103,6 +103,40 @@ func TestRegisterPipeline_Valid(t *testing.T) {
 	}
 }
 
+func TestStopPipelineDisablesPipelineWhenListenerIsOffline(t *testing.T) {
+	_ = newRPCTestEnv(t)
+	const listenerID = "offline-listener"
+	pipeline := &clientpb.Pipeline{
+		Name:       "AA",
+		ListenerId: listenerID,
+		Enable:     true,
+		Type:       consts.HTTPPipeline,
+		Body: &clientpb.Pipeline_Http{Http: &clientpb.HTTPPipeline{
+			Name:       "AA",
+			ListenerId: listenerID,
+			Host:       "127.0.0.1",
+			Port:       8899,
+		}},
+	}
+	if _, err := db.SavePipeline(models.FromPipelinePb(pipeline)); err != nil {
+		t.Fatalf("SavePipeline failed: %v", err)
+	}
+
+	if _, err := (&Server{}).StopPipeline(context.Background(), &clientpb.CtrlPipeline{
+		Name:       pipeline.Name,
+		ListenerId: listenerID,
+	}); err != nil {
+		t.Fatalf("StopPipeline failed for offline listener: %v", err)
+	}
+	stored, err := db.FindPipelineByListener(pipeline.Name, listenerID)
+	if err != nil {
+		t.Fatalf("FindPipelineByListener failed: %v", err)
+	}
+	if stored.Enable {
+		t.Fatal("offline pipeline remained enabled after StopPipeline")
+	}
+}
+
 func TestDeletePipelineRemovesPipelineWhenListenerIsOffline(t *testing.T) {
 	_ = newRPCTestEnv(t)
 	const listenerID = "offline-delete-listener"

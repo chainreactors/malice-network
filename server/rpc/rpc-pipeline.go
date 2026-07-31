@@ -533,11 +533,13 @@ func (rpc *Server) stopPipelineLocked(ctx context.Context, req *clientpb.CtrlPip
 
 	lns, err := core.Listeners.Get(listenerID)
 	if err != nil {
-		return nil, err
-	}
-
-	if _, err := db.FindPipelineByListener(req.Name, listenerID); err != nil {
-		return nil, err
+		if err := db.DisablePipelineByListener(req.Name, listenerID); err != nil {
+			return nil, err
+		}
+		persisted := pipelineDB.ToProtobuf()
+		persisted.Enable = false
+		publishPipelineLifecycleEvent(consts.CtrlPipelineStop, persisted)
+		return &clientpb.Empty{}, nil
 	}
 
 	pipe := lns.GetPipeline(req.Name)
