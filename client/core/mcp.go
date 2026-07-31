@@ -1,15 +1,18 @@
 package core
 
 import (
+	"bytes"
 	"context"
 	"fmt"
-	"github.com/chainreactors/malice-network/client/repl"
 	"net"
 	"net/http"
 	"strings"
 
+	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/kballard/go-shellquote"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/spf13/cobra"
@@ -218,6 +221,128 @@ func generateCommandDoc(cmd *cobra.Command) string {
 	return doc.String()
 }
 
+// isHelpRequest reports whether cmdline asks for help, e.g.
+// "bof --help", "elevate EfsPotato -h", "help", "help bof".
+func isHelpRequest(cmdline string) bool {
+	args, err := shellquote.Split(cmdline)
+	if err != nil || len(args) == 0 {
+		return false
+	}
+	if args[0] == "help" {
+		return true
+	}
+	for _, a := range args {
+		if a == "--help" || a == "-h" {
+			return true
+		}
+	}
+	return false
+}
+
+// renderCobraHelp writes a command's help into a buffer and returns the
+// ANSI-stripped text. Cobra normally writes --help to the command output
+// writer (os.Stdout); this captures it so the MCP caller receives the text.
+func renderCobraHelp(cmd *cobra.Command) string {
+	if cmd == nil {
+		return ""
+	}
+	var buf bytes.Buffer
+	orig := cmd.OutOrStdout()
+	cmd.SetOut(&buf)
+	err := cmd.Help()
+	cmd.SetOut(orig)
+	if err != nil {
+		return ""
+	}
+	if out := strings.TrimSpace(client.RemoveANSI(buf.String())); out != "" {
+		return out
+	}
+	if doc := strings.TrimSpace(generateCommandDoc(cmd)); doc != "" {
+		return doc
+	}
+	return ""
+}
+
+func menuRoot(con *Console, menu string) *cobra.Command {
+	if con == nil || con.App == nil {
+		return nil
+	}
+	m := con.App.Menu(menu)
+	if m == nil {
+		return nil
+	}
+	return m.Command
+}
+
+func activeMenuRoot(con *Console, roots ...*cobra.Command) *cobra.Command {
+	if con == nil || con.App == nil {
+		return nil
+	}
+	am := con.App.ActiveMenu()
+	if am == nil {
+		return nil
+	}
+	for _, r := range roots {
+		if r != nil && r == am.Command {
+			return r
+		}
+	}
+	return nil
+}
+
+// renderCommandHelp resolves the command targeted by a help request and
+// returns its rendered help text. It tries both menus so implant commands
+// (e.g. "bof") resolve even from the client menu. An empty path ("--help" /
+// "help") returns the active menu's full command tree.
+func (m *MCPServer) renderCommandHelp(cmdline string) string {
+	args, err := shellquote.Split(cmdline)
+	if err != nil {
+		return ""
+	}
+	var path []string
+	for _, a := range args {
+		if a == "--help" || a == "-h" || a == "help" {
+			continue
+		}
+		// MAL/plugin commands use a ":" namespace (e.g. "uac-bypass:elevatedcom")
+		// which maps to a cobra parent->child path. Split on ":" so Find resolves.
+		for _, p := range strings.Split(a, ":") {
+			if p != "" {
+				path = append(path, p)
+			}
+		}
+	}
+
+	implantRoot := menuRoot(m.console, consts.ImplantMenu)
+	clientRoot := menuRoot(m.console, consts.ClientMenu)
+
+	// Serialize against command execution (shared cobra tree / output writer).
+	commandExecMu.Lock()
+	defer commandExecMu.Unlock()
+
+	if len(path) == 0 {
+		root := activeMenuRoot(m.console, implantRoot, clientRoot)
+		if root == nil {
+			root = implantRoot
+		}
+		return renderCobraHelp(root)
+	}
+
+	for _, root := range []*cobra.Command{implantRoot, clientRoot} {
+		if root == nil {
+			continue
+		}
+		target, _, e := root.Find(path)
+		if e != nil || target == nil || target == root {
+			continue
+		}
+		if out := renderCobraHelp(target); out != "" {
+			return out
+		}
+	}
+	return ""
+}
+
 // Start 启动 MCP HTTP 服务器
 func (m *MCPServer) Start(host string, port int) error {
 	addr := fmt.Sprintf("%s:%d", host, port)
@@ -320,6 +445,15 @@ Commands are automatically routed to client menu or implant menu based on whethe
 		}
 
 		sessionID, _ := request.GetArguments()["session_id"].(string)
+
+		// Cobra writes --help to the command output writer (os.Stdout), which
+		// executeCommand does not capture. Short-circuit help requests and
+		// render them into a buffer so the help text reaches the caller.
+		if isHelpRequest(command) {
+			if help := m.renderCommandHelp(command); help != "" {
+				return mcp.NewToolResultText(help), nil
+			}
+		}
 
 		response, err := executeCommand(m.console, command, sessionID, consts.CalleeMCP)
 		if err != nil {
