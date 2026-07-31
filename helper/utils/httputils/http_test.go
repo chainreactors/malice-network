@@ -1,11 +1,14 @@
 package httputils
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 func TestDoPOSTDoesNotMutateCallerHeaders(t *testing.T) {
@@ -60,5 +63,22 @@ func TestDoGETDecodesJSONResponse(t *testing.T) {
 	}
 	if out["status"] != "ok" {
 		t.Fatalf("out = %#v, want status=ok", out)
+	}
+}
+
+func TestDoJSONRequestContextHonorsDeadline(t *testing.T) {
+	release := make(chan struct{})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		<-release
+	}))
+	defer server.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancel()
+
+	err := DoJSONRequestContext(ctx, http.MethodGet, server.URL, nil, nil, http.StatusOK, nil)
+	close(release)
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("DoJSONRequestContext error = %v, want context deadline exceeded", err)
 	}
 }

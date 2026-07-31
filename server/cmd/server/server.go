@@ -132,5 +132,8 @@ func Start(defaultConfig []byte) error {
 			return fmt.Errorf("cannot prepare forward listener client, %s", err.Error())
 		}
 	}
+	if serverReady {
+		startSaasLicenseRegistration()
+	}
 	return opt.Handler()
 }

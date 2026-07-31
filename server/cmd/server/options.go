@@ -24,7 +24,6 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
-	"github.com/chainreactors/malice-network/server/internal/saas"
 	"github.com/chainreactors/malice-network/server/listener"
 	"github.com/chainreactors/malice-network/server/root"
 	"github.com/chainreactors/malice-network/server/rpc"
@@ -334,10 +333,6 @@ func (opt *Options) PrepareServer() error {
 		}
 	}
 
-	err = saas.RegisterLicense()
-	if err != nil {
-		logs.Log.Warnf("register community license error %v", err)
-	}
 	core.NewBroker()
 	core.NewSessions()
 	if opt.IP != "" {

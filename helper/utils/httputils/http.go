@@ -1,13 +1,13 @@
 package httputils
 
 import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"time"
-
-	"bytes"
-	"encoding/json"
-	"fmt"
 )
 
 var HttpClient = &http.Client{
@@ -15,7 +15,11 @@ var HttpClient = &http.Client{
 }
 
 func DoRequest(method, url string, body io.Reader, headers map[string]string) (*http.Response, error) {
-	req, err := http.NewRequest(method, url, body)
+	return DoRequestContext(context.Background(), method, url, body, headers)
+}
+
+func DoRequestContext(ctx context.Context, method, url string, body io.Reader, headers map[string]string) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(ctx, method, url, body)
 	if err != nil {
 		return nil, err
 	}
@@ -26,7 +30,11 @@ func DoRequest(method, url string, body io.Reader, headers map[string]string) (*
 }
 
 func DoJSONRequest(method, url string, body io.Reader, headers map[string]string, expectStatus int, out interface{}) error {
-	resp, err := DoRequest(method, url, body, headers)
+	return DoJSONRequestContext(context.Background(), method, url, body, headers, expectStatus, out)
+}
+
+func DoJSONRequestContext(ctx context.Context, method, url string, body io.Reader, headers map[string]string, expectStatus int, out interface{}) error {
+	resp, err := DoRequestContext(ctx, method, url, body, headers)
 	if err != nil {
 		return err
 	}
@@ -53,6 +61,10 @@ func DoGET(url string, headers map[string]string, out interface{}) error {
 }
 
 func DoPOST(url string, data interface{}, headers map[string]string, expectStatus int, out interface{}) error {
+	return DoPOSTContext(context.Background(), url, data, headers, expectStatus, out)
+}
+
+func DoPOSTContext(ctx context.Context, url string, data interface{}, headers map[string]string, expectStatus int, out interface{}) error {
 	var body io.Reader
 	mergedHeaders := make(map[string]string, len(headers)+1)
 	for k, v := range headers {
@@ -66,5 +78,5 @@ func DoPOST(url string, data interface{}, headers map[string]string, expectStatu
 		body = bytes.NewBuffer(jsonBytes)
 		mergedHeaders["Content-Type"] = "application/json"
 	}
-	return DoJSONRequest("POST", url, body, mergedHeaders, expectStatus, out)
+	return DoJSONRequestContext(ctx, "POST", url, body, mergedHeaders, expectStatus, out)
 }

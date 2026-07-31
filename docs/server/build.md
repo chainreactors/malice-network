@@ -78,6 +78,8 @@ Server 支持多种构建源，按优先级自动选择或手动指定：
 
     Server 也提供 `GetSaasConfig` / `UpdateSaasConfig` RPC，WebUI 的 Settings > License 页面可查询和更新同一份 `server.saas` 配置。该配置只负责 SaaS 构建服务地址、Token 与启用状态，不等同于远端 License Info 查询。
 
+    启用 SaaS 时，Server 会在核心服务和 Listener 启动完成后异步验证或注册 License。启动阶段的请求最多等待 5 秒；SaaS 不可达时只记录警告，不会阻塞 Server 或 Listener 启动。Artifact 构建、轮询和下载仍使用各自的长超时。
+
 ## Profile 体系
 
 Profile 是构建配置的快照，包含三部分：

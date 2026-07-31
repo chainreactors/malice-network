@@ -1,6 +1,7 @@
 package saas
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -211,6 +212,10 @@ func (c *SaasClient) CheckAndDownloadArtifact(statusPath, downloadPath string, b
 
 // 获取 License 信息
 func (c *SaasClient) GetLicenseInfo() (*clientpb.LicenseInfo, string, error) {
+	return c.GetLicenseInfoContext(context.Background())
+}
+
+func (c *SaasClient) GetLicenseInfoContext(ctx context.Context) (*clientpb.LicenseInfo, string, error) {
 	if c.Token == "" || c.BaseURL == "" {
 		return nil, "", fmt.Errorf("invalid SaaS config")
 	}
@@ -219,9 +224,9 @@ func (c *SaasClient) GetLicenseInfo() (*clientpb.LicenseInfo, string, error) {
 	headers := SaasHeaders(c.Token) // 只发送token
 
 	var response LicenseResponse
-	err := httputils.DoJSONRequest("GET", licenseUrl, nil, headers, 200, &response)
+	err := httputils.DoJSONRequestContext(ctx, "GET", licenseUrl, nil, headers, 200, &response)
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to send HTTP request: %v", err)
+		return nil, "", fmt.Errorf("failed to send HTTP request: %w", err)
 	}
 
 	if !response.Success {
@@ -234,6 +239,10 @@ func (c *SaasClient) GetLicenseInfo() (*clientpb.LicenseInfo, string, error) {
 
 // 注册 License
 func (c *SaasClient) RegisterLicense() (string, error) {
+	return c.RegisterLicenseContext(context.Background())
+}
+
+func (c *SaasClient) RegisterLicenseContext(ctx context.Context) (string, error) {
 	if c.BaseURL == "" {
 		return "", fmt.Errorf("invalid SaaS config")
 	}
@@ -251,9 +260,9 @@ func (c *SaasClient) RegisterLicense() (string, error) {
 	}
 
 	var response LicenseResponse
-	err := httputils.DoPOST(url, payload, map[string]string{}, 200, &response)
+	err := httputils.DoPOSTContext(ctx, url, payload, map[string]string{}, 200, &response)
 	if err != nil {
-		return "", fmt.Errorf("failed to send HTTP request: %v", err)
+		return "", fmt.Errorf("failed to send HTTP request: %w", err)
 	}
 
 	if !response.Success {
@@ -306,6 +315,10 @@ func ReDownloadSaasArtifact() error {
 
 // 注册License
 func RegisterLicense() error {
+	return RegisterLicenseContext(context.Background())
+}
+
+func RegisterLicenseContext(ctx context.Context) error {
 	// 1. 获取SaaS配置
 	saasConfig := configs.GetSaasConfig()
 	if saasConfig == nil {
@@ -322,7 +335,7 @@ func RegisterLicense() error {
 	// 3. 已有token则验证并更新
 	if saasConfig.Token != "" {
 		client := GetSaasClient()
-		_, token, err := client.GetLicenseInfo()
+		_, token, err := client.GetLicenseInfoContext(ctx)
 		if err != nil {
 			return err
 		}
@@ -335,9 +348,9 @@ func RegisterLicense() error {
 
 	// 4. 注册新license
 	client := GetSaasClient()
-	token, err := client.RegisterLicense()
+	token, err := client.RegisterLicenseContext(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to register license: %v", err)
+		return fmt.Errorf("failed to register license: %w", err)
 	}
 
 	// 5. 保存token到配置
