@@ -18,6 +18,7 @@ import (
 	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/implanttypes"
 	"github.com/chainreactors/malice-network/server/internal/core"
+	"github.com/chainreactors/malice-network/server/internal/parser"
 	"github.com/chainreactors/malice-network/server/internal/parser/malefic"
 	"google.golang.org/grpc"
 )
@@ -102,6 +103,74 @@ func TestHTTPPipelineHandlerDeliversLargeScreenshotSizedResponse(t *testing.T) {
 	}
 }
 
+func TestHTTPPipelineReadsRequestBeforeWritingQueuedResponse(t *testing.T) {
+	oldConnections := core.Connections
+	oldForwarders := core.Forwarders
+	oldListenerSessions := core.ListenerSessions
+	core.ResetTransientTransportState()
+	t.Cleanup(func() {
+		core.ResetTransientTransportState()
+		core.Connections = oldConnections
+		core.Forwarders = oldForwarders
+		core.ListenerSessions = oldListenerSessions
+	})
+
+	pipeline := newHTTPProbePipeline("listener-a", "http-a")
+	stream := newCaptureForwardStream()
+	forward, err := core.NewForward(&captureForwardClient{stream: stream}, pipeline)
+	if err != nil {
+		t.Fatalf("NewForward failed: %v", err)
+	}
+	core.Forwarders.Add(forward)
+
+	const rawID = uint32(0x01020304)
+	messageParser, err := parser.NewParser(consts.ImplantMalefic)
+	if err != nil {
+		t.Fatalf("NewParser failed: %v", err)
+	}
+	connection := core.NewConnection(
+		messageParser,
+		rawID,
+		core.PipelineRuntimeKey(pipeline.ListenerID, pipeline.ID()),
+		nil,
+	)
+	core.Connections.Add(connection)
+	connection.Sender <- &implantpb.Spites{Spites: []*implantpb.Spite{{
+		Name: consts.ModuleInit,
+		Body: &implantpb.Spite_Init{Init: &implantpb.Init{}},
+	}}}
+
+	packet := maleficBinaryResponsePacket(t, rawID, []byte("request-result"))
+	body := newCloseAwareRequestBody(packet)
+	req := httptest.NewRequest(http.MethodPost, "http://example.test/", nil)
+	req.Body = body
+	req.ContentLength = int64(len(packet))
+	resp := &bodyClosingResponseRecorder{
+		deadlineResponseRecorder: &deadlineResponseRecorder{ResponseRecorder: httptest.NewRecorder()},
+		body:                     body,
+	}
+
+	pipeline.handler(resp, req)
+	if resp.Code >= 400 {
+		t.Fatalf("HTTP handler status = %d, body = %q", resp.Code, resp.Body.String())
+	}
+	if got := body.reader.Len(); got != 0 {
+		t.Fatalf("unread request bytes = %d, want 0", got)
+	}
+	if resp.Body.Len() == 0 {
+		t.Fatal("queued response was not written")
+	}
+
+	select {
+	case forwarded := <-stream.responses:
+		if got := string(forwarded.GetSpite().GetBinaryResponse().GetData()); got != "request-result" {
+			t.Fatalf("forwarded result = %q, want %q", got, "request-result")
+		}
+	case <-time.After(time.Second):
+		t.Fatal("request result was not forwarded")
+	}
+}
+
 func TestHTTPReadWriterReadDeadlineInterruptsSlowBody(t *testing.T) {
 	readResult := make(chan error, 1)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -175,6 +244,37 @@ type deadlineResponseRecorder struct {
 
 func (r *deadlineResponseRecorder) SetReadDeadline(time.Time) error {
 	return nil
+}
+
+type closeAwareRequestBody struct {
+	reader *bytes.Reader
+	closed bool
+}
+
+func newCloseAwareRequestBody(data []byte) *closeAwareRequestBody {
+	return &closeAwareRequestBody{reader: bytes.NewReader(data)}
+}
+
+func (b *closeAwareRequestBody) Read(p []byte) (int, error) {
+	if b.closed && b.reader.Len() > 0 {
+		return 0, http.ErrBodyReadAfterClose
+	}
+	return b.reader.Read(p)
+}
+
+func (b *closeAwareRequestBody) Close() error {
+	b.closed = true
+	return nil
+}
+
+type bodyClosingResponseRecorder struct {
+	*deadlineResponseRecorder
+	body *closeAwareRequestBody
+}
+
+func (r *bodyClosingResponseRecorder) Write(p []byte) (int, error) {
+	_ = r.body.Close()
+	return r.deadlineResponseRecorder.Write(p)
 }
 
 func maleficBinaryResponsePacket(t testing.TB, rawID uint32, payload []byte) []byte {
