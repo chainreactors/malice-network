@@ -1,0 +1,8 @@
+name: svcgen
+type: lua
+author: kimi
+version: 1.0.0
+entry: main.lua
+lib: false
+depend_modules: []
+depend_armory: []
