@@ -12,6 +12,15 @@ Client 在 Implant 上下文中通过 `tasks` 查看任务列表，通过 `fetch
 
 默认列表不会返回 raw request 或 result spites。需要导出完整请求或结果时，使用 `tasks info` 的显式 flag。
 
+## RPC 查询范围
+
+`QueryTasks` 根据 `session_id` 决定查询范围：
+
+- 传入具体 `session_id` 时，只返回该 session 的任务。
+- `session_id` 为空时，返回所有 session 中按创建时间倒序排列的最近任务。
+
+全局查询同样支持 `page_size`、`page_token` 和 `include_total_count`，不需要额外配置。
+
 ## 用法
 
 列出当前 session 的活跃任务：

@@ -171,6 +171,38 @@ func TestQueryTasksPaginationAndTotalCount(t *testing.T) {
 	}
 }
 
+func TestQueryTasksWithoutSessionReturnsRecentTasksAcrossSessions(t *testing.T) {
+	env := newRPCTestEnv(t)
+	first := env.seedSession(t, "qt-global-first", "qt-global-pipe-1", true)
+	second := env.seedSession(t, "qt-global-second", "qt-global-pipe-2", true)
+	for _, task := range []*clientpb.Task{
+		{SessionId: first.ID, TaskId: 1, Type: consts.ModulePing},
+		{SessionId: second.ID, TaskId: 2, Type: consts.ModuleExecute},
+	} {
+		if err := db.AddTask(task); err != nil {
+			t.Fatalf("AddTask(%s): %v", task.GetSessionId(), err)
+		}
+	}
+
+	resp, err := (&Server{}).QueryTasks(context.Background(), &clientpb.TaskQuery{
+		PageSize:          10,
+		IncludeTotalCount: true,
+	})
+	if err != nil {
+		t.Fatalf("QueryTasks: %v", err)
+	}
+	if resp.GetTotalCount() != 2 {
+		t.Fatalf("total_count = %d, want 2", resp.GetTotalCount())
+	}
+	seen := make(map[string]bool)
+	for _, detail := range resp.GetTasks() {
+		seen[detail.GetTask().GetSessionId()] = true
+	}
+	if !seen[first.ID] || !seen[second.ID] {
+		t.Fatalf("global task query sessions = %#v", seen)
+	}
+}
+
 func TestQueryTasksIncludesResults(t *testing.T) {
 	env := newRPCTestEnv(t)
 	sess := env.seedSession(t, "qt-results-sess", "qt-results-pipe", true)

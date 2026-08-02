@@ -151,7 +151,10 @@ func taskQueryOffset(pageToken string) (int, error) {
 }
 
 func buildTaskQuery(req *clientpb.TaskQuery) *db.TaskQuery {
-	query := db.NewTaskQuery().WhereSessionID(req.GetSessionId())
+	query := db.NewTaskQuery()
+	if sessionID := req.GetSessionId(); sessionID != "" {
+		query = query.WhereSessionID(sessionID)
+	}
 	if len(req.GetTaskIds()) > 0 {
 		query = query.WhereSeqs(req.GetTaskIds())
 	}
@@ -383,9 +386,6 @@ func (rpc *Server) GetTasks(ctx context.Context, req *clientpb.TaskRequest) (*cl
 func (rpc *Server) QueryTasks(ctx context.Context, req *clientpb.TaskQuery) (*clientpb.TaskDetails, error) {
 	if req == nil {
 		return nil, types.ErrMissingSessionRequestField
-	}
-	if req.SessionId == "" {
-		return nil, types.ErrInvalidSessionID
 	}
 
 	pageSize, err := taskQueryPageSize(req)
