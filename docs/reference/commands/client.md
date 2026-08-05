@@ -289,14 +289,14 @@ group newGroup
 Create a new bind session
 
 ```
-session newbind [session] [flags]
+session newbind [name] [flags]
 ```
 
 **Options**
 
 ```
-  -n, --name string       session name
-      --pipeline string   pipeline id
+  -n, --name string       session name (overrides positional name)
+      --pipeline string   bind pipeline id or listener:pipeline
   -t, --target string     session target
 ```
 

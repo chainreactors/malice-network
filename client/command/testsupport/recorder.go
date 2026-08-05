@@ -903,6 +903,10 @@ func (r *RecorderRPC) InitBindSession(ctx context.Context, in *implantpb.Init, o
 	return r.emptyResponse(ctx, "InitBindSession", in)
 }
 
+func (r *RecorderRPC) Register(ctx context.Context, in *clientpb.RegisterSession, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+	return r.emptyResponse(ctx, "Register", in)
+}
+
 func (r *RecorderRPC) GenerateSelfCert(ctx context.Context, in *clientpb.Pipeline, opts ...grpc.CallOption) (*clientpb.Empty, error) {
 	return r.emptyResponse(ctx, "GenerateSelfCert", in)
 }

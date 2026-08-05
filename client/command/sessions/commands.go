@@ -40,27 +40,28 @@ session -a
 	})
 
 	bindSessNewCmd := &cobra.Command{
-		Use:   consts.CommandNewBindSession + " [session]",
+		Use:   consts.CommandNewBindSession + " [name]",
 		Short: "Create a new bind session",
-		Long:  "Create a session record for an existing bind implant using its target and pipeline.",
+		Long:  "Create a session record for an existing bind implant using a listener-owned bind pipeline. The optional positional name is used when --name is omitted.",
 		Example: `~~~
 session newbind bind-01 --target 10.0.0.8:5001 --pipeline bind-main
 ~~~`,
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return NewBindSessionCmd(cmd, con)
 		},
 	}
 
 	common.BindFlag(bindSessNewCmd, func(f *pflag.FlagSet) {
-		f.StringP("name", "n", "", "session name")
+		f.StringP("name", "n", "", "session name (overrides positional name)")
 		f.StringP("target", "t", "", "session target")
-		f.String("pipeline", "", "pipeline id")
+		f.String("pipeline", "", "bind pipeline id or listener:pipeline")
 	})
-	plugin.SetCommandArgs(bindSessNewCmd, plugin.SessionArg("session", false, 0))
+	plugin.SetCommandArgs(bindSessNewCmd, plugin.RawArg("name", false, false, 0))
 	bindSessNewCmd.MarkFlagRequired("target")
 	bindSessNewCmd.MarkFlagRequired("pipeline")
 	common.BindFlagCompletions(bindSessNewCmd, func(comp carapace.ActionMap) {
-		comp["pipeline"] = common.AllPipelineCompleter(con)
+		comp["pipeline"] = common.PipelineCompleter(con, consts.BindPipeline)
 	})
 
 	noteCommand := &cobra.Command{

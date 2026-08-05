@@ -59,6 +59,20 @@ func TestPipelineNameFlagCompleterUsesBareNamesAndFiltersListenerAndType(t *test
 	}
 }
 
+func TestPipelineCompleterFiltersTypeAndKeepsScopedKey(t *testing.T) {
+	h := testsupport.NewClientHarness(t)
+	h.Console.Pipelines["listener-a:bind-main"] = &clientpb.Pipeline{Name: "bind-main", ListenerId: "listener-a", Type: consts.BindPipeline}
+	h.Console.Pipelines["listener-a:http-main"] = &clientpb.Pipeline{Name: "http-main", ListenerId: "listener-a", Type: consts.HTTPPipeline}
+
+	values := completionValues(t, common.PipelineCompleter(h.Console, consts.BindPipeline))
+	if !hasCompletionValue(values, "listener-a:bind-main") {
+		t.Fatalf("completion values = %#v, want scoped bind pipeline", values)
+	}
+	if hasCompletionValue(values, "listener-a:http-main") {
+		t.Fatalf("completion values = %#v, should not include HTTP pipeline", values)
+	}
+}
+
 func completionValues(t testing.TB, action carapace.Action) []string {
 	t.Helper()
 
