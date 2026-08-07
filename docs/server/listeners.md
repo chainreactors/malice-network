@@ -258,7 +258,7 @@ Listener 可以独立部署在与 Server 不同的服务器上：
 ./malice-network listener add listener-a
 ```
 
-该命令会在当前目录生成同名的 `listener-a.auth` 和 `listener-a.yaml`。生成的 YAML 可直接用于 listener-only 模式：
+该命令会在当前目录生成同名的 `listener-a.auth` 和 `listener-a.yaml`。auth 中的 Server 地址来自当前 `server.ip` 和 `server.grpc_port`，生成的 YAML 可直接用于 listener-only 模式：
 
 ```yaml
 listeners:
@@ -278,7 +278,7 @@ listeners:
 ./malice-network --listener-only -c listener-a.yaml
 ```
 
-auth 相对路径以 YAML 文件所在目录为基准解析。Server 首次初始化默认 Listener 身份时，也会使用配置中的 `listeners.name` 生成 auth，并写入按相同规则解析后的 `listeners.auth` 路径。`listener reset listener-a` 会更新 auth，但不会覆盖已经添加 Pipeline 或 forward 设置的 YAML。
+auth 相对路径以 YAML 文件所在目录为基准解析。Server 首次初始化默认 Listener 身份时，会使用配置中的 `listeners.name` 生成 auth，并写入按相同规则解析后的 `listeners.auth` 路径；该内置 Listener auth 的 Server 地址固定为 `127.0.0.1:<grpc_port>`。`listener reset listener-a` 会使用当前 `server.ip:<grpc_port>` 更新远程 Listener auth，但不会覆盖已经添加 Pipeline 或 forward 设置的 YAML。
 
 ## 实现位置
 

@@ -5,12 +5,40 @@ import (
 	"testing"
 
 	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/mtls"
 	"github.com/chainreactors/IoM-go/proto/client/rootpb"
+	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
+	config "github.com/gookit/config/v2"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"gopkg.in/yaml.v3"
 )
+
+func TestAddListenerAuthUsesConfiguredServerAddress(t *testing.T) {
+	_ = newRPCTestEnv(t)
+	if err := certutils.GenerateRootCert(); err != nil {
+		t.Fatalf("GenerateRootCert failed: %v", err)
+	}
+	config.Set("server.ip", "198.51.100.10")
+	config.Set("server.grpc_port", 7443)
+
+	resp, err := (&Server{}).AddListener(context.Background(), &rootpb.Operator{
+		Args: []string{"remote-listener"},
+	})
+	if err != nil {
+		t.Fatalf("AddListener failed: %v", err)
+	}
+
+	auth := &mtls.ClientConfig{}
+	if err := yaml.Unmarshal([]byte(resp.Response), auth); err != nil {
+		t.Fatalf("unmarshal listener auth: %v", err)
+	}
+	if auth.Host != "198.51.100.10" || auth.Port != 7443 {
+		t.Fatalf("listener auth address = %s, want 198.51.100.10:7443", auth.Address())
+	}
+}
 
 func TestRemoveListenerRejectsActiveRuntimeListener(t *testing.T) {
 	_ = newRPCTestEnv(t)

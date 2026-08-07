@@ -41,7 +41,7 @@ listeners:
   auth: listener.auth  
 ```
 
-Listener 身份由 `listener.auth` 中的证书绑定。配置里的 `listeners.name` 必须与 auth 文件中的 `operator` 完全一致，不能让多个不同名称的 Listener 共用同一份 auth。相对路径形式的 `listeners.auth` 会以当前 Listener 配置文件所在目录为基准解析。Server 首次初始化 Listener 身份时，会按同一目录规则写入该文件，并使用配置中的 `listeners.name` 作为 auth 的 `operator`。
+Listener 身份由 `listener.auth` 中的证书绑定。配置里的 `listeners.name` 必须与 auth 文件中的 `operator` 完全一致，不能让多个不同名称的 Listener 共用同一份 auth。相对路径形式的 `listeners.auth` 会以当前 Listener 配置文件所在目录为基准解析。Server 首次初始化默认 Listener 身份时，会按同一目录规则写入该文件，并使用配置中的 `listeners.name` 作为 auth 的 `operator`；该默认 auth 固定回连 `127.0.0.1:<grpc_port>`。
 
 ### listener root 命令管理
 
@@ -53,7 +53,7 @@ Listener 身份由 `listener.auth` 中的证书绑定。配置里的 `listeners.
 .\malice-network listener add [listener_name]
 ```
 
-执行命令成功后，服务端会在当前目录生成同名的 `<listener_name>.auth` 和 `<listener_name>.yaml`。生成的 YAML 已包含与 auth `operator` 一致的 `listeners.name`，可直接用于 `--listener-only -c`。`listener add` 不会覆盖已有文件；`listener reset` 会更新 auth，并保留已有的同名 YAML 配置。
+执行命令成功后，服务端会在当前目录生成同名的 `<listener_name>.auth` 和 `<listener_name>.yaml`。auth 中的 Server 地址来自当前 `server.ip:<grpc_port>`；生成的 YAML 已包含与 auth `operator` 一致的 `listeners.name`，可直接用于 `--listener-only -c`。`listener add` 不会覆盖已有文件；`listener reset` 会使用当前 Server 地址更新 auth，并保留已有的同名 YAML 配置。
 
 ```yaml
 listeners:

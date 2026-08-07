@@ -48,6 +48,8 @@
 6. 启动默认 Listener 和 Pipeline（TCP:5001, HTTP:8080）
 7. 如果配置了 SaaS，自动编译对应 Implant
 
+默认生成的 `listener.auth` 使用 `127.0.0.1:<grpc_port>` 回连同机 Server。需要部署到其他机器的 Listener 应通过 `listener add <name>` 单独生成 auth，其中的 Server 地址来自 `server.ip`。
+
 !!! warning "凭证安全"
     `.auth` 文件是认证凭证，请妥善保管。将 `admin_<ip>.auth` 发给操作员用于 Client 登录。
 

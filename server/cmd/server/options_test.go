@@ -69,7 +69,7 @@ func TestInitListenerWritesConfiguredAuthPathAndIdentity(t *testing.T) {
 		t.Fatalf("NewDBClient failed: %v", err)
 	}
 
-	config.Set("server.ip", "127.0.0.1")
+	config.Set("server.ip", "198.51.100.10")
 	config.Set("server.grpc_port", 5004)
 	configDir := filepath.Join(root, "node")
 	oldFilename := configs.CurrentServerConfigFilename
@@ -93,6 +93,9 @@ func TestInitListenerWritesConfiguredAuthPathAndIdentity(t *testing.T) {
 	}
 	if auth.Operator != "listener-2" {
 		t.Fatalf("auth operator = %q, want listener-2", auth.Operator)
+	}
+	if auth.Host != "127.0.0.1" {
+		t.Fatalf("auth host = %q, want 127.0.0.1", auth.Host)
 	}
 	if opt.Listeners.Auth != authPath {
 		t.Fatalf("listener auth path = %q, want %q", opt.Listeners.Auth, authPath)
