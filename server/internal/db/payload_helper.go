@@ -932,6 +932,17 @@ func UpdateBuilderLog(name string, logEntry string) {
 	}
 }
 
+// UpdateBuilderResult stores a terminal status and log entry in one statement.
+func UpdateBuilderResult(builderID uint32, status, logEntry string) error {
+	if Session() == nil {
+		return nil
+	}
+	return Session().Model(&models.Artifact{}).Where("id = ?", builderID).Updates(map[string]interface{}{
+		"status": status,
+		"log":    Adapter.AppendLogExpr(logEntry),
+	}).Error
+}
+
 func GetBuilderLogs(builderName string, limit int) (string, error) {
 	builder, err := NewArtifactQuery().Select("log").WhereName(builderName).First()
 	if err != nil {

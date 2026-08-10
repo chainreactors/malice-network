@@ -2,11 +2,15 @@ package saas
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"net"
+	"net/url"
 	"os"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/chainreactors/tui"
 
@@ -23,9 +27,19 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 )
 
-type DownloadResult struct {
+const (
+	BuildStageSubmit   = "submit"
+	BuildStageStatus   = "status"
+	BuildStageDownload = "download"
+)
+
+const maxBuildResultReasonRunes = 2048
+
+// BuildResult describes the terminal outcome of one SaaS build attempt.
+type BuildResult struct {
 	Path   string
 	Status string
+	Stage  string
 	Err    error
 }
 
@@ -35,6 +49,79 @@ type PollingTimeoutError struct{}
 
 func (e *PollingTimeoutError) Error() string {
 	return "polling timeout"
+}
+
+// IsNetworkError reports transport failures where no usable SaaS response was received.
+func IsNetworkError(err error) bool {
+	if err == nil || errors.Is(err, context.Canceled) {
+		return false
+	}
+	if errors.Is(err, context.DeadlineExceeded) ||
+		errors.Is(err, io.EOF) ||
+		errors.Is(err, io.ErrUnexpectedEOF) ||
+		errors.Is(err, net.ErrClosed) {
+		return true
+	}
+
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) {
+		err = urlErr.Err
+		if errors.Is(err, context.Canceled) {
+			return false
+		}
+		if errors.Is(err, context.DeadlineExceeded) ||
+			errors.Is(err, io.EOF) ||
+			errors.Is(err, io.ErrUnexpectedEOF) ||
+			errors.Is(err, net.ErrClosed) {
+			return true
+		}
+	}
+
+	var netErr net.Error
+	return errors.As(err, &netErr)
+}
+
+func formatBuildResultLog(now time.Time, result BuildResult) string {
+	timestamp := now.Format(time.RFC3339)
+	switch result.Status {
+	case consts.BuildStatusCompleted:
+		return fmt.Sprintf("%s [COMPLETED] SaaS build completed\n", timestamp)
+	case consts.BuildStatusNetworkError:
+		return fmt.Sprintf("%s [NETWORK_ERROR] stage=%s reason=%s\n", timestamp, result.Stage, buildResultReason(result.Err))
+	default:
+		return fmt.Sprintf("%s [FAILED] stage=%s reason=%s\n", timestamp, result.Stage, buildResultReason(result.Err))
+	}
+}
+
+func buildResultReason(err error) string {
+	if err == nil {
+		return "unknown error"
+	}
+	reason := strings.Map(func(r rune) rune {
+		if unicode.IsControl(r) {
+			return ' '
+		}
+		return r
+	}, err.Error())
+	reason = strings.Join(strings.Fields(reason), " ")
+	runes := []rune(reason)
+	if len(runes) > maxBuildResultReasonRunes {
+		reason = string(runes[:maxBuildResultReasonRunes])
+	}
+	return reason
+}
+
+// RecordBuildResult persists the terminal status and its single-line artifact log.
+func RecordBuildResult(builder *models.Artifact, result BuildResult) error {
+	if builder == nil {
+		return fmt.Errorf("artifact is nil")
+	}
+	logEntry := formatBuildResultLog(time.Now(), result)
+	if err := db.UpdateBuilderResult(builder.ID, result.Status, logEntry); err != nil {
+		return err
+	}
+	builder.Status = result.Status
+	return nil
 }
 
 // ================= 工具函数 =================
@@ -186,28 +273,56 @@ func (c *SaasClient) DownloadArtifact(downloadPath string, builder *models.Artif
 }
 
 // 轮询并下载产物
-func (c *SaasClient) CheckAndDownloadArtifact(statusPath, downloadPath string, builder *models.Artifact, pollInterval, maxPollTime time.Duration) DownloadResult {
-	var status string
+func (c *SaasClient) CheckAndDownloadArtifact(statusPath, downloadPath string, builder *models.Artifact, pollInterval, maxPollTime time.Duration) BuildResult {
+	var lastNetworkErr error
 	pollErr := pollUntil(func() (bool, error) {
-		var err error
-		status, err = c.CheckBuildStatus(statusPath)
+		status, err := c.CheckBuildStatus(statusPath)
 		if err != nil {
 			logs.Log.Errorf("check build status failed: %v", err)
-			return false, nil // 继续轮询
+			if IsNetworkError(err) {
+				lastNetworkErr = err
+				return false, nil
+			}
+			return false, fmt.Errorf("check SaaS build status: %w", err)
 		}
-		if status == consts.BuildStatusFailure {
-			return false, fmt.Errorf("failed to build %s by saas", builder.Name)
+
+		// Clear the last transport error after a successful poll so a build
+		// timeout is not misclassified as a network failure.
+		lastNetworkErr = nil
+		switch status {
+		case consts.BuildStatusWaiting, consts.BuildStatusRunning:
+			return false, nil
+		case consts.BuildStatusCompleted:
+			return true, nil
+		case consts.BuildStatusFailure:
+			return false, fmt.Errorf("SaaS service reported build failure for %s", builder.Name)
+		default:
+			return false, fmt.Errorf("unexpected SaaS build status %q", status)
 		}
-		return status == consts.BuildStatusCompleted, nil
 	}, pollInterval, maxPollTime)
 	if pollErr != nil {
-		return DownloadResult{"", consts.BuildStatusFailure, pollErr}
+		status := consts.BuildStatusFailure
+		if errors.Is(pollErr, ErrPollingTimeout) {
+			if lastNetworkErr != nil {
+				status = consts.BuildStatusNetworkError
+				pollErr = fmt.Errorf("status polling timed out; last error: %w", lastNetworkErr)
+			} else {
+				pollErr = fmt.Errorf("SaaS build did not complete within %s", maxPollTime)
+			}
+		} else if IsNetworkError(pollErr) {
+			status = consts.BuildStatusNetworkError
+		}
+		return BuildResult{Status: status, Stage: BuildStageStatus, Err: pollErr}
 	}
 	if err := c.DownloadArtifact(downloadPath, builder); err != nil {
 		logs.Log.Errorf("download artifact failed: %s", err)
-		return DownloadResult{"", consts.BuildStatusFailure, err}
+		status := consts.BuildStatusFailure
+		if IsNetworkError(err) {
+			status = consts.BuildStatusNetworkError
+		}
+		return BuildResult{Status: status, Stage: BuildStageDownload, Err: fmt.Errorf("download SaaS artifact: %w", err)}
 	}
-	return DownloadResult{builder.Path, consts.BuildStatusCompleted, nil}
+	return BuildResult{Path: builder.Path, Status: consts.BuildStatusCompleted}
 }
 
 // 获取 License 信息
@@ -293,7 +408,9 @@ func ReDownloadSaasArtifact() error {
 		return nil
 	}
 	for _, artifact := range artifacts {
-		if artifact.Status == consts.BuildStatusCompleted || artifact.Status == consts.BuildStatusFailure {
+		if artifact.Status == consts.BuildStatusCompleted ||
+			artifact.Status == consts.BuildStatusFailure ||
+			artifact.Status == consts.BuildStatusNetworkError {
 			continue
 		}
 		artifact := artifact
@@ -304,8 +421,8 @@ func ReDownloadSaasArtifact() error {
 			if result.Err != nil {
 				logs.Log.Errorf("ReDownloadSaasArtifact: artifact %s failed: %v", artifact.Name, result.Err)
 			}
-			if result.Status == consts.BuildStatusCompleted || result.Status == consts.BuildStatusFailure {
-				db.UpdateBuilderStatus(artifact.ID, result.Status)
+			if err := RecordBuildResult(artifact, result); err != nil {
+				logs.Log.Errorf("ReDownloadSaasArtifact: failed to record artifact %s result: %v", artifact.Name, err)
 			}
 			return nil
 		}, core.LogGuardedError("saas-redownload:"+artifact.Name))
@@ -367,19 +484,18 @@ func RegisterLicenseContext(ctx context.Context) error {
 }
 
 // 对外导出：兼容外部包调用
-func CheckAndDownloadArtifact(statusPath, downloadPath, token string, builder *models.Artifact, pollInterval, maxPollTime time.Duration) (string, string, error) {
+func CheckAndDownloadArtifact(statusPath, downloadPath, token string, builder *models.Artifact, pollInterval, maxPollTime time.Duration) BuildResult {
 	client := GetSaasClient()
 	if client.BaseURL == "" {
-		return "", "", types.ErrSaasUnable
+		return BuildResult{Status: consts.BuildStatusFailure, Stage: BuildStageStatus, Err: types.ErrSaasUnable}
 	}
 	if token != "" {
 		client.Token = token
 	}
 	if client.Token == "" {
-		return "", "", types.ErrSaasUnable
+		return BuildResult{Status: consts.BuildStatusFailure, Stage: BuildStageStatus, Err: types.ErrSaasUnable}
 	}
-	result := client.CheckAndDownloadArtifact(statusPath, downloadPath, builder, pollInterval, maxPollTime)
-	return result.Path, result.Status, result.Err
+	return client.CheckAndDownloadArtifact(statusPath, downloadPath, builder, pollInterval, maxPollTime)
 }
 
 func SecurityAuthAlert() {

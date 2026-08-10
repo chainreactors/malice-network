@@ -23,7 +23,7 @@ func (rpc *Server) Build(ctx context.Context, req *clientpb.BuildConfig) (*clien
 	core.GoGuarded("rpc-build:"+artifact.Name, func() error {
 		if execErr := builder.Execute(); execErr != nil {
 			logs.Log.Errorf("failed to build %s: %s", artifact.Name, execErr)
-			build.SendBuildMsg(artifact, consts.BuildStatusFailure, make([]byte, 0), execErr)
+			build.SendBuildMsg(artifact, build.StatusFromError(execErr), make([]byte, 0), execErr)
 			return nil
 		}
 

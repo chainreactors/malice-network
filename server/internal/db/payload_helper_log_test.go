@@ -3,6 +3,7 @@ package db
 import (
 	"testing"
 
+	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 )
 
@@ -72,5 +73,33 @@ func TestGetBuilderLogsSelectsOnlyLog(t *testing.T) {
 	}
 	if want := "line2\nline3\n"; got != want {
 		t.Fatalf("GetBuilderLogs() = %q, want %q", got, want)
+	}
+}
+
+func TestUpdateBuilderResultUpdatesStatusAndAppendsLog(t *testing.T) {
+	initTestDB(t)
+
+	artifact := &models.Artifact{
+		Name:   "terminal-result",
+		Status: consts.BuildStatusRunning,
+		Log:    "existing\n",
+	}
+	if err := Session().Create(artifact).Error; err != nil {
+		t.Fatalf("create artifact: %v", err)
+	}
+
+	if err := UpdateBuilderResult(artifact.ID, consts.BuildStatusNetworkError, "network failure\n"); err != nil {
+		t.Fatalf("UpdateBuilderResult failed: %v", err)
+	}
+
+	var got models.Artifact
+	if err := Session().Select("status", "log").First(&got, artifact.ID).Error; err != nil {
+		t.Fatalf("load artifact result: %v", err)
+	}
+	if got.Status != consts.BuildStatusNetworkError {
+		t.Fatalf("status = %q, want %q", got.Status, consts.BuildStatusNetworkError)
+	}
+	if got.Log != "existing\nnetwork failure\n" {
+		t.Fatalf("log = %q, want appended terminal log", got.Log)
 	}
 }

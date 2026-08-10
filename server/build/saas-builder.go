@@ -82,6 +82,7 @@ func (s *SaasBuilder) Generate() (*clientpb.Artifact, error) {
 		return nil, err
 	}
 	s.builder = artifact
+	s.builder.Status = consts.BuildStatusWaiting
 	db.UpdateBuilderStatus(s.builder.ID, consts.BuildStatusWaiting)
 	s.executeUrl = fmt.Sprintf("%s/api/build", saasConfig.Url)
 	return artifact.ToProtobuf([]byte{}), nil
@@ -92,15 +93,20 @@ func (s *SaasBuilder) Execute() error {
 	s.config.ProfileName = ""
 	data, err := protojson.Marshal(s.config)
 	if err != nil {
-		return fmt.Errorf("failed to marshal config %s: %s", profileName, err)
+		return s.finish(consts.BuildStatusFailure, saas.BuildStageSubmit, fmt.Errorf("failed to marshal config %s: %w", profileName, err))
 	}
 	headers := saas.SaasHeaders(s.getToken())
 	var respObj clientpb.Artifact
 	err = httputils.DoJSONRequest("POST", s.executeUrl, bytes.NewReader(data), headers, http.StatusOK, &respObj)
 	if err != nil {
-		db.UpdateBuilderStatus(s.builder.ID, consts.BuildStatusFailure)
-		return fmt.Errorf("failed to post saas service: %w", err)
+		status := consts.BuildStatusFailure
+		if saas.IsNetworkError(err) {
+			status = consts.BuildStatusNetworkError
+		}
+		return s.finish(status, saas.BuildStageSubmit, fmt.Errorf("failed to post SaaS service: %w", err))
 	}
+	s.builder.Status = consts.BuildStatusRunning
+	db.UpdateBuilderStatus(s.builder.ID, consts.BuildStatusRunning)
 	return nil
 }
 
@@ -108,13 +114,19 @@ func (s *SaasBuilder) Collect() (string, string, error) {
 	statusUrl := fmt.Sprintf("/api/build/status/%s", s.builder.Name)
 	downloadUrl := fmt.Sprintf("/api/build/download/%s", s.builder.Name)
 
-	path, status, err := saas.CheckAndDownloadArtifact(statusUrl, downloadUrl, s.getToken(), s.builder, 30*time.Second, 30*time.Minute)
-	if err != nil {
-		logs.Log.Errorf("failed to collect artifact %s: %s", s.builder.Name, err)
-		db.UpdateBuilderStatus(s.builder.ID, consts.BuildStatusFailure)
-		return "", consts.BuildStatusFailure, err
+	result := saas.CheckAndDownloadArtifact(statusUrl, downloadUrl, s.getToken(), s.builder, 30*time.Second, 30*time.Minute)
+	if recordErr := saas.RecordBuildResult(s.builder, result); recordErr != nil {
+		recordErr = fmt.Errorf("failed to record SaaS build result: %w", recordErr)
+		if result.Err != nil {
+			result.Err = errors.Join(result.Err, recordErr)
+		} else {
+			result.Err = recordErr
+		}
+		result.Status = consts.BuildStatusFailure
 	}
-	db.UpdateBuilderStatus(s.builder.ID, status)
+	if result.Err != nil {
+		logs.Log.Errorf("failed to collect artifact %s: %s", s.builder.Name, result.Err)
+	}
 	//if s.config.BuildName == consts.CommandBuildBeacon {
 	//	if s.config.ArtifactId != 0 {
 	//		err = db.UpdatePulseRelink(s.config.ArtifactId, s.builder.ID)
@@ -123,7 +135,15 @@ func (s *SaasBuilder) Collect() (string, string, error) {
 	//		}
 	//	}
 	//}
-	return path, status, nil
+	return result.Path, result.Status, result.Err
+}
+
+func (s *SaasBuilder) finish(status, stage string, cause error) error {
+	result := saas.BuildResult{Status: status, Stage: stage, Err: cause}
+	if err := saas.RecordBuildResult(s.builder, result); err != nil {
+		cause = errors.Join(cause, fmt.Errorf("failed to record SaaS build result: %w", err))
+	}
+	return withBuildStatus(status, cause)
 }
 
 func (s *SaasBuilder) getToken() string {

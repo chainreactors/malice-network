@@ -355,13 +355,23 @@ artifact comment artifact-name "production build"
 artifact comment artifact-name ""
 ```
 
-当artifact编译失败时，可以通过以下命令来查看log(目前支持查看docker，后续会加上saas）：
+可以通过以下命令查看 Artifact 构建日志：
 
 ```bash
 build log artifact_name
 ```
 
 默认显示最后 512 行；如果想看完整日志，可以使用 `build log artifact_name --limit 0`，也可以用 `--limit` 指定其他行数。
+
+Docker 构建记录容器输出。SaaS 构建不拉取远端编译器输出，只记录一次最终结果：
+
+| Artifact 状态 | 日志标记 | 说明 |
+|----------------|----------|------|
+| `completed` | `[COMPLETED]` | 远端构建完成，且产物已下载并保存到 Server |
+| `failure` | `[FAILED]` | SaaS 明确返回失败、HTTP 请求被拒绝或本地处理失败 |
+| `networkerr` | `[NETWORK_ERROR]` | Server 无法提交、查询或下载，日志包含 `submit`、`status` 或 `download` 阶段及最后错误 |
+
+状态查询发生临时网络错误时会继续轮询；只有在轮询期限内未恢复才记录 `networkerr`。该状态表示 Server 无法确认或获取结果，不代表远端编译器一定失败。
 
 ![image-20250817192027224752](../assets/usage/build/build_log.png)
 

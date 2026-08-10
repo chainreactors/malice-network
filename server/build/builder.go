@@ -27,6 +27,32 @@ type Builder interface {
 	Collect() (string, string, error)
 }
 
+type buildStatusError struct {
+	status string
+	err    error
+}
+
+func (e *buildStatusError) Error() string {
+	return e.err.Error()
+}
+
+func (e *buildStatusError) Unwrap() error {
+	return e.err
+}
+
+func withBuildStatus(status string, err error) error {
+	return &buildStatusError{status: status, err: err}
+}
+
+// StatusFromError returns a build-specific terminal status or failure by default.
+func StatusFromError(err error) string {
+	var statusErr *buildStatusError
+	if errors.As(err, &statusErr) {
+		return statusErr.status
+	}
+	return consts.BuildStatusFailure
+}
+
 func validateBuildOptions(req *clientpb.BuildConfig) error {
 	target, ok := consts.GetBuildTarget(req.Target)
 	if !ok {
@@ -134,6 +160,8 @@ func SendBuildMsg(artifact *clientpb.Artifact, status string, params []byte, err
 		}
 	} else if status == consts.BuildStatusFailure {
 		event.Message = fmt.Sprintf("Artifact failed %s (type: %s, target: %s, source: %s): %v", artifact.Name, artifact.Type, artifact.Target, artifact.Source, err)
+	} else if status == consts.BuildStatusNetworkError {
+		event.Message = fmt.Sprintf("Artifact network error %s (type: %s, target: %s, source: %s): %v", artifact.Name, artifact.Type, artifact.Target, artifact.Source, err)
 	} else {
 		return
 	}
