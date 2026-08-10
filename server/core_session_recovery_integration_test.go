@@ -38,6 +38,7 @@ func TestListenerCheckinRecoversDatabaseOnlySessionIntegration(t *testing.T) {
 	listenerClient := listenerrpc.NewListenerRPCClient(conn)
 	checkinCtx := metadata.NewOutgoingContext(context.Background(), metadata.Pairs(
 		"session_id", sess.ID,
+		"listener_id", h.ListenerID(),
 	))
 	if _, err := listenerClient.Checkin(checkinCtx, &implantpb.Ping{Nonce: 1}); err != nil {
 		t.Fatalf("listener Checkin failed: %v", err)

@@ -80,12 +80,15 @@ func NewMockImplant(t testing.TB, h *ControlPlaneHarness, pipeline *clientpb.Pip
 	pipeline = proto.Clone(pipeline).(*clientpb.Pipeline)
 	h.SeedPipeline(t, pipeline, true)
 
-	name := fmt.Sprintf("mock-listener-%d", time.Now().UnixNano())
+	listenerID := pipeline.GetListenerId()
+	if listenerID == "" {
+		t.Fatal("pipeline listener ID is empty")
+	}
 	rawID := nextMockRawID()
 	mock := &MockImplant{
 		Harness:             h,
 		Pipeline:            pipeline,
-		Config:              h.NewListenerClientConfig(t, name),
+		Config:              h.NewListenerClientConfig(t, listenerID),
 		AutoCheckinInterval: time.Second,
 		SessionID:           hash.Md5Hash(encoders.Uint32ToBytes(rawID)),
 		RawID:               rawID,
@@ -142,7 +145,10 @@ func (m *MockImplant) Start() error {
 	m.Client = listenerrpc.NewListenerRPCClient(conn)
 	m.ctx, m.cancel = context.WithCancel(context.Background())
 
-	streamCtx := metadata.NewOutgoingContext(m.ctx, metadata.Pairs("pipeline_id", m.Pipeline.Name))
+	streamCtx := metadata.NewOutgoingContext(m.ctx, metadata.Pairs(
+		"pipeline_id", m.Pipeline.Name,
+		"listener_id", m.Pipeline.ListenerId,
+	))
 	stream, err := m.Client.SpiteStream(streamCtx)
 	if err != nil {
 		_ = conn.Close()
