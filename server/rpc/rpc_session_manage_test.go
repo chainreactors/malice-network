@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/types"
@@ -154,6 +155,8 @@ func TestGetSession_NilRequest(t *testing.T) {
 func TestSessionManage_Delete(t *testing.T) {
 	env := newRPCTestEnv(t)
 	sess := env.seedSession(t, "sm-del-sess", "sm-del-pipe", true)
+	events := subscribeEventBrokerReady(t, core.EventBroker)
+	defer core.EventBroker.Unsubscribe(events)
 
 	_, err := (&Server{}).SessionManage(context.Background(), &clientpb.BasicUpdateSession{
 		SessionId: sess.ID,
@@ -174,6 +177,10 @@ func TestSessionManage_Delete(t *testing.T) {
 	}
 	if model != nil {
 		t.Fatalf("expected deleted session to be nil in DB, got %v", model)
+	}
+	event := waitForLifecycleEvent(t, events, consts.CtrlSessionDelete)
+	if !event.Important || event.Session.GetSessionId() != sess.ID {
+		t.Fatalf("unexpected session delete event: %#v", event)
 	}
 }
 
@@ -222,6 +229,8 @@ func TestSessionManage_Group_ActiveSession(t *testing.T) {
 func TestSessionManage_NoteOnDBOnly(t *testing.T) {
 	env := newRPCTestEnv(t)
 	sess := env.seedSession(t, "sm-note-dbonly", "sm-note-db-pipe", false)
+	events := subscribeEventBrokerReady(t, core.EventBroker)
+	defer core.EventBroker.Unsubscribe(events)
 
 	_, err := (&Server{}).SessionManage(context.Background(), &clientpb.BasicUpdateSession{
 		SessionId: sess.ID,
@@ -238,11 +247,17 @@ func TestSessionManage_NoteOnDBOnly(t *testing.T) {
 	if model.Note != "db-note" {
 		t.Fatalf("DB note = %q, want %q", model.Note, "db-note")
 	}
+	event := waitForLifecycleEvent(t, events, consts.CtrlSessionUpdate)
+	if !event.Important || event.Session.GetSessionId() != sess.ID || event.Session.GetNote() != "db-note" {
+		t.Fatalf("unexpected DB-only note event: %#v", event)
+	}
 }
 
 func TestSessionManage_GroupOnDBOnly(t *testing.T) {
 	env := newRPCTestEnv(t)
 	sess := env.seedSession(t, "sm-grp-dbonly", "sm-grp-db-pipe", false)
+	events := subscribeEventBrokerReady(t, core.EventBroker)
+	defer core.EventBroker.Unsubscribe(events)
 
 	_, err := (&Server{}).SessionManage(context.Background(), &clientpb.BasicUpdateSession{
 		SessionId: sess.ID,
@@ -258,6 +273,10 @@ func TestSessionManage_GroupOnDBOnly(t *testing.T) {
 	}
 	if model.GroupName != "ops-group" {
 		t.Fatalf("DB group = %q, want %q", model.GroupName, "ops-group")
+	}
+	event := waitForLifecycleEvent(t, events, consts.CtrlSessionUpdate)
+	if !event.Important || event.Session.GetSessionId() != sess.ID || event.Session.GetGroupName() != "ops-group" {
+		t.Fatalf("unexpected DB-only group event: %#v", event)
 	}
 }
 

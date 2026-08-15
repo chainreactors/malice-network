@@ -96,6 +96,8 @@ func (event *Event) format() string {
 		switch event.Op {
 		case consts.CtrlSessionRegister:
 			return fmt.Sprintf("[%s] %s", consts.CtrlSessionRegister, event.Message)
+		case consts.CtrlSessionDelete:
+			return fmt.Sprintf("[%s] %s", consts.CtrlSessionDelete, event.Message)
 		case consts.CtrlSessionDead:
 			return fmt.Sprintf("[%s] %s", consts.CtrlSessionDead, event.Message)
 		case consts.CtrlSessionReborn:

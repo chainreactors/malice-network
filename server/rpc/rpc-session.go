@@ -97,6 +97,13 @@ func (rpc *Server) SessionManage(ctx context.Context, req *clientpb.BasicUpdateS
 		if err != nil {
 			return nil, err
 		}
+		core.EventBroker.Publish(core.Event{
+			EventType: consts.EventSession,
+			Op:        consts.CtrlSessionDelete,
+			Session:   &clientpb.Session{SessionId: req.SessionId},
+			Message:   fmt.Sprintf("session %s deleted", req.SessionId),
+			Important: true,
+		})
 	case "note":
 		session, err := core.Sessions.Get(req.SessionId)
 		if err == nil {
@@ -109,6 +116,7 @@ func (rpc *Server) SessionManage(ctx context.Context, req *clientpb.BasicUpdateS
 			if err != nil {
 				return nil, err
 			}
+			publishPersistedSessionUpdate(req.SessionId, fmt.Sprintf("session %s note updated to %s", req.SessionId, req.Arg))
 		}
 	case "group":
 		session, err := core.Sessions.Get(req.SessionId)
@@ -122,12 +130,28 @@ func (rpc *Server) SessionManage(ctx context.Context, req *clientpb.BasicUpdateS
 			if err != nil {
 				return nil, err
 			}
+			publishPersistedSessionUpdate(req.SessionId, fmt.Sprintf("session %s group updated to %s", req.SessionId, req.Arg))
 		}
 	default:
 		return nil, fmt.Errorf("unknown session manage operation: %q", req.Op)
 	}
 
 	return &clientpb.Empty{}, nil
+}
+
+func publishPersistedSessionUpdate(sessionID, message string) {
+	session, err := db.FindSession(sessionID)
+	if err != nil || session == nil {
+		logs.Log.Errorf("load persisted session %s for update event failed: %v", sessionID, err)
+		return
+	}
+	core.EventBroker.Publish(core.Event{
+		EventType: consts.EventSession,
+		Op:        consts.CtrlSessionUpdate,
+		Session:   session.ToProtobuf(),
+		Message:   message,
+		Important: true,
+	})
 }
 
 func (rpc *Server) ListSessionLinks(_ context.Context, req *clientpb.SessionLinkRequest) (*clientpb.SessionLinks, error) {
