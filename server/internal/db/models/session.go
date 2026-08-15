@@ -71,6 +71,14 @@ func (s *Session) ToProtobuf() *clientpb.Session {
 	if s == nil {
 		return nil
 	}
+	data := s.Data
+	if data == nil {
+		data = &client.SessionContext{}
+	}
+	info := data.SessionInfo
+	if info == nil {
+		info = &client.SessionInfo{}
+	}
 
 	// 将整个 Data 序列化为 JSON 字符串
 	var dataString string
@@ -91,20 +99,20 @@ func (s *Session) ToProtobuf() *clientpb.Session {
 		Target:        s.Target,
 		IsAlive:       s.IsAlive,
 		IsInitialized: s.Initialized,
-		IsPrivilege:   s.Data.IsPrivilege,
+		IsPrivilege:   info.IsPrivilege,
 		LastCheckin:   s.LastCheckin,
-		Filepath:      s.Data.Filepath,
-		Workdir:       s.Data.WorkDir,
-		Locate:        s.Data.Locale,
-		Proxy:         s.Data.ProxyURL,
-		Os:            s.Data.Os,
-		Process:       s.Data.Process,
-		Timer:         &implantpb.Timer{Expression: s.Data.Expression, Jitter: s.Data.Jitter},
-		Modules:       s.Data.Modules,
+		Filepath:      info.Filepath,
+		Workdir:       info.WorkDir,
+		Locate:        info.Locale,
+		Proxy:         info.ProxyURL,
+		Os:            info.Os,
+		Process:       info.Process,
+		Timer:         &implantpb.Timer{Expression: info.Expression, Jitter: info.Jitter},
+		Modules:       data.Modules,
 		CreatedAt:     s.CreatedAt.Unix(),
-		Addons:        s.Data.Addons,
+		Addons:        data.Addons,
 		Name:          s.ProfileName,
-		KeyPair:       s.Data.KeyPair, // 添加密钥对
+		KeyPair:       data.KeyPair, // 添加密钥对
 		Data:          dataString,
 	}
 }
