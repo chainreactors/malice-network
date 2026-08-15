@@ -12,19 +12,19 @@ import (
 )
 
 type Session struct {
-	SessionID   string `gorm:"primaryKey;->;<-:create;type:uuid;"`
+	SessionID   string `gorm:"primaryKey;->;<-:create;type:uuid;index:idx_sessions_list_default,priority:4,sort:asc;index:idx_sessions_list_group,priority:5,sort:asc"`
 	RawID       uint32
-	CreatedAt   time.Time `gorm:"->;<-:create;"`
+	CreatedAt   time.Time `gorm:"->;<-:create;index:idx_sessions_list_default,priority:3,sort:desc;index:idx_sessions_list_group,priority:4,sort:desc;index:idx_sessions_trend,priority:2,sort:asc"`
 	Note        string
-	GroupName   string
+	GroupName   string `gorm:"index:idx_sessions_list_group,priority:2,sort:asc"`
 	Target      string
 	Initialized bool
 	Type        string
 	PipelineID  string
 	ListenerID  string
-	IsAlive     bool
+	IsAlive     bool `gorm:"index:idx_sessions_list_default,priority:2,sort:desc;index:idx_sessions_list_group,priority:3,sort:desc"`
 	LastCheckin int64
-	IsRemoved   bool                   `gorm:"default:false"`
+	IsRemoved   bool                   `gorm:"default:false;index:idx_sessions_list_default,priority:1,sort:asc;index:idx_sessions_list_group,priority:1,sort:asc;index:idx_sessions_trend,priority:1,sort:asc"`
 	Data        *client.SessionContext `gorm:"-"`
 	DataString  string                 `gorm:"column:data"`
 

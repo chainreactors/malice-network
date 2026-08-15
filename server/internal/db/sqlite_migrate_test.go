@@ -1,6 +1,7 @@
 package db
 
 import (
+	"database/sql"
 	"strings"
 	"testing"
 
@@ -50,6 +51,32 @@ func TestSQLiteAutoMigrate_Fresh(t *testing.T) {
 			t.Errorf("table %q should exist after AutoMigrate", table)
 		}
 	}
+}
+
+func TestSQLiteAutoMigrate_SessionListIndexes(t *testing.T) {
+	db := openTestSQLite(t)
+
+	if err := db.AutoMigrate(&models.Session{}); err != nil {
+		t.Fatalf("AutoMigrate Session failed: %v", err)
+	}
+
+	assertSQLiteIndexColumns(t, db, "idx_sessions_list_default", []sqliteIndexColumn{
+		{name: "is_removed"},
+		{name: "is_alive", desc: true},
+		{name: "created_at", desc: true},
+		{name: "session_id"},
+	})
+	assertSQLiteIndexColumns(t, db, "idx_sessions_list_group", []sqliteIndexColumn{
+		{name: "is_removed"},
+		{name: "group_name"},
+		{name: "is_alive", desc: true},
+		{name: "created_at", desc: true},
+		{name: "session_id"},
+	})
+	assertSQLiteIndexColumns(t, db, "idx_sessions_trend", []sqliteIndexColumn{
+		{name: "is_removed"},
+		{name: "created_at"},
+	})
 }
 
 func TestNewDBClient_SQLiteSchemaHasNoInvalidForeignKeys(t *testing.T) {
@@ -391,6 +418,55 @@ func assertSQLiteTableSQLNotContains(t *testing.T, db *gorm.DB, table string, ma
 	for _, marker := range markers {
 		if strings.Contains(ddl, marker) {
 			t.Fatalf("table %s still contains legacy schema marker %q in DDL: %s", table, marker, ddl)
+		}
+	}
+}
+
+type sqliteIndexColumn struct {
+	name string
+	desc bool
+}
+
+func assertSQLiteIndexColumns(t *testing.T, db *gorm.DB, indexName string, want []sqliteIndexColumn) {
+	t.Helper()
+
+	if !db.Migrator().HasIndex(&models.Session{}, indexName) {
+		t.Fatalf("index %q does not exist", indexName)
+	}
+
+	rows, err := db.Raw("SELECT seqno, cid, name, desc, coll, key FROM pragma_index_xinfo(?)", indexName).Rows()
+	if err != nil {
+		t.Fatalf("read index %q metadata: %v", indexName, err)
+	}
+	defer rows.Close()
+
+	got := make([]sqliteIndexColumn, 0, len(want))
+	for rows.Next() {
+		var (
+			seqno int
+			cid   int
+			name  sql.NullString
+			desc  int
+			coll  sql.NullString
+			key   int
+		)
+		if err := rows.Scan(&seqno, &cid, &name, &desc, &coll, &key); err != nil {
+			t.Fatalf("scan index %q metadata: %v", indexName, err)
+		}
+		if key == 1 && name.Valid {
+			got = append(got, sqliteIndexColumn{name: name.String, desc: desc == 1})
+		}
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("read index %q metadata: %v", indexName, err)
+	}
+
+	if len(got) != len(want) {
+		t.Fatalf("index %q columns = %#v, want %#v", indexName, got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("index %q column %d = %#v, want %#v", indexName, i, got[i], want[i])
 		}
 	}
 }
