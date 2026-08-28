@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/malice-network/server/internal/configs"
@@ -175,6 +176,11 @@ func HandleFileOperations(op string, data []byte, task *Task) error {
 		savePath, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("no file found for ID: %d", fileId)
+		}
+		if restored, restoreErr := output.RestoreInvalidMinidumpSignature(savePath); restoreErr != nil {
+			logs.Log.Errorf("restore minidump signature %s: %s", savePath, restoreErr)
+		} else if restored {
+			logs.Log.Infof("restored minidump signature: %s", savePath)
 		}
 		checksum, _ := fileutils.CalculateSHA256Checksum(savePath)
 		_, err := SaveContext(&output.DownloadContext{

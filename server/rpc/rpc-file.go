@@ -392,6 +392,16 @@ func finalizeDownload(greq *GenericRequest, req *implantpb.DownloadRequest, resp
 		return fmt.Errorf("final file checksum mismatch: expected %s, got %s", downloadAbs.Checksum, actualChecksum)
 	}
 
+	if restored, restoreErr := output.RestoreInvalidMinidumpSignature(finalPath); restoreErr != nil {
+		logs.Log.Errorf("restore minidump signature %s: %s", finalPath, restoreErr)
+	} else if restored {
+		logs.Log.Infof("restored minidump signature: %s", finalPath)
+		actualChecksum, err = fileutils.CalculateSHA256Checksum(finalPath)
+		if err != nil {
+			return fmt.Errorf("calculate restored dump checksum: %w", err)
+		}
+	}
+
 	downloadName := req.Name
 	if req.Dir {
 		downloadName += ".tar"

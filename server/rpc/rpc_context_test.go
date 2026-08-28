@@ -15,6 +15,7 @@ import (
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/utils/output"
+	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"google.golang.org/grpc/metadata"
@@ -190,6 +191,51 @@ func TestCompletedFileContextPublishesReplayableLifecycleEvent(t *testing.T) {
 	event := waitForLifecycleEvent(t, events, consts.CtrlContextFileClose)
 	if event.EventType != consts.EventContext || !event.Important {
 		t.Fatalf("file context lifecycle event = %#v, want important context event", event)
+	}
+}
+
+func TestHandleFileOperationsRestoresInvalidMinidumpSignature(t *testing.T) {
+	env := newRPCTestEnv(t)
+	sess := env.seedSession(t, "rpc-minidump-restore", "rpc-minidump-restore-pipe", true)
+	task := seedRPCTestTask(t, sess, "nanodump")
+
+	dump := make([]byte, 32+36)
+	binary.LittleEndian.PutUint32(dump[0:4], 0x11223344)
+	binary.LittleEndian.PutUint32(dump[4:8], 0x55667788)
+	binary.LittleEndian.PutUint32(dump[8:12], 3)
+	binary.LittleEndian.PutUint32(dump[12:16], 32)
+	binary.LittleEndian.PutUint32(dump[32:36], 7)
+
+	const fileID = uint32(9)
+	name := "user_lsass_1.dmp"
+	openPayload := make([]byte, 8+len(name))
+	binary.LittleEndian.PutUint32(openPayload[:4], fileID)
+	copy(openPayload[8:], name)
+	if err := core.HandleFileOperations("open", openPayload, task); err != nil {
+		t.Fatalf("open file context failed: %v", err)
+	}
+	writePayload := make([]byte, 4+len(dump))
+	binary.LittleEndian.PutUint32(writePayload[:4], fileID)
+	copy(writePayload[4:], dump)
+	if err := core.HandleFileOperations("write", writePayload, task); err != nil {
+		t.Fatalf("write file context failed: %v", err)
+	}
+	closePayload := make([]byte, 4)
+	binary.LittleEndian.PutUint32(closePayload, fileID)
+	if err := core.HandleFileOperations("close", closePayload, task); err != nil {
+		t.Fatalf("close file context failed: %v", err)
+	}
+
+	savePath := filepath.Join(configs.ContextPath, sess.ID, consts.DownloadPath, name)
+	got, err := os.ReadFile(savePath)
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+	if binary.LittleEndian.Uint32(got[0:4]) != 0x504D444D {
+		t.Fatalf("signature = 0x%x, want MDMP", binary.LittleEndian.Uint32(got[0:4]))
+	}
+	if binary.LittleEndian.Uint32(got[4:8]) != 0xA793 {
+		t.Fatalf("version = 0x%x, want 0xa793", binary.LittleEndian.Uint32(got[4:8]))
 	}
 }
 
