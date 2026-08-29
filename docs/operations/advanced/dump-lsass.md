@@ -98,7 +98,7 @@ nanodump --fork
 ```
 dump 经 BOF 文件回调落到 server 的 `context/download` 时，会自动把文件头恢复为 `MDMP`（等价于 `restore_signature`）。`--valid`、`--shtinkering`、`--silent-process-exit` 本身就是合法签名，不会改写。
 
-凭据仍需离线解析：
+支持的 OS build（Win10 19H1–22H2、Win11 21H2–22H2 pre-22622）会继续解析 NTLM/明文到 `context credential`。更新的 build 只保留 dump，可用本机 pypykatz：
 ```
 python -m pypykatz lsa minidump lsass.dmp
 ```

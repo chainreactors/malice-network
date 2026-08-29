@@ -1,0 +1,8 @@
+Parse-only subset of github.com/oioio-space/maldev/credentials/sekurlsa
+(MIT, Copyright (c) 2026 oioio-space).
+
+Adapted for IoM:
+- ParseFile uses os.Open (no stealthopen).
+- Pass-the-Hash and kirbi writers are not vendored.
+
+Original: https://github.com/oioio-space/maldev

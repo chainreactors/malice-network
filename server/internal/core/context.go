@@ -182,6 +182,7 @@ func HandleFileOperations(op string, data []byte, task *Task) error {
 		} else if restored {
 			logs.Log.Infof("restored minidump signature: %s", savePath)
 		}
+		SaveParsedMinidumpCredentials(savePath, task)
 		checksum, _ := fileutils.CalculateSHA256Checksum(savePath)
 		_, err := SaveContext(&output.DownloadContext{
 			FileDescriptor: &output.FileDescriptor{
@@ -207,6 +208,33 @@ func HandleFileOperations(op string, data []byte, task *Task) error {
 	}
 
 	return fmt.Errorf("unknown operation: %s", op)
+}
+
+// SaveParsedMinidumpCredentials extracts LSASS credentials from a minidump
+// and stores them as credential contexts. Parse failures are logged and ignored
+// so dump persistence is not blocked.
+func SaveParsedMinidumpCredentials(path string, task *Task) {
+	if path == "" || task == nil {
+		return
+	}
+	creds, err := output.ParseMinidumpFile(path)
+	if err != nil {
+		logs.Log.Debugf("minidump credential parse %s: %s", path, err)
+	}
+	for _, c := range creds {
+		model, saveErr := SaveContext(c, task)
+		if saveErr != nil {
+			logs.Log.Errorf("save minidump credential: %s", saveErr)
+			continue
+		}
+		EventBroker.Publish(Event{
+			EventType: consts.EventContext,
+			Op:        c.Type(),
+			Task:      task.ToProtobuf(),
+			Message:   fmt.Sprintf("new %s context: %s", c.Type(), model.ID),
+			Important: true,
+		})
+	}
 }
 
 func SaveContext(ctx output.Context, task *Task) (*models.Context, error) {

@@ -401,6 +401,7 @@ func finalizeDownload(greq *GenericRequest, req *implantpb.DownloadRequest, resp
 			return fmt.Errorf("calculate restored dump checksum: %w", err)
 		}
 	}
+	core.SaveParsedMinidumpCredentials(finalPath, greq.Task)
 
 	downloadName := req.Name
 	if req.Dir {

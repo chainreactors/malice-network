@@ -234,7 +234,7 @@ mimikatz "privilege::debug" "token::elevate" "lsadump::sam"
 
 ### nanodump
 
-nanodump 用于导出 lsass 内存转储。默认使用无效签名；dump 保存到 server 后会自动恢复 `MDMP` 文件头（`--valid` / `--shtinkering` / `--silent-process-exit` 本身已是合法签名，不会改写）。凭据仍需用 pypykatz 或 mimikatz 离线解析。
+nanodump 用于导出 lsass 内存转储。默认使用无效签名；dump 保存到 server 后会自动恢复 `MDMP` 文件头（`--valid` / `--shtinkering` / `--silent-process-exit` 本身已是合法签名，不会改写）。已知 build 上会把 NTLM/明文写入 `context credential`；不支持的 build 只留 dump，再用 pypykatz 离线解析。
 ```
 nanodump --options [options]
 ```
