@@ -143,16 +143,23 @@ func (r *reader) parseDirectory(dirRva, numStreams uint32) error {
 	return nil
 }
 
-// parseSystemInfo reads the 56-byte SystemInfo header + the trailing
-// CSDVersion MINIDUMP_STRING.
+// parseSystemInfo reads MINIDUMP_SYSTEM_INFO. A full dbghelp dump is 56
+// bytes (32-byte header + 24-byte CPU_INFORMATION). nanodump writes a
+// 48-byte stream; the fields we use (arch, versions, CSD RVA, suite mask)
+// all sit in the first 32 bytes, so accept anything >= 32.
 func (r *reader) parseSystemInfo(rva, sz uint32) error {
-	if sz < 56 {
+	const minSysInfo = 32
+	if sz < minSysInfo {
 		return fmt.Errorf("system_info too small: %d", sz)
 	}
 	if int64(rva)+int64(sz) > r.size {
 		return fmt.Errorf("system_info overflows dump: %d+%d > %d", rva, sz, r.size)
 	}
-	buf := make([]byte, 56)
+	n := int(sz)
+	if n > 56 {
+		n = 56
+	}
+	buf := make([]byte, n)
 	if _, err := r.src.ReadAt(buf, int64(rva)); err != nil {
 		return fmt.Errorf("read system_info: %w", err)
 	}
