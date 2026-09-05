@@ -39,7 +39,7 @@ type RecorderRPC struct {
 	artifactsResponders       map[string]func(context.Context, any) (*clientpb.Artifacts, error)
 	buildConfigResponders     map[string]func(context.Context, any) (*clientpb.BuildConfig, error)
 	contextResponders         map[string]func(context.Context, any) (*clientpb.Context, error)
-	contextStreamResponders   map[string]func(context.Context, any) (grpc.ServerStreamingClient[clientpb.ContextChunk], error)
+	contextStreamResponders   map[string]func(context.Context, any) (clientrpc.MaliceRPC_SyncStreamClient, error)
 	taskContextResponders     map[string]func(context.Context, any) (*clientpb.TaskContext, error)
 	taskContextsResponders    map[string]func(context.Context, any) (*clientpb.TaskContexts, error)
 	tasksResponders           map[string]func(context.Context, any) (*clientpb.Tasks, error)
@@ -71,7 +71,7 @@ func NewRecorderRPC() *RecorderRPC {
 		artifactsResponders:       map[string]func(context.Context, any) (*clientpb.Artifacts, error){},
 		buildConfigResponders:     map[string]func(context.Context, any) (*clientpb.BuildConfig, error){},
 		contextResponders:         map[string]func(context.Context, any) (*clientpb.Context, error){},
-		contextStreamResponders:   map[string]func(context.Context, any) (grpc.ServerStreamingClient[clientpb.ContextChunk], error){},
+		contextStreamResponders:   map[string]func(context.Context, any) (clientrpc.MaliceRPC_SyncStreamClient, error){},
 		taskContextResponders:     map[string]func(context.Context, any) (*clientpb.TaskContext, error){},
 		taskContextsResponders:    map[string]func(context.Context, any) (*clientpb.TaskContexts, error){},
 		tasksResponders:           map[string]func(context.Context, any) (*clientpb.Tasks, error){},
@@ -150,7 +150,7 @@ func (r *RecorderRPC) OnContext(method string, fn func(context.Context, any) (*c
 	r.contextResponders[method] = fn
 }
 
-func (r *RecorderRPC) OnContextStream(method string, fn func(context.Context, any) (grpc.ServerStreamingClient[clientpb.ContextChunk], error)) {
+func (r *RecorderRPC) OnContextStream(method string, fn func(context.Context, any) (clientrpc.MaliceRPC_SyncStreamClient, error)) {
 	r.contextStreamResponders[method] = fn
 }
 
@@ -491,7 +491,7 @@ func (r *RecorderRPC) Sync(ctx context.Context, in *clientpb.Sync, opts ...grpc.
 	return &clientpb.Context{Id: in.GetContextId()}, nil
 }
 
-func (r *RecorderRPC) SyncStream(ctx context.Context, in *clientpb.Sync, opts ...grpc.CallOption) (grpc.ServerStreamingClient[clientpb.ContextChunk], error) {
+func (r *RecorderRPC) SyncStream(ctx context.Context, in *clientpb.Sync, opts ...grpc.CallOption) (clientrpc.MaliceRPC_SyncStreamClient, error) {
 	r.recordPrimary(ctx, "SyncStream", in)
 	if responder, ok := r.contextStreamResponders["SyncStream"]; ok {
 		return responder(ctx, in)
@@ -919,6 +919,10 @@ func (r *RecorderRPC) SyncBuild(ctx context.Context, in *clientpb.BuildConfig, o
 	return r.artifactResponse(ctx, "SyncBuild", in)
 }
 
+func (r *RecorderRPC) ReplayArtifact(ctx context.Context, in *clientpb.Artifact, opts ...grpc.CallOption) (*clientpb.Artifact, error) {
+	return r.artifactResponse(ctx, "ReplayArtifact", in)
+}
+
 func (r *RecorderRPC) ListArtifact(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Artifacts, error) {
 	r.recordPrimary(ctx, "ListArtifact", in)
 	if responder, ok := r.artifactsResponders["ListArtifact"]; ok {
@@ -944,6 +948,10 @@ func (r *RecorderRPC) CheckSource(ctx context.Context, in *clientpb.BuildConfig,
 
 func (r *RecorderRPC) DownloadArtifact(ctx context.Context, in *clientpb.Artifact, opts ...grpc.CallOption) (*clientpb.Artifact, error) {
 	return r.artifactResponse(ctx, "DownloadArtifact", in)
+}
+
+func (r *RecorderRPC) GetArtifactProfile(ctx context.Context, in *clientpb.Artifact, opts ...grpc.CallOption) (*clientpb.Artifact, error) {
+	return r.artifactResponse(ctx, "GetArtifactProfile", in)
 }
 
 func (r *RecorderRPC) UpdateArtifact(ctx context.Context, in *clientpb.Artifact, opts ...grpc.CallOption) (*clientpb.Artifact, error) {

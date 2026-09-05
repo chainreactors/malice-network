@@ -8,12 +8,12 @@ import (
 	"path/filepath"
 
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -67,7 +67,7 @@ func syncContextUnary(con *core.Console, req *clientpb.Sync) error {
 	return nil
 }
 
-func receiveContextStream(con *core.Console, stream grpc.ServerStreamingClient[clientpb.ContextChunk]) error {
+func receiveContextStream(con *core.Console, stream clientrpc.MaliceRPC_SyncStreamClient) error {
 	first, err := stream.Recv()
 	if err != nil {
 		return err

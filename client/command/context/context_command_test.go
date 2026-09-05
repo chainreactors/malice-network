@@ -9,10 +9,10 @@ import (
 
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/testsupport"
 	"github.com/chainreactors/malice-network/helper/utils/output"
-	"google.golang.org/grpc"
 )
 
 func TestContextCommandConformance(t *testing.T) {
@@ -42,7 +42,7 @@ func TestContextCommandConformance(t *testing.T) {
 			Argv:    []string{consts.CommandSync, "ctx-1"},
 			WantErr: "sync context failed",
 			Setup: func(t testing.TB, h *testsupport.Harness) {
-				h.Recorder.OnContextStream("SyncStream", func(ctx context.Context, request any) (grpc.ServerStreamingClient[clientpb.ContextChunk], error) {
+				h.Recorder.OnContextStream("SyncStream", func(ctx context.Context, request any) (clientrpc.MaliceRPC_SyncStreamClient, error) {
 					return nil, context.DeadlineExceeded
 				})
 			},
@@ -58,7 +58,7 @@ func TestContextCommandConformance(t *testing.T) {
 			Name: "sync streams file-backed context content",
 			Argv: []string{consts.CommandSync, "ctx-1"},
 			Setup: func(t testing.TB, h *testsupport.Harness) {
-				h.Recorder.OnContextStream("SyncStream", func(ctx context.Context, request any) (grpc.ServerStreamingClient[clientpb.ContextChunk], error) {
+				h.Recorder.OnContextStream("SyncStream", func(ctx context.Context, request any) (clientrpc.MaliceRPC_SyncStreamClient, error) {
 					header := &clientpb.Context{
 						Id:   "ctx-1",
 						Type: consts.ContextDownload,
@@ -119,7 +119,7 @@ func TestContextCommandConformance(t *testing.T) {
 			Argv:    []string{consts.CommandSync, "ctx-1"},
 			WantErr: "unexpected stream offset",
 			Setup: func(t testing.TB, h *testsupport.Harness) {
-				h.Recorder.OnContextStream("SyncStream", func(ctx context.Context, request any) (grpc.ServerStreamingClient[clientpb.ContextChunk], error) {
+				h.Recorder.OnContextStream("SyncStream", func(ctx context.Context, request any) (clientrpc.MaliceRPC_SyncStreamClient, error) {
 					header := downloadContext("ctx-1", "broken.bin", nil)
 					return contextChunkStream(
 						&clientpb.ContextChunk{Header: header, TotalSize: 4},
@@ -137,7 +137,7 @@ func TestContextCommandConformance(t *testing.T) {
 	})
 }
 
-func contextChunkStream(chunks ...*clientpb.ContextChunk) grpc.ServerStreamingClient[clientpb.ContextChunk] {
+func contextChunkStream(chunks ...*clientpb.ContextChunk) clientrpc.MaliceRPC_SyncStreamClient {
 	index := 0
 	return &testsupport.ContextChunkStream{RecvFunc: func() (*clientpb.ContextChunk, error) {
 		if index == len(chunks) {
