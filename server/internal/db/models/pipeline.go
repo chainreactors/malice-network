@@ -401,6 +401,9 @@ func (pipeline *Pipeline) ToProfile(backend *Pipeline) (implanttypes.ProfileConf
 	case consts.HTTPPipeline:
 		return pipeline.DefaultHTTPProfile(), nil
 	case consts.RemPipeline:
+		if backend == nil {
+			return implanttypes.ProfileConfig{}, fmt.Errorf("rem default profile requires the backend tcp pipeline")
+		}
 		return pipeline.DefaultRemProfile(backend), nil
 	default:
 		return implanttypes.ProfileConfig{}, fmt.Errorf("'%s' pipeline is not support.", pipeline.Type)
