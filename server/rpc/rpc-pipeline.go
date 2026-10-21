@@ -112,6 +112,15 @@ func registerDefaultProfileForPipeline(req *clientpb.Pipeline) error {
 	if req.GetName() == "" {
 		return nil
 	}
+	// An automatic <name>_default profile only makes sense for pipelines whose
+	// default profile derives from the pipeline itself (tcp/http). A rem default
+	// profile targets the backend tcp pipeline (DefaultRemProfile), which this
+	// path cannot know; operators create rem profiles explicitly with
+	// params.REMPipeline. Falling through used to nil-panic in
+	// DefaultRemProfile, killing the teamserver process.
+	if req.Type == consts.RemPipeline || req.GetRem() != nil {
+		return nil
+	}
 	profileName := req.Name + "_default"
 	pipelines, err := db.NewPipelineQuery().WhereName(req.Name).Find()
 	if err != nil {
