@@ -2,11 +2,14 @@ package rpc
 
 import (
 	"context"
+
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/types"
 	"github.com/chainreactors/malice-network/helper/utils/configutil"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func (rpc *Server) GetGithubConfig(ctx context.Context, req *clientpb.Empty) (*clientpb.GithubActionBuildConfig, error) {
@@ -98,6 +101,9 @@ func (rpc *Server) GetNotifyConfig(ctx context.Context, req *clientpb.Empty) (*c
 }
 
 func (rpc *Server) UpdateNotifyConfig(ctx context.Context, req *clientpb.Notify) (*clientpb.Empty, error) {
+	if req == nil {
+		return nil, status.Error(codes.InvalidArgument, "notify config is required")
+	}
 	notifyConfig := &configs.NotifyConfig{
 		Enable: req.TelegramEnable || req.DingtalkEnable || req.LarkEnable || req.ServerchanEnable || req.PushplusEnable,
 		Telegram: &configs.TelegramConfig{
@@ -126,14 +132,17 @@ func (rpc *Server) UpdateNotifyConfig(ctx context.Context, req *clientpb.Notify)
 			Channel: req.PushplusChannel,
 		},
 	}
-	err := configs.UpdateNotifyConfig(notifyConfig)
+	// Build and validate the replacement service before persisting anything.
+	// Persisting is the last fallible step, so the configuration on disk and
+	// the running service change together or not at all.
+	commit, err := core.EventBroker.PrepareNotifyConfig(notifyConfig)
 	if err != nil {
 		return nil, err
 	}
-	err = core.EventBroker.InitService(notifyConfig)
-	if err != nil {
+	if err = configs.UpdateNotifyConfig(notifyConfig); err != nil {
 		return nil, err
 	}
+	commit()
 	return &clientpb.Empty{}, nil
 }
 

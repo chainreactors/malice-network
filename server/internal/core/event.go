@@ -294,7 +294,7 @@ type eventBroker struct {
 	subscribe   chan eventSubscription
 	unsubscribe chan chan Event
 	send        chan Event
-	notifier    inotify.Notifier
+	notifier    *inotify.Notifier
 
 	cache *RingCache
 
@@ -813,5 +813,20 @@ var (
 )
 
 func (broker *eventBroker) InitService(config *configs.NotifyConfig) error {
+	if broker == nil || broker.notifier == nil {
+		return ErrEventBrokerUnavailable
+	}
 	return broker.notifier.InitService(config)
+}
+
+// PrepareNotifyConfig builds and validates the replacement notification
+// service for config without changing the running one. The returned commit
+// swaps it in atomically and cannot fail; callers persist the configuration
+// first and commit only after the write succeeds, so the configuration on
+// disk and the running service change together or not at all.
+func (broker *eventBroker) PrepareNotifyConfig(config *configs.NotifyConfig) (commit func(), err error) {
+	if broker == nil || broker.notifier == nil {
+		return nil, ErrEventBrokerUnavailable
+	}
+	return broker.notifier.Prepare(config)
 }

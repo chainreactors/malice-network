@@ -2,8 +2,11 @@ package notify
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
+	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/chainreactors/logs"
@@ -15,39 +18,67 @@ import (
 	"github.com/nikoksr/notify/service/telegram"
 )
 
+// Notifier publishes complete, immutable service sets: a replacement is built
+// and validated in memory first, then atomically swapped in, so a failed
+// rebuild never touches the running services and a send never observes a
+// half-initialized set. A Notifier must not be copied after first use.
 type Notifier struct {
-	notify *notify.Notify
-	enable bool
+	active atomic.Pointer[notify.Notify]
 }
 
-func NewNotifier() Notifier {
-	return Notifier{notify: notify.New(), enable: false}
+func NewNotifier() *Notifier {
+	return &Notifier{}
 }
 
-func (n *Notifier) InitService(config *configs.NotifyConfig) error {
+// buildServices validates cfg and constructs a complete replacement service
+// set without touching the currently active one.
+func buildServices(config *configs.NotifyConfig) (*notify.Notify, error) {
+	next := notify.New()
 	if config == nil || !config.Enable {
-		return nil
+		next.Disabled = true
+		return next, nil
 	}
-	n.enable = true
+	// Validate every enabled channel before constructing any provider, so a
+	// misconfiguration fails the whole update instead of partially building it.
+	if config.Telegram != nil && config.Telegram.Enable &&
+		(strings.TrimSpace(config.Telegram.APIKey) == "" || config.Telegram.ChatID == 0) {
+		return nil, errors.New("server.notify.telegram requires api_key and a nonzero chat_id")
+	}
+	if config.DingTalk != nil && config.DingTalk.Enable && strings.TrimSpace(config.DingTalk.Token) == "" {
+		return nil, errors.New("server.notify.dingtalk requires token")
+	}
+	if config.Lark != nil && config.Lark.Enable {
+		if err := validateWebhook("server.notify.lark.webhook_url", config.Lark.WebHookUrl); err != nil {
+			return nil, err
+		}
+	}
+	if config.ServerChan != nil && config.ServerChan.Enable {
+		if err := validateWebhook("server.notify.serverchan.url", config.ServerChan.URL); err != nil {
+			return nil, err
+		}
+	}
+	if config.PushPlus != nil && config.PushPlus.Enable && strings.TrimSpace(config.PushPlus.Token) == "" {
+		return nil, errors.New("server.notify.pushplus requires token")
+	}
 	if config.Telegram != nil && config.Telegram.Enable {
 		tg, err := telegram.New(config.Telegram.APIKey)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		tg.SetParseMode(telegram.ModeMarkdown)
 		tg.AddReceivers(config.Telegram.ChatID)
-		n.notify.UseServices(tg)
+		next.UseServices(tg)
 	}
 	if config.DingTalk != nil && config.DingTalk.Enable {
 		dt := dingding.New(&dingding.Config{
 			Token:  config.DingTalk.Token,
 			Secret: config.DingTalk.Secret,
 		})
-		n.notify.UseServices(dt)
+		next.UseServices(dt)
 	}
 	if config.Lark != nil && config.Lark.Enable {
 		larkSvc := NewLarkWebhookService(config.Lark.WebHookUrl, config.Lark.Secret)
-		n.notify.UseServices(larkSvc)
+		next.UseServices(larkSvc)
 	}
 	if config.ServerChan != nil && config.ServerChan.Enable {
 		sc := http.New()
@@ -62,7 +93,7 @@ func (n *Notifier) InitService(config *configs.NotifyConfig) error {
 				return data.Encode()
 			},
 		})
-		n.notify.UseServices(sc)
+		next.UseServices(sc)
 	}
 	if config.PushPlus != nil && config.PushPlus.Enable {
 		pp := http.New()
@@ -81,17 +112,56 @@ func (n *Notifier) InitService(config *configs.NotifyConfig) error {
 				}
 			},
 		})
-		n.notify.UseServices(pp)
+		next.UseServices(pp)
+	}
+	return next, nil
+}
+
+func validateWebhook(path, raw string) error {
+	parsed, err := url.Parse(raw)
+	if err != nil || parsed.Hostname() == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+		return fmt.Errorf("%s: expected an absolute http(s) url", path)
 	}
 	return nil
 }
 
+// Prepare builds and validates the replacement service set for config without
+// changing the active one. The returned commit activates the replacement
+// atomically and cannot fail; callers that persist the configuration first
+// invoke commit only after the write succeeds, keeping the persisted
+// configuration and the running service in lockstep.
+func (n *Notifier) Prepare(config *configs.NotifyConfig) (commit func(), err error) {
+	if n == nil {
+		return nil, errors.New("notifier is unavailable")
+	}
+	next, err := buildServices(config)
+	if err != nil {
+		return nil, err
+	}
+	return func() { n.active.Store(next) }, nil
+}
+
+// InitService atomically replaces the active service set. It is the boot-time
+// equivalent of Prepare+commit for callers that have no persistence step.
+func (n *Notifier) InitService(config *configs.NotifyConfig) error {
+	commit, err := n.Prepare(config)
+	if err != nil {
+		return err
+	}
+	commit()
+	return nil
+}
+
 func (n *Notifier) Send(eventType, op, message string) {
-	if !n.enable {
+	if n == nil {
+		return
+	}
+	active := n.active.Load()
+	if active == nil || active.Disabled {
 		return
 	}
 	title := fmt.Sprintf("[%s] %s", eventType, op)
-	err := n.notify.Send(context.Background(), title, message)
+	err := active.Send(context.Background(), title, message)
 	if err != nil {
 		logs.Log.Errorf("Failed to send notification: %s", err)
 	}
